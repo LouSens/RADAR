@@ -81,7 +81,7 @@ Write the name in capitals. Where a longer form is needed to tell it apart from 
 
 ## 3. Data sources and their limits
 
-Everything here was taken from Alpaca's documentation in October 2026 or from the user's screenshots of it. Items marked **verify in Phase 0** are assumptions that the data audit must confirm and record in `docs/DATA_AUDIT.md`.
+Everything here was taken from Alpaca's documentation in October 2026 or from the user's screenshots of it, then checked by the Phase 0 data audit. Statements marked **Measured** come from `docs/DATA_AUDIT.md` (run on 2026-10-05 on the free Basic plan); that file holds the full tables. Re-run `make audit` to refresh them.
 
 ### 3.1 Endpoints
 
@@ -91,12 +91,14 @@ Authentication headers on every authenticated call: `APCA-API-KEY-ID` and `APCA-
 |---|---|
 | Crypto historical bars | `GET https://data.alpaca.markets/v1beta3/crypto/{loc}/bars` |
 | Crypto latest bars, quotes, trades, orderbook, snapshots | under `https://data.alpaca.markets/v1beta3/crypto/{loc}/` |
-| Crypto live stream | `wss://stream.data.alpaca.markets/v1beta3/crypto/us` |
+| Crypto live stream | `wss://stream.data.alpaca.markets/v1beta3/crypto/{loc}` |
 | Stock historical bars | `GET https://data.alpaca.markets/v2/stocks/bars` |
 | News, historical | `GET https://data.alpaca.markets/v1beta1/news` |
 | News, live stream | `wss://stream.data.alpaca.markets/v1beta1/news` |
 
 Crypto `loc` values listed in the docs: `us` (Alpaca), `us-1` (Kraken US), `eu-1` (Kraken EU). The docs page also lists `us-2` and `bs-1` as allowed values without describing them.
+
+**RADAR uses `us-1` for all crypto data, historical and live** (section 3.3 gives the reason; `docs/DECISIONS.md` 010a). The location is configuration, not code. **Measured:** `eu-1` returns data identical to `us-1`, so only one is stored. `us-2` rejects historical requests and `bs-1` returns no bars; neither is usable.
 
 Crypto bar timeframes: 1 to 59 minutes, 1 to 23 hours, 1 day, 1 week, and 1, 2, 3, 4, 6, or 12 months.
 
@@ -110,30 +112,52 @@ Symbol formats differ by endpoint: crypto market data uses `BTC/USD`; the news e
 - Historical crypto data is the one market data category that does not require authentication.
 - The paid plan (Algo Trader Plus, 99 USD per month) raises these limits. RADAR must work fully on the free plan.
 
-**Verify in Phase 0:** the limits that apply to the crypto and news WebSocket streams (connections and symbols), and whether the news endpoints are available on the Basic plan.
+**Measured:**
+
+- The API reports a limit of 200 calls per minute.
+- The historical news endpoint and the news stream both work on the Basic plan.
+- Each stream endpoint accepts one connection per account. A second connection to the same endpoint is refused with `406 connection limit exceeded`. The crypto stream and the news stream can be open at the same time.
+- Historical stock bars from the SIP feed are served when the requested window ends more than 15 minutes ago. The latest SIP bar returns `403`; the latest IEX bar is served.
+- Not measured: the largest number of symbols one crypto or news connection may subscribe to. RADAR needs fewer than ten.
 
 ### 3.3 Crypto data caveats
 
-- **The `us` location carries data from Alpaca's own exchange only.** Its traded volume is small compared with the global market. Do not build volume-based signals on it.
-- **Bars contain quote mid-prices.** When no trade occurs in a bar, volume is 0 and the prices come from quotes. Store a derived `is_quote_only` flag (`volume == 0`) on every bar.
+- **Crypto history starts on 2021-01-01** for `BTC/USD`, `PAXG/USD`, and `ETH/USD` on every location (`SOL/USD` on Kraken starts 2021-06-17). **Measured.** That is 2,104 daily bars at the time of the audit.
+- **Alpaca's own venue (`us`) is too thin for gold. Measured, 2021 to the audit date:** `PAXG/USD` on `us` has a daily bar on 53.8% of days and an hourly bar in 48.3% of hours. On `us-1` it has a daily bar on 100% of days and an hourly bar in 96.0% of hours. `BTC/USD` is complete on both (99.9% of hours or better). Volume over the last 30 days on `us-1` was 722 times that of `us` for Bitcoin and 255 times for PAXG. Daily closes on the two venues differ by a median of 0.02% for Bitcoin and 0.12% for PAXG. This is why RADAR uses `us-1`.
+- **Volume is still one exchange's volume.** Kraken's volume is far larger than Alpaca's but it is not the global market. Do not build volume-based signals on it.
+- **A quiet period can appear as a missing bar or as a quote-only bar.** Alpaca's docs say that when no trade occurs in a bar, volume is 0 and the prices come from quote mid-prices. **Measured:** that happens on `us` only from 2023, and on `us-1` only for PAXG from 2026; otherwise the bar is simply absent. Gap detection must therefore treat missing crypto bars as normal for thin symbols and record them, and every bar on every location stores a derived `is_quote_only` flag (`volume == 0`).
+- **PAXG minute bars are too sparse to use. Measured:** in sampled weeks, `PAXG/USD` 1Min bars on `us-1` cover 8% to 31% of minutes in 2021 to 2025 and 80% in 2026. `BTC/USD` covers 99% or more. RADAR stores 1Hour and 1Day bars and computes realised volatility from hourly bars for every asset (`docs/DECISIONS.md` 010b).
+- **Crypto `1Day` bars are stamped at 00:00 UTC and cover the following 24 hours. Measured:** on every location, and recent daily bars equal the 24 hourly bars that start at the stamp.
 - **PAXG is a proxy for gold, not gold.** It is a token backed by physical gold. It trades thinly, can deviate from the spot gold price, and keeps trading at weekends when the gold market is closed. `GLD` (a gold ETF, stock data, US market hours) is stored as a cross-check, and the tracking gap between the two is shown in the app.
-- **Verify in Phase 0:** earliest available bar per symbol and location, the share of quote-only bars per symbol and location, whether the Kraken locations give materially more volume, and the timestamp boundary of crypto `1Day` bars.
+- **Historical requests page by underlying minute data. Measured:** a `BTC/USD` 1Hour request returns about one week (167 or 168 bars) per page whatever `limit` is sent, so a full hourly history is about 300 calls per symbol. A full 1Day history fits in one page.
 
 ### 3.4 News caveats
 
-- All news comes from one provider, Benzinga. History goes back to 2015. Alpaca states an average of 130+ articles per day across all symbols.
+- All news comes from one provider, Benzinga. Alpaca states an average of 130+ articles per day across all symbols.
 - Article fields: headline, summary, content, author, created and updated timestamps, URL, symbols, source, images.
-- Coverage is weighted towards US stocks. Bitcoin coverage should be reasonable. Gold has no crypto-style ticker in the news feed, so gold news is collected under `GLD` and related tickers.
-- **Verify in Phase 0:** article counts per year for `BTCUSD`, `GLD`, `PAXGUSD`, and `SPY`. If gold coverage is too thin for F3 and F4 (fewer than about 2 articles per day on average), the gold news features are shown as "insufficient news coverage" and the spec is updated. Do not pad the data.
+- Coverage is weighted towards US stocks, and its depth differs by symbol. **Measured**, articles per day:
+
+| Symbol | First article | Before 2022 | 2022 to 2026 |
+|---|---|---|---|
+| `SPY` | 2015-01-02 | 3.9 to 36.3 | 21.8 to 25.5 |
+| `BTCUSD` | 2022-01-04 (8 articles in 2021) | none | 10.5 to 14.2 |
+| `GLD` | 2015-01-06 | 0.19 to 0.90 | 0.30 in 2022, then 1.36 to 1.75 |
+| `PAXGUSD` | 2022-05-11 | none | 41 articles in total |
+| any of `GLD`, `IAU`, `GDX`, `PAXGUSD` | 2015-01-06 | 0.20 to 0.99 | 0.38 in 2022, then 1.48 to 1.93 |
+
+- **Bitcoin news starts in 2022.** F3 and F4 for Bitcoin cover 2022 onward, about 4.75 years at the audit date.
+- **Gold news is thin.** Gold has no crypto-style ticker with real coverage, so gold news is the set of articles tagged with any of `GLD`, `IAU`, `GDX`, or `PAXGUSD` (the list is configuration). Even this set stays just under the 2 articles per day this spec first set as a floor, and it has an article on only 62% to 71% of days from 2023. The decision (`docs/DECISIONS.md` 010c): gold F3 is shown from 2023-01-01 only, always with its article count, and gold F4 reports whatever its own rules give, including `not enough events`. Before 2023 gold news is shown as "insufficient news coverage". Do not pad the data.
 
 ### 3.5 Stock data caveats
 
 - `SPY` and `GLD` trade only during US market hours; crypto trades continuously. Section 7.4 defines the alignment rule.
 - Request split- and dividend-adjusted bars for stocks.
+- **Measured:** `SPY` and `GLD` bars start on 2016-01-04.
+- **Measured:** stock `1Day` bars are stamped at midnight America/New_York (04:00 or 05:00 UTC, depending on daylight saving). The stamp is the session date, not the time of the close. Code must map it to the 16:00 New York close before aligning with crypto.
 
 ### 3.6 Forex
 
-The docs sidebar lists a Forex section. **Verify in Phase 0** whether it returns a gold rate (`XAU/USD`). If it does, record it in the audit as a candidate reference series. Do not depend on it in version 1.
+The docs sidebar lists a Forex section. **Measured:** every forex request on the Basic plan, including a control pair, returns `403 forbidden: insufficient grants`. There is no `XAU/USD` reference series for RADAR; `GLD` is the only gold cross-check.
 
 ---
 
@@ -175,6 +199,8 @@ Four containers, run with Docker Compose:
 - `web`: the React app.
 
 No message broker in version 1. The worker writes to the database and issues a Postgres `NOTIFY`; the API listens and forwards to WebSocket clients. This is enough for a single-user app and removes a moving part. Record this in `docs/DECISIONS.md`.
+
+Only the `worker` opens Alpaca stream connections. Alpaca allows one connection per stream endpoint per account (section 3.2), so two workers, or a developer machine and a deployed worker, cannot stream with the same keys at the same time.
 
 ### 4.3 Schedules
 
@@ -248,7 +274,7 @@ The pipeline has ten stages. Each maps to a package in the repo and to steps in 
 
 - A token-bucket rate limiter holds REST calls under the plan limit with headroom (target 150 per minute).
 - Retries with exponential backoff and jitter on 429 and 5xx responses. Follow `next_page_token` pagination to the end.
-- Backfill requests data in date chunks and records each chunk in `ingestion_runs`, so an interrupted backfill resumes where it stopped.
+- Backfill requests data in date chunks and records each chunk in `ingestion_runs`, so an interrupted backfill resumes where it stopped. Hourly crypto history costs about 300 calls per symbol (section 3.3).
 - Stream consumers reconnect automatically. After a reconnect, a REST call fills the gap between the last stored bar and now.
 - Every response is written unchanged to the raw layer as Parquet, partitioned by source, symbol, and date.
 
@@ -256,7 +282,7 @@ The pipeline has ten stages. Each maps to a package in the repo and to steps in 
 
 - Schema validation with `pandera`: types, non-null keys, `high >= max(open, close)`, `low <= min(open, close)`, prices above zero, volume not negative.
 - Deduplicate on the natural key, keeping the latest received version.
-- Gap detection: compare stored timestamps against the expected calendar (continuous for crypto, exchange calendar for stocks). Record gaps; never fill prices by interpolation. Forward-fill is allowed only when building aligned panels and is flagged.
+- Gap detection: compare stored timestamps against the expected calendar (continuous for crypto, exchange calendar for stocks). Missing hourly bars are normal for thin crypto symbols (about 4% of hours for PAXG, section 3.3). Record gaps; never fill prices by interpolation. Forward-fill is allowed only when building aligned panels and is flagged.
 - Outlier flagging: a bar whose return exceeds a robust threshold (for example 10 median absolute deviations for its timeframe) is flagged for review, not deleted.
 - Set `is_quote_only`.
 - News: strip HTML from `content`, normalise whitespace, drop exact duplicate headlines within a short window for the same symbol, keep `updated_at` revisions as the latest version.
@@ -268,12 +294,12 @@ Phase 0 and Phase 1 produce measured facts: history depth, missing-data rates, q
 ### 7.4 Feature engineering (`features/`)
 
 - Log returns at 1 hour and 1 day.
-- Realised volatility: square root of the sum of squared intraday log returns per day, from 5-minute or hourly bars depending on what the audit shows is reliable.
+- Realised volatility: square root of the sum of squared hourly log returns per UTC day, for every asset. The audit showed PAXG cannot support a finer interval (section 3.3). A day with fewer than a configured number of hourly bars (start at 18) has no realised volatility value and is flagged.
 - Daily range: `log(high / low)`.
 - Rolling statistics (means, standard deviations, z-scores) use trailing windows only.
 - **Alignment rule for mixed calendars.** Two panels are built:
   - *Crypto panel:* daily returns on UTC day boundaries, seven days a week. Used for BTC and PAXG on their own and against each other.
-  - *Mixed panel:* returns sampled at 16:00 America/New_York on NYSE trading days, with crypto prices taken from the hourly bar at that time. A weekend's crypto move lands in Monday's return. Used whenever `SPY` or `GLD` is involved.
+  - *Mixed panel:* returns sampled at 16:00 America/New_York on NYSE trading days, with crypto prices taken from the hourly bar at that time. Stock daily bars carry a midnight New York stamp (section 3.5); their close belongs to 16:00 that day. A weekend's crypto move lands in Monday's return. Used whenever `SPY` or `GLD` is involved.
 - Scalers and any fitted transforms are fitted on training windows only and stored with the model version.
 
 ### 7.5 Splitting
@@ -330,7 +356,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 
 ### F3. News sentiment pulse
 
-- **Method:** score each article's headline and summary with FinBERT. `score = P(positive) - P(negative)`. Aggregate per symbol into hourly and daily buckets: mean score, article count, and an exponentially decayed score (half-life set from the audit; start at 24 hours).
+- **Method:** score each article's headline and summary with FinBERT. `score = P(positive) - P(negative)`. Aggregate per symbol into hourly and daily buckets: mean score, article count, and an exponentially decayed score (half-life starts at 24 hours). Bitcoin uses articles tagged `BTCUSD`, from 2022. Gold uses the gold news set from 2023 (section 3.4).
 - **Baseline:** a finance sentiment word list (Loughran-McDonald).
 - **Evaluation:** hand-label a random sample of 200 stored headlines (stratified by symbol) and report accuracy and macro F1 for FinBERT and the baseline. This is an evaluation set only. Fine-tuning is a stretch goal and needs its own, larger labelled set.
 - **UI output:** sentiment line under the price chart, article count bars, and a list of the articles with the strongest scores linking to the source.
@@ -437,7 +463,7 @@ Eight phases. Each ends in something that runs and can be shown.
 ### Phase 1: Data platform
 
 1. Database models and migrations for `assets`, `bars`, `news_*`, `ingestion_runs`, `data_quality_reports`.
-2. Raw Parquet writer and resumable backfill for bars (all configured symbols, 1-minute or coarser as the audit supports, plus hourly and daily) and news.
+2. Raw Parquet writer and resumable backfill for bars (all configured symbols, 1Hour and 1Day, crypto from location `us-1`) and news.
 3. Validation, cleaning, flags, and gap detection.
 4. Live stream consumers with reconnect and gap-fill.
 5. Feature builders: returns, realised volatility, both aligned panels.
@@ -568,10 +594,10 @@ RADAR is an analytics tool for information and education. It is not financial ad
 
 State these on the Methodology screen.
 
-1. **Single venue.** Crypto prices and volume come from one exchange's feed. Prices track the wider market closely for Bitcoin; volume does not represent it.
-2. **Gold proxy.** PAXG is thinly traded and can drift from spot gold.
-3. **Single news source.** One provider, weighted towards US stocks. Sentiment reflects that provider's coverage, not all news.
-4. **Short crypto history.** Regimes and tail events are estimated from a limited number of years. Rare events are under-sampled.
+1. **Single venue.** Crypto prices and volume come from one exchange's feed (Kraken, through Alpaca). Prices track the wider market closely for Bitcoin; volume does not represent it.
+2. **Gold proxy.** PAXG is thinly traded and can drift from spot gold. About 4% of hours have no PAXG bar.
+3. **Single news source.** One provider, weighted towards US stocks. Sentiment reflects that provider's coverage, not all news. Bitcoin coverage starts in 2022. Gold coverage is under 2 articles per day and is used from 2023 only.
+4. **Short crypto history.** Crypto data starts in 2021. Regimes and tail events are estimated from a limited number of years. Rare events are under-sampled.
 5. **Regime models describe, they do not forecast turning points.** A regime change is detected after it starts.
 6. **Simulations assume the future resembles the sampled past.** Calibration is reported so the user can see how well that has held.
 7. **Sentiment models misread sarcasm, negation, and headlines about price itself.** Evaluation accuracy is published in the app.
