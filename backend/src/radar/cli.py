@@ -105,6 +105,16 @@ def worker() -> int:
     return run_worker()
 
 
+def profile() -> int:
+    """Measure the stored data and write docs/DATA_PROFILE.md."""
+    from radar.db.session import make_engine
+    from radar.pipelines.profile import write_profile
+    from radar.universe import get_universe
+
+    write_profile(make_engine(), get_universe())
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -124,6 +134,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "down": (down, "stop the containers"),
     "quality": (quality, "check stored data and write data quality reports"),
     "worker": (worker, "run live ingestion and scheduled jobs"),
+    "profile": (profile, "measure the stored data and write docs/DATA_PROFILE.md"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

@@ -35,6 +35,7 @@ packages = ["backend/src/radar"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["notebooks"]
 src = ["backend/src", "backend/tests"]
 
 [tool.ruff.lint]
@@ -42,6 +43,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "PT", "RUF", "S", "T2
 
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/**" = ["S101"]
+"backend/scripts/build_notebook.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -51,8 +53,13 @@ mypy_path = "backend/src"
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["pyarrow", "pyarrow.*", "exchange_calendars", "exchange_calendars.*", "apscheduler.*"]
+module = ["pyarrow", "pyarrow.*", "exchange_calendars", "exchange_calendars.*", "apscheduler.*", "nbformat", "nbformat.*", "nbconvert", "nbconvert.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Jupyter's libraries ship without type hints.
+module = ["build_notebook"]
+disallow_untyped_calls = false
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
@@ -60,7 +67,11 @@ addopts = "-ra --strict-markers"
 
 [dependency-groups]
 dev = [
+    "ipykernel>=7.4.0",
+    "matplotlib>=3.11.2",
     "mypy>=2.4.0",
+    "nbconvert>=7.17.1",
+    "nbformat>=5.11.1",
     "pandas-stubs>=3.0.5.260914",
     "pytest>=9.1.1",
     "respx>=0.23.1",

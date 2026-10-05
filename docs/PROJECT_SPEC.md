@@ -258,13 +258,15 @@ Check current stable versions when installing; do not pin from memory.
 
 **NLP:** Hugging Face `transformers` with the `ProsusAI/finbert` model, CPU inference.
 
+**Notebooks (development only):** `nbformat`, `nbconvert`, `ipykernel`, `matplotlib`.
+
 **Experiment tracking:** MLflow with a local file store under `data/mlflow`.
 
 **Database:** PostgreSQL with TimescaleDB.
 
 **Frontend:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, `lightweight-charts` for price charts, a general chart library for histograms and bar charts.
 
-**Quality:** pytest, `respx`, `ruff`, `mypy`, Vitest, ESLint, GitHub Actions.
+**Quality:** pytest, `respx`, `ruff`, `mypy`, `pandas-stubs`, Vitest, ESLint, GitHub Actions.
 
 **Daily brief text:** a deterministic template renderer is the default and has no external dependency. An LLM rewrite sits behind a `BriefWriter` interface and a feature flag, with the provider and model name set in environment variables.
 
@@ -319,9 +321,9 @@ The pipeline has ten stages. Each maps to a package in the repo and to steps in 
 - Set `is_quote_only`.
 - News: strip HTML from `content`, normalise whitespace, drop exact duplicate headlines within a short window for the same symbol, keep `updated_at` revisions as the latest version.
 
-### 7.3 Exploratory analysis (notebooks, then `docs/DATA_AUDIT.md`)
+### 7.3 Exploratory analysis (notebook and `docs/DATA_PROFILE.md`)
 
-Phase 0 and Phase 1 produce measured facts: history depth, missing-data rates, quote-only share, return distributions, volatility clustering, autocorrelation of returns and of squared returns, and news counts per symbol per year. These numbers decide parameters later in the spec.
+Phase 0 measures the provider (`docs/DATA_AUDIT.md`); Phase 1 measures the stored data (`docs/DATA_PROFILE.md`, written by `radar profile`). Together they produce measured facts: history depth, missing-data rates, quote-only share, return distributions, volatility clustering, autocorrelation of returns and of squared returns, and news counts per symbol per year. These numbers decide parameters later in the spec.
 
 ### 7.4 Feature engineering (`features/`)
 
@@ -536,7 +538,7 @@ Eight phases. Each ends in something that runs and can be shown.
 3. Validation, cleaning, flags, and gap detection.
 4. Live stream consumers with reconnect and gap-fill.
 5. Feature builders: returns, realised volatility, both aligned panels.
-6. An exploratory notebook whose key figures are copied into the audit file.
+6. An exploratory notebook, and `radar profile`, which writes the same measurements to `docs/DATA_PROFILE.md`. They are kept out of `docs/DATA_AUDIT.md` because `make audit` rewrites that file.
 
 *Done when:* a re-run of the backfill changes zero rows, killing and restarting the worker leaves no gaps, and alignment tests pass on a hand-built example including a weekend.
 

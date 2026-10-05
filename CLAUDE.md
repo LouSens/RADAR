@@ -8,11 +8,12 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 1 (in progress), on branch `phase-1-data-platform`. Phase 0 merged to `main` on 2026-10-05
-- Last completed step: Phase 1 step 2, raw Parquet store and resumable backfill. The dev database holds the full history (run 2026-10-05)
-- Next step: Phase 1 step 3, validation, cleaning, flags, and gap detection
-- Key decisions (`docs/DECISIONS.md` 010 to 013): gold is `GLD` alone; crypto from location `us-1`; store 1Hour and 1Day bars; the user is in GMT+8, so give times in GMT+8 in chat
-- Open questions: none
+- Phase: 1 complete on branch `phase-1-data-platform` (not yet merged to `main`)
+- Last completed step: Phase 1 step 6, the data profile (`docs/DATA_PROFILE.md`) and exploration notebook
+- Next step: merge Phase 1, then Phase 2 (API and dashboard shell)
+- Key decisions (`docs/DECISIONS.md` 010 to 019): gold is `GLD` alone; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), and tail risk (F10)
+- The user is in GMT+8: give times in GMT+8 in chat
+- Open questions: read-only Binance connector and the `CLAUDE.md` exception it needs (user has not decided)
 
 ## How to work in this repo
 
@@ -52,6 +53,11 @@ make backfill        # historical backfill for the configured universe (about 17
 make test            # backend pytest + frontend vitest (database tests need `make up` first)
 make lint            # ruff, mypy, eslint, tsc
 make demo            # start the app in replay mode from stored data
+
+uv run radar quality    # check stored data, set flags, write data quality reports
+uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
+uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md
+uv run python backend/scripts/build_notebook.py   # rebuild notebooks/01_exploration.ipynb
 ```
 
 ## Code conventions

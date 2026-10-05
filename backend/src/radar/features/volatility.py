@@ -48,33 +48,39 @@ def realised_volatility_stock(
     columns `open` and `close`. `schedule` is `nyse_schedule(...)`. A session with a
     missing regular-hours bar, or with no previous close, has no value and is flagged.
     """
-    rows = []
-    previous_close = np.nan
-    opens: list[pd.Timestamp] = schedule["open"].tolist()
-    closes: list[pd.Timestamp] = schedule["close"].tolist()
+    opened = pd.DatetimeIndex(schedule["open"]).tz_convert("UTC").floor("h")
+    closed = pd.DatetimeIndex(schedule["close"]).tz_convert("UTC")
+    # Hourly bars each session should have, looked up in one pass.
+    hours = np.ceil((closed - opened) / HOUR).astype(int)
+    owner = np.repeat(np.arange(len(schedule)), hours)
+    offset = np.concatenate([np.arange(n) for n in hours]) if len(hours) else np.array([], int)
+    expected = opened[owner] + pd.to_timedelta(offset, unit="h")
+    prices = hourly_close.reindex(expected).to_numpy(dtype=float)
+    ends = np.cumsum(hours)
+
     open_by_session: dict[Any, float] = daily["open"].astype(float).to_dict()
     close_by_session: dict[Any, float] = daily["close"].astype(float).to_dict()
-    for session, opened, closed in zip(schedule.index, opens, closes, strict=True):
+    rows = []
+    previous_close = np.nan
+    for position, session in enumerate(schedule.index):
         if session not in open_by_session:
             previous_close = np.nan
             continue
         day_open = open_by_session[session]
-        day_close = close_by_session[session]
-        expected = pd.date_range(opened.floor("h"), closed, freq="h", inclusive="left")
-        bars = hourly_close.reindex(expected)
-        path = np.concatenate([[day_open], bars.to_numpy(dtype=float)])
-        intraday = np.diff(np.log(path))
+        bars = prices[ends[position] - hours[position] : ends[position]]
+        intraday = np.diff(np.log(np.concatenate([[day_open], bars])))
         overnight = np.log(day_open / previous_close)
-        complete = bool(bars.notna().all()) and bool(np.isfinite(overnight))
+        present = int(np.isfinite(bars).sum())
+        complete = present == len(bars) and bool(np.isfinite(overnight))
         total = overnight**2 + float(np.sum(intraday**2))
         rows.append(
             {
                 "session": session,
                 "rv": np.sqrt(total) if complete else np.nan,
-                "returns": int(bars.notna().sum()) + int(np.isfinite(overnight)),
+                "returns": present + int(np.isfinite(overnight)),
                 "flagged": not complete,
             }
         )
-        previous_close = day_close
+        previous_close = close_by_session[session]
     frame = pd.DataFrame(rows, columns=["session", "rv", "returns", "flagged"])
     return frame.set_index("session")

@@ -265,3 +265,38 @@ Not adopted: PCA, change-point detection, price-direction prediction, reinforcem
 learning, Black-Litterman, Kelly sizing.
 
 None of these changes Phase 1.
+
+## 019. Phase 1 steps 3 to 6: choices made while building (2026-10-05)
+
+Made by Claude, open to change:
+
+- **Live bars are not stored.** The streams push live prices to the app and trigger a
+  REST gap-fill; every stored bar comes from the REST API through the same code as the
+  backfill. A dropped stream or a restarted worker therefore cannot leave a hole, and
+  live and historical data cannot disagree.
+- **A third stream for stocks.** Live `GLD` needs the IEX stock stream
+  (`wss://stream.data.alpaca.markets/v2/iex`), in addition to crypto and news. All three
+  connected on the Basic plan when tested on 2026-10-05.
+- **Duplicate news is marked, not deleted.** `news_articles.duplicate_of` points at the
+  earlier article with the same headline and asset within 24 hours.
+- **Outlier flags skip returns across a break.** On hourly series a return is judged
+  only when the previous bar is exactly one hour earlier, so overnight and weekend gaps
+  in stock data are not flagged as outliers.
+- **Rejected bars.** A bar that fails schema validation is not stored; the rejection is
+  written to `data_quality_reports`. None of the 433,338 bars stored on 2026-10-05 failed.
+- **Stock realised volatility** uses the daily open, the hourly closes inside regular
+  hours, and the overnight move from the previous close. Extended-hours bars are stored
+  but not used.
+- **Mixed panel fill.** If the crypto bar ending at a session close is missing, the
+  latest bar from the previous 6 hours is used and the cell is flagged. Older than
+  that, the price is left empty.
+- **The Phase 1 measurements live in `docs/DATA_PROFILE.md`,** not in the audit file,
+  because `make audit` regenerates the audit file from the provider.
+- **`pandas-stubs`** added as a dev dependency so `mypy --strict` can check pandas code.
+
+Measured, worth knowing (see `docs/DATA_PROFILE.md`):
+
+- `GLD` and `PAXG/USD` daily returns correlate at 0.96 on the mixed panel.
+- `PAXG/USD` has no realised-volatility value on 8.3% of days (too few hourly bars).
+- Volatility clusters in every asset: squared-return autocorrelation at lag 1 is 0.15
+  for Bitcoin and 0.17 for `GLD`.
