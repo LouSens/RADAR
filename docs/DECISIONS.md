@@ -169,3 +169,27 @@ Costs accepted:
 The user is in GMT+8 and finds UTC hard to read. Storage and APIs stay in UTC (hard
 rule). The frontend shows the browser's local time with the zone named. Reports written
 for the user give times in GMT+8.
+
+## 013. Phase 1 choices (2026-10-05)
+
+Approved by the user:
+
+- `psycopg` added as the PostgreSQL driver. `jupyter` and `matplotlib` will be added as
+  dev-only dependencies when the exploration notebook is written.
+- News is backfilled only for symbols the universe uses. `SPY` news (about 82,500
+  articles, 80% of the volume) is not stored; no feature analyses it.
+- The mixed panel takes the crypto price at 16:00 New York from the close of the hourly
+  bar that ends at that time, the last price known at the stock close.
+
+Made by Claude while building, open to change:
+
+- `news_symbols.symbol` holds the canonical asset symbol (`BTC/USD`), not the provider
+  tag (`BTCUSD`). Tags for symbols outside the universe are not stored in the clean
+  layer; the raw layer keeps every tag.
+- `news_articles` has no `content` column, as in spec section 6. Sentiment uses headline
+  and summary. Article bodies are not requested from the API.
+- `bars` has two columns beyond section 6: `is_outlier` (the review flag of section 7.2)
+  and `received_at`.
+- `bars.loc` holds the crypto location, or the feed name for stocks.
+- Database tests run against a throwaway `radar_test` database on the dev server. They
+  are skipped when no database is reachable, and required in CI.

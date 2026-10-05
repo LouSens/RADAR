@@ -247,7 +247,7 @@ Only the `worker` opens Alpaca stream connections. Alpaca allows one connection 
 
 Check current stable versions when installing; do not pin from memory.
 
-**Backend:** Python 3.12+, `uv`, FastAPI, Pydantic, `pydantic-settings`, SQLAlchemy 2, Alembic, `httpx`, `websockets`, APScheduler, `structlog`.
+**Backend:** Python 3.12+, `uv`, FastAPI, Pydantic, `pydantic-settings`, SQLAlchemy 2, Alembic, `psycopg` (PostgreSQL driver), `httpx`, `websockets`, APScheduler, `structlog`.
 
 **Data and maths:** pandas, NumPy, SciPy, PyArrow, statsmodels, scikit-learn, `hmmlearn`, `pandera` for schema validation, `exchange_calendars` for market calendars.
 

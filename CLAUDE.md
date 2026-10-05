@@ -8,11 +8,11 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 1 (in progress). Phase 0 merged to `main` on 2026-10-05 (pull request 1)
-- Last completed step: Phase 1 groundwork, the asset universe config (`radar/universe.toml`)
-- Next step: Phase 1 step 1, database models and migrations (waiting on the user about `psycopg`)
-- Decisions that shape Phase 1 (`docs/DECISIONS.md` 010): crypto from location `us-1`; store 1Hour and 1Day bars only; gold news is the `GLD`, `IAU`, `GDX`, `PAXGUSD` set from 2023
-- Open questions: Phase 1 plan questions put to the user on 2026-10-05 (dependencies, news backfill scope)
+- Phase: 1 (in progress), on branch `phase-1-data-platform`. Phase 0 merged to `main` on 2026-10-05
+- Last completed step: Phase 1 step 1, database models, first migration, and `make migrate`
+- Next step: Phase 1 step 2, raw Parquet writer and resumable backfill
+- Key decisions (`docs/DECISIONS.md` 010 to 013): gold is `GLD` alone; crypto from location `us-1`; store 1Hour and 1Day bars; the user is in GMT+8, so give times in GMT+8 in chat
+- Open questions: none
 
 ## How to work in this repo
 
@@ -48,7 +48,7 @@ make migrate         # run Alembic migrations
 make audit           # run the Phase 0 data probe and rewrite docs/DATA_AUDIT.md (about 70 minutes;
                      # `uv run radar audit --resume` runs only missing sections)
 make backfill        # historical backfill for the configured universe
-make test            # backend pytest + frontend vitest
+make test            # backend pytest + frontend vitest (database tests need `make up` first)
 make lint            # ruff, mypy, eslint, tsc
 make demo            # start the app in replay mode from stored data
 ```
