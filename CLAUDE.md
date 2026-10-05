@@ -8,11 +8,11 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 0 (steps 1 to 3 done; step 4, the spec review, awaits the user's decisions)
-- Last completed step: `make audit` ran against the live API on 2026-10-05 and wrote `docs/DATA_AUDIT.md`
-- Next step: user decides the open items in `docs/DECISIONS.md` (010a to 010d), then update the spec to match the audit
-- Not yet verified: CI on GitHub (branch `phase-0-bootstrap` not pushed)
-- Open questions: `docs/DECISIONS.md`, decision 010
+- Phase: 0 complete except for one check: CI has not yet been seen green on GitHub
+- Last completed step: spec updated to match `docs/DATA_AUDIT.md` (audit run 2026-10-05)
+- Next step: confirm CI is green, then Phase 1 (data platform)
+- Decisions that shape Phase 1 (`docs/DECISIONS.md` 010): crypto from location `us-1`; store 1Hour and 1Day bars only; gold news is the `GLD`, `IAU`, `GDX`, `PAXGUSD` set from 2023
+- Open questions: none
 
 ## How to work in this repo
 

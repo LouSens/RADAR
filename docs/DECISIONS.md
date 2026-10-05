@@ -53,12 +53,12 @@ script never writes auth headers to disk.
 `POSTGRES_PORT` sets the port on the host (default 5432). The developer machine already
 runs a local PostgreSQL on 5432, so RADAR's container uses 5433 there.
 
-## 010. Audit findings that need the user's decision (2026-10-05)
+## 010. Audit findings and the decisions taken (2026-10-05)
 
-All numbers are from `docs/DATA_AUDIT.md`, run 2026-10-05. Nothing below has been
-changed in the spec or the code yet.
+All numbers are from `docs/DATA_AUDIT.md`, run 2026-10-05. The user decided 010a to
+010d on 2026-10-05 and approved the factual corrections; the spec was updated to match.
 
-### 010a. **OPEN** Which crypto location is the source of record
+### 010a. Which crypto location is the source of record
 
 Problem: the spec assumes location `us` (Alpaca's own venue). On `us`, `PAXG/USD` has a
 1Day bar on only 53.8% of days since 2021 and a 1Hour bar in 48.3% of hours; sampled
@@ -76,7 +76,9 @@ Options:
 2. `us-1` for PAXG only, `us` for the rest. Two venues to reason about, for no gain.
 3. Stay on `us`. Gold features would run on half the days.
 
-### 010b. **OPEN** Bar resolution to store and to use for realised volatility
+**Decided: option 1.** `us-1` for all crypto, history and live.
+
+### 010b. Bar resolution to store and to use for realised volatility
 
 Problem: spec 7.4 leaves "5-minute or hourly" to the audit, and Phase 1 says "1-minute
 or coarser as the audit supports". PAXG 1Min bars on `us-1` cover 8% to 31% of minutes
@@ -88,7 +90,9 @@ Options:
 2. Also store BTC 1Min and use 5-minute realised volatility for BTC only. Better BTC
    estimate, but BTC and gold volatility are then not comparable.
 
-### 010c. **OPEN** Gold news coverage is below the spec threshold
+**Decided: option 1.** Store 1Hour and 1Day; hourly realised volatility for every asset.
+
+### 010c. Gold news coverage is below the spec threshold
 
 Problem: spec 3.4 sets "about 2 articles per day" as the floor for F3 and F4. `GLD`
 averaged 1.36 to 1.75 per day in 2023 to 2026 and 0.19 to 0.90 before. The union of
@@ -101,11 +105,13 @@ Options:
    and let F4's own rule (`not enough events` below 30) decide the verdict.
 3. Add another news source for gold. Out of scope for version 1.
 
-### 010d. **OPEN** Bitcoin news starts in 2022, not 2015
+**Decided: option 2.** Before 2023, gold news shows "insufficient news coverage".
+
+### 010d. Bitcoin news starts in 2022, not 2015
 
 `BTCUSD` has 8 articles before 2022 and 10 to 14 per day from 2022 on. F3 and F4 for
 Bitcoin therefore cover about 4.75 years. Proposed: state this in spec 3.4 and section
-14; no method change.
+14; no method change. **Decided: as proposed.**
 
 ### 010e. One stream connection per endpoint
 
