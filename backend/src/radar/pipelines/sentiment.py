@@ -16,12 +16,13 @@ from radar.db.models import (
     NewsArticle,
     NewsSentiment,
     NewsSymbol,
+    NewsTopic,
     SentimentAggregate,
 )
 from radar.db.session import session_scope
 from radar.features.calendars import nyse_schedule
 from radar.logging import get_logger
-from radar.models import classification, sentiment
+from radar.models import classification, sentiment, topics
 from radar.models.lexicon import Lexicon
 from radar.pipelines.labels import load_labels
 from radar.universe import Asset, Universe
@@ -80,6 +81,57 @@ def score_articles(engine: Engine, scorer: sentiment.Scorer, *, limit: int | Non
             )
         done += len(articles)
         log.info("articles_scored", total=done)
+    return done
+
+
+def load_topic_scorer() -> topics.TopicScorer | None:
+    """The topic model, or None where it is not installed."""
+    try:
+        return topics.ZeroShotTopics(topics.MODEL_ID)
+    except ImportError:
+        return None
+
+
+def classify_articles(
+    engine: Engine, scorer: topics.TopicScorer, *, limit: int | None = None
+) -> int:
+    """Give a topic to every article that has none from this model version."""
+    done = 0
+    while limit is None or done < limit:
+        with session_scope(engine) as session:
+            classified = select(NewsTopic.article_id).where(
+                NewsTopic.model_version == scorer.version
+            )
+            articles = session.execute(
+                select(NewsArticle.id, NewsArticle.headline, NewsArticle.summary)
+                .where(NewsArticle.id.not_in(classified))
+                .order_by(NewsArticle.id)
+                .limit(SCORE_BATCH)
+            ).all()
+            if not articles:
+                break
+            texts = [
+                sentiment.article_text(a.headline, a.summary)[: topics.MAX_CHARACTERS]
+                for a in articles
+            ]
+            names, confidence = topics.pick(scorer.scores(texts))
+            session.execute(
+                insert(NewsTopic)
+                .values(
+                    [
+                        {
+                            "article_id": article.id,
+                            "model_version": scorer.version,
+                            "topic": name,
+                            "confidence": float(share),
+                        }
+                        for article, name, share in zip(articles, names, confidence, strict=True)
+                    ]
+                )
+                .on_conflict_do_nothing()
+            )
+        done += len(articles)
+        log.info("articles_classified", total=done)
     return done
 
 
@@ -253,6 +305,24 @@ def evaluate(
             for symbol, group in scored.groupby("symbol").indices.items()
         },
     }
+    topic_version = topics.version_of(topics.MODEL_ID)
+    with session_scope(engine) as session:
+        assigned = dict(
+            session.execute(
+                select(NewsTopic.article_id, NewsTopic.topic).where(
+                    NewsTopic.article_id.in_(labels["article_id"].tolist()),
+                    NewsTopic.model_version == topic_version,
+                )
+            ).all()
+        )
+    if assigned:
+        known = labels[labels["article_id"].isin(list(assigned))]
+        metrics["topics"] = classification.report(
+            known["topic"].tolist(),
+            [assigned[i] for i in known["article_id"]],
+            list(topics.TOPICS),
+        ).model_dump()
+        metrics["topic_model"] = topics.MODEL_ID
     if lexicon is not None:
         texts = [
             sentiment.article_text(h, s)

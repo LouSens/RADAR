@@ -215,11 +215,10 @@ def sentiment() -> int:
     """Score new articles for tone (needs the nlp extra), refresh the summaries, measure
     accuracy against the labelled sample, and rerun the sentiment-versus-price study."""
     from radar.db.session import make_engine
-    from radar.pipelines import sentiment as job
-    from radar.universe import get_universe
-
     from radar.models.lexicon import DEFAULT_PATH, Lexicon
     from radar.pipelines import event_study
+    from radar.pipelines import sentiment as job
+    from radar.universe import get_universe
 
     engine, universe = make_engine(), get_universe()
     changed = job.run(engine, universe, job.load_scorer())

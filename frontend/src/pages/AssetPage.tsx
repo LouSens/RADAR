@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { useMarket } from "../api/market";
 import { useAssets } from "../api/queries";
 import { MarketStage } from "../components/MarketStage";
+import { NewsPanel } from "../components/NewsPanel";
 import { OutlookPanel } from "../components/OutlookPanel";
 import { RegimePanel } from "../components/RegimePanel";
 import { RiskPanel } from "../components/RiskPanel";
@@ -41,6 +42,8 @@ export function AssetPage() {
       <VolatilityPanel asset={asset} />
 
       <RiskPanel asset={asset} />
+
+      <NewsPanel asset={asset} />
 
       <section className="glass rise rise-2 grid grid-cols-1 gap-x-12 gap-y-6 p-5 sm:p-7 lg:grid-cols-2">
         <div>

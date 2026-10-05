@@ -48,6 +48,7 @@ from radar.api.schemas import (
     SentimentPoint,
     SeriesStatus,
     SimulationOut,
+    TopicSummary,
     VolatilityHorizonOut,
     VolatilityOut,
     VolatilityPoint,
@@ -62,12 +63,13 @@ from radar.db.models import (
     NewsArticle,
     NewsSentiment,
     NewsSymbol,
+    NewsTopic,
     RegimeState,
     RiskMetric,
     SentimentAggregate,
     VolatilityForecast,
 )
-from radar.models import simulator
+from radar.models import simulator, topics
 from radar.pipelines import event_study as event_study_job
 from radar.pipelines import risk as risk_job
 from radar.pipelines import sentiment as sentiment_job
@@ -423,14 +425,21 @@ def get_risk(symbol: str, universe: UniverseDep, session: SessionDep) -> RiskOut
     )
 
 
+TOPIC_VERSION = topics.version_of(topics.MODEL_ID)
+
+
 def _strongest(
     session: Session, asset: Asset, version: str, since: datetime, *, positive: bool, limit: int = 5
 ) -> list[ArticleOut]:
     order = NewsSentiment.score.desc() if positive else NewsSentiment.score.asc()
     rows = session.execute(
-        select(NewsArticle, NewsSentiment.score)
+        select(NewsArticle, NewsSentiment.score, NewsTopic.topic)
         .join(NewsSymbol, NewsSymbol.article_id == NewsArticle.id)
         .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
+        .outerjoin(
+            NewsTopic,
+            (NewsTopic.article_id == NewsArticle.id) & (NewsTopic.model_version == TOPIC_VERSION),
+        )
         .where(
             NewsSymbol.symbol == asset.symbol,
             NewsSentiment.model_version == version,
@@ -448,10 +457,34 @@ def _strongest(
             url=article.url,
             source=article.source,
             score=score,
-            topic=None,
+            topic=topic,
         )
-        for article, score in rows
+        for article, score, topic in rows
         if (score > 0) == positive
+    ]
+
+
+def _topic_summary(
+    session: Session, asset: Asset, version: str, since: datetime
+) -> list[TopicSummary]:
+    rows = session.execute(
+        select(NewsTopic.topic, func.count(), func.avg(NewsSentiment.score))
+        .join(NewsArticle, NewsArticle.id == NewsTopic.article_id)
+        .join(NewsSymbol, NewsSymbol.article_id == NewsArticle.id)
+        .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
+        .where(
+            NewsSymbol.symbol == asset.symbol,
+            NewsTopic.model_version == TOPIC_VERSION,
+            NewsSentiment.model_version == version,
+            NewsArticle.duplicate_of.is_(None),
+            NewsArticle.created_at >= since,
+        )
+        .group_by(NewsTopic.topic)
+        .order_by(func.count().desc())
+    ).all()
+    return [
+        TopicSummary(topic=topic, article_count=count, score_mean=float(mean))
+        for topic, count, mean in rows
     ]
 
 
@@ -508,7 +541,7 @@ def get_sentiment(
         daily=[SentimentPoint.model_validate(d, from_attributes=True) for d in daily],
         most_positive=_strongest(session, asset, version, since, positive=True),
         most_negative=_strongest(session, asset, version, since, positive=False),
-        topics=[],
+        topics=_topic_summary(session, asset, version, since),
         accuracy=accuracy,
     )
 

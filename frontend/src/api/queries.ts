@@ -7,10 +7,12 @@ import {
   type Asset,
   type Bars,
   type Calibration,
+  type EventStudy,
   type Health,
   type LevelAnswer,
   type Regime,
   type Risk,
+  type Sentiment,
   type Simulation,
   type Timeframe,
   type Volatility,
@@ -127,5 +129,25 @@ export function useRisk(slug: string | undefined) {
     queryFn: () => orNull(() => getJson<Risk>(`/assets/${slug}/risk`)),
     enabled: slug !== undefined,
     refetchInterval: 5 * 60_000,
+  });
+}
+
+/** News tone over the last `days`, the strongest articles, and the model's accuracy. */
+export function useSentiment(slug: string | undefined, days = 90) {
+  return useQuery({
+    queryKey: ["sentiment", slug, days],
+    queryFn: () => orNull(() => getJson<Sentiment>(`/assets/${slug}/sentiment`, { days })),
+    enabled: slug !== undefined,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+/** Whether news tone has led price, followed it, or neither. */
+export function useEventStudy(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["event-study", slug],
+    queryFn: () => orNull(() => getJson<EventStudy>(`/assets/${slug}/event-study`)),
+    enabled: slug !== undefined,
+    staleTime: 60 * 60_000,
   });
 }

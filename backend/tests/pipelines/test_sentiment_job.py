@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -9,7 +10,16 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from radar.db.assets import sync_assets
-from radar.db.models import NewsArticle, NewsSentiment, NewsSymbol, SentimentAggregate
+from radar.db.models import (
+    ModelRegistry,
+    NewsArticle,
+    NewsSentiment,
+    NewsSymbol,
+    NewsTopic,
+    SentimentAggregate,
+)
+from radar.models import topics
+from radar.models.lexicon import Lexicon
 from radar.pipelines import sentiment as job
 from radar.universe import Universe
 
@@ -167,3 +177,58 @@ def test_summaries_refresh_without_the_model(engine: Engine, session: Session) -
         select(SentimentAggregate.article_count).where(SentimentAggregate.symbol == "BTC/USD")
     ).all()
     assert set(empty) == {0}
+
+
+class SubjectScorer:
+    """Stands in for the topic model: Bitcoin headlines are price talk, the rest macro."""
+
+    version = topics.version_of(topics.MODEL_ID)
+
+    def scores(self, texts: Sequence[str]) -> np.ndarray:
+        names = list(topics.TOPICS)
+        rows = np.full((len(texts), len(names)), 0.05)
+        for i, text in enumerate(texts):
+            rows[i, names.index("price" if "Bitcoin" in text else "macro")] = 0.7
+        return rows
+
+
+def test_every_article_gets_one_topic(engine: Engine, session: Session) -> None:
+    seed(session)
+    assert job.classify_articles(engine, SubjectScorer()) == 5
+    assert job.classify_articles(engine, SubjectScorer()) == 0
+    stored = {t.article_id: t for t in session.scalars(select(NewsTopic))}
+    assert stored[1].topic == "price"
+    assert stored[5].topic == "macro"
+    assert stored[1].confidence == 0.7
+
+
+def test_accuracy_is_measured_against_the_labels_and_recorded(
+    engine: Engine, session: Session, tmp_path: Path
+) -> None:
+    seed(session)
+    job.score_articles(engine, WordScorer())
+    job.classify_articles(engine, SubjectScorer())
+    labels = pd.DataFrame(
+        {
+            "article_id": [1, 2, 3, 5, 99],  # 99 is not stored and is ignored
+            "symbol": ["BTC/USD", "BTC/USD", "BTC/USD", "GLD", "GLD"],
+            "sentiment": ["positive", "negative", "neutral", "negative", "neutral"],
+            "topic": ["price", "price", "regulation", "macro", "other"],
+            "labelled_by": ["claude"] * 5,
+        }
+    )
+    assert job.evaluate(engine, version="missing", labels=labels) is None
+
+    words = tmp_path / "words.csv"
+    words.write_text("Word,Negative,Positive\nRISES,0,2009\nFALLS,2009,0\n", encoding="utf-8")
+    metrics = job.evaluate(engine, version="words-1", lexicon=Lexicon.load(words), labels=labels)
+    assert metrics is not None
+    assert metrics["model"]["n"] == 4
+    assert metrics["model"]["accuracy"] == 0.75  # article 3 was labelled neutral
+    assert metrics["baseline"]["accuracy"] == 0.75
+    assert metrics["by_symbol"]["GLD"] == {"n": 1, "accuracy": 1.0, "macro_f1": 1.0}
+    assert metrics["topics"]["accuracy"] == 0.75  # article 3 was labelled regulation
+    assert metrics["labelled_by"] == ["claude"]
+    stored = session.scalars(select(ModelRegistry)).one()
+    assert stored.name == "sentiment"
+    assert stored.metrics["model"]["accuracy"] == 0.75

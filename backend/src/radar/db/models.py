@@ -300,3 +300,19 @@ class SentimentAggregate(Base):
     score_mean: Mapped[float | None] = mapped_column(Double)
     # Average over all earlier articles, each one's weight halving every 24 hours.
     score_decayed: Mapped[float | None] = mapped_column(Double)
+
+
+class NewsTopic(Base):
+    """The topic one model version assigned to an article."""
+
+    __tablename__ = "news_topics"
+
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("news_articles.id", ondelete="CASCADE"), primary_key=True
+    )
+    model_version: Mapped[str] = mapped_column(Text, primary_key=True)
+    topic: Mapped[str] = mapped_column(Text)
+    # The model's share of belief in the winning topic, from 0 to 1.
+    confidence: Mapped[float] = mapped_column(Double)
+
+    __table_args__ = (Index("ix_news_topics_topic", "model_version", "topic"),)

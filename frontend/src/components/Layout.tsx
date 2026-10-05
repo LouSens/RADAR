@@ -95,6 +95,7 @@ const SECTIONS = [
   { id: "outlook", label: "Outlook" },
   { id: "swings", label: "Expected swings" },
   { id: "risk", label: "Downside risk" },
+  { id: "news", label: "News" },
 ] as const;
 
 const COLLAPSED_KEY = "radar.sidebar.collapsed";

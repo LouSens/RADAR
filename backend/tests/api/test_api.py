@@ -590,8 +590,10 @@ def test_sentiment_route_serves_tone_articles_and_accuracy(
         NewsArticle,
         NewsSentiment,
         NewsSymbol,
+        NewsTopic,
         SentimentAggregate,
     )
+    from radar.models import topics
 
     seed(session)
     assert client.get("/api/v1/assets/eth-usd/sentiment").status_code == 404  # no news coverage
@@ -638,6 +640,14 @@ def test_sentiment_route_serves_tone_articles_and_accuracy(
         session.flush()
         session.add(NewsSymbol(article_id=id_, symbol="BTC/USD"))
         session.add(
+            NewsTopic(
+                article_id=id_,
+                model_version=topics.version_of(topics.MODEL_ID),
+                topic="price" if id_ != 2 else "security",
+                confidence=0.6,
+            )
+        )
+        session.add(
             NewsSentiment(
                 article_id=id_,
                 model_version="finbert-prosus-1",
@@ -677,6 +687,12 @@ def test_sentiment_route_serves_tone_articles_and_accuracy(
     assert [a["id"] for a in body["most_negative"]] == [2]
     assert body["most_positive"][0]["url"] == "https://example.test/1"
     assert body["accuracy"]["model"] == {"n": 200, "accuracy": 0.7, "macro_f1": 0.68}
+    assert body["most_negative"][0]["topic"] == "security"
+    # Topics over the same window, most common first, repeats left out.
+    assert body["topics"] == [
+        {"topic": "price", "article_count": 2, "score_mean": 0.5},
+        {"topic": "security", "article_count": 1, "score_mean": -0.8},
+    ]
     assert body["accuracy"]["baseline"]["accuracy"] == 0.5
     assert body["accuracy"]["labelled_by"] == ["claude"]
     assert len(client.get("/api/v1/assets/btc-usd/sentiment?days=1").json()["daily"]) == 1

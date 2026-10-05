@@ -64,6 +64,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/event-study": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Event Study
+         * @description Whether news tone has led price, followed it, or neither, with the evidence.
+         */
+        get: operations["get_event_study_api_v1_assets__symbol__event_study_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{symbol}/regime": {
         parameters: {
             query?: never;
@@ -96,6 +116,26 @@ export interface paths {
          * @description Value at Risk and expected shortfall, with how often each limit has been broken.
          */
         get: operations["get_risk_api_v1_assets__symbol__risk_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{symbol}/sentiment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Sentiment
+         * @description News tone over time, the articles with the strongest tone, and the model's accuracy.
+         */
+        get: operations["get_sentiment_api_v1_assets__symbol__sentiment_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -188,6 +228,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ArticleOut */
+        ArticleOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Headline */
+            headline: string;
+            /** Id */
+            id: number;
+            /** Score */
+            score: number;
+            /** Source */
+            source: string;
+            /** Topic */
+            topic: string | null;
+            /** Url */
+            url: string | null;
+        };
         /** AssetOut */
         AssetOut: {
             /**
@@ -291,6 +351,15 @@ export interface components {
             /** Steps */
             steps: number;
         };
+        /** ClassifierScoreOut */
+        ClassifierScoreOut: {
+            /** Accuracy */
+            accuracy: number;
+            /** Macro F1 */
+            macro_f1: number;
+            /** N */
+            n: number;
+        };
         /** DrawdownOut */
         DrawdownOut: {
             /** Depth */
@@ -307,6 +376,50 @@ export interface components {
              * Format: date
              */
             trough_day: string;
+        };
+        /** EventPathOut */
+        EventPathOut: {
+            /** High */
+            high: number[];
+            /** Low */
+            low: number[];
+            /** Mean */
+            mean: number[];
+            /** N */
+            n: number;
+            /** Offsets */
+            offsets: number[];
+        };
+        /** EventStudyOut */
+        EventStudyOut: {
+            baseline: components["schemas"]["EventPathOut"];
+            /**
+             * Computed At
+             * Format: date-time
+             */
+            computed_at: string;
+            /** Days With News */
+            days_with_news: number;
+            /** First Day */
+            first_day: string | null;
+            /** Lags */
+            lags: components["schemas"]["LagOut"][];
+            /** Last Day */
+            last_day: string | null;
+            /** Min Events */
+            min_events: number;
+            /** N Events */
+            n_events: number;
+            /** N Negative */
+            n_negative: number;
+            /** N Positive */
+            n_positive: number;
+            negative: components["schemas"]["EventPathOut"];
+            positive: components["schemas"]["EventPathOut"];
+            /** Symbol */
+            symbol: string;
+            /** Verdict */
+            verdict: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -334,6 +447,17 @@ export interface components {
             status: "ok" | "degraded" | "down";
             /** Stream Clients */
             stream_clients: number;
+        };
+        /** LagOut */
+        LagOut: {
+            /** Correlation */
+            correlation: number;
+            /** Lag */
+            lag: number;
+            /** N */
+            n: number;
+            /** Significant */
+            significant: boolean;
         };
         /** LevelIn */
         LevelIn: {
@@ -644,6 +768,67 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /**
+         * SentimentAccuracyOut
+         * @description How the tone model did on headlines labelled by hand.
+         */
+        SentimentAccuracyOut: {
+            baseline?: components["schemas"]["ClassifierScoreOut"] | null;
+            /** Labelled By */
+            labelled_by: string[];
+            model: components["schemas"]["ClassifierScoreOut"];
+            topics?: components["schemas"]["ClassifierScoreOut"] | null;
+        };
+        /** SentimentOut */
+        SentimentOut: {
+            accuracy: components["schemas"]["SentimentAccuracyOut"] | null;
+            /** Articles 24H */
+            articles_24h: number;
+            /** Articles 7D */
+            articles_7d: number;
+            /** Articles In Window */
+            articles_in_window: number;
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Current */
+            current: number | null;
+            /** Daily */
+            daily: components["schemas"]["SentimentPoint"][];
+            /** Days With News */
+            days_with_news: number;
+            /** Model Version */
+            model_version: string;
+            /** Most Negative */
+            most_negative: components["schemas"]["ArticleOut"][];
+            /** Most Positive */
+            most_positive: components["schemas"]["ArticleOut"][];
+            /**
+             * News Start
+             * Format: date
+             */
+            news_start: string;
+            /** Symbol */
+            symbol: string;
+            /** Topics */
+            topics: components["schemas"]["TopicSummary"][];
+        };
+        /** SentimentPoint */
+        SentimentPoint: {
+            /** Article Count */
+            article_count: number;
+            /** Score Decayed */
+            score_decayed: number | null;
+            /** Score Mean */
+            score_mean: number | null;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+        };
         /** SeriesStatus */
         SeriesStatus: {
             /** Bars */
@@ -694,6 +879,15 @@ export interface components {
             start_price: number;
             /** Symbol */
             symbol: string;
+        };
+        /** TopicSummary */
+        TopicSummary: {
+            /** Article Count */
+            article_count: number;
+            /** Score Mean */
+            score_mean: number;
+            /** Topic */
+            topic: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -872,6 +1066,37 @@ export interface operations {
             };
         };
     };
+    get_event_study_api_v1_assets__symbol__event_study_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventStudyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_regime_api_v1_assets__symbol__regime_get: {
         parameters: {
             query?: {
@@ -923,6 +1148,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RiskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sentiment_api_v1_assets__symbol__sentiment_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SentimentOut"];
                 };
             };
             /** @description Validation Error */
