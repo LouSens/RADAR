@@ -297,6 +297,7 @@ Timestamps are `timestamptz` in UTC. Tables marked (H) are TimescaleDB hypertabl
 | `factor_exposures` (H) | `symbol`, `ts`, `window_days`, `model_version`, `betas` (JSON), `r_squared`, `n` | F8, one row per asset, day, and window |
 | `volatility_forecasts` (H) | `symbol`, `ts`, `horizon_days`, `model`, `model_version`, `forecast`, `realised` | F9; one row per model; `realised` is filled in once known |
 | `risk_metrics` (H) | `symbol` or `portfolio_id`, `ts`, `horizon_days`, `level`, `method`, `var`, `expected_shortfall`, `realised_loss` | F10; one row per method |
+| `forecast_log` | `symbol`, `kind`, `horizon_days`, `key`, `as_of`, `made_at`, `forecast`, `outcome`, `resolved_at` | append-only log of forecasts as they were made; only the outcome is filled in later |
 | `ingestion_runs` | `job`, `window`, `status`, `rows`, `started_at`, `finished_at` | |
 | `data_quality_reports` | `ts`, `symbol`, `check`, `status`, `detail` | |
 
@@ -395,7 +396,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 
 - **Method:** score each article's headline and summary with FinBERT. `score = P(positive) - P(negative)`. Aggregate per symbol into hourly and daily buckets: mean score, article count, and an exponentially decayed score (half-life starts at 24 hours). Bitcoin uses articles tagged `BTCUSD`, from 2022. Gold uses the gold news set from 2023 (section 3.4).
 - **Baseline:** a finance sentiment word list (Loughran-McDonald).
-- **Evaluation:** label a random sample of 200 stored headlines (stratified by symbol) and report accuracy and macro F1 for FinBERT and the baseline. The current labels were written by Claude, not a person, and the app says so (`docs/DECISIONS.md` 030). This is an evaluation set only. Fine-tuning was tried in Phase 4 on a separate set of 1,800 labelled headlines with a time-ordered split; the fine-tuned model was not measurably better on the held-out test part and is not used (`docs/DECISIONS.md` 031).
+- **Evaluation:** label a random sample of 200 stored headlines (stratified by symbol) and report accuracy and macro F1 for FinBERT and the baseline. The current labels were written by Claude, not a person, and the app says so (`docs/DECISIONS.md` 030). This is an evaluation set only. FinBERT is fine-tuned on a separate set of 1,800 labelled headlines with a time-ordered split. On 700 later, unseen headlines the fine-tuned model scored 61.1% against 51.6% for the original, and it is the model in use (`docs/DECISIONS.md` 031 and 032).
 - **UI output:** sentiment line under the price chart, article count bars, and a list of the articles with the strongest scores linking to the source.
 - **News topics:** each article is also assigned one topic from a fixed, configured list (for example regulation, fund flows and ETFs, exchange failures and hacks, macro and central banks, adoption, price commentary, other) by a pretrained language model used zero-shot, with no training on our data. The model is chosen in Phase 4 for accuracy on the hand-labelled sample and must run on a CPU. Topic accuracy is reported with the sentiment accuracy. The UI shows article counts and tone per topic.
 - **Done when:** every stored article has a score for the current model version, aggregates update on arrival, and the evaluation numbers are in the model registry and visible in the methodology page.
@@ -500,6 +501,7 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `GET /assets/{symbol}/volatility` | forecasts, past forecasts against realised, evaluation |
 | `GET /assets/{symbol}/risk` | Value at Risk and expected shortfall with breach history |
 | `GET /portfolio/risk` | the same tail-risk figures for the portfolio |
+| `GET /assets/{symbol}/track-record` | forecasts logged when made, and how they turned out |
 | `GET /health` | pipeline and data status |
 | `WS /stream` | live bars, new signals, new articles |
 
@@ -596,7 +598,7 @@ Eight phases. Each ends in something that runs and can be shown.
 ### Later, not in version 1
 
 - Automatic trade journal from Binance history.
-- A fine-tuned sentiment model with a larger labelled set (the first attempt was not adopted: `docs/DECISIONS.md` 031).
+- Sentiment labels written by a person, to check the model against human judgement.
 - Additional news or macro data sources for gold.
 
 ---

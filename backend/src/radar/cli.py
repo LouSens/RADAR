@@ -247,6 +247,17 @@ def finetune() -> int:
     return 0
 
 
+def track() -> int:
+    """Write down today's forecasts and score the ones whose days have ended."""
+    from radar.db.session import make_engine
+    from radar.pipelines import track as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe())
+    log.info("track_done", rows_changed=changed)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -272,6 +283,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "risk": (risk, "estimate tail risk and backtest each method"),
     "sentiment": (sentiment, "score news for tone and refresh the summaries"),
     "finetune": (finetune, "fine-tune the sentiment model and test it on held-out headlines"),
+    "track": (track, "log today's forecasts and score those that have come due"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

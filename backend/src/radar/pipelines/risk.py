@@ -86,6 +86,7 @@ def assess(
     refit_every: int = 63,
     n_paths: int = 2000,
     min_window: int = tail_risk.MIN_WINDOW,
+    force: bool = False,
 ) -> int:
     """Store estimates for every day not yet covered. Returns the number of rows changed."""
     steps = HORIZON_STEPS[asset.asset_class]
@@ -105,7 +106,10 @@ def assess(
         return 0
     index = pd.DatetimeIndex(clean.index)
     stamps = day_end(asset, index)
-    if newest is not None and not pd.isna(stamps[-1]) and stamps[-1] <= pd.Timestamp(newest):
+    up_to_date = (
+        newest is not None and not pd.isna(stamps[-1]) and stamps[-1] <= pd.Timestamp(newest)
+    )
+    if up_to_date and not force:
         return 0  # nothing new since the last run
 
     returns = clean["ret"].to_numpy(dtype=float)
@@ -114,6 +118,7 @@ def assess(
     )
     rows: list[dict[str, Any]] = []
     horizons: dict[str, Any] = {}
+    tested: dict[int, tuple[int, list[tail_risk.Backtest]]] = {}
     for days, count in steps.items():
         forecasts = np.array([stored[days].get(stamp, np.nan) for stamp in stamps], dtype=float)
         estimates = tail_risk.estimate(
@@ -126,12 +131,7 @@ def assess(
             count,
             min_window=min_window,
         )
-        backtests = tail_risk.backtest(estimates, index)
-        horizons[str(days)] = {
-            "steps": count,
-            "shown": tail_risk.choose(backtests),
-            "backtests": [b.model_dump(mode="json") for b in backtests],
-        }
+        tested[days] = (count, tail_risk.backtest(estimates, index))
         for (method, level), values in estimates.var.items():
             shortfall = estimates.es[(method, level)]
             for t in np.flatnonzero(~np.isnan(values)).tolist():
@@ -151,6 +151,17 @@ def assess(
                         "realised_loss": None if np.isnan(loss) else float(loss),
                     }
                 )
+    # Every limit for this market is one family of tests: judge them together.
+    flat = tail_risk.correct_family([b for _, rows in tested.values() for b in rows])
+    position = 0
+    for days, (count, backtests) in tested.items():
+        corrected = flat[position : position + len(backtests)]
+        position += len(backtests)
+        horizons[str(days)] = {
+            "steps": count,
+            "shown": tail_risk.choose(corrected),
+            "backtests": [b.model_dump(mode="json") for b in corrected],
+        }
     metrics = {
         "horizons": horizons,
         "drawdowns": [

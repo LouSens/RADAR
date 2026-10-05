@@ -277,7 +277,11 @@ function Study({ study }: { study: EventStudy }) {
             <Caption>
               How closely a day&apos;s news tone tracks the price move a few days earlier or later,
               over {formatCount(strongest?.n ?? 0)} days. Bright bars are larger than chance would
-              give; grey bars are not. The same-day bar cannot show which came first.
+              give
+              {study.tests_in_family
+                ? `, allowing for the ${study.tests_in_family} tests run on this market's news`
+                : ""}
+              ; grey bars are not. The same-day bar cannot show which came first.
             </Caption>
           </div>
         </div>
@@ -309,14 +313,75 @@ function Study({ study }: { study: EventStudy }) {
   );
 }
 
+/** A plain grade for a classifier, from the low end of its accuracy range. */
+export function trustGrade(accuracyLow: number | null | undefined): "Reliable" | "Fair" | "Rough" {
+  if (accuracyLow == null) return "Rough";
+  if (accuracyLow >= 0.8) return "Reliable";
+  return accuracyLow >= 0.65 ? "Fair" : "Rough";
+}
+
+const range = (low: number | null | undefined, high: number | null | undefined) =>
+  low == null || high == null ? "" : ` (${formatShare(low, 0)} to ${formatShare(high, 0)})`;
+
+function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
+  const model = accuracy.model;
+  const grade = trustGrade(model.accuracy_low);
+  const byAi = accuracy.labelled_by.includes("claude");
+  return (
+    <div className="well p-4">
+      <h3 className="text-sm font-semibold tracking-tight">
+        How far to trust the tone reading: <span className="text-ink">{grade}</span>
+      </h3>
+      <dl className="mt-2">
+        <StatRow label={`Agreed with the label, on ${formatCount(model.n)} headlines`}>
+          {formatShare(model.accuracy, 0)}
+          <span className="text-muted">{range(model.accuracy_low, model.accuracy_high)}</span>
+        </StatRow>
+        {accuracy.direction && (
+          <StatRow label="Got the direction backwards">
+            {formatShare(accuracy.direction.opposite_rate, 0)}
+          </StatRow>
+        )}
+        {accuracy.original && (
+          <StatRow label="The model before fine-tuning, same headlines">
+            {formatShare(accuracy.original.accuracy, 0)}
+          </StatRow>
+        )}
+        {accuracy.baseline && (
+          <StatRow label="Counting positive and negative words">
+            {formatShare(accuracy.baseline.accuracy, 0)}
+          </StatRow>
+        )}
+        {accuracy.topics && (
+          <StatRow label={`Subject matched, on ${formatCount(accuracy.topics.n)} headlines`}>
+            {formatShare(accuracy.topics.accuracy, 0)}
+            <span className="text-muted">
+              {range(accuracy.topics.accuracy_low, accuracy.topics.accuracy_high)}
+            </span>
+          </StatRow>
+        )}
+      </dl>
+      <Caption>
+        A single article&apos;s tone is often wrong, most often by calling a mild article neutral or
+        the reverse. The daily figures above average many articles, which is steadier than any one
+        of them.{" "}
+        {accuracy.held_out
+          ? "These headlines are all newer than anything the model was trained on."
+          : "These headlines were labelled before the model scored them."}{" "}
+        {byAi
+          ? "The labels were written by an AI model (Claude), not a person, so this measures agreement with that labeller."
+          : ""}{" "}
+        The range in brackets is where the true figure plausibly lies given the sample size.
+      </Caption>
+    </div>
+  );
+}
+
 export function NewsPanel({ asset }: { asset: Asset }) {
   const sentiment = useSentiment(asset.slug).data;
   const study = useEventStudy(asset.slug).data;
   if (!sentiment) return null;
   const accuracy = sentiment.accuracy;
-  const labeller = accuracy?.labelled_by.includes("claude")
-    ? "an AI model (Claude), not a person"
-    : "hand";
 
   return (
     <section id="news" className="glass flex scroll-mt-24 flex-col gap-6 p-5 sm:p-7">
@@ -380,24 +445,13 @@ export function NewsPanel({ asset }: { asset: Asset }) {
 
       {study && <Study study={study} />}
 
+      {accuracy && <Trust accuracy={accuracy} />}
+
       <p className="border-t border-line pt-4 text-xs leading-relaxed text-faint">
-        Tone is scored by a language model trained on financial text, from each article&apos;s
-        headline and summary. All articles come from one provider.
-        {accuracy && (
-          <>
-            {" "}
-            On {formatCount(accuracy.model.n)} headlines labelled by {labeller}, the model agreed
-            with the label {formatShare(accuracy.model.accuracy, 0)} of the time
-            {accuracy.baseline
-              ? `; simply counting positive and negative words agreed ${formatShare(accuracy.baseline.accuracy, 0)} of the time`
-              : ""}
-            .
-            {accuracy.topics
-              ? ` The subject it assigned matched ${formatShare(accuracy.topics.accuracy, 0)} of the time.`
-              : ""}
-          </>
-        )}{" "}
-        Such models misread sarcasm, negation, and headlines that only describe a price move.
+        Tone is scored by a language model trained on financial text
+        {accuracy?.fine_tuned ? " and then fine-tuned on headlines like these" : ""}, from each
+        article&apos;s headline and summary. All articles come from one provider. Such models
+        misread sarcasm, negation, and headlines that only describe a price move.
       </p>
     </section>
   );

@@ -705,3 +705,79 @@ volatility and tail risk, news, and the fine-tuning run. Their sources are plain
 files in `notebooks/src/` (percent format), built and executed by
 `backend/scripts/build_notebooks.py`. They import the app's own modules and print no
 article text.
+
+## 032. Evidence step: a larger test of the fine-tuned model, intervals, corrections, live record (2026-10-06)
+
+Asked for by the user before Phase 5. This entry was written and committed **before**
+the larger test below was labelled or scored, so the rule cannot bend to the result.
+
+**Replication of the fine-tuning test, fixed in advance**
+
+- The first test had 269 headlines, too few to tell a 5-point gain from chance.
+- A fresh test set of 700 headlines is drawn (seed 20261007; 280 Bitcoin, 280 US
+  stocks, 140 gold): all later than every training and validation headline
+  (after 2026-01-26 15:04 UTC), sharing no article and no headline key with the 1,800
+  training labels or the 200 reference labels.
+- The fine-tuned model is **not retrained and no setting is changed**. The model saved
+  by the first run is scored as it is.
+- Labels are written by Claude from the headline alone, before either model has scored
+  these headlines.
+- Rule: the fine-tuned model is adopted if, on these 700 headlines, it is more accurate
+  than the original and McNemar's test gives p below 0.05. Otherwise the original
+  stays, and the question is closed until there are labels from a person.
+- The first 269 test headlines are reported beside the new ones but do not decide.
+
+**Result of the replication (run after the rule above was committed)**
+
+| On the 700 fresh headlines | Accuracy (95% range) | Macro F1 |
+|---|---|---|
+| Original FinBERT | 51.6% (47.9% to 55.3%) | 0.516 |
+| Fine-tuned, unchanged from the first run | 61.1% (57.5% to 64.7%) | 0.611 |
+| Word-list baseline | 43.6% | |
+
+The fine-tuned model was right where the original was wrong on 112 headlines and the
+reverse on 45: McNemar p = 0.00000009. By the rule, **the fine-tuned model is adopted**
+(`finbert-radar-1`). All 103,094 articles were re-scored with it, the aggregates rebuilt,
+and the sentiment-versus-price study rerun. By market the gain was 10 points for
+Bitcoin and US stocks and 7 for gold.
+
+What the accuracy does and does not mean:
+
+- 61% on single headlines is modest, and the app grades it "Rough" beside the tone
+  reading. It is agreement with one labeller (Claude), on headline text alone.
+- Most disagreements are between neutral and a mild tone. The fine-tuned model gave the
+  **opposite** tone to the label on 7% of headlines (11% for the original). Where label
+  and model both took a side, they took the same side 84% of the time (75% before).
+- The app's tone figures are daily averages over many articles, which is steadier than
+  any single score, and the verdict on news and price did not change with the model.
+
+**Intervals (item 2).** `models/evidence.py` adds the Wilson interval. The API now
+returns a 95% range with every accuracy, every calibration coverage figure, and every
+breach rate. For forecasts several steps ahead, which overlap, the range is computed
+from the number of non-overlapping periods (n divided by steps). The screens show the
+range beside the figure, and the News panel leads with a trust grade taken from the low
+end of the accuracy range (Reliable from 80%, Fair from 65%, otherwise Rough).
+
+**Many tests at once (item 4).** Benjamini-Hochberg correction at a 5% false discovery
+rate, applied per market to two families:
+
+- the news study: the overall study and one per topic, eleven lags each (77 to 88
+  tests). Verdicts are worked out from the corrected significance.
+- loss limits: every method, level, and horizon (12 tests). Reliability is taken from
+  the corrected Kupiec p-value.
+
+After correction: Bitcoin and US stocks still show `price leads sentiment` overall and
+for price commentary only; every other topic with enough events shows `no measurable
+relationship`. Gold now has 41 events with the new scores and shows `no measurable
+relationship`. The set of loss limits marked unreliable did not change.
+
+**Live record (item 7).** Table `forecast_log` (migration 0009) and `radar track`. Each
+hour the worker copies the forecasts the app is showing (outlook ranges, the volatility
+forecast, the loss limits) into the log, once per day and market, and never edits them;
+outcomes are filled in when the days they cover have ended. Days the worker did not run
+have no row and are not filled in later. Recording began on 2026-10-05 with 45
+forecasts. The asset page shows the log with ranges, and says "No results yet" until
+there are some.
+
+**Not done here.** Items 1 (labels from a person), 5 (stability across sub-periods and
+seeds), and 6 (sensitivity to settings) from the list offered to the user.

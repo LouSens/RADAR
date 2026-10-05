@@ -246,6 +246,28 @@
       },
       "CalibrationRowOut": {
         "properties": {
+          "conformal_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conformal High"
+          },
+          "conformal_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conformal Low"
+          },
           "empirical": {
             "title": "Empirical",
             "type": "number"
@@ -253,6 +275,28 @@
           "empirical_conformal": {
             "title": "Empirical Conformal",
             "type": "number"
+          },
+          "empirical_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empirical High"
+          },
+          "empirical_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empirical Low"
           },
           "first_origin": {
             "format": "date",
@@ -310,6 +354,28 @@
             "title": "Accuracy",
             "type": "number"
           },
+          "accuracy_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy High"
+          },
+          "accuracy_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy Low"
+          },
           "macro_f1": {
             "title": "Macro F1",
             "type": "number"
@@ -325,6 +391,41 @@
           "macro_f1"
         ],
         "title": "ClassifierScoreOut",
+        "type": "object"
+      },
+      "DirectionOut": {
+        "properties": {
+          "both_polar": {
+            "title": "Both Polar",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "opposite_rate": {
+            "title": "Opposite Rate",
+            "type": "number"
+          },
+          "same_direction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Same Direction"
+          }
+        },
+        "required": [
+          "n",
+          "opposite_rate",
+          "both_polar",
+          "same_direction"
+        ],
+        "title": "DirectionOut",
         "type": "object"
       },
       "DrawdownOut": {
@@ -488,6 +589,17 @@
           "symbol": {
             "title": "Symbol",
             "type": "string"
+          },
+          "tests_in_family": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tests In Family"
           },
           "verdict": {
             "title": "Verdict",
@@ -1224,6 +1336,28 @@
             "title": "Breach Rate",
             "type": "number"
           },
+          "breach_rate_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breach Rate High"
+          },
+          "breach_rate_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breach Rate Low"
+          },
           "breaches": {
             "title": "Breaches",
             "type": "integer"
@@ -1246,6 +1380,17 @@
           "expected_shortfall": {
             "title": "Expected Shortfall",
             "type": "number"
+          },
+          "kupiec_p_adjusted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kupiec P Adjusted"
           },
           "kupiec_p_value": {
             "anyOf": [
@@ -1343,6 +1488,26 @@
               }
             ]
           },
+          "direction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DirectionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fine_tuned": {
+            "default": false,
+            "title": "Fine Tuned",
+            "type": "boolean"
+          },
+          "held_out": {
+            "default": false,
+            "title": "Held Out",
+            "type": "boolean"
+          },
           "labelled_by": {
             "items": {
               "type": "string"
@@ -1352,6 +1517,16 @@
           },
           "model": {
             "$ref": "#/components/schemas/ClassifierScoreOut"
+          },
+          "original": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClassifierScoreOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "topics": {
             "anyOf": [
@@ -1688,6 +1863,168 @@
           "days_with_news"
         ],
         "title": "TopicVerdict",
+        "type": "object"
+      },
+      "TrackRecordOut": {
+        "description": "Forecasts logged on the day they were made and scored afterwards. Not a backtest.",
+        "properties": {
+          "recorded": {
+            "title": "Recorded",
+            "type": "integer"
+          },
+          "recording_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recording Since"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/TrackRecordRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "recording_since",
+          "recorded",
+          "resolved",
+          "rows"
+        ],
+        "title": "TrackRecordOut",
+        "type": "object"
+      },
+      "TrackRecordRow": {
+        "properties": {
+          "expected_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Share"
+          },
+          "first_as_of": {
+            "format": "date-time",
+            "title": "First As Of",
+            "type": "string"
+          },
+          "forecast_to_outcome": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast To Outcome"
+          },
+          "held": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held"
+          },
+          "held_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held High"
+          },
+          "held_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held Low"
+          },
+          "held_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held Share"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_as_of": {
+            "format": "date-time",
+            "title": "Last As Of",
+            "type": "string"
+          },
+          "recorded": {
+            "title": "Recorded",
+            "type": "integer"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "horizon_days",
+          "key",
+          "recorded",
+          "resolved",
+          "held",
+          "held_share",
+          "held_low",
+          "held_high",
+          "expected_share",
+          "forecast_to_outcome",
+          "first_as_of",
+          "last_as_of"
+        ],
+        "title": "TrackRecordRow",
         "type": "object"
       },
       "ValidationError": {
@@ -2346,6 +2683,46 @@
           }
         },
         "summary": "Post Simulation Level"
+      }
+    },
+    "/api/v1/assets/{symbol}/track-record": {
+      "get": {
+        "description": "How forecasts logged on the day they were made have turned out since.",
+        "operationId": "get_track_record_api_v1_assets__symbol__track_record_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackRecordOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Track Record"
       }
     },
     "/api/v1/assets/{symbol}/volatility": {

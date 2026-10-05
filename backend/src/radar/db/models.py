@@ -316,3 +316,31 @@ class NewsTopic(Base):
     confidence: Mapped[float] = mapped_column(Double)
 
     __table_args__ = (Index("ix_news_topics_topic", "model_version", "topic"),)
+
+
+class ForecastLog(Base):
+    """A forecast written down on the day it was made. Append-only.
+
+    Nothing in a row changes after it is written except `outcome` and `resolved_at`,
+    which are filled in once the days the forecast covered have ended.
+    """
+
+    __tablename__ = "forecast_log"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"))
+    # "outlook_range", "volatility", or "loss_limit".
+    kind: Mapped[str] = mapped_column(Text)
+    horizon_days: Mapped[int] = mapped_column(Integer)
+    # Which forecast of that kind: the range's level, the model, or the limit's level.
+    key: Mapped[str] = mapped_column(Text)
+    # When the inputs became known: the end of the last day the forecast used.
+    as_of: Mapped[datetime] = mapped_column(TZDateTime)
+    made_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+    steps: Mapped[int] = mapped_column(Integer)
+    model_version: Mapped[str] = mapped_column(Text)
+    forecast: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    outcome: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    resolved_at: Mapped[datetime | None] = mapped_column(TZDateTime)
+
+    __table_args__ = (UniqueConstraint("symbol", "kind", "horizon_days", "key", "as_of"),)

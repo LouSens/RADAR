@@ -138,7 +138,7 @@ export function RiskPanel({ asset }: { asset: Asset }) {
           {formatDate(horizon.first_day)} to {formatDate(horizon.last_day)}. A limit that works is
           broken about as often as it states. The figures shown above come from the method whose
           limits held closest to that. A limit is marked unreliable when it was broken measurably
-          more or less often than stated.
+          more or less often than stated, after allowing for the number of limits tested together.
         </Caption>
       </div>
 

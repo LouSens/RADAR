@@ -63,7 +63,7 @@ def session(engine: Engine) -> Iterator[Session]:
                 "TRUNCATE bars, sentiment_agg, news_sentiment, news_topics, news_symbols,"
                 " news_articles, ingestion_runs,"
                 " data_quality_reports, regime_states, model_registry, simulations,"
-                " calibration_reports, volatility_forecasts, risk_metrics, assets"
+                " calibration_reports, volatility_forecasts, risk_metrics, forecast_log, assets"
                 " RESTART IDENTITY CASCADE"
             )
         )

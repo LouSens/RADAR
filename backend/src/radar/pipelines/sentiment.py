@@ -22,9 +22,9 @@ from radar.db.models import (
 from radar.db.session import session_scope
 from radar.features.calendars import nyse_schedule
 from radar.logging import get_logger
-from radar.models import classification, sentiment, topics
+from radar.models import classification, evidence, sentiment, topics
 from radar.models.lexicon import Lexicon
-from radar.pipelines.finetune import adopted_model
+from radar.pipelines.finetune import adopted_model, adopted_record
 from radar.pipelines.labels import load_labels
 from radar.universe import Asset, Universe
 
@@ -38,7 +38,7 @@ BUCKETS = ("1Hour", "1Day")
 def active_version(engine: Engine) -> str:
     """The sentiment model in use: the fine-tuned one if it was adopted, else the original."""
     with session_scope(engine) as session:
-        adopted = adopted_model(session)
+        adopted = adopted_record(session)
         return adopted.version if adopted is not None else sentiment.MODEL_VERSION
 
 
@@ -316,6 +316,7 @@ def evaluate(
         "n_labelled": len(labels),
         "labelled_by": sorted(set(labels["labelled_by"])),
         "model": classification.report(truth, predicted, sentiment.LABELS).model_dump(),
+        "direction": evidence.direction(truth, predicted).model_dump(),
         "by_symbol": {
             symbol: classification.report(
                 [truth[i] for i in group], [predicted[i] for i in group], sentiment.LABELS

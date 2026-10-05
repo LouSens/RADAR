@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from radar.db.models import ModelRegistry, NewsArticle
 from radar.db.session import session_scope
 from radar.logging import get_logger
-from radar.models import classification, dataset, finetune, sentiment
+from radar.models import classification, dataset, evidence, finetune, sentiment
 from radar.models.lexicon import Lexicon
 from radar.pipelines.labels import load_labels
 
@@ -190,14 +190,128 @@ def run(
     return metrics
 
 
-def adopted_model(session: Session) -> ModelRegistry | None:
-    """The fine-tuned model in use, if one has been adopted and its files are present."""
+def adopted_record(session: Session) -> ModelRegistry | None:
+    """The registry row of the fine-tuned model in use, if one has been adopted.
+
+    This says which model's scores the app shows. It does not need the model's files,
+    so it works on a machine that only reads stored scores.
+    """
     row = session.scalars(
         select(ModelRegistry)
         .where(ModelRegistry.name == MODEL_NAME, ModelRegistry.is_current)
         .order_by(ModelRegistry.trained_at.desc())
         .limit(1)
     ).first()
-    if row is None or not row.metrics.get("adopted") or row.artefact_path is None:
+    return row if row is not None and row.metrics.get("adopted") else None
+
+
+def adopted_model(session: Session) -> ModelRegistry | None:
+    """The adopted fine-tuned model, only if its files are on this machine to load."""
+    row = adopted_record(session)
+    if row is None or row.artefact_path is None:
         return None
     return row if Path(row.artefact_path).is_dir() else None
+
+
+REPLICATION_LABELS_FILE = "sentiment_test_labels.csv"
+
+
+def load_replication_labels() -> pd.DataFrame:
+    """The second, larger test set: 700 headlines later than all training data."""
+    text = (resources.files("radar") / REPLICATION_LABELS_FILE).read_text(encoding="utf-8")
+    frame = pd.DataFrame(list(csv.DictReader(io.StringIO(text))))
+    frame["article_id"] = frame["article_id"].astype("int64")
+    return frame
+
+
+def check_replication(fresh: pd.DataFrame, training: pd.DataFrame, reference: pd.DataFrame) -> None:
+    """Raise unless the fresh test set is later than, and separate from, everything used."""
+    seen = pd.concat([training, reference])
+    if set(fresh["article_id"]) & set(seen["article_id"]):
+        raise ValueError("A fresh test article was already labelled")
+    if set(fresh["headline"].map(dataset.headline_key)) & set(
+        seen["headline"].map(dataset.headline_key)
+    ):
+        raise ValueError("A fresh test headline repeats one already labelled")
+    fitted = training[training["split"] != "test"]
+    if fresh["created_at"].min() <= fitted["created_at"].max():
+        raise ValueError("The fresh test set is not later than the training data")
+
+
+def replicate(engine: Engine, *, lexicon: Lexicon | None = None) -> dict[str, Any]:
+    """Score the model saved by `run`, unchanged, on the fresh test set, and decide.
+
+    Nothing is trained here. The result replaces the earlier decision on the registry
+    row, because this test is larger and was fixed in advance (docs/DECISIONS.md 032).
+    """
+    with session_scope(engine) as session:
+        row = session.scalars(
+            select(ModelRegistry)
+            .where(ModelRegistry.name == MODEL_NAME, ModelRegistry.is_current)
+            .order_by(ModelRegistry.trained_at.desc())
+            .limit(1)
+        ).first()
+        if row is None or row.artefact_path is None:
+            raise ValueError("There is no fine-tuned model to test; run `radar finetune` first")
+        model_dir, registry_id = row.artefact_path, row.id
+        fresh = with_text(session, load_replication_labels())
+        training = with_text(session, load_training_labels())
+        reference = with_text(session, load_labels())
+    check_replication(fresh, training, reference)
+
+    truth = fresh["sentiment"].tolist()
+    texts = fresh["text"].tolist()
+    base_labels = _predict(sentiment.FinbertScorer(), texts)
+    tuned_labels = _predict(sentiment.FinbertScorer(model_dir, finetune.MODEL_VERSION), texts)
+    base = classification.report(truth, base_labels, sentiment.LABELS)
+    tuned = classification.report(truth, tuned_labels, sentiment.LABELS)
+    comparison = classification.mcnemar(truth, base_labels, tuned_labels)
+    adopted, reason = decide(base, tuned, comparison)
+    result: dict[str, Any] = {
+        "n": len(fresh),
+        "first": str(fresh["created_at"].min().date()),
+        "last": str(fresh["created_at"].max().date()),
+        "base": base.model_dump(),
+        "fine_tuned": tuned.model_dump(),
+        "comparison": comparison.model_dump(),
+        "direction": evidence.direction(truth, tuned_labels).model_dump(),
+        "direction_base": evidence.direction(truth, base_labels).model_dump(),
+        "by_symbol": {
+            symbol: {
+                "n": len(index),
+                "base": classification.report(
+                    [truth[i] for i in index], [base_labels[i] for i in index], sentiment.LABELS
+                ).accuracy,
+                "fine_tuned": classification.report(
+                    [truth[i] for i in index], [tuned_labels[i] for i in index], sentiment.LABELS
+                ).accuracy,
+            }
+            for symbol, index in fresh.groupby("symbol").indices.items()
+        },
+    }
+    if lexicon is not None:
+        result["baseline"] = classification.report(
+            truth, lexicon.labels(texts), sentiment.LABELS
+        ).model_dump()
+    with session_scope(engine) as session:
+        stored = session.get(ModelRegistry, registry_id)
+        if stored is not None:
+            stored.metrics = {
+                **stored.metrics,
+                "replication": result,
+                "first_decision": {
+                    "adopted": stored.metrics.get("adopted"),
+                    "reason": stored.metrics.get("reason"),
+                },
+                "adopted": adopted,
+                "reason": reason,
+            }
+    log.info(
+        "replication_done",
+        n=len(fresh),
+        base_accuracy=round(base.accuracy, 3),
+        tuned_accuracy=round(tuned.accuracy, 3),
+        p_value=round(comparison.p_value, 5),
+        adopted=adopted,
+    )
+    return result
