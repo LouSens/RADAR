@@ -9,10 +9,10 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 Update this block at the end of every work session.
 
 - Phase: 3 (in progress) on branch `phase-3-regime-outlook`. Phases 0 to 2 are merged to `main`
-- Last completed step: Phase 3 step 1 backend: regime model (F1), walk-forward evaluation, registry, scoring job; trained and scored on the real data on 2026-10-05
-- Next step: regime API route and screen, then F2 (simulator and calibration), F9 (volatility forecast), F10 (tail risk)
+- Last completed step: Phase 3 step 1 (regime, F1) is done end to end: model, walk-forward evaluation, registry, scoring job, API route, and the Market state panel. Step 2 (F2) has its two pure modules, `models/simulator.py` and `models/calibration.py`, tested and measured on real data
+- Next step: F2 pipeline (store simulations and calibration reports; migration; `radar simulate`), its API routes and Outlook panel; then F9 (volatility forecast) and F10 (tail risk)
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 026): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 027): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 

@@ -465,3 +465,42 @@ Measured on 2026-10-05 (walk-forward, out of sample):
 | SPY | 2,202 | 0.54%, 0.67%, 1.24% | yes | 3.183 vs 2.558 | 21.8 days |
 
 BIC still prefers 4 states for all three; 3 is used by decision 025.
+
+## 027. Simulator calibration: measured results and choices (2026-10-05)
+
+Walk-forward, out of sample, on 2026-10-05. For every day after the first 500 the
+simulator ran with a regime model fitted on earlier days only and returns up to that day
+only (2,000 paths per day; the regime model refitted every 63 days). Share of ranges that
+contained the outcome, raw and after the conformal adjustment:
+
+| Asset | Horizon | Cases | 50% raw / adjusted | 80% raw / adjusted | 95% raw / adjusted |
+|---|---|---|---|---|---|
+| BTC/USD | 1 day | 1,601 | 52.5% / 50.4% | 81.8% / 80.1% | 95.3% / 94.9% |
+| BTC/USD | 7 days | 1,595 | 58.2% / 50.3% | 83.3% / 80.3% | 93.5% / 94.7% |
+| BTC/USD | 30 days | 1,572 | 57.9% / 49.8% | 79.5% / 80.3% | 93.2% / 94.8% |
+| GLD | 1 session | 2,201 | 47.7% / 50.1% | 78.1% / 80.1% | 93.5% / 95.0% |
+| GLD | 5 sessions | 2,197 | 50.4% / 50.1% | 79.0% / 80.1% | 92.1% / 95.0% |
+| GLD | 21 sessions | 2,181 | 48.3% / 49.7% | 77.0% / 80.1% | 93.3% / 94.5% |
+| SPY | 1 session | 2,201 | 48.5% / 49.9% | 79.0% / 80.0% | 94.3% / 95.0% |
+| SPY | 5 sessions | 2,197 | 51.3% / 50.2% | 81.7% / 80.1% | 95.4% / 95.0% |
+| SPY | 21 sessions | 2,181 | 53.3% / 50.4% | 85.0% / 80.5% | 94.6% / 95.2% |
+
+Against the constant-volatility baseline (pinball loss, lower is better): the simulator
+is clearly better for `SPY` at every horizon, slightly better for Bitcoin at 1 and 30
+days and level at 7, and slightly **worse** for gold at 5 and 21 sessions (0.00489 vs
+0.00486, and 0.00970 vs 0.00940). The app must show this comparison as it is.
+
+Choices made by Claude, open to change:
+
+- **Horizons in trading steps.** 1, 7, and 30 days are 1, 7, and 30 days for crypto
+  and 1, 5, and 21 sessions for stocks (spec 3.7).
+- **Touching a level** is judged at daily closes, and the current price counts.
+- **The conformal adjustment is left unbounded,** as the method needs for its long-run
+  guarantee. Bounding it to within a factor of three of the stated miss rate was tried
+  and rejected: 30-day coverage fell to 74% to 88%.
+- **The live range uses the median adjustment of the last 250 forecasts,** not the
+  latest value, which swings after every hit or miss.
+
+Known limit: for the 95% range at the longest horizon, the adjustment for Bitcoin and
+gold currently sits at its widest setting, so the adjusted 95% range is close to the
+full spread of the simulated outcomes. The interface should say so where it applies.

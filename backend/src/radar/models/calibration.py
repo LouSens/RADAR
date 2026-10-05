@@ -27,6 +27,8 @@ INTERVALS = simulator.INTERVALS
 TRAILING_YEAR = 365
 # How fast the conformal adjustment reacts to a miss.
 CONFORMAL_RATE = 0.02
+# The live range uses the median adjustment over this many recent forecasts.
+CONFORMAL_LIVE_WINDOW = 250
 
 
 @dataclass
@@ -136,11 +138,14 @@ def conformal_hits(
     no outcome yet. Returns the hit record and the miss rate for the next live forecast.
     """
     target = 1.0 - level
+    floor, ceiling = 0.001, 0.999
     alpha = target
+    used = np.empty(len(forecasts.origins))
     n = len(forecasts.origins)
     hits = np.full(n, np.nan)
     for i in range(n):
-        bounded = float(np.clip(alpha, 0.001, 0.999))
+        bounded = float(np.clip(alpha, floor, ceiling))
+        used[i] = bounded
         row = forecasts.samples[i : i + 1]
         low = _quantiles(row, np.array([bounded / 2.0]))[0]
         high = _quantiles(row, np.array([1.0 - bounded / 2.0]))[0]
@@ -149,8 +154,13 @@ def conformal_hits(
         # The outcome that becomes known before the next forecast is made.
         learned = i + 1 - forecasts.steps
         if learned >= 0 and not np.isnan(hits[learned]):
+            # The running setting is left unbounded, as the method requires for its
+            # long-run guarantee; it is only bounded when a range is read off above.
             alpha += rate * (target - (1.0 - hits[learned]))
-    return hits, float(np.clip(alpha, 0.001, 0.999))
+    # For the next live forecast use the typical recent setting, not the latest one,
+    # which swings after every hit or miss.
+    recent = used[-CONFORMAL_LIVE_WINDOW:] if n else np.array([target])
+    return hits, float(np.median(recent))
 
 
 class CalibrationRow(BaseModel):
