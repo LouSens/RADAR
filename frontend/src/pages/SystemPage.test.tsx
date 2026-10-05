@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Health } from "../api/client";
-import { StatusPage } from "./StatusPage";
+import { SystemPage } from "./SystemPage";
 
 const health = vi.hoisted(() => ({ value: {} as unknown }));
 
@@ -42,28 +42,38 @@ const DATA: Health = {
   ],
 };
 
-describe("StatusPage", () => {
-  it("shows coverage with sample sizes, staleness, and missing shares", () => {
+describe("SystemPage", () => {
+  it("shows coverage with sample sizes, staleness, and gaps", () => {
     health.value = { data: DATA, isPending: false, isError: false };
-    render(<StatusPage />);
-    expect(screen.getByText("Some data needs attention")).toBeInTheDocument();
+    render(<SystemPage />);
+    expect(screen.getByText(/Some data is behind/)).toBeInTheDocument();
+    expect(screen.getByText("Connected")).toBeInTheDocument();
+    expect(screen.getByText("82 passed")).toBeInTheDocument();
     expect(screen.getByText("50,453")).toBeInTheDocument();
     expect(screen.getByText("0.05%")).toBeInTheDocument();
-    expect(screen.getByText("not checked")).toBeInTheDocument();
-    expect(screen.getByText("Current")).toBeInTheDocument();
-    expect(screen.getByText("Behind")).toBeInTheDocument();
     expect(screen.getByText("12 hours ago")).toBeInTheDocument();
+    expect(screen.getByText("behind")).toBeInTheDocument();
   });
 
-  it("says so when the API does not answer", () => {
+  it("counts data checks that need review", () => {
+    health.value = {
+      data: { ...DATA, quality: { ...DATA.quality, warnings: 2, failures: 1 } },
+      isPending: false,
+      isError: false,
+    };
+    render(<SystemPage />);
+    expect(screen.getByText("3 to review")).toBeInTheDocument();
+  });
+
+  it("says so when status cannot be loaded", () => {
     health.value = { data: undefined, isPending: false, isError: true };
-    render(<StatusPage />);
-    expect(screen.getByText(/The API did not answer/)).toBeInTheDocument();
+    render(<SystemPage />);
+    expect(screen.getByText(/unavailable right now/)).toBeInTheDocument();
   });
 
   it("never uses advice words", () => {
     health.value = { data: DATA, isPending: false, isError: false };
-    const { container } = render(<StatusPage />);
+    const { container } = render(<SystemPage />);
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 });

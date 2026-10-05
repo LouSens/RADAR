@@ -30,6 +30,8 @@ class BarOut(BaseModel):
     close: float
     volume: float
     is_quote_only: bool
+    # Flagged by the quality job: an unusual jump, or a high or low that looks like a bad print.
+    is_outlier: bool
 
 
 class BarsOut(BaseModel):

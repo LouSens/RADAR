@@ -1,75 +1,167 @@
 import type { ReactNode } from "react";
 
 import type { Asset } from "../api/client";
+import { formatChange } from "../lib/format";
+import { positionIn, sparklinePath, type Range } from "../lib/stats";
 
-/** Section marker, as on the portfolio site: an accent bar, the name, and a hairline. */
-export function SectionLabel({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
-  return (
-    <div className="mb-5 flex items-center gap-3 text-sm">
-      <span className="h-[3px] w-6 rounded-full bg-accent" aria-hidden="true" />
-      <span className="text-ink/70">{children}</span>
-      <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
-      {aside && <span className="text-xs text-muted">{aside}</span>}
-    </div>
-  );
-}
-
-export function Panel({
-  title,
-  aside,
+export function Card({
   children,
   className = "",
   lift = false,
 }: {
-  title?: ReactNode;
-  aside?: ReactNode;
   children: ReactNode;
   className?: string;
   lift?: boolean;
 }) {
+  return <section className={`glass ${lift ? "glass-lift" : ""} ${className}`}>{children}</section>;
+}
+
+export function CardHeader({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
-    <section className={`glass ${lift ? "glass-lift" : ""} p-5 sm:p-6 ${className}`}>
-      {(title || aside) && (
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          {title && <h2 className="text-lg font-semibold tracking-tight">{title}</h2>}
-          {aside && <div className="text-xs text-muted">{aside}</div>}
-        </header>
-      )}
+    <header className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+      <h2 className="text-base font-semibold tracking-tight">{title}</h2>
       {children}
-    </section>
+    </header>
   );
 }
 
 /** Every chart carries one: what it shows, the window, and the sample size. */
 export function Caption({ children }: { children: ReactNode }) {
-  return <p className="mt-3 text-xs leading-relaxed text-muted">{children}</p>;
+  return <p className="mt-3 text-xs leading-relaxed text-faint">{children}</p>;
 }
 
-export function Pill({ tone, children }: { tone: "ok" | "warn" | "muted"; children: ReactNode }) {
-  const colour =
-    tone === "ok"
-      ? "border-calm/30 bg-calm/10 text-calm"
-      : tone === "warn"
-        ? "border-alert/30 bg-alert/10 text-alert"
-        : "border-line bg-white/[0.03] text-muted";
+export function Message({ children }: { children: ReactNode }) {
+  return <p className="well px-4 py-3 text-sm text-muted">{children}</p>;
+}
+
+/** A change figure, coloured by direction, with an arrow for readers who cannot rely on colour. */
+export function Change({ value, className = "" }: { value: number | undefined; className?: string }) {
+  if (value === undefined) return <span className={`num text-faint ${className}`}>–</span>;
+  const up = value >= 0;
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium ${colour}`}
-    >
-      {children}
+    <span className={`num whitespace-nowrap ${up ? "text-calm" : "text-alert"} ${className}`}>
+      <span aria-hidden="true">{up ? "▲" : "▼"} </span>
+      {formatChange(value).replace(/^[+−]/, "")}
+      <span className="sr-only">{up ? " up" : " down"}</span>
     </span>
   );
 }
 
-export function Notice({ children }: { children: ReactNode }) {
-  return <p className="well px-4 py-3 text-sm text-muted">{children}</p>;
+export function ChangeChip({ value }: { value: number | undefined }) {
+  if (value === undefined) return null;
+  const up = value >= 0;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-sm font-medium ${
+        up ? "bg-calm/12 text-calm" : "bg-alert/12 text-alert"
+      }`}
+    >
+      <Change value={value} />
+    </span>
+  );
 }
 
-export function Stat({ label, value }: { label: string; value: ReactNode }) {
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: readonly { value: T; label: string }[];
+  value: T;
+  onChange: (value: T) => void;
+  label: string;
+}) {
   return (
-    <div className="well px-4 py-3">
-      <div className="text-xs text-muted">{label}</div>
-      <div className="num mt-0.5 text-base">{value}</div>
+    <div
+      className="inline-flex rounded-full border border-line bg-white/[0.03] p-0.5"
+      role="group"
+      aria-label={label}
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+          className={`rounded-full px-3 py-1 text-[13px] font-medium transition-colors ${
+            value === option.value ? "bg-white/12 text-ink" : "text-muted hover:text-ink"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function Sparkline({
+  values,
+  colorVar,
+  width = 120,
+  height = 36,
+}: {
+  values: number[];
+  colorVar: string;
+  width?: number;
+  height?: number;
+}) {
+  const path = sparklinePath(values, width, height);
+  if (!path) return <div style={{ width, height }} />;
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className="h-full w-full"
+      aria-hidden="true"
+    >
+      <path
+        d={path}
+        fill="none"
+        stroke={`var(${colorVar})`}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
+/** A low-to-high track with a marker at the current price. */
+export function RangeBar({
+  range,
+  price,
+  colorVar,
+  format,
+}: {
+  range: Range;
+  price: number;
+  colorVar: string;
+  format: (value: number) => string;
+}) {
+  const at = positionIn(range, price) * 100;
+  return (
+    <div>
+      <div className="relative h-1.5 rounded-full bg-white/8">
+        <div
+          className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg"
+          style={{ left: `${at}%`, background: `var(${colorVar})` }}
+        />
+      </div>
+      <div className="num mt-2 flex justify-between text-xs text-muted">
+        <span>{format(range.low)}</span>
+        <span>{format(range.high)}</span>
+      </div>
+    </div>
+  );
+}
+
+export function StatRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-line py-2.5 last:border-b-0">
+      <dt className="label">{label}</dt>
+      <dd className="num text-right text-sm font-medium">{children}</dd>
     </div>
   );
 }

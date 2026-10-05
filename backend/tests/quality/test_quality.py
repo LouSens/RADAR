@@ -11,7 +11,7 @@ from radar.quality.gaps import (
     find_gaps,
 )
 from radar.quality.news import clean_text, find_duplicates
-from radar.quality.outliers import flag_outliers
+from radar.quality.outliers import flag_outliers, flag_wicks
 from radar.quality.schemas import split_valid_bars
 
 T0 = datetime(2024, 1, 1, tzinfo=UTC)
@@ -166,3 +166,25 @@ def test_returns_across_a_break_are_not_flagged_when_a_step_is_given() -> None:
     close = pd.Series(prices, index=index).drop(index[140:150])  # the jump follows a break
     assert flag_outliers(close).sum() == 1
     assert flag_outliers(close, step=pd.Timedelta(hours=1)).sum() == 0
+
+
+def test_a_bad_print_in_the_low_is_flagged_but_normal_wicks_are_not() -> None:
+    rng = np.random.default_rng(3)
+    close = 100 * np.exp(np.cumsum(rng.normal(0, 0.01, 300)))
+    open_ = np.roll(close, 1)
+    open_[0] = close[0]
+    body_top, body_bottom = np.maximum(open_, close), np.minimum(open_, close)
+    lows = body_bottom * (1 - rng.uniform(0, 0.01, 300))
+    lows[120] = close[120] / 10  # a slipped decimal point
+    lows[200] = body_bottom[200] * 0.97  # a large but believable wick
+    highs = body_top * (1 + rng.uniform(0, 0.01, 300))
+    bars = pd.DataFrame({"open": open_, "close": close, "high": highs, "low": lows})
+    flags = flag_wicks(bars)
+    assert list(flags[flags].index) == [120]
+
+
+def test_flat_bars_have_no_suspect_wicks() -> None:
+    bars = pd.DataFrame(
+        {"open": [10.0] * 5, "high": [10.0] * 5, "low": [10.0] * 5, "close": [10.0] * 5}
+    )
+    assert not flag_wicks(bars).any()

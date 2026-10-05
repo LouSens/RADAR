@@ -95,6 +95,7 @@ def test_quality_job_is_idempotent(engine: Engine, session: Session) -> None:
     second = {f.check: f for f in run_quality(engine, UNIVERSE)}
     assert second["outliers:1Hour"].detail == {
         "flagged": 1,
+        "suspect_wicks": 0,
         "newly_changed": 0,
         "examples": [(T0 + 120 * HOUR).isoformat()],
     }

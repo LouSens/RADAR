@@ -72,6 +72,10 @@
             "title": "High",
             "type": "number"
           },
+          "is_outlier": {
+            "title": "Is Outlier",
+            "type": "boolean"
+          },
           "is_quote_only": {
             "title": "Is Quote Only",
             "type": "boolean"
@@ -101,7 +105,8 @@
           "low",
           "close",
           "volume",
-          "is_quote_only"
+          "is_quote_only",
+          "is_outlier"
         ],
         "title": "BarOut",
         "type": "object"

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* One dark world, shared with the owner's portfolio site: near-black ground, Inter set
-   tight and heavy for display, JetBrains Mono for every number, and "liquid glass"
+   tight and heavy for display, the same face with fixed-width digits for numbers, and "liquid glass"
    surfaces. The accent is a cool radar blue; rising and falling prices have their own
    colours and never borrow the accent. */
 :root {
@@ -22,7 +22,6 @@
   --gold: #e9c46a;
   --stock: #8b93ff;
   --radius-card: 24px;
-  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, "Cascadia Mono", Consolas, monospace;
   color-scheme: dark;
 }
 
@@ -38,7 +37,6 @@
   --color-calm: var(--calm);
   --color-alert: var(--alert);
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 
 html {
@@ -66,18 +64,15 @@ body {
   overflow-x: hidden;
 }
 
-/* The ground: a soft glow behind the top of the page and a fine dot grid. */
+/* The ground: a fine dot grid that fades out down the page. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: -2;
   pointer-events: none;
-  background:
-    radial-gradient(60rem 34rem at 50% -12rem, rgba(92, 214, 247, 0.13), transparent 70%),
-    radial-gradient(40rem 26rem at 100% 20%, rgba(139, 147, 255, 0.07), transparent 70%),
-    radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 26px 26px;
-  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  background: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 26px 26px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 78%);
 }
 
 ::selection {
@@ -91,17 +86,46 @@ body::before {
   border-radius: 6px;
 }
 
+/* Numbers use the text face with fixed-width digits, so columns align without the
+   typewriter look of a monospace font. */
 .num {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "cv11", "ss01";
   letter-spacing: -0.02em;
 }
 
 .display {
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  line-height: 1.08;
   text-wrap: balance;
+}
+
+.title {
+  font-size: clamp(1.6rem, 1.25rem + 1.4vw, 2.1rem);
+  font-weight: 650;
+  letter-spacing: -0.028em;
+  line-height: 1.15;
+}
+
+.price-xl {
+  font-size: clamp(2.2rem, 1.5rem + 3vw, 3.4rem);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.price-lg {
+  font-size: clamp(1.5rem, 1.25rem + 0.9vw, 1.9rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.label {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  letter-spacing: -0.005em;
 }
 
 .text-fluid-h1 {
@@ -285,5 +309,125 @@ body::before {
 
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* Leave room for the phone tab bar and the device's home indicator. */
+.pb-tabbar {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .pb-tabbar {
+    padding-bottom: 4rem;
+  }
+}
+
+/* Ambient light behind the page, tinted by whichever market is in view. It moves slowly
+   and changes colour smoothly when the market changes. */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.aurora::before,
+.aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  transition: background 0.9s ease;
+}
+
+.aurora::before {
+  width: 46rem;
+  height: 30rem;
+  left: 50%;
+  top: -14rem;
+  translate: -50% 0;
+  background: color-mix(in srgb, var(--tint, var(--accent)) 26%, transparent);
+  animation: drift 22s ease-in-out infinite alternate;
+}
+
+.aurora::after {
+  width: 30rem;
+  height: 24rem;
+  right: -10rem;
+  top: 26rem;
+  background: color-mix(in srgb, var(--tint, var(--accent)) 12%, transparent);
+  animation: drift 28s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes drift {
+  to {
+    transform: translate3d(5rem, 2.5rem, 0) scale(1.12);
+  }
+}
+
+/* The stage: the one large surface that holds the price and its chart. */
+.stage {
+  border-radius: clamp(22px, 2.4vw, 32px);
+  overflow: hidden;
+}
+
+.stage-chart {
+  height: clamp(250px, 44vh, 470px);
+}
+
+/* A selectable market. The chosen one lights up in its own colour. */
+.market {
+  position: relative;
+  text-align: left;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.market:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.market[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--tone) 55%, transparent);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--tone) 16%, transparent), transparent 62%),
+    rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Floating navigation capsules. */
+.capsule {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02)),
+    rgba(12, 13, 19, 0.62);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.lens {
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before,
+  .aurora::after {
+    animation: none;
   }
 }

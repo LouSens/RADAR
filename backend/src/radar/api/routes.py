@@ -126,6 +126,7 @@ def get_bars(
                 close=r.close,
                 volume=r.volume,
                 is_quote_only=r.is_quote_only,
+                is_outlier=r.is_outlier,
             )
             for r in rows
         ],

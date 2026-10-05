@@ -48,7 +48,8 @@ function themeOptions() {
     layout: {
       background: { color: "transparent" },
       textColor: cssVar("--muted"),
-      fontFamily: cssVar("--font-mono") || "monospace",
+      fontFamily: "Inter, system-ui, sans-serif",
+      fontSize: 11,
       attributionLogo: false,
     },
     grid: {
@@ -119,8 +120,9 @@ export function PriceChart({
         bars.map((b) => ({
           time: axisTime(b.ts, timeframe, assetClass),
           open: b.open,
-          high: b.high,
-          low: b.low,
+          // A bar flagged as suspect is drawn without wicks: its high or low may be a bad print.
+          high: b.is_outlier ? Math.max(b.open, b.close) : b.high,
+          low: b.is_outlier ? Math.min(b.open, b.close) : b.low,
           close: b.close,
         })),
       );

@@ -20,6 +20,19 @@ export function useBars(slug: string | undefined, timeframe: Timeframe, limit: n
   });
 }
 
+/** Bars from `days` ago until now. The start is worked out when the request is made. */
+export function useBarsSince(slug: string | undefined, timeframe: Timeframe, days: number) {
+  return useQuery({
+    queryKey: ["bars-since", slug, timeframe, days],
+    queryFn: () => {
+      const start = new Date(Date.now() - days * 86_400_000).toISOString();
+      return getJson<Bars>(`/assets/${slug}/bars`, { timeframe, start, limit: 5000 });
+    },
+    enabled: slug !== undefined,
+    refetchInterval: 60_000,
+  });
+}
+
 export function useHealth() {
   return useQuery({
     queryKey: ["health"],

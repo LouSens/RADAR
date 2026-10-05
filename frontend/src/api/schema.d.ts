@@ -99,6 +99,8 @@ export interface components {
             close: number;
             /** High */
             high: number;
+            /** Is Outlier */
+            is_outlier: boolean;
             /** Is Quote Only */
             is_quote_only: boolean;
             /** Low */
