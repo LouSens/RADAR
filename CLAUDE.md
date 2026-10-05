@@ -8,9 +8,9 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 0 complete except for one check: CI has not yet been seen green on GitHub
+- Phase: 0 complete (CI green on branch `phase-0-bootstrap`, 2026-10-05); not yet merged to `main`
 - Last completed step: spec updated to match `docs/DATA_AUDIT.md` (audit run 2026-10-05)
-- Next step: confirm CI is green, then Phase 1 (data platform)
+- Next step: merge `phase-0-bootstrap`, then Phase 1 (data platform)
 - Decisions that shape Phase 1 (`docs/DECISIONS.md` 010): crypto from location `us-1`; store 1Hour and 1Day bars only; gold news is the `GLD`, `IAU`, `GDX`, `PAXGUSD` set from 2023
 - Open questions: none
 
