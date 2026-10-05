@@ -121,5 +121,7 @@ series. `GLD` stays the only gold cross-check.
 
 ### 010g. Backfill cost
 
-1Hour requests return about one week (167 bars) per page whatever `limit` is sent, so a
-full hourly history is about 300 calls per symbol. 1Day history fits in one page.
+For `BTC/USD`, a 1Hour request returns about one week (167 or 168 bars) per page
+whatever `limit` is sent, so a full hourly history is about 300 calls. `PAXG/USD` pages
+hold more (975 to 1,847 bars), which fits a page being capped by underlying minute bars.
+1Day history fits in one page. See audit section 2.7.
