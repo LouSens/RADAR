@@ -1,5 +1,5 @@
-import { useEffect, useRef, type CSSProperties } from "react";
-import { Navigate, NavLink, useParams } from "react-router-dom";
+import type { CSSProperties } from "react";
+import { Navigate, useParams } from "react-router-dom";
 
 import { useMarket } from "../api/market";
 import { useAssets, useSummary } from "../api/queries";
@@ -9,6 +9,7 @@ import { OutlookPanel } from "../components/OutlookPanel";
 import { RegimePanel } from "../components/RegimePanel";
 import { RiskPanel } from "../components/RiskPanel";
 import { SummaryCard } from "../components/SummaryCard";
+import { Tabs } from "../components/Tabs";
 import { TrackRecordPanel } from "../components/TrackRecordPanel";
 import { VolatilityPanel } from "../components/VolatilityPanel";
 import { Change, Message, RangeBar, StatRow, assetColorVar, shortName } from "../components/ui";
@@ -23,18 +24,6 @@ export function AssetPage() {
   const market = useMarket(asset);
   const summary = useSummary(asset?.slug).data ?? undefined;
   const trust = summary?.trust;
-  const tabs = useRef<HTMLElement>(null);
-
-  // On a narrow screen the row of tabs scrolls: keep the chosen one in view.
-  useEffect(() => {
-    const row = tabs.current;
-    const chosen = row?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!row || !chosen) return;
-    row.scrollTo({
-      left: chosen.offsetLeft - (row.clientWidth - chosen.offsetWidth) / 2,
-      behavior: "smooth",
-    });
-  }, [section, asset?.slug]);
 
   if (assets.isPending) return <Message>Loading…</Message>;
   if (!asset) return <Message>That market could not be found.</Message>;
@@ -56,18 +45,7 @@ export function AssetPage() {
         <span className="label">{asset.symbol}</span>
       </header>
 
-      <nav ref={tabs} aria-label={`${shortName(asset)} pages`} className="tabs">
-        {SECTIONS.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path ? `${base}/${item.path}` : base}
-            end
-            className={({ isActive }) => `tab-link ${isActive ? "lens text-ink" : "text-muted"}`}
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
+      <Tabs base={base} items={SECTIONS} label={`${shortName(asset)} pages`} />
 
       {section === undefined || section === "" ? (
         <>

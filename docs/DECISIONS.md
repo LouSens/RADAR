@@ -902,3 +902,54 @@ wrapped differently on each), and navigation and routing were poor.
   claim in one line, why it earned the mark, then the evidence. This replaces the folding
   in decision 033; "answers first" is kept by the Summary page, whose "Evidence" links go
   to the matching tab.
+
+## 037. Phase 5A: portfolio risk, with manual and CSV holdings (2026-10-06)
+
+Built as the first part of decision 035. The user asked for manual entry and CSV now,
+with the Binance connection to follow when a read-only key exists.
+
+**What is built.** Holdings by manual entry or CSV through one `HoldingsSource`
+interface; each holding's share of the money beside its share of the risk (Ledoit-Wolf
+covariance on the mixed panel, at least 250 shared sessions); loss limits for the mix at
+95% and 99% over 1 day and 1 week, backtested walk-forward; today's mix replayed through
+five named episodes; a Portfolio screen that opens with the answers and a trust mark on
+each.
+
+**Where this departs from the spec, and why.**
+
+| Spec | Built | Why |
+|---|---|---|
+| `GET /portfolio/xray` and `GET /portfolio/risk` | one `GET /portfolio/analysis` | the screen shows them together and they are computed together |
+| `POST /portfolio/import` as a file upload | the browser reads the file and sends its text as JSON | a file upload needs a dependency that is not in section 5 |
+| "No model runs inside a request" | saving holdings recomputes the analysis in that request (about 1.5 seconds) | the analysis depends on the holdings just saved; every read is still only a read. The worker also refreshes it hourly |
+| `risk_metrics` rows per day for the portfolio | one stored row holding the latest analysis | the holdings can change at any time, which would make stored daily rows stale |
+| Filtered limits scaled to the F9 forecast | scaled to an exponentially weighted average of the mix's own past swings (decay 0.94) | there is no F9 forecast for a mix of assets |
+| Three methods compared | two: historical and filtered | the third needs the portfolio simulation, which is in 5D |
+
+**Not built yet.**
+
+- The Binance source. The interface is ready for it. It will come with its own client,
+  the environment variable names, and the test that it can only reach reading endpoints.
+  Leverage and distance to liquidation come with it.
+- The `core` and `satellite` tags are read from a CSV and stored, but not shown: the
+  report that uses them is in 5D.
+
+**Stress episodes** are configuration in `universe.toml`. Dates chosen: Covid crash
+(19 Feb to 23 Mar 2020), crypto sell-off of May 2021 (7 to 24 May), rising interest
+rates (3 Jan to 14 Oct 2022), Terra collapse (4 May to 17 Jun 2022), FTX collapse (4 to
+21 Nov 2022). Crypto history starts in 2021, so the Covid episode is partial for any
+portfolio holding crypto, and the screen says so.
+
+**Trust rules** (in `analytics/summary.py`): the X-ray is Solid at 750 or more shared
+sessions, otherwise Fair; loss limits use the same rule as a single market; episodes are
+Solid only when every one was replayed with every holding.
+
+**Checked on real data** with a sample of 0.05 Bitcoin, 1.2 PAX Gold, and 6 SPY
+(about $13,800): Bitcoin was 31% of the money and 72% of the risk; the one-day 95% limit
+was 1.9% and had been broken 55 times in 1,172 past days against 59 expected. That
+sample is saved in the local database as the current portfolio; saving real holdings
+replaces it.
+
+**Navigation.** Portfolio is in the sidebar and in the phone tabs. To make room, System
+left the phone tabs; a status link sits at the foot of every page on a phone.
+

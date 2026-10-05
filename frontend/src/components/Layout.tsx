@@ -24,6 +24,12 @@ const icon = {
       <path d="M3 12h4l2.5-6 4 12 2.5-6h5" />
     </>
   ),
+  portfolio: (
+    <>
+      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12V3.5Z" />
+      <path d="M15.5 3.6a8.5 8.5 0 0 1 4.9 4.9h-4.9V3.6Z" />
+    </>
+  ),
 };
 
 function Icon({ children }: { children: ReactNode }) {
@@ -177,6 +183,14 @@ function Sidebar({
             </div>
           );
         })}
+        <p className={`label mt-5 px-2.5 pb-1 text-xs ${collapsed ? "sr-only" : ""}`}>Yours</p>
+        {collapsed && <div className="mx-2.5 my-3 border-t border-line" aria-hidden="true" />}
+        <NavLink to="/portfolio" className={sideLink} title="Portfolio">
+          <span className="grid w-[22px] shrink-0 place-items-center">
+            <Icon>{icon.portfolio}</Icon>
+          </span>
+          <span className={hidden}>Portfolio</span>
+        </NavLink>
       </nav>
 
       <div className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
@@ -244,7 +258,18 @@ export function Layout() {
       >
         <main className="page pb-tabbar @container mx-auto w-full max-w-[1280px] flex-1">
           <Outlet />
-          <p className="mt-12 max-w-[78ch] text-xs leading-relaxed text-faint">
+          {/* On a phone the tabs hold the markets and the portfolio; the status lives here. */}
+          <Link
+            to="/system"
+            className="mt-12 inline-flex items-center gap-2 text-xs text-muted hover:text-ink md:hidden"
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${good ? "bg-calm" : "bg-alert"}`}
+              aria-hidden="true"
+            />
+            {good ? "All systems normal" : "Something needs attention"}
+          </Link>
+          <p className="mt-4 max-w-[78ch] text-xs leading-relaxed text-faint md:mt-12">
             RADAR is an analytics tool for information and education. It is not financial advice and
             it does not place trades. Historical patterns do not guarantee future results. Gold is
             represented by GLD, a fund backed by physical gold that trades only in US market hours.
@@ -267,12 +292,9 @@ export function Layout() {
               <span className="max-w-full truncate px-1">{shortName(asset)}</span>
             </NavLink>
           ))}
-          <NavLink to="/system" className={tab}>
-            <SystemIcon good={good} />
-            System
-            <span className="sr-only">
-              : {good ? "all systems normal" : "something needs attention"}
-            </span>
+          <NavLink to="/portfolio" className={tab}>
+            <Icon>{icon.portfolio}</Icon>
+            <span className="max-w-full truncate px-1">Portfolio</span>
           </NavLink>
         </div>
       </nav>

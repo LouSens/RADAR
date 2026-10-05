@@ -26,6 +26,14 @@ export type EventStudy = components["schemas"]["EventStudyOut"];
 export type TrackRecord = components["schemas"]["TrackRecordOut"];
 export type Summary = components["schemas"]["SummaryOut"];
 export type Trust = components["schemas"]["TrustOut"];
+export type Portfolio = components["schemas"]["PortfolioOut"];
+export type Holding = components["schemas"]["Holding"];
+export type PortfolioAnalysis = components["schemas"]["Analysis"];
+export type Position = components["schemas"]["Position"];
+export type Xray = components["schemas"]["Xray"];
+export type LimitHorizon = components["schemas"]["LimitHorizon"];
+export type PortfolioLimit = components["schemas"]["Limit"];
+export type StressResult = components["schemas"]["StressResult"];
 export type Timeframe = "1Hour" | "1Day";
 
 const BASE = "/api/v1";
@@ -57,17 +65,30 @@ export async function getJson<T>(path: string, params: Params = {}): Promise<T> 
   return (await response.json()) as T;
 }
 
-export async function postJson<T>(path: string, body: unknown): Promise<T> {
+async function sendJson<T>(method: "POST" | "PUT", path: string, body: unknown): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
-    method: "POST",
+    method,
     headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new ApiError(response.status, `The server answered ${response.status} for ${path}`);
+    // The server explains a refused request in plain words; pass that on when it does.
+    const detail: unknown = await response
+      .json()
+      .then((payload: { detail?: unknown }) => payload.detail)
+      .catch(() => undefined);
+    throw new ApiError(
+      response.status,
+      typeof detail === "string"
+        ? detail
+        : `The server answered ${response.status} for ${path}`,
+    );
   }
   return (await response.json()) as T;
 }
+
+export const postJson = <T>(path: string, body: unknown) => sendJson<T>("POST", path, body);
+export const putJson = <T>(path: string, body: unknown) => sendJson<T>("PUT", path, body);
 
 export function streamUrl(location: Pick<Location, "protocol" | "host">): string {
   const scheme = location.protocol === "https:" ? "wss:" : "ws:";

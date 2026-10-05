@@ -1,15 +1,19 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ApiError,
   getJson,
   postJson,
+  putJson,
   type Asset,
   type Bars,
   type Calibration,
   type EventStudy,
   type Health,
+  type Holding,
   type LevelAnswer,
+  type Portfolio,
+  type PortfolioAnalysis,
   type Regime,
   type Risk,
   type Sentiment,
@@ -171,5 +175,37 @@ export function useSummary(slug: string | undefined) {
     queryFn: () => orNull(() => getJson<Summary>(`/assets/${slug}/summary`)),
     enabled: slug !== undefined,
     refetchInterval: 5 * 60_000,
+  });
+}
+
+/** The saved holdings and the assets that can be held. */
+export function usePortfolio() {
+  return useQuery({
+    queryKey: ["portfolio"],
+    queryFn: () => getJson<Portfolio>("/portfolio"),
+  });
+}
+
+/** Where the portfolio's risk comes from, its loss limits, and past episodes replayed. */
+export function usePortfolioAnalysis() {
+  return useQuery({
+    queryKey: ["portfolio", "analysis"],
+    queryFn: () => orNull(() => getJson<PortfolioAnalysis>("/portfolio/analysis")),
+    refetchInterval: 10 * 60_000,
+  });
+}
+
+/** Save typed-in holdings, or the text of a CSV file. Both replace what was saved. */
+export function useSavePortfolio() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { holdings: Holding[] } | { csv: string }) =>
+      "csv" in input
+        ? postJson<Portfolio>("/portfolio/import", input)
+        : putJson<Portfolio>("/portfolio", input),
+    onSuccess: (saved) => {
+      client.setQueryData(["portfolio"], saved);
+      void client.invalidateQueries({ queryKey: ["portfolio", "analysis"] });
+    },
   });
 }
