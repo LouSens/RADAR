@@ -65,7 +65,8 @@ def test_sync_assets_is_idempotent(session: Session) -> None:
     assert assets["GLD"].is_primary
     assert assets["GLD"].provider_symbols == {"bars": "GLD", "news": ["GLD"]}
     assert assets["BTC/USD"].provider_symbols == {"bars": "BTC/USD", "news": ["BTCUSD"]}
-    assert not assets["SPY"].is_primary
+    assert assets["SPY"].is_primary
+    assert not assets["PAXG/USD"].is_primary
 
 
 def _bar(ts: datetime, close: float = 100.0) -> Bar:
