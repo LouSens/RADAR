@@ -395,3 +395,39 @@ without wicks and uses their close, not their high or low, for ranges.
 Open for later phases: the daily-range feature (spec 7.4) and any model input that uses
 highs and lows must skip flagged bars. Some flagged wicks are real, such as Ethereum's
 fall to 700 on Kraken on 2021-02-22.
+
+## 025. **OPEN** The regime model as specified does not give usable regimes (2026-10-05)
+
+Spec F1 says: a hidden Markov model on each day's [log return, log realised volatility],
+2 to 4 states chosen by BIC, "expect 3". Fitted on the real data on 2026-10-05:
+
+- BIC chooses 4 states for Bitcoin, gold, and SPY, not 3.
+- The states last 1.5 to 7 days. The product promises "what kind of market this is" and
+  "how long each state has tended to last"; a state that flips every two days is a
+  volatility reading, not a regime.
+- For gold the model splits days by the sign of the return (one state averages +0.45% a
+  day, the next -0.52%), and next-day volatility is **not** ordered by state out of
+  sample (calm 0.74%, normal 0.73%). That fails F1's done-when.
+- It does beat the rule-based baseline on one-step-ahead log density for all three.
+
+The cause: one day's realised volatility is noisy, so the model chases daily noise.
+
+Measured alternatives, 3 states, filtered states over full history (average length of an
+unbroken run of one state; all have next-day volatility ordered):
+
+| Variant | Bitcoin | Gold | SPY |
+|---|---|---|---|
+| As specified, 3 states | 2 to 4 days | 2.0 days | 4.4 days |
+| Volatility only (no return) | 9.3 days | 25.0 days | 7.0 days |
+| Return plus volatility smoothed over about 5 days | 23.1 days | 24.3 days | 24.1 days |
+
+"Smoothed" is an exponentially weighted average of log realised volatility with a
+5-day half-life, using that day and earlier days only, so it adds no lookahead.
+
+Options:
+1. Return plus smoothed volatility, fixed at 3 states. Recommended: regimes last about a
+   month for all three assets, the two inputs of the spec are kept, and the three names
+   (calm, normal, turbulent) keep one meaning across assets. BIC by state count is still
+   reported on the methodology page.
+2. Volatility only, 3 states. Simpler, but regime length differs a lot by asset.
+3. As specified. Honest to the original text, but gold fails its own acceptance test.
