@@ -11,9 +11,11 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 function NavGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted">{label}</div>
-      <div className="flex flex-col gap-0.5">{children}</div>
+    <div className="contents md:block">
+      <div className="hidden px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted md:block">
+        {label}
+      </div>
+      <div className="contents md:flex md:flex-col md:gap-0.5">{children}</div>
     </div>
   );
 }
@@ -39,12 +41,12 @@ export function Layout() {
   const primary = assets.data?.filter((a) => a.is_primary) ?? [];
   return (
     <div className="mx-auto grid min-h-screen max-w-[1240px] grid-cols-1 gap-x-6 px-4 md:grid-cols-[210px_minmax(0,1fr)]">
-      <aside className="flex flex-col gap-5 py-5 md:sticky md:top-0 md:h-screen">
+      <aside className="flex flex-col gap-3 pt-4 md:sticky md:top-0 md:h-screen md:gap-5 md:py-5">
         <div className="px-3">
           <div className="text-xl font-semibold tracking-[0.12em]">RADAR</div>
           <div className="text-[11px] text-muted">Regimes · Analytics · Distributions · Alerts · Risk</div>
         </div>
-        <nav aria-label="Main" className="flex flex-col gap-4">
+        <nav aria-label="Main" className="flex flex-row flex-wrap gap-1 md:flex-col md:gap-4">
           <NavGroup label="Markets">
             <NavLink to="/" end className={linkClass}>
               Overview
@@ -76,7 +78,7 @@ export function Layout() {
           <SystemStatus />
         </div>
       </aside>
-      <div className="flex min-w-0 flex-col py-5">
+      <div className="flex min-w-0 flex-col py-4 md:py-5">
         <main className="flex-1">
           <Outlet />
         </main>
