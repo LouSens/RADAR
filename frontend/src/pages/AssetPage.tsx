@@ -30,7 +30,7 @@ export function AssetPage() {
 
   return (
     <div
-      className="flex flex-col gap-5 sm:gap-7"
+      className="flex flex-col gap-5 @xl:gap-7"
       style={{ "--tint": `var(${assetColorVar(asset)})` } as CSSProperties}
     >
       <div className="aurora" aria-hidden="true" />
@@ -53,7 +53,7 @@ export function AssetPage() {
 
       <TrackRecordPanel asset={asset} />
 
-      <section className="glass rise rise-2 grid grid-cols-1 gap-x-12 gap-y-6 p-5 sm:p-7 lg:grid-cols-2">
+      <section className="glass rise rise-2 grid grid-cols-1 gap-x-12 gap-y-6 p-5 @xl:p-7 @4xl:grid-cols-2">
         <div>
           <h2 className="mb-2 text-base font-semibold tracking-tight">Performance</h2>
           <dl>

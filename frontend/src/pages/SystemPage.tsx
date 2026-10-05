@@ -29,9 +29,9 @@ function Dot({ good }: { good: boolean }) {
 
 function Summary({ label, value, good }: { label: string; value: string; good: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-5 py-4 sm:block sm:py-5">
+    <div className="flex items-center justify-between gap-4 px-5 py-4 @xl:block @xl:py-5">
       <div className="label">{label}</div>
-      <div className="flex items-center gap-2.5 font-medium sm:mt-2">
+      <div className="flex items-center gap-2.5 font-medium @xl:mt-2">
         <Dot good={good} />
         <span className="num">{value}</span>
       </div>
@@ -46,7 +46,7 @@ export function SystemPage() {
   const issues = data ? data.quality.warnings + data.quality.failures : 0;
 
   return (
-    <div className="flex flex-col gap-6 sm:gap-8">
+    <div className="flex flex-col gap-6 @xl:gap-8">
       <header className="rise">
         <h1 className="title">System</h1>
         <p className="label mt-1">
@@ -59,7 +59,7 @@ export function SystemPage() {
 
       {data && (
         <>
-          <div className="glass rise rise-2 grid grid-cols-1 divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="glass rise rise-2 grid grid-cols-1 divide-y divide-line @xl:grid-cols-3 @xl:divide-x @xl:divide-y-0">
             <Summary
               label="Live prices"
               value={stream === "open" ? "Connected" : "Disconnected"}
@@ -83,7 +83,7 @@ export function SystemPage() {
             />
           </div>
 
-          <Card className="rise rise-3 p-5 sm:p-6">
+          <Card className="rise rise-3 p-5 @xl:p-6">
             <CardHeader title="Coverage" />
             {data.series.length === 0 ? (
               <Message>No price history has been loaded yet.</Message>
@@ -135,7 +135,7 @@ export function SystemPage() {
             </p>
           </Card>
 
-          <Card className="p-5 sm:p-6">
+          <Card className="p-5 @xl:p-6">
             <CardHeader title="About the data" />
             <ul className="flex flex-col">
               {ABOUT.map((line) => (

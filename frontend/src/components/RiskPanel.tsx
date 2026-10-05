@@ -126,7 +126,7 @@ export function RiskPanel({ asset, trust, defaultOpen }: PanelProps) {
         <Segmented options={HORIZONS} value={key} onChange={setKey} label="Length of period" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2">
         {horizon.levels.map((level) => {
           const method = level.methods.find((m) => m.method === horizon.shown);
           return method ? (

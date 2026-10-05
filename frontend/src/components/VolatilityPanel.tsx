@@ -128,7 +128,7 @@ export function VolatilityPanel({ asset, trust, defaultOpen }: PanelProps) {
         <Segmented options={HORIZONS} value={key} onChange={setKey} label="How far ahead" />
       </div>
 
-      <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
+      <div className="grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
           <p className="label">Typical daily move expected over the next {period}</p>
           <p className="price-lg mt-2">±{formatShare(horizon.forecast)}</p>

@@ -25,7 +25,7 @@ function MarketOption({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className="market min-w-0 p-3.5 sm:p-5"
+      className="market min-w-0 p-3.5 @xl:p-5"
       style={{ "--tone": `var(${assetColorVar(asset)})` } as CSSProperties}
     >
       <span className="flex items-center gap-2 text-sm">
@@ -34,16 +34,16 @@ function MarketOption({
           style={{ background: `var(${assetColorVar(asset)})` }}
           aria-hidden="true"
         />
-        <span className="truncate text-[13px] font-medium sm:text-sm">{shortName(asset)}</span>
+        <span className="truncate text-[13px] font-medium @xl:text-sm">{shortName(asset)}</span>
       </span>
       <span className="mt-2.5 flex items-end justify-between gap-3">
         <span className="min-w-0">
-          <span className="num block truncate text-[1.05rem] font-semibold tracking-tight sm:text-xl">
+          <span className="num block truncate text-[1.05rem] font-semibold tracking-tight @xl:text-xl">
             {market.price === undefined ? "–" : formatPrice(market.price)}
           </span>
-          <Change value={market.sinceClose} className="mt-0.5 block text-xs sm:text-sm" />
+          <Change value={market.sinceClose} className="mt-0.5 block text-xs @xl:text-sm" />
         </span>
-        <span className="hidden h-10 w-24 shrink-0 sm:block lg:w-32">
+        <span className="hidden h-10 w-24 shrink-0 @3xl:block @5xl:w-32">
           <Sparkline values={market.weekCloses} colorVar={assetColorVar(asset)} />
         </span>
       </span>
@@ -53,7 +53,7 @@ function MarketOption({
 
 const PERIODS = ["Day", "Week", "Month", "Year"] as const;
 const COMPARE_GRID =
-  "grid grid-cols-4 gap-x-4 lg:grid-cols-[minmax(0,1.1fr)_repeat(4,5.5rem)_minmax(0,1.6fr)] lg:gap-x-6";
+  "grid grid-cols-4 gap-x-4 @4xl:grid-cols-[minmax(0,1.1fr)_repeat(4,5.5rem)_minmax(0,1.6fr)] @4xl:gap-x-6";
 
 function CompareRow({ asset }: { asset: Asset }) {
   const market = useMarket(asset);
@@ -62,7 +62,7 @@ function CompareRow({ asset }: { asset: Asset }) {
     <div className={`${COMPARE_GRID} items-center gap-y-3 border-b border-line py-4 last:border-b-0`}>
       <Link
         to={`/asset/${asset.slug}`}
-        className="group col-span-4 flex min-w-0 items-center gap-2.5 lg:col-span-1"
+        className="group col-span-4 flex min-w-0 items-center gap-2.5 @4xl:col-span-1"
       >
         <span
           className="h-2 w-2 shrink-0 rounded-full"
@@ -71,16 +71,16 @@ function CompareRow({ asset }: { asset: Asset }) {
         />
         <span className="truncate font-medium group-hover:text-accent">{shortName(asset)}</span>
         {market.price !== undefined && (
-          <span className="num ml-auto text-sm text-muted lg:hidden">{formatPrice(market.price)}</span>
+          <span className="num ml-auto text-sm text-muted @4xl:hidden">{formatPrice(market.price)}</span>
         )}
       </Link>
       {values.map((value, i) => (
-        <span key={PERIODS[i]} className="text-sm lg:text-right">
-          <span className="label mb-0.5 block text-xs lg:hidden">{PERIODS[i]}</span>
+        <span key={PERIODS[i]} className="text-sm @4xl:text-right">
+          <span className="label mb-0.5 block text-xs @4xl:hidden">{PERIODS[i]}</span>
           <Change value={value} />
         </span>
       ))}
-      <div className="col-span-4 lg:col-span-1">
+      <div className="col-span-4 @4xl:col-span-1">
         {market.yearRange && market.price !== undefined && (
           <RangeBar
             range={market.yearRange}
@@ -108,7 +108,7 @@ export function Overview() {
 
   return (
     <div
-      className="flex flex-col gap-5 sm:gap-7"
+      className="flex flex-col gap-5 @xl:gap-7"
       style={shown ? ({ "--tint": `var(${assetColorVar(shown)})` } as CSSProperties) : undefined}
     >
       <div className="aurora" aria-hidden="true" />
@@ -125,7 +125,7 @@ export function Overview() {
       {shown && (
         <>
           <div
-            className="rise rise-2 grid gap-2.5 sm:gap-4"
+            className="rise rise-2 grid gap-2.5 @xl:gap-4"
             style={{ gridTemplateColumns: `repeat(${primary.length}, minmax(0, 1fr))` }}
             role="group"
             aria-label="Choose a market"
@@ -144,17 +144,17 @@ export function Overview() {
             <MarketStage asset={shown} linkToAsset />
           </div>
 
-          <section className="glass px-5 pb-2 pt-5 sm:px-7 sm:pt-6">
+          <section className="glass px-5 pb-2 pt-5 @xl:px-7 @xl:pt-6">
             <div className={`${COMPARE_GRID} items-end border-b border-line pb-3`}>
-              <h2 className="col-span-4 text-base font-semibold tracking-tight lg:col-span-1">
+              <h2 className="col-span-4 text-base font-semibold tracking-tight @4xl:col-span-1">
                 Side by side
               </h2>
               {PERIODS.map((heading) => (
-                <span key={heading} className="label hidden text-right text-xs lg:block">
+                <span key={heading} className="label hidden text-right text-xs @4xl:block">
                   {heading}
                 </span>
               ))}
-              <span className="label hidden text-xs lg:block">52-week range</span>
+              <span className="label hidden text-xs @4xl:block">52-week range</span>
             </div>
             {primary.map((asset) => (
               <CompareRow key={asset.slug} asset={asset} />
