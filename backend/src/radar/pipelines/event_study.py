@@ -7,13 +7,23 @@ from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
 from radar.analytics import event_study
-from radar.db.models import ModelRegistry, RegimeState, SentimentAggregate
+from radar.db.models import (
+    ModelRegistry,
+    NewsArticle,
+    NewsSentiment,
+    NewsSymbol,
+    NewsTopic,
+    RegimeState,
+    SentimentAggregate,
+)
 from radar.db.session import session_scope
 from radar.features.calendars import NEW_YORK
 from radar.features.returns import log_returns
 from radar.logging import get_logger
+from radar.models import sentiment, topics
 from radar.pipelines.datasets import load_field, stock_daily
 from radar.pipelines.regime import current_model as current_regime_model
+from radar.pipelines.sentiment import daily_edges
 from radar.universe import Asset, Universe
 
 log = get_logger(__name__)
@@ -73,6 +83,42 @@ def daily_inputs(session: Session, asset: Asset) -> pd.DataFrame:
     return frame.sort_index()
 
 
+def topic_tone(session: Session, asset: Asset, days: pd.DatetimeIndex) -> dict[str, pd.Series]:
+    """Daily average tone of each topic's articles, on the same days as `days`."""
+    if asset.news_start is None:
+        return {}
+    rows = session.execute(
+        select(NewsTopic.topic, NewsArticle.created_at, NewsSentiment.score)
+        .join(NewsArticle, NewsArticle.id == NewsTopic.article_id)
+        .join(NewsSymbol, NewsSymbol.article_id == NewsArticle.id)
+        .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
+        .where(
+            NewsSymbol.symbol == asset.symbol,
+            NewsTopic.model_version == topics.version_of(topics.MODEL_ID),
+            NewsSentiment.model_version == sentiment.MODEL_VERSION,
+            NewsArticle.duplicate_of.is_(None),
+            NewsArticle.created_at >= pd.Timestamp(asset.news_start, tz="UTC"),
+        )
+    ).all()
+    if not rows:
+        return {}
+    frame = pd.DataFrame(rows, columns=["topic", "ts", "score"])
+    frame["ts"] = pd.to_datetime(frame["ts"], utc=True)
+    edges = daily_edges(asset, pd.Timestamp(asset.news_start, tz="UTC"), pd.Timestamp.now(tz="UTC"))
+    if len(edges) < 2:
+        return {}
+    result = {}
+    for topic, group in frame.groupby("topic"):
+        summary = sentiment.aggregate(
+            pd.DatetimeIndex(group["ts"]), group["score"].to_numpy(dtype=float), edges
+        )
+        tone = pd.Series(
+            summary["score_mean"].to_numpy(), index=day_of(asset, pd.DatetimeIndex(summary.index))
+        )
+        result[str(topic)] = tone.reindex(days)
+    return result
+
+
 def run_asset(engine: Engine, asset: Asset) -> dict[str, Any] | None:
     """Run the study for one asset and store it. Returns the stored result."""
     with session_scope(engine) as session:
@@ -83,6 +129,22 @@ def run_asset(engine: Engine, asset: Asset) -> dict[str, Any] | None:
     regimes = frame["regime"] if frame["regime"].notna().any() else None
     result = event_study.study(frame["tone"], frame["ret"], regimes).model_dump()
     result["days_with_news"] = int(frame["tone"].notna().sum())
+    # The same study for each topic on its own. Thin topics report "not enough events".
+    with session_scope(engine) as session:
+        by_topic = topic_tone(session, asset, pd.DatetimeIndex(frame.index))
+    result["by_topic"] = []
+    for topic in topics.TOPICS:
+        if topic not in by_topic:
+            continue
+        one = event_study.study(by_topic[topic], frame["ret"], regimes)
+        result["by_topic"].append(
+            {
+                "topic": topic,
+                "verdict": one.verdict,
+                "n_events": one.n_events,
+                "days_with_news": int(by_topic[topic].notna().sum()),
+            }
+        )
     days = pd.DatetimeIndex(frame.index)
     with session_scope(engine) as session:
         session.execute(

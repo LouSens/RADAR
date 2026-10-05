@@ -403,6 +403,13 @@ class LagOut(BaseModel):
     significant: bool
 
 
+class TopicVerdict(BaseModel):
+    topic: str
+    verdict: str
+    n_events: int
+    days_with_news: int
+
+
 class EventStudyOut(BaseModel):
     symbol: str
     computed_at: AwareDatetime
@@ -420,3 +427,5 @@ class EventStudyOut(BaseModel):
     negative: EventPathOut
     baseline: EventPathOut
     lags: list[LagOut]
+    # The same verdict for each news topic on its own. Empty until articles have topics.
+    by_topic: list[TopicVerdict] = []

@@ -21,6 +21,13 @@ const VERDICT: Record<string, string> = {
   "not enough events": "There is too little news coverage of this asset to measure an effect.",
 };
 
+const VERDICT_SHORT: Record<string, string> = {
+  "sentiment leads price": "News moved first",
+  "price leads sentiment": "Price moved first",
+  "no measurable relationship": "No measurable link",
+  "not enough events": "Too little news",
+};
+
 /** A plain word for a tone score between -1 and +1. */
 export function toneWord(score: number | null | undefined): string {
   if (score == null) return "No recent news";
@@ -273,6 +280,29 @@ function Study({ study }: { study: EventStudy }) {
               give; grey bars are not. The same-day bar cannot show which came first.
             </Caption>
           </div>
+        </div>
+      )}
+      {study.by_topic && study.by_topic.length > 0 && (
+        <div className="mt-6">
+          <h4 className="label">The same question, one subject at a time</h4>
+          <ul className="mt-2">
+            {study.by_topic.map((topic) => (
+              <li
+                key={topic.topic}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-line py-2 text-sm first:border-t-0"
+              >
+                <span>{TOPIC[topic.topic] ?? topic.topic}</span>
+                <span className="text-muted">
+                  {VERDICT_SHORT[topic.verdict] ?? topic.verdict} ·{" "}
+                  <span className="num">{formatCount(topic.n_events)}</span> strong-tone days
+                </span>
+              </li>
+            ))}
+          </ul>
+          <Caption>
+            Each subject is tested on its own articles only. A subject with fewer than{" "}
+            {study.min_events} strong-tone days has too little news for a verdict.
+          </Caption>
         </div>
       )}
     </div>

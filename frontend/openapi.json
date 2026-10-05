@@ -415,6 +415,14 @@
           "baseline": {
             "$ref": "#/components/schemas/EventPathOut"
           },
+          "by_topic": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TopicVerdict"
+            },
+            "title": "By Topic",
+            "type": "array"
+          },
           "computed_at": {
             "format": "date-time",
             "title": "Computed At",
@@ -1652,6 +1660,34 @@
           "score_mean"
         ],
         "title": "TopicSummary",
+        "type": "object"
+      },
+      "TopicVerdict": {
+        "properties": {
+          "days_with_news": {
+            "title": "Days With News",
+            "type": "integer"
+          },
+          "n_events": {
+            "title": "N Events",
+            "type": "integer"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "verdict",
+          "n_events",
+          "days_with_news"
+        ],
+        "title": "TopicVerdict",
         "type": "object"
       },
       "ValidationError": {

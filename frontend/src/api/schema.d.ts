@@ -394,6 +394,11 @@ export interface components {
         EventStudyOut: {
             baseline: components["schemas"]["EventPathOut"];
             /**
+             * By Topic
+             * @default []
+             */
+            by_topic: components["schemas"]["TopicVerdict"][];
+            /**
              * Computed At
              * Format: date-time
              */
@@ -888,6 +893,17 @@ export interface components {
             score_mean: number;
             /** Topic */
             topic: string;
+        };
+        /** TopicVerdict */
+        TopicVerdict: {
+            /** Days With News */
+            days_with_news: number;
+            /** N Events */
+            n_events: number;
+            /** Topic */
+            topic: string;
+            /** Verdict */
+            verdict: string;
         };
         /** ValidationError */
         ValidationError: {

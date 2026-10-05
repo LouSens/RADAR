@@ -82,6 +82,7 @@ const STUDY: EventStudy = {
   positive: path(41, [0.01, 0.03, 0.03, 0.02, 0.02]),
   negative: path(55, [-0.01, -0.04, -0.04, -0.03, -0.03]),
   baseline: path(96, [0, 0, 0.001, 0, 0]),
+  by_topic: [],
   lags: [-2, -1, 0, 1, 2].map((lag) => ({
     lag,
     correlation: lag === -1 ? 0.14 : 0.01,
@@ -144,6 +145,19 @@ describe("NewsPanel", () => {
     expect(screen.getByText(/agreed with the label 71% of the time/)).toBeVisible();
     expect(screen.getByText(/counting positive and negative words agreed 52%/)).toBeVisible();
     expect(screen.getByText(/subject it assigned matched 58%/)).toBeVisible();
+  });
+
+  it("gives each subject its own verdict", () => {
+    state.study = {
+      ...STUDY,
+      by_topic: [
+        { topic: "price", verdict: "price leads sentiment", n_events: 80, days_with_news: 1500 },
+        { topic: "security", verdict: "not enough events", n_events: 6, days_with_news: 120 },
+      ],
+    };
+    render(<NewsPanel asset={BITCOIN} />);
+    expect(screen.getByText(/Price moved first ·/)).toBeVisible();
+    expect(screen.getByText(/Too little news ·/)).toBeVisible();
   });
 
   it("puts tone into plain words", () => {
