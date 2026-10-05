@@ -585,3 +585,65 @@ rail; the choice is remembered in the browser. Under the market being viewed it 
 that page's sections (Market state, Outlook, Expected swings, Downside risk) as jump
 links. Phones keep the slim top bar and the bottom tab bar. This replaces the floating
 top capsule of decision 023 on larger screens; the rest of 023 stands.
+
+## 030. Phase 4: news sentiment, topics, and the sentiment-versus-price study (2026-10-06)
+
+**Decided by the user**
+
+- `torch` is added, in its CUDA build, so the language models run on the user's
+  graphics card (RTX 4050). The spec said CPU inference; the code uses the graphics
+  card when there is one and the CPU otherwise.
+- The Loughran-McDonald word list is downloaded for the baseline. It is free for
+  research use and needs a licence for commercial use, so it lives in the gitignored
+  `data/lexicons/` and is never committed.
+- The 200-headline evaluation sample is labelled by Claude, not by a person. The app
+  says so wherever the accuracy figure is shown. The labels were written before any
+  model output for those headlines existed. They are stored by article id only
+  (`backend/src/radar/sentiment_labels.csv`), with no article text.
+
+**Choices made by Claude, open to change**
+
+- `torch` and `transformers` are an optional install (`uv sync --extra nlp`), so CI and
+  the containers do not download them. **Consequence:** the Docker worker cannot score
+  articles. Scoring runs on the host with `uv run radar sentiment` (or a worker started
+  on the host). The Docker worker still refreshes the summaries from stored scores.
+- A day's sentiment bucket ends at midnight UTC for crypto and at the market close for
+  stocks, so weekend and overnight news lands in the next session, beside the price
+  move that could reflect it.
+- The event study uses daily steps: the day before the event to three days after.
+  For crypto that is the spec's 24 hours before to 72 hours after; for stocks the steps
+  are sessions.
+- **Verdict rule.** With fewer than 30 events: `not enough events`. Otherwise compare
+  the strongest significant correlation where tone came first (lags 1 to 5) with the
+  strongest where price came first (lags -5 to -1); significance allows for five lags
+  a side (Bonferroni). Neither significant: `no measurable relationship`. The same-day
+  correlation is ignored because it cannot say which came first. The event-study paths
+  are shown as supporting evidence and do not enter the rule.
+- Topics: seven fixed topics (regulation, funds and flows, security, macro, adoption,
+  price commentary, other), the same for every asset. Two zero-shot models were tried
+  on the labelled sample: `MoritzLaurer/deberta-v3-base-zeroshot-v2.0` (60.0% accuracy)
+  and `cross-encoder/nli-deberta-v3-small` (39.0%). The first is used.
+- Study results are stored in `model_registry` rows (`event_study`, `sentiment`), not
+  in tables of their own.
+
+**Measured on 2026-10-06**
+
+| | Accuracy | Macro F1 | n |
+|---|---|---|---|
+| FinBERT | 65.5% | 0.654 | 200 |
+| Word-list baseline | 51.5% | 0.502 | 200 |
+| Topic model | 60.0% | 0.489 | 200 |
+
+| Asset | Events | Verdict | Strongest link |
+|---|---|---|---|
+| BTC/USD | 89 (2022 on) | price leads sentiment | tone tracks the previous day's return, correlation 0.34 |
+| SPY | 98 (2016 on) | price leads sentiment | correlation 0.06 with the previous day's return |
+| GLD | 22 (2023 on) | not enough events | none; all 22 events are positive ones |
+
+No asset shows news tone leading price. The app states this.
+
+**Not done in Phase 4**
+
+- The event study by topic. It needs every article to have a topic first; tagging all
+  105,000 articles takes about an hour and was still running when this was written.
+- Re-running the F9 tree model with sentiment as an input (decision 028).
