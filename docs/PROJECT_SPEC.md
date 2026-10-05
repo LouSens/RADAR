@@ -261,7 +261,7 @@ Check current stable versions when installing; do not pin from memory.
 
 **Notebooks (development only):** `nbformat`, `nbconvert`, `ipykernel`, `matplotlib`.
 
-**Experiment tracking:** MLflow with a local file store under `data/mlflow`.
+**Experiment tracking:** MLflow with a local SQLite store under `data/mlflow` (MLflow has retired its plain file store).
 
 **Database:** PostgreSQL with TimescaleDB.
 

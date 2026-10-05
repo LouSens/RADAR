@@ -19,6 +19,8 @@ TABLES = {
     "news_symbols",
     "ingestion_runs",
     "data_quality_reports",
+    "model_registry",
+    "regime_states",
 }
 
 

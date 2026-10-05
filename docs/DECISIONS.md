@@ -434,3 +434,34 @@ Options:
 
 **Decided by the user on 2026-10-05: option 1.** Return plus volatility smoothed with a
 5-day half-life, 3 states. Spec F1 updated.
+
+## 026. Regime pipeline choices (2026-10-05)
+
+Made by Claude while building, open to change:
+
+- **MLflow uses a local SQLite store,** `data/mlflow/mlflow.db`, with artefacts beside
+  it. Spec section 5 said "a local file store", but the current MLflow refuses the plain
+  file store. A failure to log to MLflow is a warning, not an error: the registry row in
+  Postgres is what the app depends on.
+- **Model parameters live in `model_registry.params`.** Scoring and the API read the
+  model from the database, so the worker container and the host do not need to share a
+  model file. A JSON copy is still written under `data/models` and logged to MLflow.
+- **A regime reading is stamped when its day ended:** midnight UTC of the next day for
+  crypto, the session close for stocks. A value stamped `t` therefore uses data up to
+  `t` only.
+- **Walk-forward settings.** Expanding window, first 500 days for training only, refit
+  every 63 days (the evaluation refits about 30 times per asset; a 21-day step took
+  several minutes per asset for no visible gain).
+- **Schedule.** Regimes are scored at five past each hour and refitted on Sundays at
+  02:30 UTC. The promotion gate of spec 7.10 is Phase 7: until then a refit always
+  replaces the current model.
+
+Measured on 2026-10-05 (walk-forward, out of sample):
+
+| Asset | Days tested | Next-day volatility: calm, normal, turbulent | Ordered | Log density, model vs rule | Average run |
+|---|---|---|---|---|---|
+| BTC/USD | 1,602 | 1.96%, 2.71%, 3.63% | yes | 2.017 vs 1.972 | 34.1 days |
+| GLD | 2,202 | 0.61%, 0.75%, 1.14% | yes | 3.440 vs 3.054 | 16.8 days |
+| SPY | 2,202 | 0.54%, 0.67%, 1.24% | yes | 3.183 vs 2.558 | 21.8 days |
+
+BIC still prefers 4 states for all three; 3 is used by decision 025.

@@ -61,7 +61,8 @@ def session(engine: Engine) -> Iterator[Session]:
         connection.execute(
             text(
                 "TRUNCATE bars, news_symbols, news_articles, ingestion_runs,"
-                " data_quality_reports, assets RESTART IDENTITY CASCADE"
+                " data_quality_reports, regime_states, model_registry, assets"
+                " RESTART IDENTITY CASCADE"
             )
         )
     with session_scope(engine) as db:

@@ -165,6 +165,19 @@ def openapi(args: argparse.Namespace) -> int:
     return 0
 
 
+def regime(args: argparse.Namespace) -> int:
+    """Train the regime model where needed, then score every stored day."""
+    from radar.db.session import make_engine
+    from radar.pipelines import regime as job
+    from radar.universe import get_universe
+
+    changed = job.run(
+        make_engine(), get_universe(), retrain=args.retrain, evaluate=not args.skip_evaluation
+    )
+    log.info("regime_done", rows_changed=changed)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -206,6 +219,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit_parser.add_argument(
         "--resume", action="store_true", help="keep saved sections and run only the missing ones"
     )
+    regime_parser = sub.add_parser("regime", help="train and score the regime model")
+    regime_parser.add_argument("--retrain", action="store_true", help="fit a new model first")
+    regime_parser.add_argument(
+        "--skip-evaluation", action="store_true", help="skip the walk-forward evaluation"
+    )
     openapi_parser = sub.add_parser("openapi", help="write the API schema for the frontend")
     openapi_parser.add_argument("--output", default="frontend/openapi.json")
     backfill_parser = sub.add_parser("backfill", help="fetch history for the universe")
@@ -222,6 +240,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return backfill(args)
     if command == "openapi":
         return openapi(args)
+    if command == "regime":
+        return regime(args)
     if command in NOT_YET:
         log.error("command_not_built_yet", command=command, arrives_in=NOT_YET[command])
         return 2

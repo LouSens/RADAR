@@ -144,3 +144,37 @@ class DataQualityReport(Base):
     detail: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
 
     __table_args__ = (Index("ix_data_quality_reports_ts", "ts"),)
+
+
+class ModelRegistry(Base):
+    """One row per trained model. The parameters are stored here, so scoring needs no file."""
+
+    __tablename__ = "model_registry"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    symbol: Mapped[str | None] = mapped_column(ForeignKey("assets.symbol"))
+    version: Mapped[str] = mapped_column(Text)
+    trained_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+    train_start: Mapped[date] = mapped_column(Date)
+    train_end: Mapped[date] = mapped_column(Date)
+    # The model in use for this name and symbol. At most one row is current.
+    is_current: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    params: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
+    artefact_path: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (Index("ix_model_registry_name_symbol", "name", "symbol", "trained_at"),)
+
+
+class RegimeState(Base):
+    """Filtered regime probabilities. `ts` is when the day they describe had ended."""
+
+    __tablename__ = "regime_states"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    model_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TZDateTime, primary_key=True)
+    label: Mapped[str] = mapped_column(Text)
+    probability: Mapped[float] = mapped_column(Double)
+    probs: Mapped[dict[str, Any]] = mapped_column(JSONB)
