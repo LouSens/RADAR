@@ -1,0 +1,8 @@
+# Enforce LF in the repo and the working tree on every platform.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.parquet binary
+*.woff2 binary
