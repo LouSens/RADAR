@@ -221,7 +221,7 @@ def sentiment() -> int:
     from radar.universe import get_universe
 
     engine, universe = make_engine(), get_universe()
-    changed = job.run(engine, universe, job.load_scorer())
+    changed = job.run(engine, universe, job.load_scorer(engine))
     topic_scorer = job.load_topic_scorer()
     if topic_scorer is not None:
         changed += job.classify_articles(engine, topic_scorer)

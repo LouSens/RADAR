@@ -87,6 +87,13 @@ def topic_tone(session: Session, asset: Asset, days: pd.DatetimeIndex) -> dict[s
     """Daily average tone of each topic's articles, on the same days as `days`."""
     if asset.news_start is None:
         return {}
+    # Use the tone scores the stored summaries were built from.
+    version = session.scalar(
+        select(SentimentAggregate.model_version)
+        .where(SentimentAggregate.symbol == asset.symbol)
+        .order_by(SentimentAggregate.ts.desc())
+        .limit(1)
+    )
     rows = session.execute(
         select(NewsTopic.topic, NewsArticle.created_at, NewsSentiment.score)
         .join(NewsArticle, NewsArticle.id == NewsTopic.article_id)
@@ -95,7 +102,7 @@ def topic_tone(session: Session, asset: Asset, days: pd.DatetimeIndex) -> dict[s
         .where(
             NewsSymbol.symbol == asset.symbol,
             NewsTopic.model_version == topics.version_of(topics.MODEL_ID),
-            NewsSentiment.model_version == sentiment.MODEL_VERSION,
+            NewsSentiment.model_version == (version or sentiment.MODEL_VERSION),
             NewsArticle.duplicate_of.is_(None),
             NewsArticle.created_at >= pd.Timestamp(asset.news_start, tz="UTC"),
         )

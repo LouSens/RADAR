@@ -24,6 +24,7 @@ from radar.features.calendars import nyse_schedule
 from radar.logging import get_logger
 from radar.models import classification, sentiment, topics
 from radar.models.lexicon import Lexicon
+from radar.pipelines.finetune import adopted_model
 from radar.pipelines.labels import load_labels
 from radar.universe import Asset, Universe
 
@@ -34,9 +35,24 @@ WRITE_BATCH = 2_000
 BUCKETS = ("1Hour", "1Day")
 
 
-def load_scorer() -> sentiment.Scorer | None:
-    """The language model, or None where it is not installed."""
+def active_version(engine: Engine) -> str:
+    """The sentiment model in use: the fine-tuned one if it was adopted, else the original."""
+    with session_scope(engine) as session:
+        adopted = adopted_model(session)
+        return adopted.version if adopted is not None else sentiment.MODEL_VERSION
+
+
+def load_scorer(engine: Engine | None = None) -> sentiment.Scorer | None:
+    """The language model in use, or None where the libraries are not installed.
+
+    With an engine, an adopted fine-tuned model is loaded in place of the original.
+    """
     try:
+        if engine is not None:
+            with session_scope(engine) as session:
+                adopted = adopted_model(session)
+                if adopted is not None and adopted.artefact_path is not None:
+                    return sentiment.FinbertScorer(adopted.artefact_path, adopted.version)
         return sentiment.FinbertScorer()
     except ImportError:
         log.warning("sentiment_model_missing", hint="install with `uv sync --extra nlp`")
@@ -235,11 +251,12 @@ def run(
     universe: Universe,
     scorer: sentiment.Scorer | None = None,
     *,
-    version: str = sentiment.MODEL_VERSION,
+    version: str | None = None,
     now: pd.Timestamp | None = None,
 ) -> int:
     """Score new articles when the model is available, then refresh every summary."""
     changed = 0
+    version = version or active_version(engine)
     if scorer is not None:
         changed += score_articles(engine, scorer)
         version = scorer.version
@@ -259,7 +276,7 @@ MODEL_NAME = "sentiment"
 
 def evaluate(
     engine: Engine,
-    version: str = sentiment.MODEL_VERSION,
+    version: str | None = None,
     lexicon: Lexicon | None = None,
     labels: pd.DataFrame | None = None,
 ) -> dict[str, Any] | None:
@@ -268,6 +285,7 @@ def evaluate(
     Returns the stored metrics, or None when no labelled article has a score yet.
     """
     labels = load_labels() if labels is None else labels
+    version = version or active_version(engine)
     with session_scope(engine) as session:
         rows = session.execute(
             select(
@@ -373,7 +391,7 @@ class NewsJob:
 
     def __call__(self) -> int:
         if not self._loaded:
-            self._scorer = load_scorer()
+            self._scorer = load_scorer(self.engine)
             self._topics = load_topic_scorer() if self._scorer is not None else None
             self._loaded = True
         changed = run(self.engine, self.universe, self._scorer)

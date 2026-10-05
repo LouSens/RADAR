@@ -106,7 +106,7 @@ def test_no_news_at_all_stores_nothing(engine: Engine, session: Session) -> None
 
 def test_each_topic_gets_its_own_verdict(engine: Engine, session: Session) -> None:
     from radar.db.models import NewsArticle, NewsSentiment, NewsSymbol, NewsTopic
-    from radar.models import sentiment, topics
+    from radar.models import topics
 
     seed_bitcoin(session, 300)
     # One "price" article a day for 200 days, and three "security" articles in all.
@@ -120,7 +120,7 @@ def test_each_topic_gets_its_own_verdict(engine: Engine, session: Session) -> No
         session.add(
             NewsSentiment(
                 article_id=i + 1,
-                model_version=sentiment.MODEL_VERSION,
+                model_version="words-1",  # the version the stored summaries carry
                 p_pos=0.3,
                 p_neg=0.3,
                 p_neu=0.4,
