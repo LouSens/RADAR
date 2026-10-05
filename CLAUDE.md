@@ -8,10 +8,11 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 0 (in progress)
-- Last completed step: Phase 0 step 2, Alpaca REST client (`radar/providers/alpaca_rest.py`) with recorded fixtures
-- Next step: `make audit` and `docs/DATA_AUDIT.md`
-- Open questions: see `docs/DATA_AUDIT.md` once Phase 0 has run
+- Phase: 0 (steps 1 to 3 done; step 4, the spec review, awaits the user's decisions)
+- Last completed step: `make audit` ran against the live API on 2026-10-05 and wrote `docs/DATA_AUDIT.md`
+- Next step: user decides the open items in `docs/DECISIONS.md` (010a to 010d), then update the spec to match the audit
+- Not yet verified: CI on GitHub (branch `phase-0-bootstrap` not pushed)
+- Open questions: `docs/DECISIONS.md`, decision 010
 
 ## How to work in this repo
 
@@ -44,7 +45,8 @@ Keep this list accurate as targets change. Each target wraps `uv run radar <targ
 make up              # start db, api, worker, web with docker compose
 make down            # stop everything
 make migrate         # run Alembic migrations
-make audit           # run the Phase 0 data probe and rewrite docs/DATA_AUDIT.md
+make audit           # run the Phase 0 data probe and rewrite docs/DATA_AUDIT.md (about 70 minutes;
+                     # `uv run radar audit --resume` runs only missing sections)
 make backfill        # historical backfill for the configured universe
 make test            # backend pytest + frontend vitest
 make lint            # ruff, mypy, eslint, tsc
