@@ -434,8 +434,9 @@ class SentimentOut(BaseModel):
     articles_in_window: int
     days_with_news: int
     daily: list[SentimentPoint]
-    most_positive: list[ArticleOut]
-    most_negative: list[ArticleOut]
+    # The latest articles, newest first. Not ranked by tone: a single article's tone is
+    # too often wrong to rank on.
+    recent: list[ArticleOut]
     topics: list[TopicSummary]
     accuracy: SentimentAccuracyOut | None
 
@@ -513,3 +514,71 @@ class TrackRecordOut(BaseModel):
     recorded: int
     resolved: int
     rows: list[TrackRecordRow]
+
+
+class TrustOut(BaseModel):
+    # "solid", "fair", or "rough": how far the claim can be leaned on.
+    grade: Literal["solid", "fair", "rough"]
+    # What the grade rests on, in one sentence.
+    reason: str
+
+
+class SummaryState(BaseModel):
+    label: str
+    probability: float
+    days_in_state: int
+
+
+class SummaryOutlook(BaseModel):
+    horizon_days: int
+    steps: int
+    level: float
+    low: float
+    high: float
+    start_price: float
+
+
+class SummarySwings(BaseModel):
+    # Typical daily move expected over the next day, as a fraction.
+    forecast: float
+    last_realised: float | None
+
+
+class SummaryRisk(BaseModel):
+    horizon_days: int
+    level: float
+    # The one-day loss that should be exceeded only (1 - level) of the time.
+    limit: float
+
+
+class SummaryNews(BaseModel):
+    current: float | None
+    articles_24h: int
+    verdict: str | None
+
+
+class ChangeOut(BaseModel):
+    topic: Literal["state", "swings", "tone"]
+    text: str
+
+
+class SummaryTrust(BaseModel):
+    state: TrustOut
+    outlook: TrustOut
+    swings: TrustOut
+    risk: TrustOut
+    news: TrustOut
+
+
+class SummaryOut(BaseModel):
+    """The top of a market page: the answers in brief, what changed, and how far to trust each."""
+
+    symbol: str
+    state: SummaryState | None
+    outlook: SummaryOutlook | None
+    swings: SummarySwings | None
+    risk: SummaryRisk | None
+    news: SummaryNews | None
+    # What is different from a week ago. Empty when nothing notable is.
+    changes: list[ChangeOut]
+    trust: SummaryTrust

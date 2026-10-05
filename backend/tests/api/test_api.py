@@ -228,6 +228,7 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets/{symbol}/sentiment",
         "/api/v1/assets/{symbol}/event-study",
         "/api/v1/assets/{symbol}/track-record",
+        "/api/v1/assets/{symbol}/summary",
         "/api/v1/health",
     }
     assert {"AssetOut", "BarsOut", "HealthOut", "LiveBar", "LiveNews"} <= set(
@@ -677,17 +678,16 @@ def test_sentiment_route_serves_tone_articles_and_accuracy(
     assert body["articles_in_window"] == 10
     assert body["days_with_news"] == 2
     assert [p["score_mean"] for p in body["daily"]] == [0.2, None, -0.4]
-    # The repeat (article 3) is left out even though its score is the highest.
-    assert [a["id"] for a in body["most_positive"]] == [1, 4]
-    assert [a["id"] for a in body["most_negative"]] == [2]
-    assert body["most_positive"][0]["url"] == "https://example.test/1"
+    # Recent articles, newest first, not ranked by tone; the repeat (article 3) is left out.
+    assert [a["id"] for a in body["recent"]] == [4, 2, 1]
+    assert body["recent"][0]["url"] == "https://example.test/4"
     model = body["accuracy"]["model"]
     assert (model["n"], model["accuracy"], model["macro_f1"]) == (200, 0.7, 0.68)
     # 70% of 200 headlines is a range, not a point.
     assert model["accuracy_low"] == pytest.approx(0.633, abs=0.002)
     assert model["accuracy_high"] == pytest.approx(0.759, abs=0.002)
     assert body["accuracy"]["held_out"] is False
-    assert body["most_negative"][0]["topic"] == "security"
+    assert body["recent"][1]["topic"] == "security"
     # Topics over the same window, most common first, repeats left out.
     assert body["topics"] == [
         {"topic": "price", "article_count": 2, "score_mean": 0.5},
@@ -738,3 +738,66 @@ def test_event_study_route_serves_the_stored_verdict(client: TestClient, session
     assert body["min_events"] == 30
     assert body["lags"] == [{"lag": 1, "correlation": 0.02, "n": 600, "significant": False}]
     assert body["positive"]["n"] == 0
+
+
+def test_summary_answers_in_brief_with_a_trust_grade_for_every_claim(
+    client: TestClient, session: Session
+) -> None:
+    seed(session)
+    # With nothing stored, every claim is absent and every grade is the weakest.
+    empty = client.get("/api/v1/assets/btc-usd/summary").json()
+    assert empty["state"] is None
+    assert empty["outlook"] is None
+    assert empty["changes"] == []
+    assert {t["grade"] for t in empty["trust"].values()} == {"rough"}
+    assert client.get("/api/v1/assets/doge-usd/summary").status_code == 404
+
+    from radar.db.models import ModelRegistry, RegimeState
+
+    model = ModelRegistry(
+        name="regime",
+        symbol="BTC/USD",
+        version="regime-hmm-1",
+        train_start=datetime(2021, 1, 2, tzinfo=UTC).date(),
+        train_end=datetime(2026, 10, 4, tzinfo=UTC).date(),
+        is_current=True,
+        params={"n_train": 2102},
+        metrics={
+            "states": [],
+            "bic_by_states": {"3": 1.0},
+            "walk_forward": {
+                "n_days": 1602,
+                "first_test_day": "2022-05-17",
+                "last_test_day": "2026-10-04",
+                "model_log_density": 2.017,
+                "baseline_log_density": 1.972,
+                "next_day_volatility": {"calm": 0.02, "turbulent": 0.04},
+                "volatility_is_ordered": True,
+                "average_run_length": 34.1,
+            },
+        },
+    )
+    session.add(model)
+    session.flush()
+    day = datetime(2026, 10, 1, tzinfo=UTC)
+    for i, label in enumerate(["calm", "calm", "turbulent", "turbulent"]):
+        session.add(
+            RegimeState(
+                symbol="BTC/USD",
+                model_id=model.id,
+                ts=day + timedelta(days=i),
+                label=label,
+                probability=0.9,
+                probs={label: 0.9},
+            )
+        )
+    session.commit()
+
+    body = client.get("/api/v1/assets/btc-usd/summary").json()
+    assert body["state"] == {"label": "turbulent", "probability": 0.9, "days_in_state": 2}
+    assert body["trust"]["state"]["grade"] == "solid"
+    assert "1,602 unseen days" in body["trust"]["state"]["reason"]
+    assert body["changes"] == [
+        {"topic": "state", "text": "The market state changed to turbulent 2 days ago."}
+    ]
+    assert body["trust"]["news"]["grade"] == "rough"
