@@ -228,3 +228,45 @@ class CalibrationOut(BaseModel):
     model_version: str
     computed_at: AwareDatetime
     rows: list[CalibrationRowOut]
+
+
+class VolatilityScoreOut(BaseModel):
+    # "har" (regression on recent volatility), "gbt" (tree model), "carry" (yesterday
+    # carried forward), or "regime" (average for the current market state).
+    model: str
+    # Average loss on days the model had not seen; lower is better.
+    qlike: float
+    mse: float
+    # Diebold-Mariano p-value for the difference from "har". Null for "har" itself.
+    dm_p_value_vs_har: float | None = None
+
+
+class VolatilityPoint(BaseModel):
+    ts: AwareDatetime
+    forecast: float
+    # What happened over the days the forecast covered. Null until they have ended.
+    realised: float | None
+
+
+class VolatilityHorizonOut(BaseModel):
+    horizon_days: int
+    steps: int
+    # The model whose forecast is shown, and why it was chosen.
+    shown: str
+    reason: str
+    # Per-day volatility expected over the next `steps` days, as a fraction.
+    forecast: float
+    # The latest completed outcome: per-day volatility over the last `steps` days.
+    last_realised: float | None
+    history: list[VolatilityPoint]
+    n: int
+    first_day: date
+    last_day: date
+    scores: list[VolatilityScoreOut]
+
+
+class VolatilityOut(BaseModel):
+    symbol: str
+    as_of: AwareDatetime
+    model_version: str
+    horizons: list[VolatilityHorizonOut]

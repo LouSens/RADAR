@@ -39,6 +39,10 @@ from radar.api.schemas import (
     RegimeStateOut,
     SeriesStatus,
     SimulationOut,
+    VolatilityHorizonOut,
+    VolatilityOut,
+    VolatilityPoint,
+    VolatilityScoreOut,
 )
 from radar.db.models import (
     Bar,
@@ -46,9 +50,11 @@ from radar.db.models import (
     DataQualityReport,
     IngestionRun,
     RegimeState,
+    VolatilityForecast,
 )
 from radar.models import simulator
 from radar.pipelines import simulation as simulation_job
+from radar.pipelines import volatility as volatility_job
 from radar.pipelines.regime import current_model
 from radar.universe import Asset, Universe
 
@@ -273,6 +279,70 @@ def get_calibration(symbol: str, universe: UniverseDep, session: SessionDep) -> 
         model_version=simulator.MODEL_VERSION,
         computed_at=max(r.computed_at for r in rows),
         rows=[CalibrationRowOut.model_validate(r, from_attributes=True) for r in rows],
+    )
+
+
+@router.get("/assets/{symbol:path}/volatility", response_model=VolatilityOut)
+def get_volatility(
+    symbol: str,
+    universe: UniverseDep,
+    session: SessionDep,
+    days: Annotated[int, Query(ge=1, le=5000)] = 365,
+) -> VolatilityOut:
+    """The volatility forecast, past forecasts against what happened, and model scores."""
+    asset = find_asset(universe, symbol)
+    registered = volatility_job.current_model(session, asset.symbol)
+    if registered is None:
+        raise HTTPException(status_code=404, detail=f"No volatility forecast for {asset.symbol}")
+    steps = volatility_job.HORIZON_STEPS[asset.asset_class]
+    horizons = []
+    for horizon_days, evaluation in sorted(
+        registered.metrics["horizons"].items(), key=lambda item: int(item[0])
+    ):
+        rows = list(
+            session.scalars(
+                select(VolatilityForecast)
+                .where(
+                    VolatilityForecast.symbol == asset.symbol,
+                    VolatilityForecast.horizon_days == int(horizon_days),
+                    VolatilityForecast.model == evaluation["shown"],
+                )
+                .order_by(VolatilityForecast.ts.desc())
+                .limit(days)
+            )
+        )[::-1]
+        if not rows:
+            continue
+        known = [r.realised for r in rows if r.realised is not None]
+        horizons.append(
+            VolatilityHorizonOut(
+                horizon_days=int(horizon_days),
+                steps=steps[int(horizon_days)],
+                shown=evaluation["shown"],
+                reason=evaluation["reason"],
+                forecast=rows[-1].forecast,
+                last_realised=known[-1] if known else None,
+                history=[
+                    VolatilityPoint(ts=r.ts, forecast=r.forecast, realised=r.realised) for r in rows
+                ],
+                n=evaluation["n"],
+                first_day=evaluation["first_day"],
+                last_day=evaluation["last_day"],
+                scores=[VolatilityScoreOut.model_validate(s) for s in evaluation["scores"]],
+            )
+        )
+    if not horizons:
+        raise HTTPException(status_code=404, detail=f"No volatility forecast for {asset.symbol}")
+    latest = session.scalar(
+        select(func.max(VolatilityForecast.ts)).where(VolatilityForecast.symbol == asset.symbol)
+    )
+    return VolatilityOut.model_validate(
+        {
+            "symbol": asset.symbol,
+            "as_of": latest,
+            "model_version": registered.version,
+            "horizons": horizons,
+        }
     )
 
 

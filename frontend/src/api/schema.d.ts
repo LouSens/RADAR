@@ -124,6 +124,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/volatility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Volatility
+         * @description The volatility forecast, past forecasts against what happened, and model scores.
+         */
+        get: operations["get_volatility_api_v1_assets__symbol__volatility_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -581,6 +601,74 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VolatilityHorizonOut */
+        VolatilityHorizonOut: {
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Forecast */
+            forecast: number;
+            /** History */
+            history: components["schemas"]["VolatilityPoint"][];
+            /** Horizon Days */
+            horizon_days: number;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** Last Realised */
+            last_realised: number | null;
+            /** N */
+            n: number;
+            /** Reason */
+            reason: string;
+            /** Scores */
+            scores: components["schemas"]["VolatilityScoreOut"][];
+            /** Shown */
+            shown: string;
+            /** Steps */
+            steps: number;
+        };
+        /** VolatilityOut */
+        VolatilityOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Horizons */
+            horizons: components["schemas"]["VolatilityHorizonOut"][];
+            /** Model Version */
+            model_version: string;
+            /** Symbol */
+            symbol: string;
+        };
+        /** VolatilityPoint */
+        VolatilityPoint: {
+            /** Forecast */
+            forecast: number;
+            /** Realised */
+            realised: number | null;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+        };
+        /** VolatilityScoreOut */
+        VolatilityScoreOut: {
+            /** Dm P Value Vs Har */
+            dm_p_value_vs_har?: number | null;
+            /** Model */
+            model: string;
+            /** Mse */
+            mse: number;
+            /** Qlike */
+            qlike: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -763,6 +851,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LevelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_volatility_api_v1_assets__symbol__volatility_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolatilityOut"];
                 };
             };
             /** @description Validation Error */

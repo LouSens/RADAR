@@ -23,6 +23,7 @@ TABLES = {
     "regime_states",
     "simulations",
     "calibration_reports",
+    "volatility_forecasts",
 }
 
 

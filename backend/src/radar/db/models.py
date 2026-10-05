@@ -227,3 +227,22 @@ class CalibrationReport(Base):
     first_origin: Mapped[date] = mapped_column(Date)
     last_origin: Mapped[date] = mapped_column(Date)
     computed_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+
+
+class VolatilityForecast(Base):
+    """A volatility forecast made at `ts` for the following days, by one model.
+
+    `forecast` and `realised` are per-day volatility as a fraction. `realised` is filled
+    in once the days it covers have ended.
+    """
+
+    __tablename__ = "volatility_forecasts"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    horizon_days: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # "har", "gbt", or one of the simple rivals "carry" and "regime".
+    model: Mapped[str] = mapped_column(Text, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TZDateTime, primary_key=True)
+    model_version: Mapped[str] = mapped_column(Text)
+    forecast: Mapped[float] = mapped_column(Double)
+    realised: Mapped[float | None] = mapped_column(Double)

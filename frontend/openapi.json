@@ -1017,6 +1017,181 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VolatilityHorizonOut": {
+        "properties": {
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "forecast": {
+            "title": "Forecast",
+            "type": "number"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/VolatilityPoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "last_realised": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Realised"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "scores": {
+            "items": {
+              "$ref": "#/components/schemas/VolatilityScoreOut"
+            },
+            "title": "Scores",
+            "type": "array"
+          },
+          "shown": {
+            "title": "Shown",
+            "type": "string"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "horizon_days",
+          "steps",
+          "shown",
+          "reason",
+          "forecast",
+          "last_realised",
+          "history",
+          "n",
+          "first_day",
+          "last_day",
+          "scores"
+        ],
+        "title": "VolatilityHorizonOut",
+        "type": "object"
+      },
+      "VolatilityOut": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "horizons": {
+            "items": {
+              "$ref": "#/components/schemas/VolatilityHorizonOut"
+            },
+            "title": "Horizons",
+            "type": "array"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "as_of",
+          "model_version",
+          "horizons"
+        ],
+        "title": "VolatilityOut",
+        "type": "object"
+      },
+      "VolatilityPoint": {
+        "properties": {
+          "forecast": {
+            "title": "Forecast",
+            "type": "number"
+          },
+          "realised": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realised"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts",
+          "forecast",
+          "realised"
+        ],
+        "title": "VolatilityPoint",
+        "type": "object"
+      },
+      "VolatilityScoreOut": {
+        "properties": {
+          "dm_p_value_vs_har": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dm P Value Vs Har"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "mse": {
+            "title": "Mse",
+            "type": "number"
+          },
+          "qlike": {
+            "title": "Qlike",
+            "type": "number"
+          }
+        },
+        "required": [
+          "model",
+          "qlike",
+          "mse"
+        ],
+        "title": "VolatilityScoreOut",
+        "type": "object"
       }
     }
   },
@@ -1327,6 +1502,58 @@
           }
         },
         "summary": "Post Simulation Level"
+      }
+    },
+    "/api/v1/assets/{symbol}/volatility": {
+      "get": {
+        "description": "The volatility forecast, past forecasts against what happened, and model scores.",
+        "operationId": "get_volatility_api_v1_assets__symbol__volatility_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 365,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolatilityOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Volatility"
       }
     },
     "/api/v1/health": {

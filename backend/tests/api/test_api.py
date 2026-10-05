@@ -223,6 +223,7 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets/{symbol}/simulation",
         "/api/v1/assets/{symbol}/simulation/level",
         "/api/v1/assets/{symbol}/calibration",
+        "/api/v1/assets/{symbol}/volatility",
         "/api/v1/health",
     }
     assert {"AssetOut", "BarsOut", "HealthOut", "LiveBar", "LiveNews"} <= set(
@@ -418,3 +419,70 @@ def test_simulation_level_and_calibration_routes(client: TestClient, session: Se
             "last_origin": "2026-09-27",
         }
     ]
+
+
+def test_volatility_route_serves_the_shown_model(client: TestClient, session: Session) -> None:
+    from radar.db.models import ModelRegistry, VolatilityForecast
+
+    seed(session)
+    assert client.get("/api/v1/assets/btc-usd/volatility").status_code == 404
+
+    scores = [
+        {"model": "har", "qlike": 0.19, "mse": 6.5e-5},
+        {"model": "gbt", "qlike": 0.21, "mse": 6.4e-5, "dm_p_value_vs_har": 0.25},
+        {"model": "carry", "qlike": 1.33, "mse": 1.4e-4, "dm_p_value_vs_har": 0.0},
+        {"model": "regime", "qlike": 0.25, "mse": 9.8e-5, "dm_p_value_vs_har": 0.0004},
+    ]
+    session.add(
+        ModelRegistry(
+            name="volatility",
+            symbol="BTC/USD",
+            version="volatility-har-1",
+            train_start=datetime(2021, 1, 23, tzinfo=UTC).date(),
+            train_end=datetime(2026, 8, 1, tzinfo=UTC).date(),
+            is_current=True,
+            params={},
+            metrics={
+                "horizons": {
+                    "7": {
+                        "steps": 7,
+                        "n": 1595,
+                        "first_day": "2022-05-17",
+                        "last_day": "2026-09-27",
+                        "scores": scores,
+                        "shown": "har",
+                        "reason": "trees_did_not_beat_har",
+                    }
+                }
+            },
+        )
+    )
+    day = datetime(2026, 10, 1, tzinfo=UTC)
+    for i in range(4):
+        for model, value in (("har", 0.02 + i * 0.001), ("gbt", 0.5)):
+            session.add(
+                VolatilityForecast(
+                    symbol="BTC/USD",
+                    horizon_days=7,
+                    model=model,
+                    ts=day + timedelta(days=i),
+                    model_version="volatility-har-1",
+                    forecast=value,
+                    realised=0.018 + i * 0.001 if i < 2 else None,
+                )
+            )
+    session.commit()
+
+    body = client.get("/api/v1/assets/btc-usd/volatility").json()
+    assert datetime.fromisoformat(body["as_of"]) == day + timedelta(days=3)
+    (week,) = body["horizons"]
+    assert week["shown"] == "har"
+    assert week["steps"] == 7
+    assert week["forecast"] == pytest.approx(0.023)  # the latest forecast of the shown model
+    assert week["last_realised"] == pytest.approx(0.019)  # the latest outcome that is known
+    assert [p["realised"] for p in week["history"]] == [0.018, 0.019, None, None]
+    assert week["n"] == 1595
+    assert [s["model"] for s in week["scores"]] == ["har", "gbt", "carry", "regime"]
+    assert week["scores"][0]["dm_p_value_vs_har"] is None
+    short = client.get("/api/v1/assets/btc-usd/volatility", params={"days": 2}).json()
+    assert len(short["horizons"][0]["history"]) == 2

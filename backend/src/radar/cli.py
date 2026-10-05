@@ -189,6 +189,17 @@ def simulate(args: argparse.Namespace) -> int:
     return 0
 
 
+def volatility() -> int:
+    """Forecast volatility for every day not yet covered, and score the models."""
+    from radar.db.session import make_engine
+    from radar.pipelines import volatility as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe())
+    log.info("volatility_done", rows_changed=changed)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -210,6 +221,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "worker": (worker, "run live ingestion and scheduled jobs"),
     "profile": (profile, "measure the stored data and write docs/DATA_PROFILE.md"),
     "api": (api, "serve the HTTP API and live WebSocket"),
+    "volatility": (volatility, "forecast volatility and score the models"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 
