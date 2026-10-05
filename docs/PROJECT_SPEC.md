@@ -79,7 +79,7 @@ Write the name in capitals. Where a longer form is needed to tell it apart from 
 - Price direction prediction.
 - Reinforcement learning.
 - Order book and market microstructure analytics.
-- The Binance connector. Version 1 defines the `HoldingsSource` interface with manual entry and CSV upload; a read-only Binance implementation is added later without changing anything else.
+- Any Binance access beyond reading holdings. Version 1 includes a read-only Binance `HoldingsSource` beside manual entry and CSV upload (section 8, F6); it reads balances and open positions and nothing else.
 - User accounts. Version 1 is single-user.
 
 ---
@@ -419,7 +419,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 
 ### F6. Portfolio lab
 
-- **Input:** holdings as (symbol, quantity) by manual entry or CSV upload through the `HoldingsSource` interface. Only symbols with stored price history are accepted; others are listed as unsupported.
+- **Input:** holdings as (symbol, quantity) by manual entry, CSV upload, or a read-only Binance connection, all through the `HoldingsSource` interface. The Binance source needs an API key with reading permission only (no trading, no withdrawal), kept in `.env`; it reads spot balances and open futures or margin positions, maps Binance symbols to RADAR's (for example `SPYB` to `SPY`, `PAXG` to `PAXG/USD`), and lists anything it cannot map as unsupported. For leveraged positions the X-ray also shows leverage and distance to liquidation. Only symbols with stored price history are accepted; others are listed as unsupported.
 - **Risk model:** covariance of daily returns on the mixed panel with Ledoit-Wolf shrinkage. Minimum history per asset set from the audit; start at 250 trading days.
 - **X-ray:** weights, volatility per asset, each asset's percentage contribution to portfolio variance, correlation matrix, and historical maximum drawdown of the current mix.
 - **Allocations compared:** current, equal weight, minimum variance, equal risk contribution, and hierarchical risk parity. Long-only, with a configurable maximum weight per asset.
@@ -593,7 +593,7 @@ Eight phases. Each ends in something that runs and can be shown.
 
 ### Later, not in version 1
 
-- Read-only Binance `HoldingsSource` and automatic trade journal.
+- Automatic trade journal from Binance history.
 - Fine-tuned sentiment model.
 - Additional news or macro data sources for gold.
 

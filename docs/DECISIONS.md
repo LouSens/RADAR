@@ -300,3 +300,14 @@ Measured, worth knowing (see `docs/DATA_PROFILE.md`):
 - `PAXG/USD` has no realised-volatility value on 8.3% of days (too few hourly bars).
 - Volatility clusters in every asset: squared-return autocorrelation at lag 1 is 0.15
   for Bitcoin and 0.17 for `GLD`.
+
+## 020. Read-only Binance holdings in version 1 (2026-10-05)
+
+The user confirmed the Binance connector is read-only and wants their Binance portfolio
+analysed. It moves from "later" into F6 (Phase 5). The hard rule in `CLAUDE.md` gains
+one narrow exception: reading balances and open positions with a key that cannot trade
+or withdraw. Everything else in the rule stands, and a test must prove the connector
+has no order, transfer, or settings calls.
+
+Still to confirm with the user in Phase 5: which Binance products to read (spot,
+futures, margin, earn), and the `SPYB` to `SPY` unit ratio (decision 015).
