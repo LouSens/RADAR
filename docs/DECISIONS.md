@@ -131,3 +131,41 @@ For `BTC/USD`, a 1Hour request returns about one week (167 or 168 bars) per page
 whatever `limit` is sent, so a full hourly history is about 300 calls. `PAXG/USD` pages
 hold more (975 to 1,847 bars), which fits a page being capped by underlying minute bars.
 1Day history fits in one page. See audit section 2.7.
+
+## 011. Gold is represented by `GLD` alone (2026-10-05)
+
+The user asked for one gold instrument, chosen for data quality, in place of the mix of
+`PAXG/USD` for price, `GLD` as a cross-check, and four tickers for news. They also
+offered switching the product to Bitcoin and `SPY`. The user left the choice to Claude.
+
+Measured on 2026-10-05:
+
+- `XAU/USD`: not available on the Basic plan (`403`).
+- `PAXG/USD` on `us-1`: starts 2021, 96.0% of hours present, minute bars too sparse to
+  use, 41 news articles in total.
+- `GLD`: starts 2016-01-04, 2,703 daily bars with none at zero volume, every sampled
+  session has all its hourly bars, about 8.1 million shares a day, 1.36 to 1.75 news
+  articles per day from 2023.
+
+**Decided: `GLD`.** It has the best data of the three and twice the history. The
+product stays "Bitcoin and gold"; `SPY` stays a portfolio asset.
+
+Costs accepted:
+
+- Gold has no weekend or overnight prices. Bitcoin against gold uses the mixed panel
+  only, and the tracking-gap panel is dropped.
+- Live gold on the free plan is the IEX feed in market hours; history is the
+  consolidated feed, 15 minutes delayed.
+- Gold news is `GLD` articles only, slightly fewer than the four-ticker set of 010c.
+- Realised volatility for a stock session adds the squared overnight return to the
+  hourly returns of regular hours. This rule was written by Claude and has not been
+  reviewed by the user.
+
+`PAXG/USD` is removed from the universe. This supersedes the gold parts of 010a and
+010c; `us-1` remains the location for the remaining crypto assets.
+
+## 012. Times are shown in the viewer's time zone (2026-10-05)
+
+The user is in GMT+8 and finds UTC hard to read. Storage and APIs stay in UTC (hard
+rule). The frontend shows the browser's local time with the zone named. Reports written
+for the user give times in GMT+8.

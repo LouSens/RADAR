@@ -65,8 +65,8 @@ Write the name in capitals. Where a longer form is needed to tell it apart from 
 
 ### Asset universe
 
-- **Primary assets (full analysis, F1 to F5):** `BTC/USD` and gold, represented by `PAXG/USD`.
-- **Portfolio assets (F6 only):** `SPY`, `GLD`, and other crypto pairs Alpaca lists, such as `ETH/USD` and `SOL/USD`. The list is configuration, not code.
+- **Primary assets (full analysis, F1 to F5):** `BTC/USD` and gold, represented by `GLD` (section 3.7).
+- **Portfolio assets (F6 only):** `SPY` and other crypto pairs Alpaca lists, such as `ETH/USD` and `SOL/USD`. The list is configuration, not code.
 
 ### Out of scope for version 1
 
@@ -128,7 +128,7 @@ Symbol formats differ by endpoint: crypto market data uses `BTC/USD`; the news e
 - **A quiet period can appear as a missing bar or as a quote-only bar.** Alpaca's docs say that when no trade occurs in a bar, volume is 0 and the prices come from quote mid-prices. **Measured:** that happens on `us` only from 2023, and on `us-1` only for PAXG from 2026; otherwise the bar is simply absent. Gap detection must therefore treat missing crypto bars as normal for thin symbols and record them, and every bar on every location stores a derived `is_quote_only` flag (`volume == 0`).
 - **PAXG minute bars are too sparse to use. Measured:** in sampled weeks, `PAXG/USD` 1Min bars on `us-1` cover 8% to 31% of minutes in 2021 to 2025 and 80% in 2026. `BTC/USD` covers 99% or more. RADAR stores 1Hour and 1Day bars and computes realised volatility from hourly bars for every asset (`docs/DECISIONS.md` 010b).
 - **Crypto `1Day` bars are stamped at 00:00 UTC and cover the following 24 hours. Measured:** on every location, and recent daily bars equal the 24 hourly bars that start at the stamp.
-- **PAXG is a proxy for gold, not gold.** It is a token backed by physical gold. It trades thinly, can deviate from the spot gold price, and keeps trading at weekends when the gold market is closed. `GLD` (a gold ETF, stock data, US market hours) is stored as a cross-check, and the tracking gap between the two is shown in the app.
+- **PAXG is not used for gold.** Its history is half as long as `GLD`'s, 4% of its hours have no bar, and it has almost no news. Section 3.7 gives the comparison.
 - **Historical requests page by underlying minute data. Measured:** a `BTC/USD` 1Hour request returns about one week (167 or 168 bars) per page whatever `limit` is sent, so a full hourly history is about 300 calls per symbol. A full 1Day history fits in one page.
 
 ### 3.4 News caveats
@@ -146,7 +146,7 @@ Symbol formats differ by endpoint: crypto market data uses `BTC/USD`; the news e
 | any of `GLD`, `IAU`, `GDX`, `PAXGUSD` | 2015-01-06 | 0.20 to 0.99 | 0.38 in 2022, then 1.48 to 1.93 |
 
 - **Bitcoin news starts in 2022.** F3 and F4 for Bitcoin cover 2022 onward, about 4.75 years at the audit date.
-- **Gold news is thin.** Gold has no crypto-style ticker with real coverage, so gold news is the set of articles tagged with any of `GLD`, `IAU`, `GDX`, or `PAXGUSD` (the list is configuration). Even this set stays just under the 2 articles per day this spec first set as a floor, and it has an article on only 62% to 71% of days from 2023. The decision (`docs/DECISIONS.md` 010c): gold F3 is shown from 2023-01-01 only, always with its article count, and gold F4 reports whatever its own rules give, including `not enough events`. Before 2023 gold news is shown as "insufficient news coverage". Do not pad the data.
+- **Gold news is thin.** Gold news is the set of articles tagged `GLD`, the same instrument used for the gold price (section 3.7). It averaged 1.36 to 1.75 articles per day from 2023, under the 2 per day this spec first set as a floor. The decision (`docs/DECISIONS.md` 010c and 011): gold F3 is shown from 2023-01-01 only, always with its article count, and gold F4 reports whatever its own rules give, including `not enough events`. Before 2023 gold news is shown as "insufficient news coverage". Do not pad the data.
 
 ### 3.5 Stock data caveats
 
@@ -158,6 +158,30 @@ Symbol formats differ by endpoint: crypto market data uses `BTC/USD`; the news e
 ### 3.6 Forex
 
 The docs sidebar lists a Forex section. **Measured:** every forex request on the Basic plan, including a control pair, returns `403 forbidden: insufficient grants`. There is no `XAU/USD` reference series for RADAR; `GLD` is the only gold cross-check.
+
+### 3.7 Gold instrument
+
+Gold is represented by one instrument, `GLD` (`docs/DECISIONS.md` 011). It replaces `PAXG/USD`, which earlier drafts of this spec used; the PAXG measurements in section 3.3 are kept as the reason for the change.
+
+**Measured on 2026-10-05:**
+
+| | `GLD` | `PAXG/USD` on `us-1` | `XAU/USD` |
+|---|---|---|---|
+| Available on the Basic plan | yes | yes | no (`403`) |
+| History starts | 2016-01-04 | 2021-01-01 | n/a |
+| Daily bars | 2,703, none with zero volume | 2,104 | n/a |
+| Hourly bars | every sampled session complete, none with zero volume | 96.0% of hours | n/a |
+| Typical daily volume | about 8.1 million shares | about 520 PAXG | n/a |
+| News articles per day, 2023 on | 1.36 to 1.75 | 41 articles in total | n/a |
+| Trades | US market hours | all hours | n/a |
+
+What this changes:
+
+- Gold has ten years of history against five for Bitcoin. Each asset's models use its own full history.
+- Gold has no weekend or overnight bars. Anything that compares Bitcoin with gold uses the mixed panel (section 7.4).
+- Horizons for gold count trading days. A 7-day outlook for gold is the next 5 sessions; the UI states the session count.
+- Live gold prices on the free plan come from the IEX feed during market hours. Hourly and daily history comes from the consolidated (SIP) feed, which is available once it is 15 minutes old.
+- Stock bars are stored at 1Hour and 1Day.
 
 ---
 
@@ -282,23 +306,23 @@ The pipeline has ten stages. Each maps to a package in the repo and to steps in 
 
 - Schema validation with `pandera`: types, non-null keys, `high >= max(open, close)`, `low <= min(open, close)`, prices above zero, volume not negative.
 - Deduplicate on the natural key, keeping the latest received version.
-- Gap detection: compare stored timestamps against the expected calendar (continuous for crypto, exchange calendar for stocks). Missing hourly bars are normal for thin crypto symbols (about 4% of hours for PAXG, section 3.3). Record gaps; never fill prices by interpolation. Forward-fill is allowed only when building aligned panels and is flagged.
+- Gap detection: compare stored timestamps against the expected calendar (continuous for crypto, exchange calendar for stocks). Missing hourly bars are normal for thinly traded crypto symbols (section 3.3). Record gaps; never fill prices by interpolation. Forward-fill is allowed only when building aligned panels and is flagged.
 - Outlier flagging: a bar whose return exceeds a robust threshold (for example 10 median absolute deviations for its timeframe) is flagged for review, not deleted.
 - Set `is_quote_only`.
 - News: strip HTML from `content`, normalise whitespace, drop exact duplicate headlines within a short window for the same symbol, keep `updated_at` revisions as the latest version.
 
 ### 7.3 Exploratory analysis (notebooks, then `docs/DATA_AUDIT.md`)
 
-Phase 0 and Phase 1 produce measured facts: history depth, missing-data rates, quote-only share, return distributions, volatility clustering, autocorrelation of returns and of squared returns, news counts per symbol per year, and the PAXG to GLD tracking gap. These numbers decide parameters later in the spec.
+Phase 0 and Phase 1 produce measured facts: history depth, missing-data rates, quote-only share, return distributions, volatility clustering, autocorrelation of returns and of squared returns, and news counts per symbol per year. These numbers decide parameters later in the spec.
 
 ### 7.4 Feature engineering (`features/`)
 
 - Log returns at 1 hour and 1 day.
-- Realised volatility: square root of the sum of squared hourly log returns per UTC day, for every asset. The audit showed PAXG cannot support a finer interval (section 3.3). A day with fewer than a configured number of hourly bars (start at 18) has no realised volatility value and is flagged.
+- Realised volatility, from hourly bars for every asset. Crypto: square root of the sum of squared hourly log returns per UTC day; a day with fewer than a configured number of hourly bars (start at 18) has no value and is flagged. Stocks: per trading session, the square root of the squared overnight log return (previous close to open) plus the sum of squared hourly log returns inside regular hours, so the figure covers the full day as the crypto figure does.
 - Daily range: `log(high / low)`.
 - Rolling statistics (means, standard deviations, z-scores) use trailing windows only.
 - **Alignment rule for mixed calendars.** Two panels are built:
-  - *Crypto panel:* daily returns on UTC day boundaries, seven days a week. Used for BTC and PAXG on their own and against each other.
+  - *Crypto panel:* daily returns on UTC day boundaries, seven days a week. Used for crypto assets on their own and against each other.
   - *Mixed panel:* returns sampled at 16:00 America/New_York on NYSE trading days, with crypto prices taken from the hourly bar at that time. Stock daily bars carry a midnight New York stamp (section 3.5); their close belongs to 16:00 that day. A weekend's crypto move lands in Monday's return. Used whenever `SPY` or `GLD` is involved.
 - Scalers and any fitted transforms are fitted on training windows only and stored with the model version.
 
@@ -373,10 +397,10 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 
 ### F5. Bitcoin versus gold
 
-- **Method:** rolling 30-day and 90-day correlation of daily returns between `BTC/USD` and `PAXG/USD` on the crypto panel. Repeat with `GLD` on the mixed panel as a cross-check. Report the correlation conditional on Bitcoin's regime from F1.
-- **Additional panel:** PAXG against GLD tracking gap over time, including the weekend effect.
+- **Method:** rolling 30-day and 90-day correlation of daily returns between `BTC/USD` and `GLD` on the mixed panel (windows count trading days). Report the correlation conditional on Bitcoin's regime from F1.
+- **Weekend note:** gold does not trade at weekends, so a weekend Bitcoin move is compared with gold's Friday-to-Monday move. The UI says so.
 - **UI output:** correlation time series, a small table of correlation by regime with sample sizes, and one sentence stating the current reading.
-- **Done when:** both panels agree in sign over long windows or the disagreement is explained in the UI, and sample sizes are displayed.
+- **Done when:** the correlation series and the by-regime table render from stored data, sample sizes are displayed, and the weekend treatment is stated in the UI.
 
 ### F6. Portfolio lab
 
@@ -443,7 +467,7 @@ Six screens:
 5. **Signals:** feed with filters; each signal opens its track record.
 6. **Methodology and status:** how each number is produced, model versions, evaluation results, data coverage, pipeline health, and the limitations in section 14.
 
-Rules: every chart has a caption with window and sample size; probability and uncertainty are always shown with the number; a persistent footer states that RADAR is analytics, not financial advice.
+Rules: every chart has a caption with window and sample size; probability and uncertainty are always shown with the number; a persistent footer states that RADAR is analytics, not financial advice. Times are stored in UTC and shown in the viewer's local time zone, taken from the browser, with the zone named beside the time (for example "04:00 GMT+8"). The US market close is also labelled as such, since gold only updates while that market is open.
 
 ---
 
@@ -476,7 +500,7 @@ Eight phases. Each ends in something that runs and can be shown.
 1. FastAPI app, health route, assets and bars routes, WebSocket stream.
 2. React app with routing, layout, generated API types, live price chart for Bitcoin and gold, and the status page.
 
-*Done when:* `make up` shows live Bitcoin and PAXG charts updating in the browser.
+*Done when:* `make up` shows a live Bitcoin chart updating in the browser, and a gold (`GLD`) chart that updates during US market hours and shows the last close, clearly labelled, when the market is shut.
 
 ### Phase 3: Regime and outlook
 
@@ -580,7 +604,7 @@ Button: **Open the dashboard**
 
 ### Footer disclaimer
 
-RADAR is an analytics tool for information and education. It is not financial advice. Historical patterns do not guarantee future results. Gold is represented by PAXG, a gold-backed token, which can differ from the spot gold price.
+RADAR is an analytics tool for information and education. It is not financial advice. Historical patterns do not guarantee future results. Gold is represented by GLD, an exchange-traded fund backed by physical gold. It trades only during US market hours and can differ slightly from the spot gold price.
 
 ### Empty and limited states
 
@@ -595,7 +619,7 @@ RADAR is an analytics tool for information and education. It is not financial ad
 State these on the Methodology screen.
 
 1. **Single venue.** Crypto prices and volume come from one exchange's feed (Kraken, through Alpaca). Prices track the wider market closely for Bitcoin; volume does not represent it.
-2. **Gold proxy.** PAXG is thinly traded and can drift from spot gold. About 4% of hours have no PAXG bar.
+2. **Gold proxy.** Gold is represented by the GLD fund. It trades only in US market hours, so gold figures do not move at weekends or overnight, and it carries a small management fee that makes it drift slowly below spot gold.
 3. **Single news source.** One provider, weighted towards US stocks. Sentiment reflects that provider's coverage, not all news. Bitcoin coverage starts in 2022. Gold coverage is under 2 articles per day and is used from 2023 only.
 4. **Short crypto history.** Crypto data starts in 2021. Regimes and tail events are estimated from a limited number of years. Rare events are under-sampled.
 5. **Regime models describe, they do not forecast turning points.** A regime change is detected after it starts.

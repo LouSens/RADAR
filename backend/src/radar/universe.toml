@@ -1,7 +1,7 @@
 # The asset universe. This file is configuration: change it here, not in code.
 # Set RADAR_UNIVERSE_FILE to load a different file.
 #
-# The values below follow docs/DATA_AUDIT.md and docs/DECISIONS.md (010).
+# The values below follow docs/DATA_AUDIT.md and docs/DECISIONS.md (010, 011).
 
 # Alpaca crypto location used for history and for the live stream.
 crypto_location = "us-1"
@@ -9,7 +9,7 @@ crypto_location = "us-1"
 # Bar timeframes stored for every asset class.
 [timeframes]
 crypto = ["1Hour", "1Day"]
-stock = ["1Day"]
+stock = ["1Hour", "1Day"]
 
 # symbol:       canonical symbol used in the database and the API
 # bars_symbol:  symbol on the market data endpoints
@@ -27,14 +27,15 @@ history_start = 2021-01-01
 news_symbols = ["BTCUSD"]
 news_start = 2022-01-01
 
+# Gold. One instrument, chosen for data quality (docs/DECISIONS.md 011).
 [[assets]]
-symbol = "PAXG/USD"
-name = "Gold (PAXG)"
-asset_class = "crypto"
+symbol = "GLD"
+name = "Gold"
+asset_class = "stock"
 is_primary = true
-bars_symbol = "PAXG/USD"
-history_start = 2021-01-01
-news_symbols = ["GLD", "IAU", "GDX", "PAXGUSD"]
+bars_symbol = "GLD"
+history_start = 2016-01-04
+news_symbols = ["GLD"]
 news_start = 2023-01-01
 
 [[assets]]
@@ -58,9 +59,3 @@ asset_class = "stock"
 bars_symbol = "SPY"
 history_start = 2016-01-04
 
-[[assets]]
-symbol = "GLD"
-name = "Gold ETF"
-asset_class = "stock"
-bars_symbol = "GLD"
-history_start = 2016-01-04
