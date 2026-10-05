@@ -11,7 +11,6 @@ log = get_logger(__name__)
 
 # Commands that exist in the Makefile but are built in a later phase.
 NOT_YET: dict[str, str] = {
-    "migrate": "Phase 1",
     "backfill": "Phase 1",
     "worker": "Phase 1",
     "api": "Phase 2",
@@ -49,6 +48,20 @@ def down() -> int:
     return _run(["docker", "compose", "down"])
 
 
+def migrate() -> int:
+    """Apply database migrations, then sync the assets table with the universe."""
+    from radar.db.assets import sync_assets
+    from radar.db.session import make_engine, session_scope, upgrade
+    from radar.universe import get_universe
+
+    engine = make_engine()
+    upgrade(engine)
+    with session_scope(engine) as session:
+        count = sync_assets(session, get_universe())
+    log.info("migrated", assets=count)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -66,6 +79,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "test": (test, "run the backend tests"),
     "up": (up, "start the containers with docker compose"),
     "down": (down, "stop the containers"),
+    "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 
 
