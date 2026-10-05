@@ -14,7 +14,7 @@ Update this block at the end of every work session.
 - The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
 - Carried forward: shading the price chart by regime is not built (decision 028)
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 031): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 032): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 

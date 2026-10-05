@@ -705,3 +705,24 @@ volatility and tail risk, news, and the fine-tuning run. Their sources are plain
 files in `notebooks/src/` (percent format), built and executed by
 `backend/scripts/build_notebooks.py`. They import the app's own modules and print no
 article text.
+
+## 032. Evidence step: a larger test of the fine-tuned model, intervals, corrections, live record (2026-10-06)
+
+Asked for by the user before Phase 5. This entry was written and committed **before**
+the larger test below was labelled or scored, so the rule cannot bend to the result.
+
+**Replication of the fine-tuning test, fixed in advance**
+
+- The first test had 269 headlines, too few to tell a 5-point gain from chance.
+- A fresh test set of 700 headlines is drawn (seed 20261007; 280 Bitcoin, 280 US
+  stocks, 140 gold): all later than every training and validation headline
+  (after 2026-01-26 15:04 UTC), sharing no article and no headline key with the 1,800
+  training labels or the 200 reference labels.
+- The fine-tuned model is **not retrained and no setting is changed**. The model saved
+  by the first run is scored as it is.
+- Labels are written by Claude from the headline alone, before either model has scored
+  these headlines.
+- Rule: the fine-tuned model is adopted if, on these 700 headlines, it is more accurate
+  than the original and McNemar's test gives p below 0.05. Otherwise the original
+  stays, and the question is closed until there are labels from a person.
+- The first 269 test headlines are reported beside the new ones but do not decide.
