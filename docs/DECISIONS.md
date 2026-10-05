@@ -816,3 +816,73 @@ agreement:
   headlines, newest first, with no tone score shown. A single article's tone agrees with
   its label about 61% of the time, which is too weak to rank on.
 - The topic breakdown is folded away inside the News section and labelled rough.
+
+## 034. Fluid layout on every screen size; chart never shows empty time (2026-10-06)
+
+Reported by the user: the layout broke at some window sizes and display scales, the price
+chart could be moved to show empty space, long periods were cut off on a phone, and the
+phone had a top bar as well as the bottom tabs.
+
+**What was wrong, and the fix.**
+
+| Problem | Cause | Fix |
+|---|---|---|
+| Chart squeezed to one side after the window changed size | the chart kept its old bar width | it fits the whole period again whenever its width changes |
+| "1M" and "All" cut off on a phone | bars could not be drawn thinner than half a pixel, so 719 or 2,103 bars did not fit | bars may be as thin as needed; every period shows from its first bar to its last |
+| Empty time when dragging or zooming | the view could move past the first and last bar | the view stops at both ends |
+| Scrolling the page stopped over the chart | the wheel and an up-or-down swipe zoomed the chart | they belong to the page; drag sideways to move, pinch or drag the time axis to zoom, double-click the axis to reset |
+| Two-column sections cramped beside the sidebar | columns switched on by window width, not by the room left for the page | sections respond to the width of the page area (container queries) |
+| Sidebar too wide on a tablet or small window | one width from 768 pixels up | icon rail from 768 to 1023 pixels, full sidebar from 1024 |
+| Top bar on a phone | duplicated the bottom tabs | removed; the status dot moved to the System tab |
+
+Also: prices of 1,000 or more on the chart scale show no decimals, so the scale is
+narrower; daily charts no longer show "00:00"; page gutters grow with the screen and
+respect a notch.
+
+**Checked** in the browser at 320, 375, 390, 768, 900, 1024, and 1440 pixels wide, and
+at 844 by 390 (a phone on its side): no sideways page scroll at any of them. Wide tables
+still scroll sideways inside their own box on a phone.
+
+## 035. Phase 5 reshaped around portfolio and cross-market risk (2026-10-06)
+
+Proposed after the user asked what would make RADAR less generic; the user agreed to the
+reshaping on 2026-10-06. Nothing in the spec's Phase 5 is dropped. The order changes and
+three things are added. Each part is its own pull request.
+
+**The product idea.** RADAR answers three questions for someone holding Bitcoin, gold,
+and stocks together: how risky is my mix now, what changed, and what would a steadier mix
+have looked like.
+
+| Part | Contents | New to the spec? |
+|---|---|---|
+| 5A. Your portfolio's risk | holdings by manual entry, CSV, and read-only Binance; risk model; X-ray with each holding's share of risk; portfolio loss limits (F10); stress scenarios; Portfolio screen opening with "In brief" | no (F6, F10) |
+| 5B. How the markets move together | F5 as specified; **risk transmission**; **weekend gap risk**; F8 macro drivers | two additions |
+| 5C. Does news predict swings? | **news volume and tone as inputs to the F9 forecast**, kept only if it beats the current model out of sample | addition; settles the item owed since decision 028 |
+| 5D. Steadier mixes | the five allocations, walk-forward backtest, portfolio simulation, core and satellite, rebalancing drift | no (F6) |
+
+**The three additions.**
+
+- *Risk transmission.* For each pair of markets: in the 1, 5, and 10 days after market A
+  entered its turbulent state (filtered, so known at the time), what market B's swings
+  and return were, against all other days, with the number of episodes and an interval.
+  Verdict by a tested rule: `spills over`, `no measurable spillover`, or `not enough
+  episodes`.
+- *Weekend gap risk.* Bitcoin trades while gold and stocks are shut. Measure how the
+  Monday open of `GLD` and `SPY` has related to Bitcoin's Friday-close-to-Monday-open
+  move, and show the current weekend's move when there is one. Same verdict rule.
+- *News into the swings forecast.* Add yesterday's article count, its surprise against
+  the trailing average, and the daily tone to the F9 models. Shown only if QLIKE is lower
+  with a Diebold-Mariano p-value below 0.05; otherwise the screen says news added nothing
+  measurable. No further work on single-article tone accuracy.
+
+**Rules that carry over.** Every new section uses the shared `Panel` and a trust grade
+from `analytics/summary.py`. Walk-forward only, filtered regime probabilities only. The
+Binance source reads balances and positions only, with a test asserting it cannot reach
+an order, transfer, or settings endpoint.
+
+**No new dependencies expected:** Ledoit-Wolf is in scikit-learn; clustering and the
+optimisers are in SciPy; Binance is called with the HTTP client already in use.
+
+**Open for the user:** confirm the order 5A, 5B, 5C, 5D; and say whether a read-only
+Binance key will be in `.env` for 5A (manual entry and CSV work without one).
+

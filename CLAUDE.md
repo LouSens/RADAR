@@ -8,15 +8,16 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 4 and the evidence step are merged to `main`. A product pass is on branch `product-pass` (pull request open or merged: check `git log main`)
-- Last completed step: the product pass (decision 033): an "In brief" card and `GET /assets/{symbol}/summary`; a Solid, Fair, or Rough trust mark on every claim from fixed rules in `analytics/summary.py`; sections folded behind their claims; news articles listed unranked and topics folded away
-- Next step: Phase 5 (relationships, macro drivers, portfolio). Still owed: the F9 tree model with sentiment as an input (decision 028); stability and sensitivity checks; labels from a person
+- Phase: 4, the evidence step, and the product pass are merged to `main`. A layout fix is on branch `fluid-layout` (pull request open or merged: check `git log main`)
+- Last completed step: fluid layout and chart fixes (decision 034). Before it, the product pass (decision 033): an "In brief" card and `GET /assets/{symbol}/summary`; a Solid, Fair, or Rough trust mark on every claim from fixed rules in `analytics/summary.py`; sections folded behind their claims; news articles listed unranked and topics folded away
+- Next step: Phase 5 in the order of decision 035: 5A portfolio risk, 5B cross-market risk (F5, risk transmission, weekend gaps, F8), 5C news into the swings forecast (settles decision 028), 5D allocations. Wait for the user to confirm the order before coding. Still owed: stability and sensitivity checks; labels from a person
+- Layout rules (decision 034): inside the page use container variants (`@xl:`, `@4xl:`), not `sm:` or `lg:`; phones have bottom tabs only, no top bar; charts must not pan or zoom into empty time
 - Every new section must use the shared `Panel` and take a trust grade from `analytics/summary.py`
 - The fine-tuned model's files live in the gitignored `data/models/finbert-radar-1`; scoring new articles needs them on the machine that runs `radar sentiment`
 - The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
 - Carried forward: shading the price chart by regime is not built (decision 028)
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 033): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 035): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
