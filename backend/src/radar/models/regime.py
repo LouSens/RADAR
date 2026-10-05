@@ -1,8 +1,9 @@
 """F1. Regime detector: a Gaussian hidden Markov model on daily return and volatility.
 
 The model looks at two numbers per day, the log return and the log of realised
-volatility, and learns a small number of market states (calm, normal, turbulent) plus how
-likely each state is to follow another.
+volatility smoothed over about five days (see `smoothed_log_volatility`), and learns a
+small number of market states (calm, normal, turbulent) plus how likely each state is to
+follow another.
 
 No lookahead: `filtered_probabilities` gives, for each day, the probability of each state
 using that day and earlier days only. That is what the app shows as "current" and what
@@ -28,6 +29,9 @@ MODEL_VERSION = "regime-hmm-1"
 FEATURES = ("ret", "log_rv")
 VOLATILITY_FEATURE = 1  # index of log_rv in FEATURES
 CANDIDATE_STATES = (2, 3, 4)
+# Fixed at three so calm, normal, and turbulent mean the same for every asset
+# (docs/DECISIONS.md 025). BIC for the other counts is still reported.
+DEFAULT_STATES = 3
 LABELS: dict[int, tuple[str, ...]] = {
     2: ("calm", "turbulent"),
     3: ("calm", "normal", "turbulent"),
@@ -135,16 +139,21 @@ def _best_of(
 def fit(
     observations: pd.DataFrame,
     *,
-    candidates: tuple[int, ...] = CANDIDATE_STATES,
+    n_states: int | None = DEFAULT_STATES,
+    compare: tuple[int, ...] = (),
     n_init: int = 5,
     seed: int = 7,
 ) -> RegimeModel:
     """Fit the model on `observations` (columns `ret` and `log_rv`, one row per day).
 
-    Tries each number of states in `candidates`, several random starts each, and keeps
-    the one with the lowest BIC. Everything, including the scaling, is fitted on the rows
-    given: pass only the training window.
+    Uses `n_states` states. State counts in `compare` are fitted as well so their BIC
+    can be reported beside the chosen one. With `n_states=None` the count with the
+    lowest BIC among `compare` is used. Everything, including the scaling, is fitted on
+    the rows given: pass only the training window.
     """
+    candidates = tuple(sorted({*compare, *([n_states] if n_states is not None else [])}))
+    if not candidates:
+        raise ValueError("Give n_states, or state counts to compare")
     clean = observations[list(FEATURES)].dropna()
     if len(clean) < MIN_OBSERVATIONS:
         raise ValueError(f"Need at least {MIN_OBSERVATIONS} days to fit; got {len(clean)}")
@@ -153,17 +162,19 @@ def fit(
     x = (values - mean) / std
 
     fits: dict[int, tuple[GaussianHMM, float, float]] = {}
-    for n_states in candidates:
-        best = _best_of(x, n_states, n_init, seed)
+    for count in candidates:
+        best = _best_of(x, count, n_init, seed)
         if best is None:
             continue
         model, score = best
-        bic = -2.0 * score + _n_parameters(n_states, x.shape[1]) * np.log(len(x))
-        fits[n_states] = (model, score, float(bic))
-    if not fits:
-        raise ValueError("The model did not converge for any number of states")
-
-    n_states = min(fits, key=lambda k: fits[k][2])
+        bic = -2.0 * score + _n_parameters(count, x.shape[1]) * np.log(len(x))
+        fits[count] = (model, score, float(bic))
+    if n_states is None:
+        if not fits:
+            raise ValueError("The model did not converge for any number of states")
+        n_states = min(fits, key=lambda k: fits[k][2])
+    elif n_states not in fits:
+        raise ValueError(f"The model did not converge with {n_states} states")
     model, score, bic = fits[n_states]
     order = np.argsort(model.means_[:, VOLATILITY_FEATURE])  # calm first
     index = pd.DatetimeIndex(clean.index)
@@ -355,15 +366,17 @@ def evaluate(
     step: int = 21,
     n_init: int = 3,
     seed: int = 7,
-    candidates: tuple[int, ...] = (3,),
+    n_states: int = DEFAULT_STATES,
 ) -> RegimeEvaluation:
     """Walk-forward evaluation with an expanding window.
 
     Every `step` days the model is refitted on all earlier days, then scores the next
-    `step` days it has never seen. `candidates` is fixed to one state count so the
-    per-state volatility table stays comparable across refits.
+    `step` days it has never seen.
+
+    If `observations` has a column `rv` (the raw realised volatility of each day), the
+    next-day volatility table uses it; otherwise it uses `exp(log_rv)`.
     """
-    clean = observations[list(FEATURES)].dropna()
+    clean = observations.dropna(subset=list(FEATURES))
     if len(clean) < min_train + step:
         raise ValueError("Not enough history for a walk-forward evaluation")
     model_density: list[pd.Series] = []
@@ -373,7 +386,7 @@ def evaluate(
     for start in range(min_train, len(clean), step):
         train = clean.iloc[:start]
         test = clean.iloc[start : start + step]
-        model = fit(train, candidates=candidates, n_init=n_init, seed=seed)
+        model = fit(train, n_states=n_states, n_init=n_init, seed=seed)
         refits += 1
         # Filter over history up to each test day with parameters fitted before it.
         seen = clean.iloc[: start + len(test)]
@@ -387,9 +400,10 @@ def evaluate(
     both = density.notna() & baseline.notna()
 
     # Realised volatility on the day after each prediction.
-    next_rv = np.exp(clean["log_rv"]).shift(-1).loc[states.index]
+    realised = clean["rv"] if "rv" in clean.columns else np.exp(clean["log_rv"])
+    next_rv = realised.shift(-1).loc[states.index]
     by_state = next_rv.groupby(states).mean()
-    labels = [label for label in LABELS[candidates[0]] if label in by_state.index]
+    labels = [label for label in LABELS[n_states] if label in by_state.index]
     ordered = by_state.loc[labels].to_numpy()
     runs = (states != states.shift()).cumsum()
     index = pd.DatetimeIndex(states.index)

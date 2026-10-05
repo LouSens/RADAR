@@ -372,7 +372,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 
 ### F1. Regime detector
 
-- **Method:** Gaussian hidden Markov model on daily observations of [log return, log realised volatility]. Fit candidates with 2, 3, and 4 states and choose by BIC; expect 3. Fit with several random initialisations and keep the best likelihood.
+- **Method:** Gaussian hidden Markov model on daily observations of [log return, smoothed log realised volatility]. The volatility input is an exponentially weighted average of log realised volatility with a 5-day half-life, using that day and earlier days only. The model has 3 states. BIC for 2, 3, and 4 states is reported on the methodology page; 3 is used whatever BIC prefers, so the three names mean the same for every asset. Fit from a volatility-banded starting point and several random ones, and keep the best likelihood. (As first specified, on unsmoothed daily volatility with the state count chosen by BIC, states lasted 2 to 4 days and gold failed the ordering test below: `docs/DECISIONS.md` 025.)
 - **State labels:** order states by their volatility mean after every fit and name them `calm`, `normal`, `turbulent` (for 3 states). This prevents labels swapping between refits.
 - **Live output:** filtered state probabilities, computed with the forward algorithm only. Smoothed probabilities may be used for a clearly labelled "hindsight" view of history, never for the current state or for any backtest.
 - **Baseline:** a rule that assigns regimes by rolling 30-day volatility terciles.

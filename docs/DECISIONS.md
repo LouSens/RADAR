@@ -396,7 +396,7 @@ Open for later phases: the daily-range feature (spec 7.4) and any model input th
 highs and lows must skip flagged bars. Some flagged wicks are real, such as Ethereum's
 fall to 700 on Kraken on 2021-02-22.
 
-## 025. **OPEN** The regime model as specified does not give usable regimes (2026-10-05)
+## 025. The regime model as specified does not give usable regimes (2026-10-05)
 
 Spec F1 says: a hidden Markov model on each day's [log return, log realised volatility],
 2 to 4 states chosen by BIC, "expect 3". Fitted on the real data on 2026-10-05:
@@ -431,3 +431,6 @@ Options:
    reported on the methodology page.
 2. Volatility only, 3 states. Simpler, but regime length differs a lot by asset.
 3. As specified. Honest to the original text, but gold fails its own acceptance test.
+
+**Decided by the user on 2026-10-05: option 1.** Return plus volatility smoothed with a
+5-day half-life, 3 states. Spec F1 updated.

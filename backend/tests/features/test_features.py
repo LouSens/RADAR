@@ -9,7 +9,11 @@ import pytest
 from radar.features.calendars import nyse_schedule, session_of
 from radar.features.panels import crypto_panel, mixed_panel
 from radar.features.returns import daily_range, log_returns, trailing_zscore
-from radar.features.volatility import realised_volatility_crypto, realised_volatility_stock
+from radar.features.volatility import (
+    realised_volatility_crypto,
+    realised_volatility_stock,
+    smoothed_log_volatility,
+)
 
 
 def ts(text: str) -> pd.Timestamp:
@@ -220,3 +224,18 @@ def test_mixed_panel_follows_daylight_saving_and_early_closes() -> None:
     # Each price is the close of the bar that starts one hour before the session close.
     assert panel.prices["BTC/USD"].iloc[0] == crypto.loc[ts("2024-07-03 16:00"), "BTC/USD"]
     assert panel.prices["BTC/USD"].iloc[1] == crypto.loc[ts("2024-07-05 19:00"), "BTC/USD"]
+
+
+def test_smoothed_log_volatility_is_trailing_only() -> None:
+    rng = np.random.default_rng(4)
+    index = pd.date_range("2024-01-01", periods=200, freq="D", tz="UTC")
+    realised = pd.Series(np.exp(rng.normal(-4, 0.5, 200)), index=index)
+    smooth = smoothed_log_volatility(realised)
+    # Smoother than the raw series, and on the same level.
+    raw = pd.Series(np.log(realised.to_numpy()), index=index)
+    assert smooth.diff().std() < raw.diff().std() / 2
+    assert smooth.mean() == pytest.approx(raw.mean(), abs=0.1)
+    # Changing later days leaves earlier values untouched.
+    changed = realised.copy()
+    changed.iloc[150:] = 10.0
+    assert smoothed_log_volatility(changed).iloc[:150].equals(smooth.iloc[:150])

@@ -42,7 +42,7 @@ def market() -> tuple[pd.DataFrame, np.ndarray]:
 
 @pytest.fixture(scope="module")
 def model(market: tuple[pd.DataFrame, np.ndarray]) -> regime.RegimeModel:
-    return regime.fit(market[0], n_init=3)
+    return regime.fit(market[0], compare=regime.CANDIDATE_STATES, n_init=3)
 
 
 def test_fit_recovers_three_states_ordered_by_volatility(
@@ -111,8 +111,8 @@ def test_labels_are_stable_across_refits_on_overlapping_data(
     market: tuple[pd.DataFrame, np.ndarray],
 ) -> None:
     frame, _ = market
-    early = regime.fit(frame.iloc[:1100], candidates=(3,), n_init=3, seed=1)
-    late = regime.fit(frame.iloc[:1500], candidates=(3,), n_init=3, seed=99)
+    early = regime.fit(frame.iloc[:1100], n_init=3, seed=1)
+    late = regime.fit(frame.iloc[:1500], n_init=3, seed=99)
     overlap = frame.iloc[:1100]
     agreement = (regime.predict(early, overlap) == regime.predict(late, overlap)).mean()
     assert agreement > 0.9
@@ -123,7 +123,7 @@ def test_scaling_is_fitted_on_the_training_window_only(
 ) -> None:
     frame, _ = market
     train = frame.iloc[:800]
-    fitted = regime.fit(train, candidates=(3,), n_init=2)
+    fitted = regime.fit(train, n_init=2)
     assert fitted.feature_mean == pytest.approx(train.mean().tolist())
     assert fitted.n_train == 800
     assert fitted.train_end == train.index[-1].date()
@@ -162,3 +162,11 @@ def test_walk_forward_orders_next_day_volatility_by_state(
     assert result.model_log_density > result.baseline_log_density
     assert result.average_run_length > 5
     assert sum(result.days_per_state.values()) == result.n_days
+
+
+def test_state_count_can_be_left_to_bic(market: tuple[pd.DataFrame, np.ndarray]) -> None:
+    chosen = regime.fit(market[0], n_states=None, compare=(2, 3), n_init=2)
+    assert chosen.n_states == 3
+    assert set(chosen.bic_by_states) == {2, 3}
+    with pytest.raises(ValueError, match="n_states"):
+        regime.fit(market[0], n_states=None)

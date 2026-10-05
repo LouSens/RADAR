@@ -2,7 +2,6 @@
 
 from collections.abc import Sequence
 
-import numpy as np
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,7 +10,11 @@ from radar.db.models import Bar
 from radar.features.calendars import nyse_schedule, session_of
 from radar.features.panels import MixedPanel, crypto_panel, mixed_panel
 from radar.features.returns import log_returns
-from radar.features.volatility import realised_volatility_crypto, realised_volatility_stock
+from radar.features.volatility import (
+    realised_volatility_crypto,
+    realised_volatility_stock,
+    smoothed_log_volatility,
+)
 from radar.universe import Asset, Universe
 
 
@@ -74,10 +77,11 @@ def build_realised_volatility(session: Session, asset: Asset) -> pd.DataFrame:
 
 
 def build_regime_observations(session: Session, asset: Asset) -> pd.DataFrame:
-    """Daily [log return, log realised volatility] for the regime model.
+    """Daily inputs for the regime model: `ret`, `log_rv`, and the raw `rv`.
 
     One row per completed day (UTC day for crypto, trading session for stocks), indexed
-    by that day. Days without a realised-volatility value are left out, not filled.
+    by that day. `log_rv` is log realised volatility smoothed over about five days,
+    trailing only. Days without a realised-volatility value are left out, not filled.
     """
     volatility = build_realised_volatility(session, asset)["rv"]
     if asset.asset_class == "crypto":
@@ -88,5 +92,5 @@ def build_regime_observations(session: Session, asset: Asset) -> pd.DataFrame:
         returns = log_returns(close)
     frame = pd.DataFrame({"ret": returns, "rv": volatility}).dropna()
     frame = frame[frame["rv"] > 0]
-    frame["log_rv"] = np.log(frame["rv"].to_numpy(dtype=float))
-    return frame[["ret", "log_rv"]]
+    frame["log_rv"] = smoothed_log_volatility(frame["rv"])
+    return frame[["ret", "log_rv", "rv"]]
