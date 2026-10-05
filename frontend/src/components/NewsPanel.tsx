@@ -262,7 +262,7 @@ function Study({ study }: { study: EventStudy }) {
         verdict.
       </p>
       {enough && (
-        <div className="mt-5 grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-2">
           <div>
             <Paths study={study} />
             <Caption>
@@ -384,7 +384,7 @@ export function NewsPanel({ asset, trust, defaultOpen }: PanelProps) {
         .filter(Boolean)
         .join(" · ")}
     >
-      <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
+      <div className="grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
           <p className="label">Tone of recent news</p>
           <p className="price-lg mt-2">{toneWord(sentiment.current)}</p>
@@ -425,7 +425,7 @@ export function NewsPanel({ asset, trust, defaultOpen }: PanelProps) {
           <summary className="cursor-pointer text-sm font-semibold tracking-tight">
             What the news is about <span className="font-normal text-muted">(rough)</span>
           </summary>
-          <dl className="mt-3 grid grid-cols-1 gap-x-12 sm:grid-cols-2">
+          <dl className="mt-3 grid grid-cols-1 gap-x-12 @xl:grid-cols-2">
             {sentiment.topics.map((topic) => (
               <StatRow key={topic.topic} label={TOPIC[topic.topic] ?? topic.topic}>
                 {formatCount(topic.article_count)}{" "}

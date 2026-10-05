@@ -312,6 +312,13 @@ body::before {
   }
 }
 
+/* Page gutters grow with the screen and stay clear of a notch or rounded corner. */
+.page {
+  padding-top: calc(clamp(1rem, 2.5vw, 2rem) + env(safe-area-inset-top, 0px));
+  padding-left: calc(clamp(0.75rem, 3vw, 1.75rem) + env(safe-area-inset-left, 0px));
+  padding-right: calc(clamp(0.75rem, 3vw, 1.75rem) + env(safe-area-inset-right, 0px));
+}
+
 /* Leave room for the phone tab bar and the device's home indicator. */
 .pb-tabbar {
   padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
@@ -374,7 +381,8 @@ body::before {
 }
 
 .stage-chart {
-  height: clamp(250px, 44vh, 470px);
+  height: clamp(230px, 44vh, 470px);
+  height: clamp(230px, 44svh, 470px);
 }
 
 /* A selectable market. The chosen one lights up in its own colour. */

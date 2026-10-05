@@ -254,7 +254,7 @@ export function Panel({
           aria-expanded={open}
           aria-controls={`${id}-body`}
           onClick={() => setOpen((was) => !was)}
-          className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 p-5 text-left sm:px-7"
+          className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 p-5 text-left @xl:px-7"
         >
           <span className="text-base font-semibold tracking-tight">{title}</span>
           <TrustBadge trust={trust} />
@@ -277,7 +277,7 @@ export function Panel({
         </button>
       </h2>
       {open && (
-        <div id={`${id}-body`} className="flex flex-col gap-6 border-t border-line p-5 sm:p-7">
+        <div id={`${id}-body`} className="flex flex-col gap-6 border-t border-line p-5 @xl:p-7">
           {trust && (
             <p className="text-sm leading-relaxed text-muted">
               <span className="font-medium text-ink">

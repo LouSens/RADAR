@@ -51,7 +51,7 @@ export function SummaryCard({ asset, summary }: { asset: Asset; summary: Summary
   if (!state && !outlook && !swings && !news) return null;
 
   return (
-    <section className="glass p-5 sm:p-7" aria-labelledby="in-brief">
+    <section className="glass p-5 @xl:p-7" aria-labelledby="in-brief">
       <h2 id="in-brief" className="text-base font-semibold tracking-tight">
         In brief
       </h2>

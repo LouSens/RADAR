@@ -58,7 +58,7 @@ export function MarketStage({
 
   return (
     <section className="glass stage">
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4 p-5 pb-3 sm:p-7 sm:pb-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4 p-5 pb-3 @xl:p-7 @xl:pb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5 text-sm">
             <span
@@ -110,7 +110,7 @@ export function MarketStage({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-3.5 text-xs text-faint sm:px-7">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-3.5 text-xs text-faint @xl:px-7">
         <p>
           {first && last ? (
             <>

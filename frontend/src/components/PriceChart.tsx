@@ -43,8 +43,30 @@ function axisTime(ts: string, timeframe: Timeframe, assetClass: AssetClass): Tim
     : (chartSeconds(ts) as UTCTimestamp);
 }
 
-function themeOptions() {
+/** Whole numbers for large prices, so the scale stays narrow on a phone. */
+function axisPrice(price: number): string {
+  return Math.abs(price) >= 1000
+    ? Math.round(price).toLocaleString("en-US")
+    : price.toFixed(2);
+}
+
+function themeOptions(timeframe: Timeframe) {
   return {
+    localization: { priceFormatter: axisPrice },
+    // The page scrolls past the chart: the wheel and an up-or-down swipe belong to the page.
+    // Dragging sideways moves through time, a pinch or a drag on the time axis zooms.
+    handleScroll: {
+      mouseWheel: false,
+      pressedMouseMove: true,
+      horzTouchDrag: true,
+      vertTouchDrag: false,
+    },
+    handleScale: {
+      mouseWheel: false,
+      pinch: true,
+      axisPressedMouseMove: { time: true, price: false },
+      axisDoubleClickReset: { time: true, price: true },
+    },
     layout: {
       background: { color: "transparent" },
       textColor: cssVar("--muted"),
@@ -61,7 +83,17 @@ function themeOptions() {
       horzLine: { color: cssVar("--line-strong"), labelBackgroundColor: "#1a1c25" },
     },
     rightPriceScale: { borderColor: cssVar("--line") },
-    timeScale: { borderColor: cssVar("--line"), timeVisible: true, secondsVisible: false },
+    timeScale: {
+      borderColor: cssVar("--line"),
+      timeVisible: timeframe === "1Hour",
+      secondsVisible: false,
+      // Never show time with no prices: the view stops at the first and last bar, and
+      // bars may shrink as far as needed for the whole period to fit a narrow screen.
+      fixLeftEdge: true,
+      fixRightEdge: true,
+      minBarSpacing: 0.01,
+      rightOffset: 0,
+    },
   };
 }
 
@@ -81,7 +113,8 @@ export function PriceChart({
 
   useEffect(() => {
     if (!container.current) return;
-    const created = createChart(container.current, { autoSize: true, ...themeOptions() });
+    const host = container.current;
+    const created = createChart(host, { autoSize: true, ...themeOptions(timeframe) });
     const color = cssVar(colorVar);
     series.current =
       kind === "candles"
@@ -102,15 +135,32 @@ export function PriceChart({
     chart.current = created;
 
     const scheme = window.matchMedia("(prefers-color-scheme: dark)");
-    const retheme = () => created.applyOptions(themeOptions());
+    const retheme = () => created.applyOptions(themeOptions(timeframe));
     scheme.addEventListener("change", retheme);
+
+    // When the space changes (a resized window, a rotated phone, the sidebar folding),
+    // fit the whole period to the new width again.
+    let width = host.clientWidth;
+    let frame = 0;
+    const resized =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(() => {
+            if (host.clientWidth === width) return;
+            width = host.clientWidth;
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => created.timeScale().fitContent());
+          });
+    resized?.observe(host);
     return () => {
+      resized?.disconnect();
+      cancelAnimationFrame(frame);
       scheme.removeEventListener("change", retheme);
       created.remove();
       chart.current = null;
       series.current = null;
     };
-  }, [kind, colorVar]);
+  }, [kind, colorVar, timeframe]);
 
   useEffect(() => {
     const target = series.current;

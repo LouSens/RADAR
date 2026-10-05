@@ -74,7 +74,7 @@ export function RegimePanel({ asset, trust, defaultOpen }: PanelProps) {
       defaultOpen={defaultOpen}
       headline={`${title(regime.label)}, ${days(regime.days_in_state)} so far`}
     >
-      <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
+      <div className="grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
           <div className="flex items-center gap-3">
             <span
@@ -102,7 +102,7 @@ export function RegimePanel({ asset, trust, defaultOpen }: PanelProps) {
 
         <div>
           <Timeline regime={regime} />
-          <div className="mt-5 grid grid-cols-1 gap-x-6 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-x-6 @xl:grid-cols-3">
             {regime.states.map((state) => {
               const next = Object.entries(state.next_states).sort((a, b) => b[1] - a[1])[0];
               return (

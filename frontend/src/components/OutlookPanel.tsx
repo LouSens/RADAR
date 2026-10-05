@@ -312,7 +312,7 @@ export function OutlookPanel({ asset, trust, defaultOpen }: PanelProps) {
         <Segmented options={HORIZONS} value={key} onChange={setKey} label="How far ahead" />
       </div>
 
-      <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
+      <div className="grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
           {main && (
             <>
@@ -359,7 +359,7 @@ export function OutlookPanel({ asset, trust, defaultOpen }: PanelProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-x-12 gap-y-7 border-t border-line pt-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]">
+      <div className="grid grid-cols-1 gap-x-12 gap-y-7 border-t border-line pt-6 @4xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]">
         <div>
           <Fan simulation={simulation} steps={horizon.steps} colorVar={colorVar} />
           <Caption>

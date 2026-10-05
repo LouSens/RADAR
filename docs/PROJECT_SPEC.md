@@ -574,10 +574,14 @@ Eight phases. Each ends in something that runs and can be shown.
 
 ### Phase 5: Relationship and portfolio
 
-1. F5 and its screen, and F8 with the Drivers tab.
-2. F6: holdings sources, risk model, allocations, backtest, portfolio simulation, core and satellite report, and the Portfolio screen.
+Reordered around portfolio and cross-market risk (`docs/DECISIONS.md` 035). Each part is its own pull request.
 
-*Done when:* the done-when items for F5, F6, and F8 hold on a sample portfolio fixture, and portfolio tail risk (F10) is shown.
+1. **5A, your portfolio's risk.** F6 holdings sources, risk model, X-ray, stress scenarios; portfolio tail risk (F10); the Portfolio screen.
+2. **5B, how the markets move together.** F5 and its screen; risk transmission between markets; weekend gap risk; F8 with the Drivers tab.
+3. **5C, news and swings.** News volume and tone as inputs to the F9 forecast, kept only if it beats the model shown.
+4. **5D, steadier mixes.** F6 allocations, backtest, portfolio simulation, core and satellite report, rebalancing signal.
+
+*Done when:* the done-when items for F5, F6, and F8 hold on a sample portfolio fixture; portfolio tail risk (F10) is shown; risk transmission and weekend gap risk each state a verdict from a tested rule with its sample size; and the F9 screen says whether news improved the forecast.
 
 ### Phase 6: Signals and brief
 

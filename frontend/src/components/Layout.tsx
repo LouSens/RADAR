@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import type { Asset } from "../api/client";
@@ -62,32 +62,46 @@ function AssetGlyph({ asset, size = 22 }: { asset: Asset; size?: number }) {
   );
 }
 
-/**
- * One quiet dot for the whole system. Green when data and the live feed are both fine;
- * otherwise amber, and the System page says why.
- */
-function SystemDot() {
+/** Whether everything behind the app is fine: stored data and the live feed. */
+function useSystemGood(): boolean {
   const stream = useStreamStatus();
   const health = useHealth().data?.status;
-  const good = stream === "open" && health === "ok";
-  const text = good ? "All systems normal" : "Something needs attention";
+  return stream === "open" && health === "ok";
+}
+
+/**
+ * The System icon with one quiet dot. Green when all is fine; otherwise red, and the
+ * System page says why.
+ */
+function SystemIcon({ good }: { good: boolean }) {
   return (
-    <Link
-      to="/system"
-      title={text}
-      aria-label={`System status: ${text}`}
-      className="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-white/8 hover:text-ink"
-    >
-      <span className="relative">
-        <Icon>{icon.system}</Icon>
-        <span
-          className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-[#12131a] ${
-            good ? "bg-calm" : "bg-alert"
-          }`}
-        />
-      </span>
-    </Link>
+    <span className="relative grid w-[22px] shrink-0 place-items-center">
+      <Icon>{icon.system}</Icon>
+      <span
+        className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-[#12131a] ${
+          good ? "bg-calm" : "bg-alert"
+        }`}
+      />
+    </span>
   );
+}
+
+const WIDE = "(min-width: 1024px)";
+
+/** True when there is room for the full sidebar; narrower screens get the icon rail. */
+function useWide(): boolean {
+  const [wide, setWide] = useState(
+    () => typeof window.matchMedia !== "function" || window.matchMedia(WIDE).matches,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia(WIDE);
+    const update = () => setWide(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return wide;
 }
 
 const SECTIONS = [
@@ -122,16 +136,16 @@ const tab = ({ isActive }: { isActive: boolean }) =>
 function Sidebar({
   primary,
   collapsed,
+  canToggle,
   onToggle,
 }: {
   primary: Asset[];
   collapsed: boolean;
+  canToggle: boolean;
   onToggle: () => void;
 }) {
   const { pathname } = useLocation();
-  const stream = useStreamStatus();
-  const health = useHealth().data?.status;
-  const good = stream === "open" && health === "ok";
+  const good = useSystemGood();
   const hidden = collapsed ? "sr-only" : "truncate";
   return (
     <aside
@@ -144,7 +158,9 @@ function Sidebar({
           <RadarMark />
           <span className={`text-[15px] font-bold tracking-[0.14em] ${hidden}`}>RADAR</span>
         </Link>
-        {!collapsed && <CollapseButton collapsed={collapsed} onToggle={onToggle} />}
+        {!collapsed && canToggle && (
+          <CollapseButton collapsed={collapsed} onToggle={onToggle} />
+        )}
       </div>
 
       <nav aria-label="Main" className="mt-4 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
@@ -188,20 +204,15 @@ function Sidebar({
 
       <div className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
         <NavLink to="/system" className={sideLink} title="System">
-          <span className="relative grid w-[22px] shrink-0 place-items-center">
-            <Icon>{icon.system}</Icon>
-            <span
-              className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-[#12131a] ${
-                good ? "bg-calm" : "bg-alert"
-              }`}
-            />
-          </span>
+          <SystemIcon good={good} />
           <span className={hidden}>System</span>
           <span className="sr-only">
             : {good ? "all systems normal" : "something needs attention"}
           </span>
         </NavLink>
-        {collapsed && <CollapseButton collapsed={collapsed} onToggle={onToggle} />}
+        {collapsed && canToggle && (
+          <CollapseButton collapsed={collapsed} onToggle={onToggle} />
+        )}
       </div>
     </aside>
   );
@@ -227,7 +238,11 @@ function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
 
 export function Layout() {
   const primary = useAssets().data?.filter((a) => a.is_primary) ?? [];
-  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [preferCollapsed, setCollapsed] = useState(readCollapsed);
+  const wide = useWide();
+  const good = useSystemGood();
+  // Between a phone and a full desktop there is only room for the icon rail.
+  const collapsed = preferCollapsed || !wide;
 
   function toggle() {
     setCollapsed((was) => {
@@ -242,27 +257,15 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Sidebar primary={primary} collapsed={collapsed} onToggle={toggle} />
+      <Sidebar primary={primary} collapsed={collapsed} canToggle={wide} onToggle={toggle} />
 
-      {/* Phones keep a slim bar on top and tabs within thumb reach, as an app would. */}
-      <header className="pointer-events-none fixed inset-x-0 top-0 z-40 px-3 pt-3 md:hidden">
-        <div className="capsule pointer-events-auto mx-auto flex h-[52px] items-center rounded-full pl-4 pr-2">
-          <Link to="/" className="flex items-center gap-2.5" aria-label="RADAR home">
-            <RadarMark />
-            <span className="text-[15px] font-bold tracking-[0.14em]">RADAR</span>
-          </Link>
-          <div className="ml-auto">
-            <SystemDot />
-          </div>
-        </div>
-      </header>
-
+      {/* Phones navigate with the tabs at the bottom, within thumb reach; nothing on top. */}
       <div
-        className={`flex flex-1 flex-col transition-[padding] duration-300 ${
+        className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ${
           collapsed ? "md:pl-[80px]" : "md:pl-[244px]"
         }`}
       >
-        <main className="pb-tabbar mx-auto w-full max-w-[1200px] flex-1 px-4 pt-[5.25rem] sm:px-6 md:pt-8">
+        <main className="page pb-tabbar @container mx-auto w-full max-w-[1280px] flex-1">
           <Outlet />
           <p className="mt-12 max-w-[78ch] text-xs leading-relaxed text-faint">
             RADAR is an analytics tool for information and education. It is not financial advice and
@@ -288,8 +291,11 @@ export function Layout() {
             </NavLink>
           ))}
           <NavLink to="/system" className={tab}>
-            <Icon>{icon.system}</Icon>
+            <SystemIcon good={good} />
             System
+            <span className="sr-only">
+              : {good ? "all systems normal" : "something needs attention"}
+            </span>
           </NavLink>
         </div>
       </nav>
