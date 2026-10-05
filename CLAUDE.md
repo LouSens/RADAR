@@ -9,8 +9,8 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 Update this block at the end of every work session.
 
 - Phase: 0 (in progress)
-- Last completed step: Phase 0 step 1, scaffolding (repo layout, uv project, Compose, Makefile, CI)
-- Next step: Alpaca REST client with recorded fixtures, then `make audit`
+- Last completed step: Phase 0 step 2, Alpaca REST client (`radar/providers/alpaca_rest.py`) with recorded fixtures
+- Next step: `make audit` and `docs/DATA_AUDIT.md`
 - Open questions: see `docs/DATA_AUDIT.md` once Phase 0 has run
 
 ## How to work in this repo
