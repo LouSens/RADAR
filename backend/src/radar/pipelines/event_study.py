@@ -134,24 +134,29 @@ def run_asset(engine: Engine, asset: Asset) -> dict[str, Any] | None:
         log.warning("event_study_skipped", symbol=asset.symbol)
         return None
     regimes = frame["regime"] if frame["regime"].notna().any() else None
-    result = event_study.study(frame["tone"], frame["ret"], regimes).model_dump()
-    result["days_with_news"] = int(frame["tone"].notna().sum())
-    # The same study for each topic on its own. Thin topics report "not enough events".
+    # The overall study and one per topic are a single family of tests: run them all,
+    # then judge them together so that chance findings are not reported.
     with session_scope(engine) as session:
         by_topic = topic_tone(session, asset, pd.DatetimeIndex(frame.index))
-    result["by_topic"] = []
-    for topic in topics.TOPICS:
-        if topic not in by_topic:
-            continue
-        one = event_study.study(by_topic[topic], frame["ret"], regimes)
-        result["by_topic"].append(
-            {
-                "topic": topic,
-                "verdict": one.verdict,
-                "n_events": one.n_events,
-                "days_with_news": int(by_topic[topic].notna().sum()),
-            }
-        )
+    names = [topic for topic in topics.TOPICS if topic in by_topic]
+    family = event_study.correct_family(
+        [
+            event_study.study(frame["tone"], frame["ret"], regimes),
+            *(event_study.study(by_topic[name], frame["ret"], regimes) for name in names),
+        ]
+    )
+    result = family[0].model_dump()
+    result["days_with_news"] = int(frame["tone"].notna().sum())
+    result["tests_in_family"] = sum(len(study.lags) for study in family)
+    result["by_topic"] = [
+        {
+            "topic": name,
+            "verdict": study.verdict,
+            "n_events": study.n_events,
+            "days_with_news": int(by_topic[name].notna().sum()),
+        }
+        for name, study in zip(names, family[1:], strict=True)
+    ]
     days = pd.DatetimeIndex(frame.index)
     with session_scope(engine) as session:
         session.execute(

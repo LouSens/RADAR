@@ -133,3 +133,54 @@ def test_study_says_not_enough_events_for_thin_news() -> None:
     result = es.study(tone, series(rng.normal(0, 0.01, 400)))
     assert result.n_events < 30
     assert result.verdict == "not enough events"
+
+
+def study_with(p_values: dict[int, float], n_events: int = 40) -> es.EventStudy:
+    empty = es.average_path(np.empty((0, 5)))
+    lags = [
+        es.LagCorrelation(lag=k, correlation=0.1, n=1000, significant=p < 0.005, p_value=p)
+        for k, p in p_values.items()
+    ]
+    return es.EventStudy(
+        verdict=es.verdict(n_events, lags),
+        n_events=n_events,
+        n_positive=n_events,
+        n_negative=0,
+        n_days=1000,
+        first_day=None,
+        last_day=None,
+        positive=empty,
+        negative=empty,
+        baseline=empty,
+        lags=lags,
+    )
+
+
+def test_a_family_of_studies_is_judged_together() -> None:
+    quiet = dict.fromkeys(range(-5, 6), 0.6)
+    # A p-value of 0.004 passes on its own, but not as one of 44 tests.
+    lucky = study_with({**quiet, 2: 0.004})
+    assert lucky.verdict == "sentiment leads price"
+    family = es.correct_family([lucky, study_with(quiet), study_with(quiet), study_with(quiet)])
+    assert family[0].verdict == "no measurable relationship"
+    assert not any(lag.significant for lag in family[0].lags)
+
+    # A strong result survives the correction.
+    strong = study_with({**quiet, -1: 1e-9})
+    family = es.correct_family([strong, study_with(quiet), study_with(quiet)])
+    assert family[0].verdict == "price leads sentiment"
+    assert [lag.lag for lag in family[0].lags if lag.significant] == [-1]
+    # Too few events still means no verdict, whatever the p-values.
+    thin = es.correct_family([study_with({**quiet, -1: 1e-9}, n_events=5)])
+    assert thin[0].verdict == "not enough events"
+
+
+def test_lag_p_values_are_small_only_for_real_links() -> None:
+    rng = np.random.default_rng(6)
+    tone = rng.normal(0, 1, 1500)
+    follows = series(0.3 * np.roll(tone, 1) + rng.normal(0, 1, 1500))
+    lags = {c.lag: c for c in es.lead_lag(series(tone), follows)}
+    assert lags[1].p_value is not None
+    assert lags[1].p_value < 1e-10
+    assert lags[-3].p_value is not None
+    assert lags[-3].p_value > 0.01

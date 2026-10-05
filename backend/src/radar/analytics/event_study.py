@@ -21,6 +21,8 @@ import pandas as pd
 from pydantic import BaseModel
 from scipy import stats
 
+from radar.models import evidence
+
 THRESHOLD = 2.0
 ZSCORE_WINDOW = 365
 ZSCORE_MIN = 60
@@ -149,6 +151,8 @@ class LagCorrelation(BaseModel):
     correlation: float
     n: int
     significant: bool
+    # The chance of a correlation this large if there were no link at all.
+    p_value: float | None = None
 
 
 def lead_lag(
@@ -174,6 +178,7 @@ def lead_lag(
                 lag=lag,
                 correlation=correlation,
                 n=n,
+                p_value=float(2.0 * stats.norm.sf(abs(correlation) * np.sqrt(n))),
                 significant=bool(abs(correlation) > critical / np.sqrt(n)),
             )
         )
@@ -198,6 +203,32 @@ def verdict(n_events: int, lags: list[LagCorrelation], minimum: int = MIN_EVENTS
     if tone_first == 0.0 and price_first == 0.0:
         return "no measurable relationship"
     return "sentiment leads price" if tone_first > price_first else "price leads sentiment"
+
+
+def correct_family(studies: list["EventStudy"], minimum: int = MIN_EVENTS) -> list["EventStudy"]:
+    """Re-judge a group of studies run together, allowing for how many tests that is.
+
+    One market's news is tested overall and once per topic, eleven lags each. With that
+    many tests a few would look significant by luck alone. The p-values of every lag in
+    every study are adjusted together (Benjamini-Hochberg), significance is taken from
+    the adjusted values, and each verdict is worked out again.
+    """
+    flat = [lag.p_value for study in studies for lag in study.lags]
+    adjusted = iter(evidence.benjamini_hochberg(flat))
+    corrected = []
+    for study in studies:
+        lags = [
+            lag.model_copy(
+                update={"significant": q is not None and q < evidence.FALSE_DISCOVERY_RATE}
+            )
+            for lag, q in zip(study.lags, adjusted, strict=False)
+        ]
+        corrected.append(
+            study.model_copy(
+                update={"lags": lags, "verdict": verdict(study.n_events, lags, minimum)}
+            )
+        )
+    return corrected
 
 
 class EventStudy(BaseModel):

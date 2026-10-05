@@ -25,6 +25,8 @@ import pandas as pd
 from pydantic import BaseModel
 from scipy import stats
 
+from radar.models import evidence
+
 MODEL_VERSION = "tail-risk-1"
 LEVELS = (0.95, 0.99)
 METHODS = ("historical", "filtered", "simulator")
@@ -179,6 +181,8 @@ class Backtest(BaseModel):
     expected_breaches: float
     breach_rate: float
     kupiec_p_value: float | None
+    # The same, adjusted for how many limits were tested together.
+    kupiec_p_adjusted: float | None = None
     clustering_p_value: float | None
     # False when the breach rate differs measurably from the stated rate.
     reliable: bool
@@ -232,6 +236,21 @@ def backtest(estimates: Estimates, index: pd.DatetimeIndex) -> list[Backtest]:
                 )
             )
     return rows
+
+
+def correct_family(rows: list[Backtest]) -> list[Backtest]:
+    """Re-judge limits that were tested together, allowing for how many there are.
+
+    One market has a limit for every method, level, and horizon. Testing a dozen limits
+    at once would mark some unreliable by luck alone, so the coverage p-values are
+    adjusted together (Benjamini-Hochberg) and reliability is taken from the adjusted
+    value.
+    """
+    adjusted = evidence.benjamini_hochberg([row.kupiec_p_value for row in rows])
+    return [
+        row.model_copy(update={"kupiec_p_adjusted": q, "reliable": q is None or q >= SIGNIFICANCE})
+        for row, q in zip(rows, adjusted, strict=True)
+    ]
 
 
 def choose(rows: list[Backtest]) -> str | None:
