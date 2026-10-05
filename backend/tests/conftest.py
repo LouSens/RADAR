@@ -60,7 +60,8 @@ def session(engine: Engine) -> Iterator[Session]:
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE bars, news_symbols, news_articles, ingestion_runs,"
+                "TRUNCATE bars, sentiment_agg, news_sentiment, news_symbols,"
+                " news_articles, ingestion_runs,"
                 " data_quality_reports, regime_states, model_registry, simulations,"
                 " calibration_reports, volatility_forecasts, risk_metrics, assets"
                 " RESTART IDENTITY CASCADE"

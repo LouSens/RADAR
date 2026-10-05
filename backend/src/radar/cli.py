@@ -211,6 +211,17 @@ def risk() -> int:
     return 0
 
 
+def sentiment() -> int:
+    """Score new articles for tone (needs the nlp extra), then refresh the summaries."""
+    from radar.db.session import make_engine
+    from radar.pipelines import sentiment as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe(), job.load_scorer())
+    log.info("sentiment_done", rows_changed=changed)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -234,6 +245,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "api": (api, "serve the HTTP API and live WebSocket"),
     "volatility": (volatility, "forecast volatility and score the models"),
     "risk": (risk, "estimate tail risk and backtest each method"),
+    "sentiment": (sentiment, "score news for tone and refresh the summaries"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 
