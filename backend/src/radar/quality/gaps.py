@@ -5,13 +5,11 @@ Stock Exchange calendar, including holidays and early closes.
 """
 
 from dataclasses import dataclass, field
-from functools import cache
-from typing import Any
 
-import exchange_calendars as xcals
 import pandas as pd
 
-NEW_YORK = "America/New_York"
+from radar.features.calendars import NEW_YORK, nyse_schedule
+
 FREQUENCY = {"1Hour": "h", "1Day": "D"}
 STEP = {"1Hour": pd.Timedelta(hours=1), "1Day": pd.Timedelta(days=1)}
 
@@ -37,19 +35,6 @@ class GapReport:
         return self.missing / self.expected if self.expected else 0.0
 
 
-@cache
-def _nyse() -> Any:
-    return xcals.get_calendar("XNYS")
-
-
-def _schedule(first: pd.Timestamp, last: pd.Timestamp) -> pd.DataFrame:
-    calendar = _nyse()
-    start = max(first.tz_convert(NEW_YORK).tz_localize(None).normalize(), calendar.first_session)
-    end = min(last.tz_convert(NEW_YORK).tz_localize(None).normalize(), calendar.last_session)
-    schedule: pd.DataFrame = calendar.schedule.loc[start:end]
-    return schedule
-
-
 def expected_crypto(first: pd.Timestamp, last: pd.Timestamp, timeframe: str) -> pd.DatetimeIndex:
     """Every hour, or every UTC midnight, from the first bar to the last."""
     return pd.date_range(first, last, freq=FREQUENCY[timeframe])
@@ -57,7 +42,8 @@ def expected_crypto(first: pd.Timestamp, last: pd.Timestamp, timeframe: str) -> 
 
 def expected_stock_days(first: pd.Timestamp, last: pd.Timestamp) -> pd.DatetimeIndex:
     """One bar per trading session, stamped at midnight New York time."""
-    sessions = _schedule(first, last).index
+    # A daily bar is stamped at midnight, before its session opens, so look a day ahead.
+    sessions = nyse_schedule(first, last + pd.Timedelta(days=1)).index
     stamps = pd.DatetimeIndex(sessions).tz_localize(NEW_YORK).tz_convert("UTC")
     return stamps[(stamps >= first) & (stamps <= last)]
 
@@ -65,13 +51,15 @@ def expected_stock_days(first: pd.Timestamp, last: pd.Timestamp) -> pd.DatetimeI
 def expected_stock_hours(first: pd.Timestamp, last: pd.Timestamp) -> pd.DatetimeIndex:
     """Hourly bars that overlap regular trading hours, early closes included."""
     stamps: list[pd.Timestamp] = []
-    schedule = _schedule(first, last)
+    schedule = nyse_schedule(first, last)
     opens: list[pd.Timestamp] = schedule["open"].tolist()
     closes: list[pd.Timestamp] = schedule["close"].tolist()
     for session_open, session_close in zip(opens, closes, strict=True):
         opened = session_open.tz_convert("UTC").floor("h")
         closed = session_close.tz_convert("UTC")
         stamps.extend(pd.date_range(opened, closed, freq="h", inclusive="left"))
+    if not stamps:
+        return pd.DatetimeIndex([], tz="UTC")
     index = pd.DatetimeIndex(stamps)
     return index[(index >= first) & (index <= last)]
 
