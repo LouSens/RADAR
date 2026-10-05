@@ -115,6 +115,28 @@ class StreamProbe(BaseModel):
     steps: list[tuple[str, str]] = Field(default_factory=list)  # (step, observed)
 
 
+class VenueAgreement(BaseModel):
+    """How far daily closes on another venue sit from the base venue, as |a / b - 1|."""
+
+    symbol: str
+    base: str
+    other: str
+    days: int = 0
+    median_abs_diff: float | None = None
+    p95_abs_diff: float | None = None
+    max_abs_diff: float | None = None
+    max_diff_day: datetime | None = None
+
+
+class PageSize(BaseModel):
+    symbol: str
+    venue: str
+    timeframe: str
+    requested_limit: int
+    bars_in_first_page: int
+    has_next_page: bool
+
+
 class AuditResults(BaseModel):
     generated_at: datetime
     authenticated: bool
@@ -129,6 +151,8 @@ class AuditResults(BaseModel):
     forex: list[HttpProbe] = Field(default_factory=list)
     streams_ran: bool = False
     streams: list[StreamProbe] = Field(default_factory=list)
+    venue_agreement: list[VenueAgreement] = Field(default_factory=list)
+    page_sizes: list[PageSize] = Field(default_factory=list)
 
 
 # --- pure statistics -------------------------------------------------------------------
@@ -183,6 +207,24 @@ def day_boundary(
     return result
 
 
+def venue_agreement(
+    symbol: str, base: str, other: str, base_bars: Iterable[Bar], other_bars: Iterable[Bar]
+) -> VenueAgreement:
+    """Compare daily closes on the days both venues have a bar."""
+    base_close = {b.timestamp: b.close for b in base_bars}
+    diffs = sorted(
+        (abs(b.close / base_close[b.timestamp] - 1.0), b.timestamp)
+        for b in other_bars
+        if b.timestamp in base_close
+    )
+    result = VenueAgreement(symbol=symbol, base=base, other=other, days=len(diffs))
+    if diffs:
+        result.median_abs_diff = diffs[len(diffs) // 2][0]
+        result.p95_abs_diff = diffs[min(len(diffs) - 1, int(0.95 * len(diffs)))][0]
+        result.max_abs_diff, result.max_diff_day = diffs[-1]
+    return result
+
+
 def days_covered(year: int, start: datetime, end: datetime) -> int:
     """Days of `year` that fall inside the audited range [start, end)."""
     lo = max(start.date(), date(year, 1, 1))
@@ -206,6 +248,10 @@ def sum_stats(items: Iterable[BarStats]) -> BarStats:
 
 def _pct(value: float | None) -> str:
     return "n/a" if value is None else f"{100 * value:.1f}%"
+
+
+def _pct2(value: float | None) -> str:
+    return "n/a" if value is None else f"{100 * value:.2f}%"
 
 
 def _ts(value: datetime | None) -> str:
@@ -418,6 +464,55 @@ def render(r: AuditResults) -> str:
             for d in r.day_boundaries
         ),
     )
+
+    out += [
+        "### 2.6 Price agreement between venues",
+        "",
+        "Absolute relative difference of 1Day closes, on days where both venues have a bar.",
+        "",
+    ]
+    if r.venue_agreement:
+        out += _table(
+            ["Symbol", "Venues", "Days compared", "Median", "95th percentile", "Largest (day)"],
+            (
+                [
+                    a.symbol,
+                    f"{a.other} vs {a.base}",
+                    f"{a.days:,}",
+                    _pct2(a.median_abs_diff),
+                    _pct2(a.p95_abs_diff),
+                    f"{_pct2(a.max_abs_diff)} ({_ts(a.max_diff_day)[:10]})",
+                ]
+                for a in r.venue_agreement
+            ),
+        )
+    else:
+        out += ["Not run in this audit.", ""]
+
+    out += [
+        "### 2.7 Page size of historical bar requests",
+        "",
+        "Bars returned in the first page of a request from the earliest bar, and whether the"
+        " API offered a next page. This sets how many calls a backfill needs.",
+        "",
+    ]
+    if r.page_sizes:
+        out += _table(
+            ["Symbol", "Venue", "Timeframe", "Limit requested", "Bars in first page", "More pages"],
+            (
+                [
+                    z.symbol,
+                    z.venue,
+                    z.timeframe,
+                    f"{z.requested_limit:,}",
+                    f"{z.bars_in_first_page:,}",
+                    "yes" if z.has_next_page else "no",
+                ]
+                for z in r.page_sizes
+            ),
+        )
+    else:
+        out += ["Not run in this audit.", ""]
 
     out += ["## 3. News (spec 3.4)", ""]
     news = r.news

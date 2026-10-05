@@ -57,6 +57,7 @@ def audit(args: argparse.Namespace) -> int:
         skip_news=args.skip_news,
         skip_streams=args.skip_streams,
         render_only=args.render_only,
+        resume=args.resume,
     )
 
 
@@ -80,6 +81,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit_parser.add_argument("--skip-streams", action="store_true", help="skip WebSocket probes")
     audit_parser.add_argument(
         "--render-only", action="store_true", help="rebuild the report from the last saved results"
+    )
+    audit_parser.add_argument(
+        "--resume", action="store_true", help="keep saved sections and run only the missing ones"
     )
     for name, phase in NOT_YET.items():
         sub.add_parser(name, help=f"not built yet ({phase})")

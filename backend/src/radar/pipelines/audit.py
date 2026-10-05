@@ -26,16 +26,24 @@ from radar.pipelines.audit_report import (
     MinuteWindow,
     NewsAudit,
     NewsCounts,
+    PageSize,
     RecentVolume,
     StreamProbe,
+    VenueAgreement,
     day_boundary,
     expected_bar_count,
     latest_full_week_start,
     quarterly_week_starts,
     render,
+    venue_agreement,
 )
-from radar.providers.alpaca_rest import AlpacaDataClient, Param
-from radar.providers.alpaca_stream import CRYPTO_STREAM_URL, NEWS_STREAM_URL, StreamSession
+from radar.providers.alpaca_rest import AlpacaDataClient, Param, collect_bars
+from radar.providers.alpaca_stream import (
+    CRYPTO_STREAM_URL,
+    KRAKEN_US_STREAM_URL,
+    NEWS_STREAM_URL,
+    StreamSession,
+)
 from radar.providers.errors import AlpacaError, AlpacaHTTPError
 from radar.providers.schemas import Bar
 
@@ -388,6 +396,7 @@ def probe_stream(
     key_id: SecretStr,
     secret_key: SecretStr,
     also_open: tuple[str, str] | None = None,
+    open_second: bool = True,
 ) -> StreamProbe:
     """Connect, authenticate, subscribe; then open one more connection alongside."""
     probe = StreamProbe(what=what)
@@ -401,6 +410,8 @@ def probe_stream(
         ok = ok and _step(probe, "authenticate", lambda: first.authenticate(key_id, secret_key))
         if ok:
             _step(probe, f"subscribe {dict(channels)}", lambda: first.subscribe(channels))
+        if not open_second:
+            return probe
         other_name, other_url = also_open or ("second connection to the same endpoint", url)
         try:
             second = StreamSession(other_url)
@@ -431,7 +442,61 @@ def probe_streams(key_id: SecretStr, secret_key: SecretStr) -> list[StreamProbe]
             secret_key,
             also_open=("news stream alongside", NEWS_STREAM_URL),
         ),
+        probe_stream(
+            "Crypto stream, Kraken US location (`us-1`)",
+            KRAKEN_US_STREAM_URL,
+            {"bars": PRIMARY, "trades": ["BTC/USD"]},
+            key_id,
+            secret_key,
+            open_second=False,
+        ),
     ]
+
+
+def probe_venue_agreement(client: AlpacaDataClient) -> list[VenueAgreement]:
+    """Daily closes on the Kraken location against Alpaca's own venue."""
+    results: list[VenueAgreement] = []
+    for symbol in PRIMARY:
+        try:
+            daily = {
+                loc: collect_bars(
+                    client.iter_crypto_bar_pages([symbol], "1Day", CRYPTO_EPOCH, loc=loc)
+                ).get(symbol, [])
+                for loc in ("us", "us-1")
+            }
+        except AlpacaError as exc:
+            log.warning("audit_venue_agreement_failed", symbol=symbol, error=_describe(exc))
+            continue
+        results.append(venue_agreement(symbol, "us", "us-1", daily["us"], daily["us-1"]))
+    return results
+
+
+def probe_page_sizes(client: AlpacaDataClient) -> list[PageSize]:
+    limit = 10_000
+    results: list[PageSize] = []
+    for symbol in PRIMARY:
+        for loc in ("us", "us-1"):
+            for timeframe in ("1Day", "1Hour", "1Min"):
+                try:
+                    page = next(
+                        client.iter_crypto_bar_pages(
+                            [symbol], timeframe, CRYPTO_EPOCH, loc=loc, limit=limit, max_pages=1
+                        )
+                    )
+                except AlpacaError as exc:
+                    log.warning("audit_page_size_failed", symbol=symbol, error=_describe(exc))
+                    continue
+                results.append(
+                    PageSize(
+                        symbol=symbol,
+                        venue=loc,
+                        timeframe=timeframe,
+                        requested_limit=limit,
+                        bars_in_first_page=len(page.bars.get(symbol, [])),
+                        has_next_page=page.next_page_token is not None,
+                    )
+                )
+    return results
 
 
 # --- orchestration ---------------------------------------------------------------------
@@ -451,8 +516,10 @@ def run_audit(
     skip_news: bool = False,
     skip_streams: bool = False,
     render_only: bool = False,
+    resume: bool = False,
     settings: Settings | None = None,
 ) -> int:
+    """Run the audit. With `resume`, keep saved sections and run only the missing ones."""
     if render_only:
         results = AuditResults.model_validate_json(RESULTS_PATH.read_text(encoding="utf-8"))
         REPORT_PATH.write_text(render(results), encoding="utf-8", newline="\n")
@@ -465,31 +532,46 @@ def run_audit(
         return 1
 
     now = datetime.now(UTC).replace(microsecond=0)
-    results = AuditResults(generated_at=now, authenticated=True)
-    with AlpacaDataClient(key_id, secret_key) as client:
-        results.access = probe_access(client, now)
-        results.rate_limit_headers = dict(client.last_rate_limit)
-        results.forex = probe_forex(client, now)
-        log.info("audit_step_done", step="access_and_forex")
+    if resume and RESULTS_PATH.exists():
+        results = AuditResults.model_validate_json(RESULTS_PATH.read_text(encoding="utf-8"))
+        now = results.generated_at
+    else:
+        results = AuditResults(generated_at=now, authenticated=True)
+
+    def done(step: str) -> None:
+        log.info("audit_step_done", step=step)
         write_outputs(results)  # checkpoint after every step so a stopped run keeps its work
 
-        if not skip_streams:
+    with AlpacaDataClient(key_id, secret_key) as client:
+        if not results.access:
+            results.access = probe_access(client, now)
+            results.rate_limit_headers = dict(client.last_rate_limit)
+            results.forex = probe_forex(client, now)
+            done("access_and_forex")
+        if not skip_streams and len(results.streams) < 4:
             results.streams_ran = True
             results.streams = probe_streams(key_id, secret_key)
-            log.info("audit_step_done", step="streams")
-            write_outputs(results)
-
-        results.earliest = probe_earliest(client)
-        log.info("audit_step_done", step="earliest")
-        write_outputs(results)
-        results.history, results.recent_volume, results.day_boundaries = probe_history(client, now)
-        write_outputs(results)
-        results.minute_windows = probe_minute_windows(client, results.earliest, now)
-        write_outputs(results)  # keep the bar results even if the long news scan fails
-
-        if not skip_news:
+            done("streams")
+        if not results.earliest:
+            results.earliest = probe_earliest(client)
+            done("earliest")
+        if not results.page_sizes:
+            results.page_sizes = probe_page_sizes(client)
+            done("page_sizes")
+        if not results.venue_agreement:
+            results.venue_agreement = probe_venue_agreement(client)
+            done("venue_agreement")
+        if not results.history:
+            results.history, results.recent_volume, results.day_boundaries = probe_history(
+                client, now
+            )
+            done("history")
+        if not results.minute_windows:
+            results.minute_windows = probe_minute_windows(client, results.earliest, now)
+            done("minute_windows")
+        if not skip_news and not results.news.ran:
             start = datetime(news_start_year, 1, 1, tzinfo=UTC)
             results.news = probe_news(client, start, now)
-            log.info("audit_step_done", step="news", articles=results.news.articles)
+            done("news")
     write_outputs(results)
     return 0

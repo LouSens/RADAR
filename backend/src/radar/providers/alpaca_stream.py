@@ -17,6 +17,7 @@ from radar.providers.errors import DisallowedURLError
 
 STREAM_HOST = "stream.data.alpaca.markets"
 CRYPTO_STREAM_URL = f"wss://{STREAM_HOST}/v1beta3/crypto/us"
+KRAKEN_US_STREAM_URL = f"wss://{STREAM_HOST}/v1beta3/crypto/us-1"
 NEWS_STREAM_URL = f"wss://{STREAM_HOST}/v1beta1/news"
 
 CONTROL_TYPES = frozenset({"success", "error", "subscription"})

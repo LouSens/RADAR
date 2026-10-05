@@ -15,6 +15,7 @@ from radar.pipelines.audit_report import (
     latest_full_week_start,
     quarterly_week_starts,
     render,
+    venue_agreement,
 )
 from radar.providers.schemas import Bar
 
@@ -132,7 +133,7 @@ def test_render_reports_measurements_and_skipped_sections() -> None:
     assert "40.0%" in text  # quote-only share over full history
     assert "| BTC/USD | us | 2024 | 1 | 100.0% | 21.4% | 10.0% | 50.0% |" in text
     assert "invalid pair" in text
-    assert text.count("Not run in this audit.") == 2  # streams and news
+    assert text.count("Not run in this audit.") == 4  # streams, venues, page sizes, news
     assert text.endswith("\n")
 
 
@@ -158,3 +159,24 @@ def test_render_news_rates_use_days_covered() -> None:
     assert "| GLD | none | 730 |" in text
     assert "| GLD | 2.00 (80.0%) |" in text
     assert "| connect | success |" in text
+
+
+def test_venue_agreement_compares_only_shared_days() -> None:
+    t0 = datetime(2024, 1, 1, tzinfo=UTC)
+
+    def close(day: int, price: float) -> Bar:
+        ts = t0 + day * DAY
+        return Bar.model_validate(
+            {"t": ts, "o": price, "h": price, "l": price, "c": price, "v": 1, "n": 1, "vw": price}
+        )
+
+    base = [close(0, 100), close(1, 100), close(2, 100)]
+    other = [close(0, 100), close(1, 101), close(2, 110), close(3, 500)]
+    result = venue_agreement("PAXG/USD", "us", "us-1", base, other)
+    assert result.days == 3
+    assert result.median_abs_diff is not None
+    assert abs(result.median_abs_diff - 0.01) < 1e-12
+    assert result.max_abs_diff is not None
+    assert abs(result.max_abs_diff - 0.10) < 1e-12
+    assert result.max_diff_day == t0 + 2 * DAY
+    assert venue_agreement("X", "us", "us-1", [], other).median_abs_diff is None
