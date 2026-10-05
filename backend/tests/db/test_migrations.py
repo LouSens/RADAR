@@ -28,6 +28,7 @@ TABLES = {
     "news_sentiment",
     "sentiment_agg",
     "news_topics",
+    "forecast_log",
 }
 
 

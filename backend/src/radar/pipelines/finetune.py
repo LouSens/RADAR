@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from radar.db.models import ModelRegistry, NewsArticle
 from radar.db.session import session_scope
 from radar.logging import get_logger
-from radar.models import classification, dataset, finetune, sentiment
+from radar.models import classification, dataset, evidence, finetune, sentiment
 from radar.models.lexicon import Lexicon
 from radar.pipelines.labels import load_labels
 
@@ -264,6 +264,8 @@ def replicate(engine: Engine, *, lexicon: Lexicon | None = None) -> dict[str, An
         "base": base.model_dump(),
         "fine_tuned": tuned.model_dump(),
         "comparison": comparison.model_dump(),
+        "direction": evidence.direction(truth, tuned_labels).model_dump(),
+        "direction_base": evidence.direction(truth, base_labels).model_dump(),
         "by_symbol": {
             symbol: {
                 "n": len(index),

@@ -22,7 +22,7 @@ from radar.db.models import (
 from radar.db.session import session_scope
 from radar.features.calendars import nyse_schedule
 from radar.logging import get_logger
-from radar.models import classification, sentiment, topics
+from radar.models import classification, evidence, sentiment, topics
 from radar.models.lexicon import Lexicon
 from radar.pipelines.finetune import adopted_model
 from radar.pipelines.labels import load_labels
@@ -316,6 +316,7 @@ def evaluate(
         "n_labelled": len(labels),
         "labelled_by": sorted(set(labels["labelled_by"])),
         "model": classification.report(truth, predicted, sentiment.LABELS).model_dump(),
+        "direction": evidence.direction(truth, predicted).model_dump(),
         "by_symbol": {
             symbol: classification.report(
                 [truth[i] for i in group], [predicted[i] for i in group], sentiment.LABELS

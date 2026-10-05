@@ -49,6 +49,8 @@ from radar.api.schemas import (
     SeriesStatus,
     SimulationOut,
     TopicSummary,
+    TrackRecordOut,
+    TrackRecordRow,
     VolatilityHorizonOut,
     VolatilityOut,
     VolatilityPoint,
@@ -71,9 +73,11 @@ from radar.db.models import (
 )
 from radar.models import simulator, topics
 from radar.pipelines import event_study as event_study_job
+from radar.pipelines import finetune as finetune_job
 from radar.pipelines import risk as risk_job
 from radar.pipelines import sentiment as sentiment_job
 from radar.pipelines import simulation as simulation_job
+from radar.pipelines import track as track_job
 from radar.pipelines import volatility as volatility_job
 from radar.pipelines.regime import current_model
 from radar.universe import Asset, Universe
@@ -488,6 +492,37 @@ def _topic_summary(
     ]
 
 
+def _accuracy(session: Session, version: str) -> SentimentAccuracyOut | None:
+    """Accuracy of the tone model in use, from the best evidence stored for it.
+
+    A fine-tuned model is judged on its held-out test headlines, which are later than
+    everything it was trained on. The original model is judged on the reference sample.
+    """
+    reference = session.scalars(
+        select(ModelRegistry)
+        .where(ModelRegistry.name == sentiment_job.MODEL_NAME, ModelRegistry.is_current)
+        .order_by(ModelRegistry.trained_at.desc())
+        .limit(1)
+    ).first()
+    stored = reference.metrics if reference is not None and reference.version == version else {}
+    tuned = finetune_job.adopted_model(session)
+    if tuned is not None and tuned.version == version and "replication" in tuned.metrics:
+        test = tuned.metrics["replication"]
+        return SentimentAccuracyOut.model_validate(
+            {
+                "labelled_by": tuned.metrics.get("labelled_by", []),
+                "model": test["fine_tuned"],
+                "original": test["base"],
+                "baseline": test.get("baseline"),
+                "direction": test.get("direction"),
+                "topics": stored.get("topics"),
+                "held_out": True,
+                "fine_tuned": True,
+            }
+        )
+    return SentimentAccuracyOut.model_validate(stored) if stored else None
+
+
 @router.get("/assets/{symbol:path}/sentiment", response_model=SentimentOut)
 def get_sentiment(
     symbol: str,
@@ -519,15 +554,7 @@ def get_sentiment(
         raise HTTPException(status_code=404, detail=f"No news tone for {asset.symbol} yet")
     version = daily[-1].model_version
     since = daily[0].ts
-    registered = session.scalars(
-        select(ModelRegistry)
-        .where(ModelRegistry.name == sentiment_job.MODEL_NAME, ModelRegistry.is_current)
-        .order_by(ModelRegistry.trained_at.desc())
-        .limit(1)
-    ).first()
-    accuracy = None
-    if registered is not None and registered.version == version:
-        accuracy = SentimentAccuracyOut.model_validate(registered.metrics)
+    accuracy = _accuracy(session, version)
     return SentimentOut(
         symbol=asset.symbol,
         model_version=version,
@@ -560,6 +587,20 @@ def get_event_study(symbol: str, universe: UniverseDep, session: SessionDep) -> 
             "computed_at": stored.trained_at,
             "min_events": stored.params["min_events"],
         }
+    )
+
+
+@router.get("/assets/{symbol:path}/track-record", response_model=TrackRecordOut)
+def get_track_record(symbol: str, universe: UniverseDep, session: SessionDep) -> TrackRecordOut:
+    """How forecasts logged on the day they were made have turned out since."""
+    asset = find_asset(universe, symbol)
+    rows = track_job.summary(session, asset.symbol)
+    return TrackRecordOut(
+        symbol=asset.symbol,
+        recording_since=min((r.first_as_of for r in rows), default=None),
+        recorded=sum(r.recorded for r in rows),
+        resolved=sum(r.resolved for r in rows),
+        rows=[TrackRecordRow.model_validate(r.model_dump()) for r in rows],
     )
 
 

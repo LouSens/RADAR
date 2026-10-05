@@ -6,7 +6,9 @@ Every timestamp is timezone-aware UTC. The frontend converts to the viewer's zon
 from datetime import date
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, model_validator
+
+from radar.models import evidence
 
 
 class AssetOut(BaseModel):
@@ -216,11 +218,28 @@ class CalibrationRowOut(BaseModel):
     empirical: float
     empirical_conformal: float
     n: int
+    # 95% range for each share. Forecasts several steps ahead overlap, so the range is
+    # worked out from the number of periods that do not overlap (n divided by steps).
+    empirical_low: float | None = None
+    empirical_high: float | None = None
+    conformal_low: float | None = None
+    conformal_high: float | None = None
     # Average pinball loss; lower is better. The baseline is a constant-volatility random walk.
     pinball_model: float
     pinball_baseline: float
     first_origin: date
     last_origin: date
+
+    @model_validator(mode="after")
+    def _ranges(self) -> "CalibrationRowOut":
+        independent = max(self.n // max(self.steps, 1), 1)
+        self.empirical_low, self.empirical_high = evidence.share_interval(
+            self.empirical, independent
+        )
+        self.conformal_low, self.conformal_high = evidence.share_interval(
+            self.empirical_conformal, independent
+        )
+        return self
 
 
 class CalibrationOut(BaseModel):
@@ -286,10 +305,21 @@ class RiskMethodOut(BaseModel):
     breaches: int
     expected_breaches: float
     breach_rate: float
+    # 95% range for the breach rate.
+    breach_rate_low: float | None = None
+    breach_rate_high: float | None = None
     kupiec_p_value: float | None
+    # The same p-value adjusted for the number of limits tested together.
+    kupiec_p_adjusted: float | None = None
     clustering_p_value: float | None
-    # False when the limit was broken measurably more or less often than stated.
+    # False when the limit was broken measurably more or less often than stated, after
+    # allowing for the number of limits tested.
     reliable: bool
+
+    @model_validator(mode="after")
+    def _ranges(self) -> "RiskMethodOut":
+        self.breach_rate_low, self.breach_rate_high = evidence.wilson(self.breaches, self.n)
+        return self
 
 
 class RiskLevelOut(BaseModel):
@@ -347,6 +377,23 @@ class ClassifierScoreOut(BaseModel):
     n: int
     accuracy: float
     macro_f1: float
+    # 95% range for the accuracy, given the number of headlines.
+    accuracy_low: float | None = None
+    accuracy_high: float | None = None
+
+    @model_validator(mode="after")
+    def _ranges(self) -> "ClassifierScoreOut":
+        self.accuracy_low, self.accuracy_high = evidence.share_interval(self.accuracy, self.n)
+        return self
+
+
+class DirectionOut(BaseModel):
+    n: int
+    # Share of headlines given the opposite tone to their label (positive for negative).
+    opposite_rate: float
+    # Where label and model both took a side, how often it was the same side.
+    both_polar: int
+    same_direction: float | None
 
 
 class SentimentAccuracyOut(BaseModel):
@@ -358,6 +405,13 @@ class SentimentAccuracyOut(BaseModel):
     baseline: ClassifierScoreOut | None = None
     # The same for assigning a topic. Null until topics have been measured.
     topics: ClassifierScoreOut | None = None
+    # The original model on the same headlines, when a fine-tuned one is in use.
+    original: ClassifierScoreOut | None = None
+    direction: DirectionOut | None = None
+    # True when the figures come from headlines later than everything the model was
+    # trained on. False when they come from the earlier reference sample.
+    held_out: bool = False
+    fine_tuned: bool = False
 
 
 class TopicSummary(BaseModel):
@@ -427,5 +481,35 @@ class EventStudyOut(BaseModel):
     negative: EventPathOut
     baseline: EventPathOut
     lags: list[LagOut]
+    # How many tests were judged together when deciding significance.
+    tests_in_family: int | None = None
     # The same verdict for each news topic on its own. Empty until articles have topics.
     by_topic: list[TopicVerdict] = []
+
+
+class TrackRecordRow(BaseModel):
+    # "outlook_range", "volatility", or "loss_limit".
+    kind: str
+    horizon_days: int
+    key: str
+    # Forecasts written down, and how many of those have an outcome so far.
+    recorded: int
+    resolved: int
+    held: int | None
+    held_share: float | None
+    held_low: float | None
+    held_high: float | None
+    expected_share: float | None
+    forecast_to_outcome: float | None
+    first_as_of: AwareDatetime
+    last_as_of: AwareDatetime
+
+
+class TrackRecordOut(BaseModel):
+    """Forecasts logged on the day they were made and scored afterwards. Not a backtest."""
+
+    symbol: str
+    recording_since: AwareDatetime | None
+    recorded: int
+    resolved: int
+    rows: list[TrackRecordRow]

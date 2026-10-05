@@ -227,6 +227,7 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets/{symbol}/risk",
         "/api/v1/assets/{symbol}/sentiment",
         "/api/v1/assets/{symbol}/event-study",
+        "/api/v1/assets/{symbol}/track-record",
         "/api/v1/health",
     }
     assert {"AssetOut", "BarsOut", "HealthOut", "LiveBar", "LiveNews"} <= set(
@@ -408,20 +409,14 @@ def test_simulation_level_and_calibration_routes(client: TestClient, session: Se
     assert negative.status_code == 422
 
     report = client.get("/api/v1/assets/btc-usd/calibration").json()
-    assert report["rows"] == [
-        {
-            "horizon_days": 7,
-            "steps": 7,
-            "nominal": 0.8,
-            "empirical": 0.833,
-            "empirical_conformal": 0.803,
-            "n": 1595,
-            "pinball_model": 0.0101,
-            "pinball_baseline": 0.0102,
-            "first_origin": "2022-05-17",
-            "last_origin": "2026-09-27",
-        }
-    ]
+    (row,) = report["rows"]
+    assert (row["horizon_days"], row["nominal"], row["n"]) == (7, 0.8, 1595)
+    assert (row["empirical"], row["empirical_conformal"]) == (0.833, 0.803)
+    assert (row["first_origin"], row["last_origin"]) == ("2022-05-17", "2026-09-27")
+    # The range allows for overlap: 1,595 weekly forecasts are about 227 separate weeks.
+    assert row["empirical_low"] == pytest.approx(0.779, abs=0.003)
+    assert row["empirical_high"] == pytest.approx(0.876, abs=0.003)
+    assert row["conformal_low"] < 0.8 < row["conformal_high"]
 
 
 def test_volatility_route_serves_the_shown_model(client: TestClient, session: Session) -> None:
@@ -686,7 +681,12 @@ def test_sentiment_route_serves_tone_articles_and_accuracy(
     assert [a["id"] for a in body["most_positive"]] == [1, 4]
     assert [a["id"] for a in body["most_negative"]] == [2]
     assert body["most_positive"][0]["url"] == "https://example.test/1"
-    assert body["accuracy"]["model"] == {"n": 200, "accuracy": 0.7, "macro_f1": 0.68}
+    model = body["accuracy"]["model"]
+    assert (model["n"], model["accuracy"], model["macro_f1"]) == (200, 0.7, 0.68)
+    # 70% of 200 headlines is a range, not a point.
+    assert model["accuracy_low"] == pytest.approx(0.633, abs=0.002)
+    assert model["accuracy_high"] == pytest.approx(0.759, abs=0.002)
+    assert body["accuracy"]["held_out"] is False
     assert body["most_negative"][0]["topic"] == "security"
     # Topics over the same window, most common first, repeats left out.
     assert body["topics"] == [

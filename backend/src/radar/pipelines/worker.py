@@ -21,6 +21,7 @@ from radar.pipelines import regime as regime_job
 from radar.pipelines import risk as risk_job
 from radar.pipelines import sentiment as sentiment_job
 from radar.pipelines import simulation as simulation_job
+from radar.pipelines import track as track_job
 from radar.pipelines import volatility as volatility_job
 from radar.pipelines.quality import run_quality
 from radar.providers.alpaca_rest import AlpacaDataClient
@@ -174,6 +175,15 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             hour=1,
             minute=40,
             id="event-study",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Live track record: write down what is being shown, score what has come due.
+        scheduler.add_job(
+            partial(track_job.run, engine, universe),
+            "cron",
+            minute=40,
+            id="track-record",
             max_instances=1,
             coalesce=True,
         )
