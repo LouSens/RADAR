@@ -89,7 +89,7 @@ follow_imports = "skip"
 
 [[tool.mypy.overrides]]
 # Jupyter's libraries ship without type hints.
-module = ["build_notebook"]
+module = ["build_notebook", "build_notebooks"]
 disallow_untyped_calls = false
 
 [tool.pytest.ini_options]

@@ -642,8 +642,66 @@ top capsule of decision 023 on larger screens; the rest of 023 stands.
 
 No asset shows news tone leading price. The app states this.
 
+**By topic (added once every article had a topic).** The study was repeated for each
+topic. Price commentary shows `price leads sentiment` for Bitcoin (65 events) and US
+stocks (110). Every other topic with 30 or more events shows `no measurable
+relationship`. No gold topic has enough events.
+
 **Not done in Phase 4**
 
-- The event study by topic. It needs every article to have a topic first; tagging all
-  105,000 articles takes about an hour and was still running when this was written.
 - Re-running the F9 tree model with sentiment as an input (decision 028).
+
+## 031. Fine-tuning the sentiment model, and model notebooks (2026-10-06)
+
+Asked for by the user: fine-tune if it helps, with labels written by Claude, no leakage,
+a proper pipeline, and notebooks that document the models.
+
+**Data.** 1,800 stored headlines (720 Bitcoin, 720 US stocks, 360 gold), drawn at random
+with seed 20261006 and labelled by Claude from the headline alone, in random order and
+without knowing which part each would land in. Stored by article id only in
+`backend/src/radar/sentiment_training_labels.csv`.
+
+**Leakage guards** (`models/dataset.py`, enforced by `pipelines/finetune.check_dataset`
+before any training):
+
+- Headlines are reduced to a key with numbers, case, and punctuation removed; a key
+  appears once in the whole dataset, so templated headlines cannot sit in two parts.
+- No article or headline key is shared with the earlier 200-headline sample.
+- The split is by time: train to 2025-05-09 (1,261), validation to 2026-01-26 (270),
+  test from 2026-01-26 (269).
+- The training function is never given the test part. The epoch is chosen on
+  validation; the test part is scored once, afterwards.
+
+**Settings**, fixed before any result was seen: 4 epochs, learning rate 2e-5, batch 16,
+weight decay 0.01, 10% warm-up, seed 13.
+
+**Rule for adoption**, fixed in advance: the fine-tuned model replaces the original only
+if it is more accurate on the test part and McNemar's test gives p below 0.05.
+
+**Result: not adopted.**
+
+| On the 269 test headlines | Accuracy | Macro F1 |
+|---|---|---|
+| Original FinBERT | 58.7% | 0.593 |
+| Fine-tuned | 63.6% | 0.638 |
+| Word-list baseline | 48.3% | |
+
+The fine-tuned model was right where the original was wrong on 33 headlines and the
+reverse on 20: McNemar p = 0.098. That is not below 0.05, so the app keeps the original
+FinBERT. On the earlier 200-headline sample the fine-tuned model scored 72.5% against
+65.5%, but that sample overlaps the training period in time and does not decide.
+
+**Not done, on purpose.** The settings were not changed and the run was not repeated
+after seeing the test result. Doing so would turn the test part into a tuning set. A
+fair retry needs either a new, later test set, or more labelled headlines so that a
+5-point gain becomes measurable (about 700 test headlines would be needed).
+
+**Caveat stated in the app and the notebook.** The labels are Claude's. Fine-tuning on
+them teaches FinBERT to agree with that labeller, and every accuracy figure here is
+agreement with that labeller, not with human judgement.
+
+**Notebooks.** `notebooks/02` to `06` cover the regime model, the outlook simulation,
+volatility and tail risk, news, and the fine-tuning run. Their sources are plain Python
+files in `notebooks/src/` (percent format), built and executed by
+`backend/scripts/build_notebooks.py`. They import the app's own modules and print no
+article text.

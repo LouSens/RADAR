@@ -9,12 +9,12 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 Update this block at the end of every work session.
 
 - Phase: 4 (news) is built on branch `phase-4-news`; Phases 0 to 3 are merged to `main`
-- Last completed step: Phase 4: tone scoring (F3) with stored aggregates, word-list baseline, 200 labels, topics, the sentiment-versus-price study (F4), routes, the News panel, and the sidebar navigation
-- Next step: finish topic tagging of all stored articles if it is not complete (`uv run radar sentiment` resumes it), then the event study by topic and the F9 tree model with sentiment as an input; then Phase 5 (relationships, macro drivers, portfolio)
+- Last completed step: Phase 4: tone scoring (F3) with stored aggregates, word-list baseline, 200 evaluation labels, topics for every article, the sentiment-versus-price study overall and by topic (F4), routes, the News panel, the sidebar; a leakage-safe fine-tuning pipeline (run once, not adopted: decision 031); and model notebooks 02 to 06
+- Next step: Phase 5 (relationships, macro drivers, portfolio). Still owed from earlier phases: the F9 tree model with sentiment as an input (decision 028)
 - The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
 - Carried forward: shading the price chart by regime is not built (decision 028)
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 030): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 031): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
@@ -66,10 +66,12 @@ uv run radar volatility # forecast volatility for new days and score the models
 uv run radar risk       # estimate tail risk for new days and backtest (run after volatility)
 uv run radar sentiment  # score news tone and topics (needs `uv sync --extra nlp`), refresh summaries,
                         # measure accuracy, rerun the sentiment-versus-price study
+uv run radar finetune   # fine-tune the sentiment model and test it on held-out headlines (needs nlp)
 uv run radar quality    # check stored data, set flags, write data quality reports
 uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
 uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md
 uv run python backend/scripts/build_notebook.py   # rebuild notebooks/01_exploration.ipynb
+uv run python backend/scripts/build_notebooks.py  # rebuild notebooks 02 to 06 from notebooks/src/
 ```
 
 ## Code conventions
