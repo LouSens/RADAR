@@ -321,3 +321,102 @@ class RiskOut(BaseModel):
     horizons: list[RiskHorizonOut]
     # The deepest falls in daily closing prices over the stored history.
     drawdowns: list[DrawdownOut]
+
+
+class SentimentPoint(BaseModel):
+    # When the day ended: midnight UTC for crypto, the market close for stocks.
+    ts: AwareDatetime
+    article_count: int
+    # Average tone of that day's articles, from -1 to +1. Null on a day with none.
+    score_mean: float | None
+    # Average tone of all earlier articles, each one's weight halving every 24 hours.
+    score_decayed: float | None
+
+
+class ArticleOut(BaseModel):
+    id: int
+    created_at: AwareDatetime
+    headline: str
+    url: str | None
+    source: str
+    score: float
+    topic: str | None
+
+
+class ClassifierScoreOut(BaseModel):
+    n: int
+    accuracy: float
+    macro_f1: float
+
+
+class SentimentAccuracyOut(BaseModel):
+    """How the tone model did on headlines labelled by hand."""
+
+    labelled_by: list[str]
+    model: ClassifierScoreOut
+    # A word-count method on the same headlines. Null if the word list is not installed.
+    baseline: ClassifierScoreOut | None = None
+    # The same for assigning a topic. Null until topics have been measured.
+    topics: ClassifierScoreOut | None = None
+
+
+class TopicSummary(BaseModel):
+    topic: str
+    article_count: int
+    score_mean: float
+
+
+class SentimentOut(BaseModel):
+    symbol: str
+    model_version: str
+    # Tone is measured from this date; before it there is too little news.
+    news_start: date
+    as_of: AwareDatetime
+    # Tone now: the decayed average at the latest completed hour.
+    current: float | None
+    articles_24h: int
+    articles_7d: int
+    # Articles in the window, and how many of those days had any.
+    articles_in_window: int
+    days_with_news: int
+    daily: list[SentimentPoint]
+    most_positive: list[ArticleOut]
+    most_negative: list[ArticleOut]
+    topics: list[TopicSummary]
+    accuracy: SentimentAccuracyOut | None
+
+
+class EventPathOut(BaseModel):
+    n: int
+    # Days relative to the event day: -1 is the day before.
+    offsets: list[int]
+    mean: list[float]
+    low: list[float]
+    high: list[float]
+
+
+class LagOut(BaseModel):
+    # Positive: tone came first. Negative: price came first.
+    lag: int
+    correlation: float
+    n: int
+    significant: bool
+
+
+class EventStudyOut(BaseModel):
+    symbol: str
+    computed_at: AwareDatetime
+    # One of: sentiment leads price, price leads sentiment, no measurable relationship,
+    # not enough events.
+    verdict: str
+    n_events: int
+    n_positive: int
+    n_negative: int
+    min_events: int
+    days_with_news: int
+    first_day: date | None
+    last_day: date | None
+    positive: EventPathOut
+    negative: EventPathOut
+    baseline: EventPathOut
+    lags: list[LagOut]

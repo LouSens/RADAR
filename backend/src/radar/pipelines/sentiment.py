@@ -7,15 +7,23 @@ scores, so it runs anywhere.
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import Engine, select, tuple_
+from sqlalchemy import Engine, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from radar.db.models import NewsArticle, NewsSentiment, NewsSymbol, SentimentAggregate
+from radar.db.models import (
+    ModelRegistry,
+    NewsArticle,
+    NewsSentiment,
+    NewsSymbol,
+    SentimentAggregate,
+)
 from radar.db.session import session_scope
 from radar.features.calendars import nyse_schedule
 from radar.logging import get_logger
-from radar.models import sentiment
+from radar.models import classification, sentiment
+from radar.models.lexicon import Lexicon
+from radar.pipelines.labels import load_labels
 from radar.universe import Asset, Universe
 
 log = get_logger(__name__)
@@ -192,3 +200,88 @@ def news_start(asset: Asset) -> pd.Timestamp:
     if asset.news_start is None:
         raise ValueError(f"{asset.symbol} has no news")
     return pd.Timestamp(asset.news_start, tz="UTC")
+
+
+MODEL_NAME = "sentiment"
+
+
+def evaluate(
+    engine: Engine,
+    version: str = sentiment.MODEL_VERSION,
+    lexicon: Lexicon | None = None,
+    labels: pd.DataFrame | None = None,
+) -> dict[str, Any] | None:
+    """Score the model and the word-list rival against the labelled sample, and record it.
+
+    Returns the stored metrics, or None when no labelled article has a score yet.
+    """
+    labels = load_labels() if labels is None else labels
+    with session_scope(engine) as session:
+        rows = session.execute(
+            select(
+                NewsArticle.id,
+                NewsArticle.headline,
+                NewsArticle.summary,
+                NewsSentiment.p_pos,
+                NewsSentiment.p_neg,
+                NewsSentiment.p_neu,
+            )
+            .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
+            .where(
+                NewsArticle.id.in_(labels["article_id"].tolist()),
+                NewsSentiment.model_version == version,
+            )
+        ).all()
+    if not rows:
+        return None
+    scored = pd.DataFrame(
+        rows, columns=["article_id", "headline", "summary", "p_pos", "p_neg", "p_neu"]
+    ).merge(labels, on="article_id")
+    truth = scored["sentiment"].tolist()
+    predicted = [
+        sentiment.LABELS[i]
+        for i in scored[["p_pos", "p_neg", "p_neu"]].to_numpy(dtype=float).argmax(axis=1)
+    ]
+    metrics: dict[str, Any] = {
+        "n_labelled": len(labels),
+        "labelled_by": sorted(set(labels["labelled_by"])),
+        "model": classification.report(truth, predicted, sentiment.LABELS).model_dump(),
+        "by_symbol": {
+            symbol: classification.report(
+                [truth[i] for i in group], [predicted[i] for i in group], sentiment.LABELS
+            ).model_dump(include={"n", "accuracy", "macro_f1"})
+            for symbol, group in scored.groupby("symbol").indices.items()
+        },
+    }
+    if lexicon is not None:
+        texts = [
+            sentiment.article_text(h, s)
+            for h, s in zip(scored["headline"], scored["summary"], strict=True)
+        ]
+        metrics["baseline"] = classification.report(
+            truth, lexicon.labels(texts), sentiment.LABELS
+        ).model_dump()
+    today = pd.Timestamp.now(tz="UTC").date()
+    with session_scope(engine) as session:
+        session.execute(
+            update(ModelRegistry).where(ModelRegistry.name == MODEL_NAME).values(is_current=False)
+        )
+        session.add(
+            ModelRegistry(
+                name=MODEL_NAME,
+                symbol=None,
+                version=version,
+                train_start=today,
+                train_end=today,
+                is_current=True,
+                params={"model_id": sentiment.MODEL_ID},
+                metrics=metrics,
+            )
+        )
+    log.info(
+        "sentiment_evaluated",
+        n=metrics["model"]["n"],
+        accuracy=round(metrics["model"]["accuracy"], 3),
+        macro_f1=round(metrics["model"]["macro_f1"], 3),
+    )
+    return metrics

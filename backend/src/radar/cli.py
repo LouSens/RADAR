@@ -212,13 +212,24 @@ def risk() -> int:
 
 
 def sentiment() -> int:
-    """Score new articles for tone (needs the nlp extra), then refresh the summaries."""
+    """Score new articles for tone (needs the nlp extra), refresh the summaries, measure
+    accuracy against the labelled sample, and rerun the sentiment-versus-price study."""
     from radar.db.session import make_engine
     from radar.pipelines import sentiment as job
     from radar.universe import get_universe
 
-    changed = job.run(make_engine(), get_universe(), job.load_scorer())
-    log.info("sentiment_done", rows_changed=changed)
+    from radar.models.lexicon import DEFAULT_PATH, Lexicon
+    from radar.pipelines import event_study
+
+    engine, universe = make_engine(), get_universe()
+    changed = job.run(engine, universe, job.load_scorer())
+    if DEFAULT_PATH.is_file():
+        job.evaluate(engine, lexicon=Lexicon.load())
+    else:
+        log.warning("word_list_missing", path=str(DEFAULT_PATH))
+        job.evaluate(engine)
+    studies = event_study.run(engine, universe)
+    log.info("sentiment_done", rows_changed=changed, studies=studies)
     return 0
 
 
