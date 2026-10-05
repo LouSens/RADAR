@@ -126,12 +126,12 @@ describe("OutlookPanel", () => {
 
   it("shows nothing until a simulation is stored", () => {
     state.simulation = null;
-    const { container } = render(<OutlookPanel asset={GOLD} defaultOpen />);
+    const { container } = render(<OutlookPanel asset={GOLD} />);
     expect(container).toBeEmptyDOMElement();
   });
 
   it("shows the adjusted 80% range for a week, counted in market sessions", () => {
-    render(<OutlookPanel asset={GOLD} defaultOpen />);
+    render(<OutlookPanel asset={GOLD} />);
     expect(screen.getByText("80% of simulated outcomes after 5 market sessions")).toBeVisible();
     expect(screen.getByText("$344.00 to $372.00")).toBeVisible();
     expect(screen.getByText(/Ranges shown are adjusted/)).toBeVisible();
@@ -139,7 +139,7 @@ describe("OutlookPanel", () => {
   });
 
   it("shows how past ranges held, with the sample size and the baseline comparison", () => {
-    render(<OutlookPanel asset={GOLD} defaultOpen />);
+    render(<OutlookPanel asset={GOLD} />);
     expect(screen.getByText("How past ranges held")).toBeVisible();
     expect(screen.getAllByText("2,197")).toHaveLength(3);
     expect(screen.getByText("79.0%")).toBeVisible();
@@ -150,7 +150,7 @@ describe("OutlookPanel", () => {
   });
 
   it("says when a range has been widened as far as it can go", () => {
-    render(<OutlookPanel asset={GOLD} defaultOpen />);
+    render(<OutlookPanel asset={GOLD} />);
     expect(screen.queryByText(/widened as far as it can go/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "1 month" }));
     expect(screen.getByText("80% of simulated outcomes after 21 market sessions")).toBeVisible();
@@ -160,7 +160,7 @@ describe("OutlookPanel", () => {
   });
 
   it("asks for a level and keeps ending beyond it apart from reaching it", () => {
-    const { rerender } = render(<OutlookPanel asset={GOLD} defaultOpen />);
+    const { rerender } = render(<OutlookPanel asset={GOLD} />);
     const input = screen.getByLabelText("Price in US dollars");
     fireEvent.change(input, { target: { value: "370" } });
     fireEvent.click(screen.getByRole("button", { name: "Check" }));
@@ -182,7 +182,7 @@ describe("OutlookPanel", () => {
       touches: 0.187,
     };
     state.level = { ...state.level, data: answer };
-    rerender(<OutlookPanel asset={GOLD} defaultOpen />);
+    rerender(<OutlookPanel asset={GOLD} />);
     expect(screen.getByText("Ends at or above $370.00")).toBeVisible();
     expect(screen.getByText("11.2%")).toBeVisible();
     expect(screen.getByText("Reaches $370.00 at any daily close")).toBeVisible();
@@ -194,7 +194,7 @@ describe("OutlookPanel", () => {
   });
 
   it("never tells the reader what to do", () => {
-    const { container } = render(<OutlookPanel asset={GOLD} defaultOpen />);
+    const { container } = render(<OutlookPanel asset={GOLD} />);
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 });

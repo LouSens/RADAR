@@ -368,7 +368,7 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
   );
 }
 
-export function NewsPanel({ asset, trust, defaultOpen }: PanelProps) {
+export function NewsPanel({ asset, trust }: PanelProps) {
   const sentiment = useSentiment(asset.slug).data;
   const study = useEventStudy(asset.slug).data;
   if (!sentiment) return null;
@@ -379,7 +379,6 @@ export function NewsPanel({ asset, trust, defaultOpen }: PanelProps) {
       id="news"
       title="News"
       trust={trust}
-      defaultOpen={defaultOpen}
       headline={[toneWord(sentiment.current), study ? VERDICT_SHORT[study.verdict] : undefined]
         .filter(Boolean)
         .join(" · ")}

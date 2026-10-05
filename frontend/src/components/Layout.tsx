@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 
 import type { Asset } from "../api/client";
 import { useStreamStatus } from "../api/live";
@@ -104,14 +104,6 @@ function useWide(): boolean {
   return wide;
 }
 
-const SECTIONS = [
-  { id: "market-state", label: "Market state" },
-  { id: "outlook", label: "Outlook" },
-  { id: "swings", label: "Expected swings" },
-  { id: "risk", label: "Downside risk" },
-  { id: "news", label: "News" },
-  { id: "live-record", label: "Live record" },
-] as const;
 
 const COLLAPSED_KEY = "radar.sidebar.collapsed";
 
@@ -144,7 +136,6 @@ function Sidebar({
   canToggle: boolean;
   onToggle: () => void;
 }) {
-  const { pathname } = useLocation();
   const good = useSystemGood();
   const hidden = collapsed ? "sr-only" : "truncate";
   return (
@@ -183,20 +174,6 @@ function Sidebar({
                 </span>
                 <span className={hidden}>{shortName(asset)}</span>
               </NavLink>
-              {pathname === to && !collapsed && (
-                <ul className="mb-1 ml-[21px] mt-1 border-l border-line pl-3">
-                  {SECTIONS.map((section) => (
-                    <li key={section.id}>
-                      <a
-                        href={`#${section.id}`}
-                        className="block rounded-lg px-2.5 py-1.5 text-[13px] text-muted transition-colors hover:bg-white/5 hover:text-ink"
-                      >
-                        {section.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
           );
         })}

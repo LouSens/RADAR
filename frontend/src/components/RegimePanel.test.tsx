@@ -60,7 +60,7 @@ const REGIME: Regime = {
 describe("RegimePanel", () => {
   it("shows the state with its probability, duration, and evidence", () => {
     query.value = { data: REGIME, isPending: false, isError: false };
-    const { container } = render(<RegimePanel asset={ASSET} defaultOpen />);
+    const { container } = render(<RegimePanel asset={ASSET} />);
     const text = container.textContent ?? "";
     expect(screen.getAllByText("Calm").length).toBeGreaterThan(0);
     expect(text).toContain("97% probability");
@@ -78,13 +78,13 @@ describe("RegimePanel", () => {
       isPending: false,
       isError: false,
     };
-    const { container } = render(<RegimePanel asset={ASSET} defaultOpen />);
+    const { container } = render(<RegimePanel asset={ASSET} />);
     expect(container.textContent).toContain("weak signal");
   });
 
   it("shows nothing when no model has been trained", () => {
     query.value = { data: null, isPending: false, isError: false };
-    const { container } = render(<RegimePanel asset={ASSET} defaultOpen />);
+    const { container } = render(<RegimePanel asset={ASSET} />);
     expect(container).toBeEmptyDOMElement();
   });
 });

@@ -277,7 +277,7 @@ function TrackRecord({
   );
 }
 
-export function OutlookPanel({ asset, trust, defaultOpen }: PanelProps) {
+export function OutlookPanel({ asset, trust }: PanelProps) {
   const simulation = useSimulation(asset.slug).data;
   const calibration = useCalibration(asset.slug).data;
   const [key, setKey] = useState<HorizonKey>("7");
@@ -305,7 +305,6 @@ export function OutlookPanel({ asset, trust, defaultOpen }: PanelProps) {
       id="outlook"
       title="Outlook"
       trust={trust}
-      defaultOpen={defaultOpen}
       headline={weekRange ? `${rangeText(weekRange.low, weekRange.high)} in a week` : undefined}
     >
       <div className="flex justify-end">

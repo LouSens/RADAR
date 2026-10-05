@@ -101,7 +101,7 @@ function Methods({ horizon }: { horizon: RiskHorizon }) {
   );
 }
 
-export function RiskPanel({ asset, trust, defaultOpen }: PanelProps) {
+export function RiskPanel({ asset, trust }: PanelProps) {
   const risk = useRisk(asset.slug).data;
   const [key, setKey] = useState<HorizonKey>("1");
   if (!risk) return null;
@@ -119,7 +119,6 @@ export function RiskPanel({ asset, trust, defaultOpen }: PanelProps) {
       id="risk"
       title="Downside risk"
       trust={trust}
-      defaultOpen={defaultOpen}
       headline={dayLimit ? `${formatShare(dayLimit.var, 1)} one-day loss limit` : undefined}
     >
       <div className="flex justify-end">

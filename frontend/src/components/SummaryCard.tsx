@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 import type { Asset, Summary, Trust } from "../api/client";
 import { formatPrice, formatShare } from "../lib/format";
@@ -24,18 +25,18 @@ const VERDICT: Record<string, string> = {
 
 const days = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
 
-function Line({ trust, href, children }: { trust: Trust; href: string; children: ReactNode }) {
+function Line({ trust, to, children }: { trust: Trust; to: string; children: ReactNode }) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 border-t border-line py-3 first:border-t-0 first:pt-0">
       <p className="min-w-0 flex-1 basis-72 text-[15px] leading-relaxed">{children}</p>
       <span className="flex shrink-0 items-center gap-3">
         <TrustBadge trust={trust} />
-        <a
-          href={href}
+        <Link
+          to={to}
           className="text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
         >
           Evidence
-        </a>
+        </Link>
       </span>
     </li>
   );
@@ -49,6 +50,7 @@ const Figure = ({ children }: { children: ReactNode }) => (
 export function SummaryCard({ asset, summary }: { asset: Asset; summary: Summary }) {
   const { state, outlook, swings, risk, news, trust } = summary;
   if (!state && !outlook && !swings && !news) return null;
+  const base = `/asset/${asset.slug}`;
 
   return (
     <section className="glass p-5 @xl:p-7" aria-labelledby="in-brief">
@@ -57,13 +59,13 @@ export function SummaryCard({ asset, summary }: { asset: Asset; summary: Summary
       </h2>
       <ul className="mt-4">
         {state && (
-          <Line trust={trust.state} href="#market-state">
+          <Line trust={trust.state} to={`${base}/state`}>
             The market is <Figure>{state.label}</Figure>, and has been for{" "}
             <Figure>{days(state.days_in_state)}</Figure>.
           </Line>
         )}
         {outlook && (
-          <Line trust={trust.outlook} href="#outlook">
+          <Line trust={trust.outlook} to={`${base}/outlook`}>
             Over the next {stepsLabel(outlook.steps, asset.trades_continuously)}, 8 in 10 simulated
             outcomes fall between{" "}
             <Figure>
@@ -73,19 +75,19 @@ export function SummaryCard({ asset, summary }: { asset: Asset; summary: Summary
           </Line>
         )}
         {swings && (
-          <Line trust={trust.swings} href="#swings">
+          <Line trust={trust.swings} to={`${base}/swings`}>
             A typical day&apos;s move is expected to be about{" "}
             <Figure>±{formatShare(swings.forecast)}</Figure>, in either direction.
           </Line>
         )}
         {risk && (
-          <Line trust={trust.risk} href="#risk">
+          <Line trust={trust.risk} to={`${base}/risk`}>
             A one-day loss beyond <Figure>{formatShare(risk.limit, 1)}</Figure> should happen on
             about 1 day in 20.
           </Line>
         )}
         {news && (
-          <Line trust={trust.news} href="#news">
+          <Line trust={trust.news} to={`${base}/news`}>
             Recent news is <Figure>{TONE_WORD(news.current)}</Figure>.{" "}
             {news.verdict ? (VERDICT[news.verdict] ?? "") : ""}
           </Line>

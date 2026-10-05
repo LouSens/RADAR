@@ -13,7 +13,7 @@ export function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Overview />} />
-        <Route path="asset/:slug" element={<AssetPage />} />
+        <Route path="asset/:slug/:section?" element={<AssetPage />} />
         <Route path="system" element={<SystemPage />} />
         <Route path="status" element={<Navigate to="/system" replace />} />
         <Route path="*" element={<Message>That page does not exist.</Message>} />

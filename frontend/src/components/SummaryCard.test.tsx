@@ -1,4 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { Asset, Summary } from "../api/client";
@@ -37,11 +39,13 @@ const SUMMARY: Summary = {
   },
 };
 
+const routed = (ui: ReactElement) => <MemoryRouter>{ui}</MemoryRouter>;
+
 describe("SummaryCard", () => {
   afterEach(cleanup);
 
   it("states each answer in a sentence, counting market sessions for a stock", () => {
-    render(<SummaryCard asset={GOLD} summary={SUMMARY} />);
+    render(routed(<SummaryCard asset={GOLD} summary={SUMMARY} />));
     expect(screen.getByText("turbulent")).toBeVisible();
     expect(screen.getByText("3 days")).toBeVisible();
     expect(screen.getByText(/Over the next 5 market sessions, 8 in 10 simulated/)).toBeVisible();
@@ -53,7 +57,7 @@ describe("SummaryCard", () => {
   });
 
   it("puts a trust grade and a link to the evidence beside every statement", () => {
-    render(<SummaryCard asset={GOLD} summary={SUMMARY} />);
+    render(routed(<SummaryCard asset={GOLD} summary={SUMMARY} />));
     expect(screen.getAllByText("Solid")).toHaveLength(3);
     expect(screen.getByText("Fair")).toBeVisible();
     expect(screen.getByText("Rough")).toBeVisible();
@@ -63,38 +67,40 @@ describe("SummaryCard", () => {
     );
     const links = screen.getAllByRole("link", { name: "Evidence" });
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      "#market-state",
-      "#outlook",
-      "#swings",
-      "#risk",
-      "#news",
+      "/asset/gld/state",
+      "/asset/gld/outlook",
+      "/asset/gld/swings",
+      "/asset/gld/risk",
+      "/asset/gld/news",
     ]);
   });
 
   it("lists what changed this week, or says nothing did", () => {
-    const { rerender } = render(<SummaryCard asset={GOLD} summary={SUMMARY} />);
+    const { rerender } = render(routed(<SummaryCard asset={GOLD} summary={SUMMARY} />));
     expect(screen.getByText("Expected daily swings are 22% larger than a week ago.")).toBeVisible();
-    rerender(<SummaryCard asset={GOLD} summary={{ ...SUMMARY, changes: [] }} />);
+    rerender(routed(<SummaryCard asset={GOLD} summary={{ ...SUMMARY, changes: [] }} />));
     expect(screen.getByText("Nothing notable has changed in the past week.")).toBeVisible();
   });
 
   it("leaves out what is not stored and shows nothing when there is nothing at all", () => {
     const { container, rerender } = render(
-      <SummaryCard asset={GOLD} summary={{ ...SUMMARY, news: null, risk: null }} />,
+      routed(<SummaryCard asset={GOLD} summary={{ ...SUMMARY, news: null, risk: null }} />),
     );
     expect(screen.queryByText(/Recent news is/)).toBeNull();
     expect(screen.getAllByRole("link", { name: "Evidence" })).toHaveLength(3);
     rerender(
-      <SummaryCard
-        asset={GOLD}
-        summary={{ ...SUMMARY, state: null, outlook: null, swings: null, risk: null, news: null }}
-      />,
+      routed(
+        <SummaryCard
+          asset={GOLD}
+          summary={{ ...SUMMARY, state: null, outlook: null, swings: null, risk: null, news: null }}
+        />,
+      ),
     );
     expect(container).toBeEmptyDOMElement();
   });
 
   it("never tells the reader what to do", () => {
-    const { container } = render(<SummaryCard asset={GOLD} summary={SUMMARY} />);
+    const { container } = render(routed(<SummaryCard asset={GOLD} summary={SUMMARY} />));
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 });

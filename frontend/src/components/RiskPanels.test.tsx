@@ -116,11 +116,11 @@ describe("VolatilityPanel", () => {
 
   it("shows nothing until a forecast is stored", () => {
     state.volatility = null;
-    expect(render(<VolatilityPanel asset={GOLD} defaultOpen />).container).toBeEmptyDOMElement();
+    expect(render(<VolatilityPanel asset={GOLD} />).container).toBeEmptyDOMElement();
   });
 
   it("shows the forecast beside the last realised value, without a direction", () => {
-    render(<VolatilityPanel asset={GOLD} defaultOpen />);
+    render(<VolatilityPanel asset={GOLD} />);
     expect(
       screen.getByText("Typical daily move expected over the next 1 market session"),
     ).toBeVisible();
@@ -131,7 +131,7 @@ describe("VolatilityPanel", () => {
   });
 
   it("states which method is shown and how the others compare", () => {
-    render(<VolatilityPanel asset={GOLD} defaultOpen />);
+    render(<VolatilityPanel asset={GOLD} />);
     expect(screen.getByText("Shown")).toBeVisible();
     expect(screen.getAllByText("Measurably worse")).toHaveLength(2);
     // The state average scored slightly lower, but not by a measurable margin.
@@ -141,7 +141,7 @@ describe("VolatilityPanel", () => {
   });
 
   it("falls back to the first period when the chosen one is not stored", () => {
-    render(<VolatilityPanel asset={GOLD} defaultOpen />);
+    render(<VolatilityPanel asset={GOLD} />);
     fireEvent.click(screen.getByRole("button", { name: "1 week" }));
     expect(screen.getByText("±1.24%")).toBeVisible();
   });
@@ -163,11 +163,11 @@ describe("RiskPanel", () => {
 
   it("shows nothing until risk figures are stored", () => {
     state.risk = null;
-    expect(render(<RiskPanel asset={GOLD} defaultOpen />).container).toBeEmptyDOMElement();
+    expect(render(<RiskPanel asset={GOLD} />).container).toBeEmptyDOMElement();
   });
 
   it("shows each limit from the best method, with breaches against expected", () => {
-    render(<RiskPanel asset={GOLD} defaultOpen />);
+    render(<RiskPanel asset={GOLD} />);
     expect(screen.getByText("Loss limit for 19 in 20 periods of 1 market session")).toBeVisible();
     expect(screen.getByText("Loss limit for 99 in 100 periods of 1 market session")).toBeVisible();
     expect(screen.getAllByText("2.0%").length).toBeGreaterThan(0);
@@ -177,14 +177,14 @@ describe("RiskPanel", () => {
   });
 
   it("marks a limit that failed its coverage test as unreliable", () => {
-    render(<RiskPanel asset={GOLD} defaultOpen />);
+    render(<RiskPanel asset={GOLD} />);
     // Only the 99% limit of the shown method failed; the 95% one held.
     expect(screen.getAllByText(/Treat it as unreliable/)).toHaveLength(1);
     expect(screen.getByText(/130 of 1,951, unreliable/)).toBeVisible();
   });
 
   it("lists the deepest falls with their dates", () => {
-    render(<RiskPanel asset={GOLD} defaultOpen />);
+    render(<RiskPanel asset={GOLD} />);
     expect(screen.getByText("-26.4%")).toBeVisible();
     expect(screen.getByText(/not yet recovered/)).toBeVisible();
     expect(screen.getByText(/recovered by/)).toBeVisible();
@@ -198,8 +198,8 @@ describe("RiskPanel", () => {
   it("never tells the reader what to do", () => {
     const { container } = render(
       <>
-        <RiskPanel asset={GOLD} defaultOpen />
-        <VolatilityPanel asset={GOLD} defaultOpen />
+        <RiskPanel asset={GOLD} />
+        <VolatilityPanel asset={GOLD} />
       </>,
     );
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);

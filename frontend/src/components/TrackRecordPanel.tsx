@@ -39,7 +39,7 @@ function result(row: Row): string {
   return `${formatCount(row.resolved)} scored`;
 }
 
-export function TrackRecordPanel({ asset, defaultOpen }: PanelProps) {
+export function TrackRecordPanel({ asset }: PanelProps) {
   const record = useTrackRecord(asset.slug).data;
   if (!record || record.rows.length === 0 || !record.recording_since) return null;
   const longest = Math.max(...record.rows.map((row) => row.horizon_days));
@@ -48,7 +48,6 @@ export function TrackRecordPanel({ asset, defaultOpen }: PanelProps) {
     <Panel
       id="live-record"
       title="Live record"
-      defaultOpen={defaultOpen}
       headline={`${formatCount(record.recorded)} logged, ${formatCount(record.resolved)} scored`}
     >
       <header>

@@ -886,3 +886,19 @@ optimisers are in SciPy; Binance is called with the HTTP client already in use.
 **Open for the user:** confirm the order 5A, 5B, 5C, 5D; and say whether a read-only
 Binance key will be in `.env` for 5A (manual entry and CSV work without one).
 
+
+## 036. Market page as tabs with real addresses; sections no longer fold (2026-10-06)
+
+Reported by the user: the folded sections looked inconsistent (the claim and the arrow
+wrapped differently on each), and navigation and routing were poor.
+
+- Each market now has seven pages with their own addresses: `/asset/{slug}` (Summary) and
+  `/asset/{slug}/state`, `/outlook`, `/swings`, `/risk`, `/news`, `/record`. The back
+  button and shared links work. An unknown page goes to Summary.
+- One row of tabs under the market's name is the only way between them, on every screen
+  size; on a phone the row scrolls sideways and keeps the chosen tab in view. The
+  sidebar's list of sections is removed, because it duplicated the tabs.
+- Sections no longer fold. Every one has the same header: its name and trust mark, the
+  claim in one line, why it earned the mark, then the evidence. This replaces the folding
+  in decision 033; "answers first" is kept by the Summary page, whose "Evidence" links go
+  to the matching tab.
