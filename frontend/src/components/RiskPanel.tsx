@@ -1,11 +1,11 @@
 import { useState } from "react";
 
-import type { Asset, RiskHorizon, RiskMethod } from "../api/client";
+import type { RiskHorizon, RiskMethod } from "../api/client";
 import { useRisk } from "../api/queries";
 import { formatCount, formatShare } from "../lib/format";
 import { stepsLabel } from "../lib/outlook";
 import { formatDate } from "../lib/time";
-import { Caption, Segmented } from "./ui";
+import { Caption, Panel, Segmented, type PanelProps } from "./ui";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -101,21 +101,30 @@ function Methods({ horizon }: { horizon: RiskHorizon }) {
   );
 }
 
-export function RiskPanel({ asset }: { asset: Asset }) {
+export function RiskPanel({ asset, trust, defaultOpen }: PanelProps) {
   const risk = useRisk(asset.slug).data;
   const [key, setKey] = useState<HorizonKey>("1");
   if (!risk) return null;
   const horizon = risk.horizons.find((h) => String(h.horizon_days) === key) ?? risk.horizons[0];
   if (!horizon) return null;
+  const day = risk.horizons.find((h) => h.horizon_days === 1);
+  const dayLimit = day?.levels
+    .find((l) => l.level === 0.95)
+    ?.methods.find((m) => m.method === day.shown);
   const period = stepsLabel(horizon.steps, asset.trades_continuously);
   const sample = horizon.levels[0]?.methods[0];
 
   return (
-    <section id="risk" className="glass flex scroll-mt-24 flex-col gap-6 p-5 sm:p-7">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-        <h2 className="text-base font-semibold tracking-tight">Downside risk</h2>
+    <Panel
+      id="risk"
+      title="Downside risk"
+      trust={trust}
+      defaultOpen={defaultOpen}
+      headline={dayLimit ? `${formatShare(dayLimit.var, 1)} one-day loss limit` : undefined}
+    >
+      <div className="flex justify-end">
         <Segmented options={HORIZONS} value={key} onChange={setKey} label="Length of period" />
-      </header>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {horizon.levels.map((level) => {
@@ -167,6 +176,6 @@ export function RiskPanel({ asset }: { asset: Asset }) {
           </Caption>
         </div>
       )}
-    </section>
+    </Panel>
   );
 }

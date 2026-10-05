@@ -3,7 +3,7 @@
 Routes read stored results only. No model runs inside a request.
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -21,6 +21,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from radar.analytics import summary
 from radar.api.live import LiveHub
 from radar.api.schemas import (
     ArticleOut,
@@ -29,6 +30,7 @@ from radar.api.schemas import (
     BarsOut,
     CalibrationOut,
     CalibrationRowOut,
+    ChangeOut,
     EventStudyOut,
     HealthOut,
     LevelIn,
@@ -48,6 +50,13 @@ from radar.api.schemas import (
     SentimentPoint,
     SeriesStatus,
     SimulationOut,
+    SummaryNews,
+    SummaryOut,
+    SummaryOutlook,
+    SummaryRisk,
+    SummaryState,
+    SummarySwings,
+    SummaryTrust,
     TopicSummary,
     TrackRecordOut,
     TrackRecordRow,
@@ -432,10 +441,8 @@ def get_risk(symbol: str, universe: UniverseDep, session: SessionDep) -> RiskOut
 TOPIC_VERSION = topics.version_of(topics.MODEL_ID)
 
 
-def _strongest(
-    session: Session, asset: Asset, version: str, since: datetime, *, positive: bool, limit: int = 5
-) -> list[ArticleOut]:
-    order = NewsSentiment.score.desc() if positive else NewsSentiment.score.asc()
+def _recent(session: Session, asset: Asset, version: str, limit: int = 8) -> list[ArticleOut]:
+    """The latest articles about the asset, newest first, repeats left out."""
     rows = session.execute(
         select(NewsArticle, NewsSentiment.score, NewsTopic.topic)
         .join(NewsSymbol, NewsSymbol.article_id == NewsArticle.id)
@@ -448,9 +455,8 @@ def _strongest(
             NewsSymbol.symbol == asset.symbol,
             NewsSentiment.model_version == version,
             NewsArticle.duplicate_of.is_(None),
-            NewsArticle.created_at >= since,
         )
-        .order_by(order, NewsArticle.created_at.desc())
+        .order_by(NewsArticle.created_at.desc())
         .limit(limit)
     ).all()
     return [
@@ -464,7 +470,6 @@ def _strongest(
             topic=topic,
         )
         for article, score, topic in rows
-        if (score > 0) == positive
     ]
 
 
@@ -566,8 +571,7 @@ def get_sentiment(
         articles_in_window=sum(d.article_count for d in daily),
         days_with_news=sum(d.article_count > 0 for d in daily),
         daily=[SentimentPoint.model_validate(d, from_attributes=True) for d in daily],
-        most_positive=_strongest(session, asset, version, since, positive=True),
-        most_negative=_strongest(session, asset, version, since, positive=False),
+        recent=_recent(session, asset, version),
         topics=_topic_summary(session, asset, version, since),
         accuracy=accuracy,
     )
@@ -601,6 +605,135 @@ def get_track_record(symbol: str, universe: UniverseDep, session: SessionDep) ->
         recorded=sum(r.recorded for r in rows),
         resolved=sum(r.resolved for r in rows),
         rows=[TrackRecordRow.model_validate(r.model_dump()) for r in rows],
+    )
+
+
+def _optional[T](call: Callable[[], T]) -> T | None:
+    """The result of a route function, or None where it has nothing stored yet."""
+    try:
+        return call()
+    except HTTPException as error:
+        if error.status_code == 404:
+            return None
+        raise
+
+
+@router.get("/assets/{symbol:path}/summary", response_model=SummaryOut)
+def get_summary(symbol: str, universe: UniverseDep, session: SessionDep) -> SummaryOut:
+    """The answers in brief, what changed this week, and a trust grade for each claim."""
+    asset = find_asset(universe, symbol)
+    week = 7 if asset.asset_class == "crypto" else 5
+    regime = _optional(lambda: get_regime(symbol, universe, session, days=5000))
+    simulation = _optional(lambda: get_simulation(symbol, universe, session))
+    calibration = _optional(lambda: get_calibration(symbol, universe, session))
+    volatility = _optional(lambda: get_volatility(symbol, universe, session, days=30))
+    risk = _optional(lambda: get_risk(symbol, universe, session))
+    sentiment = _optional(lambda: get_sentiment(symbol, universe, session, days=30))
+    study = _optional(lambda: get_event_study(symbol, universe, session))
+
+    outlook = None
+    outlook_row = None
+    if simulation is not None:
+        horizon = next((h for h in simulation.horizons if h.horizon_days == 7), None)
+        chosen = next((i for i in horizon.intervals if i.level == 0.8), None) if horizon else None
+        if horizon is not None and chosen is not None:
+            adjusted = chosen.adjusted_low is not None and chosen.adjusted_high is not None
+            outlook = SummaryOutlook(
+                horizon_days=7,
+                steps=horizon.steps,
+                level=0.8,
+                low=chosen.adjusted_low if adjusted else chosen.low,
+                high=chosen.adjusted_high if adjusted else chosen.high,
+                start_price=simulation.start_price,
+            )
+    if calibration is not None:
+        outlook_row = next(
+            (r.model_dump() for r in calibration.rows if r.horizon_days == 7 and r.nominal == 0.8),
+            None,
+        )
+
+    day = (
+        next((h for h in volatility.horizons if h.horizon_days == 1), None) if volatility else None
+    )
+    week_ago = (
+        day.history[-1 - week].forecast if day is not None and len(day.history) > week else None
+    )
+    limits = []
+    risk_out = None
+    if risk is not None:
+        one = next((h for h in risk.horizons if h.horizon_days == 1), None)
+        if one is not None:
+            limits = [
+                m.model_dump()
+                for level in one.levels
+                for m in level.methods
+                if m.method == one.shown
+            ]
+            first = next(
+                (
+                    m
+                    for lv in one.levels
+                    if lv.level == 0.95
+                    for m in lv.methods
+                    if m.method == one.shown
+                ),
+                None,
+            )
+            if first is not None:
+                risk_out = SummaryRisk(horizon_days=1, level=0.95, limit=first.var)
+
+    tone_week_ago = (
+        sentiment.daily[-1 - week].score_decayed
+        if sentiment is not None and len(sentiment.daily) > week
+        else None
+    )
+    return SummaryOut(
+        symbol=asset.symbol,
+        state=SummaryState(
+            label=regime.label, probability=regime.probability, days_in_state=regime.days_in_state
+        )
+        if regime is not None
+        else None,
+        outlook=outlook,
+        swings=SummarySwings(forecast=day.forecast, last_realised=day.last_realised)
+        if day is not None
+        else None,
+        risk=risk_out,
+        news=SummaryNews(
+            current=sentiment.current,
+            articles_24h=sentiment.articles_24h,
+            verdict=study.verdict if study is not None else None,
+        )
+        if sentiment is not None
+        else None,
+        changes=[
+            ChangeOut.model_validate(c.model_dump())
+            for c in summary.changes(
+                regime_label=regime.label if regime else None,
+                days_in_state=regime.days_in_state if regime else None,
+                swings_now=day.forecast if day else None,
+                swings_week_ago=week_ago,
+                tone_now=sentiment.daily[-1].score_decayed if sentiment else None,
+                tone_week_ago=tone_week_ago,
+            )
+        ],
+        trust=SummaryTrust.model_validate(
+            {
+                "state": summary.grade_regime(
+                    regime.evaluation.model_dump() if regime and regime.evaluation else None
+                ).model_dump(),
+                "outlook": summary.grade_outlook(outlook_row).model_dump(),
+                "swings": summary.grade_swings(
+                    [s.model_dump() for s in day.scores] if day else [],
+                    day.shown if day else "har",
+                    day.n if day else 0,
+                ).model_dump(),
+                "risk": summary.grade_risk(limits).model_dump(),
+                "news": summary.grade_news(
+                    sentiment.accuracy.model_dump() if sentiment and sentiment.accuracy else None
+                ).model_dump(),
+            }
+        ),
     )
 
 

@@ -1,11 +1,11 @@
 import { useState } from "react";
 
-import type { Asset, VolatilityHorizon } from "../api/client";
+import type { VolatilityHorizon } from "../api/client";
 import { useVolatility } from "../api/queries";
 import { formatChange, formatCount, formatShare } from "../lib/format";
 import { stepsLabel } from "../lib/outlook";
 import { formatDate } from "../lib/time";
-import { Caption, Segmented, StatRow, assetColorVar } from "./ui";
+import { Caption, Panel, Segmented, StatRow, assetColorVar, type PanelProps } from "./ui";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -103,7 +103,7 @@ function verdict(pValue: number | null | undefined, worse: boolean): string {
   return worse ? "Measurably worse" : "Measurably better";
 }
 
-export function VolatilityPanel({ asset }: { asset: Asset }) {
+export function VolatilityPanel({ asset, trust, defaultOpen }: PanelProps) {
   const volatility = useVolatility(asset.slug).data;
   const [key, setKey] = useState<HorizonKey>("1");
   if (!volatility) return null;
@@ -111,16 +111,22 @@ export function VolatilityPanel({ asset }: { asset: Asset }) {
     volatility.horizons.find((h) => String(h.horizon_days) === key) ?? volatility.horizons[0];
   if (!horizon) return null;
 
+  const nextDay = volatility.horizons.find((h) => h.horizon_days === 1);
   const period = stepsLabel(horizon.steps, asset.trades_continuously);
   const shown = horizon.scores.find((s) => s.model === horizon.shown);
   const trees = horizon.shown === "gbt";
 
   return (
-    <section id="swings" className="glass flex scroll-mt-24 flex-col gap-6 p-5 sm:p-7">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-        <h2 className="text-base font-semibold tracking-tight">Expected swings</h2>
+    <Panel
+      id="swings"
+      title="Expected swings"
+      trust={trust}
+      defaultOpen={defaultOpen}
+      headline={nextDay ? `±${formatShare(nextDay.forecast)} a day` : undefined}
+    >
+      <div className="flex justify-end">
         <Segmented options={HORIZONS} value={key} onChange={setKey} label="How far ahead" />
-      </header>
+      </div>
 
       <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
@@ -192,6 +198,6 @@ export function VolatilityPanel({ asset }: { asset: Asset }) {
             : "The tree model was not measurably better than the simpler method on those days, so the simpler one is shown."}
         </Caption>
       </div>
-    </section>
+    </Panel>
   );
 }

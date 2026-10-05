@@ -1,8 +1,8 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Asset, EventStudy, Sentiment } from "../api/client";
-import { NewsPanel, toneWord, trustGrade } from "./NewsPanel";
+import { NewsPanel, toneWord } from "./NewsPanel";
 
 const state = vi.hoisted(() => ({ sentiment: null as unknown, study: null as unknown }));
 vi.mock("../api/queries", () => ({
@@ -36,18 +36,17 @@ const SENTIMENT: Sentiment = {
     { ts: "2026-10-04T00:00:00Z", article_count: 0, score_mean: null, score_decayed: 0.1 },
     { ts: "2026-10-05T00:00:00Z", article_count: 14, score_mean: -0.4, score_decayed: -0.2 },
   ],
-  most_positive: [
+  recent: [
     {
       id: 1,
       created_at: "2026-10-03T10:00:00Z",
-      headline: "Invented positive headline",
+      headline: "Invented headline",
       url: "https://example.test/1",
       source: "test",
       score: 0.93,
       topic: "funds_flows",
     },
   ],
-  most_negative: [],
   topics: [
     { topic: "price", article_count: 700, score_mean: 0.05 },
     { topic: "security", article_count: 40, score_mean: -0.6 },
@@ -103,29 +102,55 @@ describe("NewsPanel", () => {
 
   it("shows nothing until news tone is stored", () => {
     state.sentiment = null;
-    expect(render(<NewsPanel asset={BITCOIN} />).container).toBeEmptyDOMElement();
+    expect(render(<NewsPanel asset={BITCOIN} defaultOpen />).container).toBeEmptyDOMElement();
   });
 
   it("shows the current tone in words, with how much news there is", () => {
-    render(<NewsPanel asset={BITCOIN} />);
+    render(<NewsPanel asset={BITCOIN} defaultOpen />);
     expect(screen.getByText("Mostly negative")).toBeVisible();
     expect(screen.getByText("−0.31")).toBeVisible();
     expect(screen.getByText("88")).toBeVisible();
     expect(screen.getByText(/1,040 articles on 89 of the last 3 days/)).toBeVisible();
   });
 
-  it("links the strongest articles to their source and names topics plainly", () => {
-    render(<NewsPanel asset={BITCOIN} />);
-    const link = screen.getByRole("link", { name: "Invented positive headline" });
+  it("lists recent headlines with links, without ranking or showing a tone score", () => {
+    render(<NewsPanel asset={BITCOIN} defaultOpen />);
+    const link = screen.getByRole("link", { name: "Invented headline" });
     expect(link).toHaveAttribute("href", "https://example.test/1");
     expect(link).toHaveAttribute("rel", "noreferrer noopener");
-    expect(screen.getByText(/Funds and large investors/)).toBeVisible();
-    expect(screen.getByText("Hacks, fraud, and failures")).toBeVisible();
-    expect(screen.getByText("None in this period.")).toBeVisible();
+    expect(screen.getByText("Recent headlines")).toBeVisible();
+    expect(screen.queryByText(/0\.93/)).toBeNull(); // the single-article score is not shown
+    expect(screen.getByText(/not ranked or coloured by tone/)).toBeVisible();
+  });
+
+  it("folds the subject breakdown away and marks it rough", () => {
+    render(<NewsPanel asset={BITCOIN} defaultOpen />);
+    const summary = screen.getByText("What the news is about");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("(rough)")).toBeInTheDocument();
+    expect(screen.getByText("Hacks, fraud, and failures")).toBeInTheDocument();
+  });
+
+  it("stays folded until opened, showing the claim and its trust grade", () => {
+    render(
+      <NewsPanel
+        asset={BITCOIN}
+        trust={{ grade: "rough", reason: "It agreed with labels on 61% of 700 headlines." }}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: /News/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("Rough")).toBeVisible();
+    expect(screen.getByText("Mostly negative · Price moved first")).toBeVisible();
+    expect(screen.queryByText("Tone of recent news")).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Tone of recent news")).toBeVisible();
+    expect(screen.getByText(/Why rough:/)).toBeVisible();
   });
 
   it("states the verdict with its event count", () => {
-    render(<NewsPanel asset={BITCOIN} />);
+    render(<NewsPanel asset={BITCOIN} defaultOpen />);
     expect(
       screen.getByText("Price has tended to move first, with news tone following it."),
     ).toBeVisible();
@@ -135,29 +160,22 @@ describe("NewsPanel", () => {
 
   it("says so when there is too little news to judge, and draws no charts for it", () => {
     state.study = { ...STUDY, verdict: "not enough events", n_events: 12 };
-    render(<NewsPanel asset={BITCOIN} />);
+    render(<NewsPanel asset={BITCOIN} defaultOpen />);
     expect(
       screen.getByText("There is too little news coverage of this asset to measure an effect."),
     ).toBeVisible();
     expect(screen.queryByText(/unusually positive news \(green\)/)).toBeNull();
   });
 
-  it("puts accuracy up front with its range, a grade, and who labelled the sample", () => {
-    render(<NewsPanel asset={BITCOIN} />);
-    expect(screen.getByText("Rough")).toBeVisible(); // 71% with a low end of 64%
+  it("shows how the tone model was checked, with ranges and who labelled the sample", () => {
+    render(<NewsPanel asset={BITCOIN} defaultOpen />);
+    expect(screen.getByText("How the tone model was checked")).toBeVisible();
     expect(screen.getByText("Agreed with the label, on 200 headlines")).toBeVisible();
     expect(screen.getByText("(64% to 77%)")).toBeVisible();
     expect(screen.getByText("Counting positive and negative words")).toBeVisible();
     expect(screen.getByText("52%")).toBeVisible();
     expect(screen.getByText(/written by an AI model \(Claude\), not a person/)).toBeVisible();
     expect(screen.getByText(/A single article's tone is often wrong/)).toBeVisible();
-  });
-
-  it("grades trust from the low end of the range", () => {
-    expect(trustGrade(0.85)).toBe("Reliable");
-    expect(trustGrade(0.7)).toBe("Fair");
-    expect(trustGrade(0.57)).toBe("Rough");
-    expect(trustGrade(null)).toBe("Rough");
   });
 
   it("gives each subject its own verdict", () => {
@@ -168,7 +186,7 @@ describe("NewsPanel", () => {
         { topic: "security", verdict: "not enough events", n_events: 6, days_with_news: 120 },
       ],
     };
-    render(<NewsPanel asset={BITCOIN} />);
+    render(<NewsPanel asset={BITCOIN} defaultOpen />);
     expect(screen.getByText(/Price moved first ·/)).toBeVisible();
     expect(screen.getByText(/Too little news ·/)).toBeVisible();
   });
@@ -180,7 +198,7 @@ describe("NewsPanel", () => {
   });
 
   it("never tells the reader what to do", () => {
-    const { container } = render(<NewsPanel asset={BITCOIN} />);
+    const { container } = render(<NewsPanel asset={BITCOIN} defaultOpen />);
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 });

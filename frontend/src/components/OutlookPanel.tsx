@@ -12,7 +12,7 @@ import {
   stepsLabel,
 } from "../lib/outlook";
 import { formatDate } from "../lib/time";
-import { Caption, Segmented, StatRow, assetColorVar } from "./ui";
+import { Caption, Panel, Segmented, StatRow, assetColorVar, type PanelProps } from "./ui";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -277,7 +277,7 @@ function TrackRecord({
   );
 }
 
-export function OutlookPanel({ asset }: { asset: Asset }) {
+export function OutlookPanel({ asset, trust, defaultOpen }: PanelProps) {
   const simulation = useSimulation(asset.slug).data;
   const calibration = useCalibration(asset.slug).data;
   const [key, setKey] = useState<HorizonKey>("7");
@@ -286,6 +286,10 @@ export function OutlookPanel({ asset }: { asset: Asset }) {
     simulation.horizons.find((h) => String(h.horizon_days) === key) ?? simulation.horizons[0];
   if (!horizon) return null;
 
+  const week = simulation.horizons
+    .find((h) => h.horizon_days === 7)
+    ?.intervals.find((i) => i.level === 0.8);
+  const weekRange = week ? shownRange(week) : undefined;
   const colorVar = assetColorVar(asset);
   const period = stepsLabel(horizon.steps, asset.trades_continuously);
   const ranges = horizon.intervals.map((interval) => ({
@@ -297,11 +301,16 @@ export function OutlookPanel({ asset }: { asset: Asset }) {
   const widest = ranges.filter((r) => r.adjusted && r.interval.adjusted_is_widest);
 
   return (
-    <section id="outlook" className="glass flex scroll-mt-24 flex-col gap-7 p-5 sm:p-7">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-        <h2 className="text-base font-semibold tracking-tight">Outlook</h2>
+    <Panel
+      id="outlook"
+      title="Outlook"
+      trust={trust}
+      defaultOpen={defaultOpen}
+      headline={weekRange ? `${rangeText(weekRange.low, weekRange.high)} in a week` : undefined}
+    >
+      <div className="flex justify-end">
         <Segmented options={HORIZONS} value={key} onChange={setKey} label="How far ahead" />
-      </header>
+      </div>
 
       <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
@@ -374,6 +383,6 @@ export function OutlookPanel({ asset }: { asset: Asset }) {
         {widest.length > 0 &&
           ` The ${widest.map((r) => percent(r.interval.level)).join(" and ")} range has been widened as far as it can go for this period, so it covers nearly every simulated outcome.`}
       </p>
-    </section>
+    </Panel>
   );
 }

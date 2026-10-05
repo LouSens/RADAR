@@ -14,6 +14,7 @@ import {
   type Risk,
   type Sentiment,
   type Simulation,
+  type Summary,
   type Timeframe,
   type TrackRecord,
   type Volatility,
@@ -160,5 +161,15 @@ export function useTrackRecord(slug: string | undefined) {
     queryFn: () => orNull(() => getJson<TrackRecord>(`/assets/${slug}/track-record`)),
     enabled: slug !== undefined,
     refetchInterval: 10 * 60_000,
+  });
+}
+
+/** The answers in brief for a market, what changed this week, and a trust grade per claim. */
+export function useSummary(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["summary", slug],
+    queryFn: () => orNull(() => getJson<Summary>(`/assets/${slug}/summary`)),
+    enabled: slug !== undefined,
+    refetchInterval: 5 * 60_000,
   });
 }

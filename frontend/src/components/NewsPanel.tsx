@@ -1,8 +1,8 @@
-import type { Asset, EventStudy, Sentiment } from "../api/client";
+import type { EventStudy, Sentiment } from "../api/client";
 import { useEventStudy, useSentiment } from "../api/queries";
 import { formatChange, formatCount, formatShare } from "../lib/format";
 import { formatDate, formatDateTime, zoneLabel } from "../lib/time";
-import { Caption, StatRow } from "./ui";
+import { Caption, Panel, StatRow, type PanelProps } from "./ui";
 
 const TOPIC: Record<string, string> = {
   regulation: "Regulation and courts",
@@ -93,12 +93,12 @@ function ToneChart({ sentiment }: { sentiment: Sentiment }) {
   );
 }
 
-function Articles({ title, articles }: { title: string; articles: Sentiment["most_positive"] }) {
+function Headlines({ articles }: { articles: Sentiment["recent"] }) {
   return (
-    <div>
-      <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+    <div className="border-t border-line pt-5">
+      <h3 className="text-sm font-semibold tracking-tight">Recent headlines</h3>
       {articles.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">None in this period.</p>
+        <p className="mt-3 text-sm text-muted">None yet.</p>
       ) : (
         <ul className="mt-2">
           {articles.map((article) => (
@@ -115,14 +115,15 @@ function Articles({ title, articles }: { title: string; articles: Sentiment["mos
               ) : (
                 <span className="text-sm leading-snug">{article.headline}</span>
               )}
-              <p className="num mt-1 text-xs text-faint">
-                {formatDate(article.created_at)} · tone {signed(article.score)}
-                {article.topic ? ` · ${TOPIC[article.topic] ?? article.topic}` : ""}
-              </p>
+              <p className="num mt-1 text-xs text-faint">{formatDateTime(article.created_at)}</p>
             </li>
           ))}
         </ul>
       )}
+      <Caption>
+        The latest {articles.length} articles, newest first. They are not ranked or coloured by
+        tone, because the tone of any single article is too often wrong.
+      </Caption>
     </div>
   );
 }
@@ -313,25 +314,15 @@ function Study({ study }: { study: EventStudy }) {
   );
 }
 
-/** A plain grade for a classifier, from the low end of its accuracy range. */
-export function trustGrade(accuracyLow: number | null | undefined): "Reliable" | "Fair" | "Rough" {
-  if (accuracyLow == null) return "Rough";
-  if (accuracyLow >= 0.8) return "Reliable";
-  return accuracyLow >= 0.65 ? "Fair" : "Rough";
-}
-
 const range = (low: number | null | undefined, high: number | null | undefined) =>
   low == null || high == null ? "" : ` (${formatShare(low, 0)} to ${formatShare(high, 0)})`;
 
 function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
   const model = accuracy.model;
-  const grade = trustGrade(model.accuracy_low);
   const byAi = accuracy.labelled_by.includes("claude");
   return (
     <div className="well p-4">
-      <h3 className="text-sm font-semibold tracking-tight">
-        How far to trust the tone reading: <span className="text-ink">{grade}</span>
-      </h3>
+      <h3 className="text-sm font-semibold tracking-tight">How the tone model was checked</h3>
       <dl className="mt-2">
         <StatRow label={`Agreed with the label, on ${formatCount(model.n)} headlines`}>
           {formatShare(model.accuracy, 0)}
@@ -377,16 +368,22 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
   );
 }
 
-export function NewsPanel({ asset }: { asset: Asset }) {
+export function NewsPanel({ asset, trust, defaultOpen }: PanelProps) {
   const sentiment = useSentiment(asset.slug).data;
   const study = useEventStudy(asset.slug).data;
   if (!sentiment) return null;
   const accuracy = sentiment.accuracy;
 
   return (
-    <section id="news" className="glass flex scroll-mt-24 flex-col gap-6 p-5 sm:p-7">
-      <h2 className="text-base font-semibold tracking-tight">News</h2>
-
+    <Panel
+      id="news"
+      title="News"
+      trust={trust}
+      defaultOpen={defaultOpen}
+      headline={[toneWord(sentiment.current), study ? VERDICT_SHORT[study.verdict] : undefined]
+        .filter(Boolean)
+        .join(" · ")}
+    >
       <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
           <p className="label">Tone of recent news</p>
@@ -419,31 +416,31 @@ export function NewsPanel({ asset }: { asset: Asset }) {
         </div>
       </div>
 
+      {study && <Study study={study} />}
+
+      <Headlines articles={sentiment.recent} />
+
       {sentiment.topics.length > 0 && (
-        <div className="border-t border-line pt-5">
-          <h3 className="text-sm font-semibold tracking-tight">What the news is about</h3>
-          <dl className="mt-2 grid grid-cols-1 gap-x-12 sm:grid-cols-2">
+        <details className="border-t border-line pt-5">
+          <summary className="cursor-pointer text-sm font-semibold tracking-tight">
+            What the news is about <span className="font-normal text-muted">(rough)</span>
+          </summary>
+          <dl className="mt-3 grid grid-cols-1 gap-x-12 sm:grid-cols-2">
             {sentiment.topics.map((topic) => (
               <StatRow key={topic.topic} label={TOPIC[topic.topic] ?? topic.topic}>
                 {formatCount(topic.article_count)}{" "}
-                <span className={topic.score_mean >= 0 ? "text-calm" : "text-alert"}>
-                  {signed(topic.score_mean)}
-                </span>
+                <span className="text-muted">{signed(topic.score_mean)}</span>
               </StatRow>
             ))}
           </dl>
           <Caption>
-            Number of articles on each subject in the same period, and their average tone.
+            Articles on each subject over the same period, and their average tone. Subjects are
+            assigned by a model that matched labelled headlines only
+            {accuracy?.topics ? ` ${formatShare(accuracy.topics.accuracy, 0)}` : " part"} of the
+            time, so treat this as a rough guide.
           </Caption>
-        </div>
+        </details>
       )}
-
-      <div className="grid grid-cols-1 gap-x-12 gap-y-7 border-t border-line pt-5 lg:grid-cols-2">
-        <Articles title="Most positive articles" articles={sentiment.most_positive} />
-        <Articles title="Most negative articles" articles={sentiment.most_negative} />
-      </div>
-
-      {study && <Study study={study} />}
 
       {accuracy && <Trust accuracy={accuracy} />}
 
@@ -453,6 +450,6 @@ export function NewsPanel({ asset }: { asset: Asset }) {
         article&apos;s headline and summary. All articles come from one provider. Such models
         misread sarcasm, negation, and headlines that only describe a price move.
       </p>
-    </section>
+    </Panel>
   );
 }

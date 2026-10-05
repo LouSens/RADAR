@@ -184,6 +184,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Summary
+         * @description The answers in brief, what changed this week, and a trust grade for each claim.
+         */
+        get: operations["get_summary_api_v1_assets__symbol__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{symbol}/track-record": {
         parameters: {
             query?: never;
@@ -378,6 +398,16 @@ export interface components {
             pinball_model: number;
             /** Steps */
             steps: number;
+        };
+        /** ChangeOut */
+        ChangeOut: {
+            /** Text */
+            text: string;
+            /**
+             * Topic
+             * @enum {string}
+             */
+            topic: "state" | "swings" | "tone";
         };
         /** ClassifierScoreOut */
         ClassifierScoreOut: {
@@ -869,15 +899,13 @@ export interface components {
             days_with_news: number;
             /** Model Version */
             model_version: string;
-            /** Most Negative */
-            most_negative: components["schemas"]["ArticleOut"][];
-            /** Most Positive */
-            most_positive: components["schemas"]["ArticleOut"][];
             /**
              * News Start
              * Format: date
              */
             news_start: string;
+            /** Recent */
+            recent: components["schemas"]["ArticleOut"][];
             /** Symbol */
             symbol: string;
             /** Topics */
@@ -947,6 +975,79 @@ export interface components {
             start_price: number;
             /** Symbol */
             symbol: string;
+        };
+        /** SummaryNews */
+        SummaryNews: {
+            /** Articles 24H */
+            articles_24h: number;
+            /** Current */
+            current: number | null;
+            /** Verdict */
+            verdict: string | null;
+        };
+        /**
+         * SummaryOut
+         * @description The top of a market page: the answers in brief, what changed, and how far to trust each.
+         */
+        SummaryOut: {
+            /** Changes */
+            changes: components["schemas"]["ChangeOut"][];
+            news: components["schemas"]["SummaryNews"] | null;
+            outlook: components["schemas"]["SummaryOutlook"] | null;
+            risk: components["schemas"]["SummaryRisk"] | null;
+            state: components["schemas"]["SummaryState"] | null;
+            swings: components["schemas"]["SummarySwings"] | null;
+            /** Symbol */
+            symbol: string;
+            trust: components["schemas"]["SummaryTrust"];
+        };
+        /** SummaryOutlook */
+        SummaryOutlook: {
+            /** High */
+            high: number;
+            /** Horizon Days */
+            horizon_days: number;
+            /** Level */
+            level: number;
+            /** Low */
+            low: number;
+            /** Start Price */
+            start_price: number;
+            /** Steps */
+            steps: number;
+        };
+        /** SummaryRisk */
+        SummaryRisk: {
+            /** Horizon Days */
+            horizon_days: number;
+            /** Level */
+            level: number;
+            /** Limit */
+            limit: number;
+        };
+        /** SummaryState */
+        SummaryState: {
+            /** Days In State */
+            days_in_state: number;
+            /** Label */
+            label: string;
+            /** Probability */
+            probability: number;
+        };
+        /** SummarySwings */
+        SummarySwings: {
+            /** Forecast */
+            forecast: number;
+            /** Last Realised */
+            last_realised: number | null;
+        };
+        /** SummaryTrust */
+        SummaryTrust: {
+            news: components["schemas"]["TrustOut"];
+            outlook: components["schemas"]["TrustOut"];
+            risk: components["schemas"]["TrustOut"];
+            state: components["schemas"]["TrustOut"];
+            swings: components["schemas"]["TrustOut"];
         };
         /** TopicSummary */
         TopicSummary: {
@@ -1018,6 +1119,16 @@ export interface components {
             recorded: number;
             /** Resolved */
             resolved: number;
+        };
+        /** TrustOut */
+        TrustOut: {
+            /**
+             * Grade
+             * @enum {string}
+             */
+            grade: "solid" | "fair" | "rough";
+            /** Reason */
+            reason: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1377,6 +1488,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LevelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_summary_api_v1_assets__symbol__summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryOut"];
                 };
             };
             /** @description Validation Error */

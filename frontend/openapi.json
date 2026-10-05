@@ -348,6 +348,29 @@
         "title": "CalibrationRowOut",
         "type": "object"
       },
+      "ChangeOut": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "topic": {
+            "enum": [
+              "state",
+              "swings",
+              "tone"
+            ],
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "text"
+        ],
+        "title": "ChangeOut",
+        "type": "object"
+      },
       "ClassifierScoreOut": {
         "properties": {
           "accuracy": {
@@ -1601,24 +1624,17 @@
             "title": "Model Version",
             "type": "string"
           },
-          "most_negative": {
-            "items": {
-              "$ref": "#/components/schemas/ArticleOut"
-            },
-            "title": "Most Negative",
-            "type": "array"
-          },
-          "most_positive": {
-            "items": {
-              "$ref": "#/components/schemas/ArticleOut"
-            },
-            "title": "Most Positive",
-            "type": "array"
-          },
           "news_start": {
             "format": "date",
             "title": "News Start",
             "type": "string"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/ArticleOut"
+            },
+            "title": "Recent",
+            "type": "array"
           },
           "symbol": {
             "title": "Symbol",
@@ -1643,8 +1659,7 @@
           "articles_in_window",
           "days_with_news",
           "daily",
-          "most_positive",
-          "most_negative",
+          "recent",
           "topics",
           "accuracy"
         ],
@@ -1812,6 +1827,261 @@
           "fan"
         ],
         "title": "SimulationOut",
+        "type": "object"
+      },
+      "SummaryNews": {
+        "properties": {
+          "articles_24h": {
+            "title": "Articles 24H",
+            "type": "integer"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "current",
+          "articles_24h",
+          "verdict"
+        ],
+        "title": "SummaryNews",
+        "type": "object"
+      },
+      "SummaryOut": {
+        "description": "The top of a market page: the answers in brief, what changed, and how far to trust each.",
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "news": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryNews"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outlook": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryOutlook"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "risk": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryRisk"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "swings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummarySwings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/SummaryTrust"
+          }
+        },
+        "required": [
+          "symbol",
+          "state",
+          "outlook",
+          "swings",
+          "risk",
+          "news",
+          "changes",
+          "trust"
+        ],
+        "title": "SummaryOut",
+        "type": "object"
+      },
+      "SummaryOutlook": {
+        "properties": {
+          "high": {
+            "title": "High",
+            "type": "number"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "level": {
+            "title": "Level",
+            "type": "number"
+          },
+          "low": {
+            "title": "Low",
+            "type": "number"
+          },
+          "start_price": {
+            "title": "Start Price",
+            "type": "number"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "horizon_days",
+          "steps",
+          "level",
+          "low",
+          "high",
+          "start_price"
+        ],
+        "title": "SummaryOutlook",
+        "type": "object"
+      },
+      "SummaryRisk": {
+        "properties": {
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "level": {
+            "title": "Level",
+            "type": "number"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "number"
+          }
+        },
+        "required": [
+          "horizon_days",
+          "level",
+          "limit"
+        ],
+        "title": "SummaryRisk",
+        "type": "object"
+      },
+      "SummaryState": {
+        "properties": {
+          "days_in_state": {
+            "title": "Days In State",
+            "type": "integer"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "probability": {
+            "title": "Probability",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "probability",
+          "days_in_state"
+        ],
+        "title": "SummaryState",
+        "type": "object"
+      },
+      "SummarySwings": {
+        "properties": {
+          "forecast": {
+            "title": "Forecast",
+            "type": "number"
+          },
+          "last_realised": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Realised"
+          }
+        },
+        "required": [
+          "forecast",
+          "last_realised"
+        ],
+        "title": "SummarySwings",
+        "type": "object"
+      },
+      "SummaryTrust": {
+        "properties": {
+          "news": {
+            "$ref": "#/components/schemas/TrustOut"
+          },
+          "outlook": {
+            "$ref": "#/components/schemas/TrustOut"
+          },
+          "risk": {
+            "$ref": "#/components/schemas/TrustOut"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TrustOut"
+          },
+          "swings": {
+            "$ref": "#/components/schemas/TrustOut"
+          }
+        },
+        "required": [
+          "state",
+          "outlook",
+          "swings",
+          "risk",
+          "news"
+        ],
+        "title": "SummaryTrust",
         "type": "object"
       },
       "TopicSummary": {
@@ -2025,6 +2295,29 @@
           "last_as_of"
         ],
         "title": "TrackRecordRow",
+        "type": "object"
+      },
+      "TrustOut": {
+        "properties": {
+          "grade": {
+            "enum": [
+              "solid",
+              "fair",
+              "rough"
+            ],
+            "title": "Grade",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "grade",
+          "reason"
+        ],
+        "title": "TrustOut",
         "type": "object"
       },
       "ValidationError": {
@@ -2683,6 +2976,46 @@
           }
         },
         "summary": "Post Simulation Level"
+      }
+    },
+    "/api/v1/assets/{symbol}/summary": {
+      "get": {
+        "description": "The answers in brief, what changed this week, and a trust grade for each claim.",
+        "operationId": "get_summary_api_v1_assets__symbol__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Summary"
       }
     },
     "/api/v1/assets/{symbol}/track-record": {
