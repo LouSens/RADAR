@@ -269,6 +269,17 @@ def portfolio() -> int:
     return 0
 
 
+def relationships() -> int:
+    """Recompute how the markets move together, and each market's macro drivers."""
+    from radar.db.session import make_engine
+    from radar.pipelines import relationships as job
+    from radar.universe import get_universe
+
+    stored = job.run(make_engine(), get_universe())
+    log.info("relationships_done", rows_stored=stored)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -296,6 +307,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "finetune": (finetune, "fine-tune the sentiment model and test it on held-out headlines"),
     "track": (track, "log today's forecasts and score those that have come due"),
     "portfolio": (portfolio, "recompute the portfolio analysis with the latest prices"),
+    "relationships": (relationships, "recompute how the markets move together"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 
