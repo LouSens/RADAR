@@ -8,9 +8,9 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 1 complete on branch `phase-1-data-platform` (not yet merged to `main`)
+- Phase: 1 complete and merged to `main` on 2026-10-05 (pull request 2). Phase 2 not started; branch `phase-2-api-dashboard` exists
 - Last completed step: Phase 1 step 6, the data profile (`docs/DATA_PROFILE.md`) and exploration notebook
-- Next step: merge Phase 1, then Phase 2 (API and dashboard shell)
+- Next step: Phase 2 (API and dashboard shell): restate its done-when criteria and file list first
 - Key decisions (`docs/DECISIONS.md` 010 to 019): gold is `GLD` alone; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), and tail risk (F10)
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
