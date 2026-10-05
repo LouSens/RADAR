@@ -576,3 +576,12 @@ Evaluation tables live in `model_registry.metrics`.
 
 **Not built in Phase 3:** shading the price chart itself by regime. The Market state
 panel shows the regime of each day as a band beside the chart instead.
+
+## 029. Navigation moves to a sidebar (2026-10-05)
+
+Asked for by the user. On screens 768 px and wider, navigation is a left sidebar
+(Overview, the primary markets, System with its status dot) that collapses to an icon
+rail; the choice is remembered in the browser. Under the market being viewed it lists
+that page's sections (Market state, Outlook, Expected swings, Downside risk) as jump
+links. Phones keep the slim top bar and the bottom tab bar. This replaces the floating
+top capsule of decision 023 on larger screens; the rest of 023 stands.
