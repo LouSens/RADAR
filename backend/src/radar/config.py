@@ -2,6 +2,7 @@
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 
 class Settings(BaseSettings):
@@ -16,7 +17,30 @@ class Settings(BaseSettings):
 
     alpaca_api_key_id: SecretStr | None = None
     alpaca_api_secret_key: SecretStr | None = None
+
+    postgres_user: str | None = None
+    postgres_password: SecretStr | None = None
+    postgres_db: str | None = None
+    postgres_host: str = "127.0.0.1"
+    postgres_port: int = 5432
+
     log_level: str = "INFO"
+
+    def database_url(self, database: str | None = None) -> URL:
+        """SQLAlchemy URL for the configured database. Its repr hides the password."""
+        if self.postgres_user is None or self.postgres_password is None or self.postgres_db is None:
+            raise RuntimeError(
+                "Database is not configured: set POSTGRES_USER, POSTGRES_PASSWORD and"
+                " POSTGRES_DB in .env"
+            )
+        return URL.create(
+            "postgresql+psycopg",
+            username=self.postgres_user,
+            password=self.postgres_password.get_secret_value(),
+            host=self.postgres_host,
+            port=self.postgres_port,
+            database=database or self.postgres_db,
+        )
 
 
 def load_settings() -> Settings:
