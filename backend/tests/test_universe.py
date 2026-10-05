@@ -33,7 +33,7 @@ def test_default_universe_matches_the_audit_decisions() -> None:
     universe = load_universe()
     assert universe.crypto_location == "us-1"
     assert universe.timeframes.crypto == ("1Hour", "1Day")
-    assert [a.symbol for a in universe.primary] == ["BTC/USD", "GLD"]
+    assert [a.symbol for a in universe.primary] == ["BTC/USD", "GLD", "SPY"]
     assert {a.symbol for a in universe.of_class("stock")} == {
         "SPY",
         "GLD",
@@ -48,7 +48,7 @@ def test_default_universe_matches_the_audit_decisions() -> None:
     assert gold.asset_class == "stock"
     assert gold.news_start == date(2023, 1, 1)
     assert universe.get("BTC/USD").news_start == date(2022, 1, 1)
-    assert universe.news_symbols == ("BTCUSD", "GLD")
+    assert universe.news_symbols == ("BTCUSD", "GLD", "SPY")
     assert universe.timeframes_for(universe.get("SPY")) == ("1Hour", "1Day")
     paxg = universe.get("PAXG/USD")
     assert not paxg.is_primary

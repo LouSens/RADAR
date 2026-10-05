@@ -311,3 +311,17 @@ has no order, transfer, or settings calls.
 
 Still to confirm with the user in Phase 5: which Binance products to read (spot,
 futures, margin, earn), and the `SPYB` to `SPY` unit ratio (decision 015).
+
+## 021. `SPY` is a primary asset (2026-10-05)
+
+The user holds SPY (as `SPYB`, decision 015) and asked whether giving it the same
+analysis as Bitcoin and gold would be worthwhile. It is: `SPY` has the best data in the
+universe (ten years, no missing daily bars, 22 to 25 news articles a day), so every
+model has more to work with than it does for Bitcoin or gold.
+
+`SPY` gets its own regime, outlook, news, drivers, volatility, and tail-risk pages. Its
+news is now stored: this reverses the part of decision 013 that left `SPY` news out.
+
+Costs: about 82,500 more articles to store and, in Phase 4, to score for sentiment
+(a one-off CPU job); and one more asset page to build. When `SPY` is the asset being
+explained in F8, it is removed from its own drivers.
