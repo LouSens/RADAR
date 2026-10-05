@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from radar.models import portfolio
+from radar.models import portfolio, tail_risk
 from radar.models.portfolio import Episode
 
 
@@ -97,7 +97,7 @@ def test_loss_limits_are_backtested_and_never_look_ahead() -> None:
 
     # The limit shown on a past day does not change when later days do.
     cut = 700
-    inputs = portfolio.tail_risk.RiskInputs(
+    inputs = tail_risk.RiskInputs(
         returns=mix.to_numpy(),
         volatility_forecast=portfolio.recent_volatility(mix.to_numpy()),
         simulated_days=np.array([], dtype=int),
@@ -105,15 +105,15 @@ def test_loss_limits_are_backtested_and_never_look_ahead() -> None:
     )
     later = mix.to_numpy().copy()
     later[cut + 1 :] *= 5
-    changed = portfolio.tail_risk.RiskInputs(
+    changed = tail_risk.RiskInputs(
         returns=later,
         volatility_forecast=portfolio.recent_volatility(later),
         simulated_days=np.array([], dtype=int),
         simulated=np.empty((0, 0)),
     )
     for key in [("historical", 0.95), ("filtered", 0.99)]:
-        a = portfolio.tail_risk.estimate(inputs, 1).var[key][: cut + 1]
-        b = portfolio.tail_risk.estimate(changed, 1).var[key][: cut + 1]
+        a = tail_risk.estimate(inputs, 1).var[key][: cut + 1]
+        b = tail_risk.estimate(changed, 1).var[key][: cut + 1]
         np.testing.assert_array_equal(a, b)
 
 
