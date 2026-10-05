@@ -11,7 +11,6 @@ log = get_logger(__name__)
 
 # Commands that exist in the Makefile but are built in a later phase.
 NOT_YET: dict[str, str] = {
-    "api": "Phase 2",
     "demo": "Phase 7",
 }
 
@@ -115,6 +114,18 @@ def profile() -> int:
     return 0
 
 
+def api() -> int:
+    """Serve the HTTP API and the live WebSocket."""
+    import uvicorn
+
+    from radar.api.app import create_app
+    from radar.config import load_settings
+
+    settings = load_settings()
+    uvicorn.run(create_app(), host=settings.api_host, port=settings.api_port, log_config=None)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -135,6 +146,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "quality": (quality, "check stored data and write data quality reports"),
     "worker": (worker, "run live ingestion and scheduled jobs"),
     "profile": (profile, "measure the stored data and write docs/DATA_PROFILE.md"),
+    "api": (api, "serve the HTTP API and live WebSocket"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 
