@@ -10,6 +10,12 @@ export type SeriesStatus = components["schemas"]["SeriesStatus"];
 export type LiveBar = components["schemas"]["LiveBar"];
 export type LiveNews = components["schemas"]["LiveNews"];
 export type Regime = components["schemas"]["RegimeOut"];
+export type Simulation = components["schemas"]["SimulationOut"];
+export type OutlookHorizon = components["schemas"]["OutlookHorizon"];
+export type OutlookRange = components["schemas"]["OutlookRange"];
+export type Calibration = components["schemas"]["CalibrationOut"];
+export type CalibrationRow = components["schemas"]["CalibrationRowOut"];
+export type LevelAnswer = components["schemas"]["LevelOut"];
 export type Timeframe = "1Hour" | "1Day";
 
 const BASE = "/api/v1";
@@ -34,6 +40,18 @@ export async function getJson<T>(path: string, params: Params = {}): Promise<T> 
   const suffix = query.size ? `?${query}` : "";
   const response = await fetch(`${BASE}${path}${suffix}`, {
     headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new ApiError(response.status, `The server answered ${response.status} for ${path}`);
+  }
+  return (await response.json()) as T;
+}
+
+export async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
   if (!response.ok) {
     throw new ApiError(response.status, `The server answered ${response.status} for ${path}`);
