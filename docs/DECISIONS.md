@@ -207,3 +207,10 @@ analysis (F1 to F5) uses `GLD`.
 
 Known gap: prices are Kraken's USD pairs, while the user's holdings are on Binance,
 mostly against USDT. The difference is small for valuation but is not measured.
+
+## 015. The user's SPY holding is the tokenised `SPYB` on Binance (2026-10-05)
+
+The user reports it tracks SPY almost exactly. The portfolio lab will value and model it
+with `SPY` prices, one unit to one share. Not measured: the tracking difference, and
+whether one `SPYB` equals one SPY share or a fraction. Confirm the ratio in Phase 5
+before showing portfolio values.
