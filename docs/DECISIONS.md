@@ -253,3 +253,15 @@ Consequences:
 Not decided: the read-only Binance connector stays in "later", and the hard rule
 against position endpoints in `CLAUDE.md` is unchanged, because the user has not
 answered either question.
+
+## 018. Five more additions to version 1 (2026-10-05)
+
+Approved by the user from a list of nine: the cross-asset correlation grid, a
+fast-adapting (exponentially weighted) correlation, stress scenarios, news topics, and
+conformal adjustment of the outlook ranges. They extend F5, F6, F3 and F4, and F2; no
+new feature numbers.
+
+Not adopted: PCA, change-point detection, price-direction prediction, reinforcement
+learning, Black-Litterman, Kelly sizing.
+
+None of these changes Phase 1.

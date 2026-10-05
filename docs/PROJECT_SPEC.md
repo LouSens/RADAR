@@ -59,7 +59,7 @@ Write the name in capitals. Where a longer form is needed to tell it apart from 
 | F2 | Outcome simulator | What range of prices is plausible over 1, 7, and 30 days? |
 | F3 | News sentiment pulse | What is the tone of the news on this asset, and how much news is there? |
 | F4 | Sentiment versus price | Does news sentiment lead price, follow it, or neither? |
-| F5 | Bitcoin versus gold | Is Bitcoin currently moving with gold or against it? |
+| F5 | Bitcoin versus gold, and cross-asset correlation | Is Bitcoin moving with gold or against it, and which of my assets are really the same bet? |
 | F6 | Portfolio lab | Where does my portfolio's risk come from, and what would a risk-based allocation look like? |
 | F7 | Signals and daily brief | What changed today, and how reliable has this kind of change been? |
 | F8 | Macro drivers | Which outside forces (the dollar, interest rates, stocks, market fear) are Bitcoin and gold moving with right now? |
@@ -383,6 +383,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 - **Outputs:** histogram of terminal prices; 5, 25, 50, 75, and 95 percent quantiles; probability of finishing above or below a user-entered level; probability of touching that level at any point in the horizon (these are different numbers and are labelled separately); expected worst drawdown.
 - **Baseline:** geometric Brownian motion with constant volatility estimated over the trailing year.
 - **Evaluation:** walk-forward calibration. For each historical date, generate the 50, 80, and 95 percent intervals and check whether the realised price fell inside. Report empirical against nominal coverage per horizon, plus pinball loss against the baseline.
+- **Conformal adjustment:** the raw simulator ranges are widened or narrowed by adaptive conformal inference: at each date the adjustment is set from the coverage errors of earlier forecasts only, so that long-run coverage matches the stated level. The calibration panel shows raw and adjusted coverage side by side, and the UI shows the adjusted range by default.
 - **UI output:** histogram, fan chart, level-probability input, and a calibration panel ("the 80% range has contained the outcome in X% of N past cases").
 - **Done when:** the simulation is reproducible from a stored seed, the calibration report exists for every horizon, and the calibration panel renders from stored data.
 
@@ -392,6 +393,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 - **Baseline:** a finance sentiment word list (Loughran-McDonald).
 - **Evaluation:** hand-label a random sample of 200 stored headlines (stratified by symbol) and report accuracy and macro F1 for FinBERT and the baseline. This is an evaluation set only. Fine-tuning is a stretch goal and needs its own, larger labelled set.
 - **UI output:** sentiment line under the price chart, article count bars, and a list of the articles with the strongest scores linking to the source.
+- **News topics:** each article is also assigned one topic from a fixed, configured list (for example regulation, fund flows and ETFs, exchange failures and hacks, macro and central banks, adoption, price commentary, other) by a pretrained language model used zero-shot, with no training on our data. The model is chosen in Phase 4 for accuracy on the hand-labelled sample and must run on a CPU. Topic accuracy is reported with the sentiment accuracy. The UI shows article counts and tone per topic.
 - **Done when:** every stored article has a score for the current model version, aggregates update on arrival, and the evaluation numbers are in the model registry and visible in the methodology page.
 
 ### F4. Sentiment versus price
@@ -400,6 +402,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 - **Method, part 2 (lead-lag):** cross-correlation between daily sentiment and daily returns at lags from -5 to +5 days, with significance bands. Report whether the larger correlations sit where sentiment leads or where price leads.
 - **Baseline:** the same statistics on randomly chosen dates, matched on regime.
 - **Verdict labels:** `sentiment leads price`, `price leads sentiment`, `no measurable relationship`, or `not enough events` (fewer than 30).
+- **By topic:** the event study is repeated for each news topic that has at least 30 events, with its own verdict. Topics with fewer show `not enough events`.
 - **UI output:** average path chart around positive and negative events with bands, the lead-lag bar chart, the verdict, and the event count.
 - **Done when:** the verdict is derived by a tested rule from the statistics, and the feature displays `not enough events` correctly on a symbol with thin news.
 
@@ -408,6 +411,8 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 - **Method:** rolling 30-day and 90-day correlation of daily returns between `BTC/USD` and `GLD` on the mixed panel (windows count trading days). Report the correlation conditional on Bitcoin's regime from F1.
 - **Weekend note:** gold does not trade at weekends, so a weekend Bitcoin move is compared with gold's Friday-to-Monday move. The UI says so.
 - **UI output:** correlation time series, a small table of correlation by regime with sample sizes, and one sentence stating the current reading.
+- **Cross-asset grid:** the correlation of daily returns between every pair of assets in the universe on the mixed panel, ordered by hierarchical clustering so that assets that behave alike sit together. Shown for a trailing 90-day window and for the full common history.
+- **Fast-adapting estimate:** an exponentially weighted correlation (half-life starts at 30 trading days) is drawn beside the rolling one, so a shift in a relationship shows sooner. Both are labelled.
 - **Done when:** the correlation series and the by-regime table render from stored data, sample sizes are displayed, and the weekend treatment is stated in the UI.
 
 ### F6. Portfolio lab
@@ -420,6 +425,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 - **Portfolio simulation:** block bootstrap of joint daily returns to preserve cross-asset dependence; same outputs as F2 at 30 and 90 days.
 - **Core and satellite report:** the user tags holdings as core or satellite. Show the satellite sleeve's share of weight against its share of risk, and its historical contribution to return.
 - **Rebalancing signal:** when any weight drifts more than a configurable threshold (start at 5 percentage points) from the user's chosen target, list the trades that would restore it.
+- **Stress scenarios:** the current holdings are replayed through named historical episodes (the list is configuration; start with the February to March 2020 crash, May 2021, May to June 2022, November 2022, and the 2022 rise in interest rates). Shows the portfolio's loss, the worst day, and each holding's contribution. An asset with no data for an episode is named as missing and the result is marked partial; nothing is substituted.
 - **Done when:** risk contributions sum to 100 percent in a test, optimised weights satisfy their constraints in tests, and the backtest has no lookahead (weights at `t` use covariance estimated before `t`).
 
 ### F7. Signals and daily brief
