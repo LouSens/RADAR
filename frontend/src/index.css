@@ -1,53 +1,52 @@
 @import "tailwindcss";
 
-/* Colours are tokens so both themes stay in step. Semantic colours (calm, alert) are
-   separate from the accent and from the per-asset colours. */
+/* One dark world, shared with the owner's portfolio site: near-black ground, Inter set
+   tight and heavy for display, JetBrains Mono for every number, and "liquid glass"
+   surfaces. The accent is a cool radar blue; rising and falling prices have their own
+   colours and never borrow the accent. */
 :root {
-  --bg: #f4f6f8;
-  --panel: #ffffff;
-  --raised: #eef2f5;
-  --ink: #15202b;
-  --muted: #5b6875;
-  --line: #d8dfe6;
-  --accent: #1c6f8c;
-  --calm: #1b8a6f;
-  --alert: #c9532f;
-  --btc: #4b5fd6;
-  --gold: #a6770a;
-  --stock: #2f7d5b;
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e151b;
-    --panel: #162029;
-    --raised: #1c2833;
-    --ink: #e7edf2;
-    --muted: #94a2ae;
-    --line: #283642;
-    --accent: #62b6d2;
-    --calm: #4fc4a3;
-    --alert: #f08b6d;
-    --btc: #8d9bf6;
-    --gold: #e1b24c;
-    --stock: #6ecb9f;
-    color-scheme: dark;
-  }
+  --bg: #06070a;
+  --ink: #f3f4f7;
+  --muted: #9a9daa;
+  --faint: #62657a;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --grid: rgba(255, 255, 255, 0.045);
+  --accent: #5cd6f7;
+  --accent-ink: #04222b;
+  --accent-dim: rgba(92, 214, 247, 0.1);
+  --accent-glow: rgba(92, 214, 247, 0.22);
+  --calm: #3ddc97;
+  --alert: #ff6b5e;
+  --btc: #f7a43b;
+  --gold: #e9c46a;
+  --stock: #8b93ff;
+  --radius-card: 24px;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-bg: var(--bg);
-  --color-panel: var(--panel);
-  --color-raised: var(--raised);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
   --color-calm: var(--calm);
   --color-alert: var(--alert);
-  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  scroll-behavior: smooth;
 }
 
 html,
@@ -61,19 +60,180 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
+  font-size: 15px;
+  line-height: 1.65;
+  letter-spacing: -0.011em;
+  overflow-x: hidden;
+}
+
+/* The ground: a soft glow behind the top of the page and a fine dot grid. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 34rem at 50% -12rem, rgba(92, 214, 247, 0.13), transparent 70%),
+    radial-gradient(40rem 26rem at 100% 20%, rgba(139, 147, 255, 0.07), transparent 70%),
+    radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 26px 26px;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+}
+
+::selection {
+  background: rgba(92, 214, 247, 0.32);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 .num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.display {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.text-fluid-h1 {
+  font-size: clamp(2.1rem, 1.1rem + 4.6vw, 4.4rem);
+}
+
+.text-fluid-h2 {
+  font-size: clamp(1.7rem, 1.2rem + 2.2vw, 2.9rem);
+}
+
+.text-fluid-price {
+  font-size: clamp(1.6rem, 1.1rem + 2vw, 2.6rem);
+}
+
+/* Liquid glass */
+.glass {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.012) 100%),
+    rgba(11, 12, 17, 0.78);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-card);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+/* The thin highlight along a glass card's top edge. */
+.glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+  pointer-events: none;
+}
+
+.glass-lift {
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s ease,
+    box-shadow 0.35s ease;
+}
+
+.glass-lift:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 24px 55px rgba(0, 0, 0, 0.6),
+    0 0 26px var(--accent-dim),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.well {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.6rem 1.15rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow:
+    0 8px 24px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.btn-primary:hover {
+  background: #86e2fa;
+}
+
+.btn-ghost {
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.btn-ghost:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Radar: concentric rings with a slow sweep. Decorative. */
+.radar {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    repeating-radial-gradient(circle, transparent 0 38px, rgba(92, 214, 247, 0.1) 38px 39px),
+    radial-gradient(circle, rgba(92, 214, 247, 0.08), transparent 68%);
+  mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+}
+
+.radar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(92, 214, 247, 0.32), transparent 22%);
+  animation: sweep 9s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse-dot {
@@ -86,8 +246,44 @@ body {
   animation: pulse-dot 1.6s ease-in-out infinite;
 }
 
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* Content starts visible if animations are off; this only softens the entrance. */
+.rise {
+  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rise-2 {
+  animation-delay: 0.08s;
+}
+
+.rise-3 {
+  animation-delay: 0.16s;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --radius-card: 20px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .live-dot {
+  .live-dot,
+  .rise,
+  .radar::after {
     animation: none;
+  }
+
+  .glass-lift:hover {
+    transform: none;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }

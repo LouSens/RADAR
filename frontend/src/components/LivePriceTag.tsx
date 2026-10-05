@@ -22,30 +22,50 @@ export function useFreshPrice(symbol: string | undefined): LivePrice | undefined
   return isFresh(live, now) ? live : undefined;
 }
 
+export function LiveBadge() {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-calm">
+      <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-calm" aria-hidden="true" />
+      Live
+    </span>
+  );
+}
+
 /**
  * The current price with an honest label: "Live" only when a price arrived in the last
- * few minutes, otherwise the last stored close and when it was.
+ * few minutes, otherwise the last stored price and when it was.
  */
-export function LivePriceTag({ asset, lastBar }: { asset: Asset; lastBar: Bar | undefined }) {
+export function LivePriceTag({
+  asset,
+  lastBar,
+  size = "md",
+  align = "right",
+}: {
+  asset: Asset;
+  lastBar: Bar | undefined;
+  size?: "md" | "lg";
+  align?: "left" | "right";
+}) {
   const live = useFreshPrice(asset.symbol);
+  const price = size === "lg" ? "text-fluid-price" : "text-2xl";
+  const side = align === "right" ? "text-right items-end" : "text-left items-start";
   if (live) {
     return (
-      <div className="text-right">
-        <div className="num text-2xl font-medium">{formatPrice(live.price)}</div>
-        <div className="flex items-center justify-end gap-1.5 text-xs text-calm">
-          <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-calm" aria-hidden="true" />
-          Live
+      <div className={`flex flex-col ${side}`}>
+        <div className={`num ${price} font-semibold leading-none`}>{formatPrice(live.price)}</div>
+        <div className="mt-1.5">
+          <LiveBadge />
         </div>
       </div>
     );
   }
   if (!lastBar) {
-    return <div className="text-right text-sm text-muted">No price yet</div>;
+    return <div className={`text-sm text-muted ${side}`}>No price yet</div>;
   }
   return (
-    <div className="text-right">
-      <div className="num text-2xl font-medium">{formatPrice(lastBar.close)}</div>
-      <div className="text-xs text-muted">
+    <div className={`flex flex-col ${side}`}>
+      <div className={`num ${price} font-semibold leading-none`}>{formatPrice(lastBar.close)}</div>
+      <div className="mt-1.5 max-w-[26ch] text-xs leading-snug text-muted">
         Not live · last stored price, {formatDateTime(lastBar.ts)} {zoneLabel()}
         {asset.trades_continuously ? "" : " · trades in US market hours"}
       </div>

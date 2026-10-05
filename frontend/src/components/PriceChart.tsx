@@ -25,7 +25,8 @@ interface Props {
   colorVar: string;
   /** A fresh live price, or undefined when there is none. */
   live?: LivePrice;
-  height?: number;
+  /** Pixels, or "100%" to fill a sized parent. */
+  height?: number | string;
   label: string;
 }
 
@@ -51,8 +52,12 @@ function themeOptions() {
       attributionLogo: false,
     },
     grid: {
-      vertLines: { color: cssVar("--line") },
-      horzLines: { color: cssVar("--line") },
+      vertLines: { color: cssVar("--grid") },
+      horzLines: { color: cssVar("--grid") },
+    },
+    crosshair: {
+      vertLine: { color: cssVar("--line-strong"), labelBackgroundColor: "#1a1c25" },
+      horzLine: { color: cssVar("--line-strong"), labelBackgroundColor: "#1a1c25" },
     },
     rightPriceScale: { borderColor: cssVar("--line") },
     timeScale: { borderColor: cssVar("--line"), timeVisible: true, secondsVisible: false },
@@ -88,8 +93,9 @@ export function PriceChart({
           })
         : created.addSeries(AreaSeries, {
             lineColor: color,
-            topColor: `color-mix(in srgb, ${color} 28%, transparent)`,
-            bottomColor: `color-mix(in srgb, ${color} 2%, transparent)`,
+            topColor: `color-mix(in srgb, ${color} 30%, transparent)`,
+            bottomColor: `color-mix(in srgb, ${color} 0%, transparent)`,
+            priceLineColor: color,
             lineWidth: 2,
           });
     chart.current = created;

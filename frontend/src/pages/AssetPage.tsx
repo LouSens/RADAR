@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import type { Timeframe } from "../api/client";
 import { useAssets, useBars } from "../api/queries";
 import { LivePriceTag, useFreshPrice } from "../components/LivePriceTag";
 import { PriceChart } from "../components/PriceChart";
-import { Caption, Notice, Panel, assetColorVar } from "../components/ui";
+import { Caption, Notice, Panel, SectionLabel, Stat, assetColorVar } from "../components/ui";
 import { formatCount, formatPrice } from "../lib/format";
 import { formatDate, zoneLabel } from "../lib/time";
 
@@ -15,20 +15,11 @@ const TIMEFRAMES: { value: Timeframe; label: string }[] = [
   { value: "1Day", label: "Daily" },
 ];
 const TABS = [
-  ["Regime", "Phase 3"],
-  ["Outlook", "Phase 3"],
-  ["News", "Phase 4"],
-  ["Drivers", "Phase 5"],
+  ["Regime", "What state the market is in, and how long such states last.", "Phase 3"],
+  ["Outlook", "The simulated range of outcomes, volatility forecast, and tail risk.", "Phase 3"],
+  ["News", "News tone, topics, and whether news has moved price.", "Phase 4"],
+  ["Drivers", "Which outside forces this asset is moving with.", "Phase 5"],
 ] as const;
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md bg-raised px-3 py-2">
-      <div className="text-xs text-muted">{label}</div>
-      <div className="num">{value}</div>
-    </div>
-  );
-}
 
 export function AssetPage() {
   const { slug } = useParams();
@@ -36,6 +27,8 @@ export function AssetPage() {
   const assets = useAssets();
   const asset = assets.data?.find((a) => a.slug === slug);
   const bars = useBars(asset?.slug, timeframe, LIMIT);
+  // The header price always comes from hourly bars, whatever the chart shows.
+  const hourly = useBars(asset?.slug, "1Hour", 1);
   const live = useFreshPrice(asset?.symbol);
 
   if (assets.isPending) return <Notice>Loading…</Notice>;
@@ -52,32 +45,44 @@ export function AssetPage() {
         : "";
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <div className="flex flex-col gap-10">
+      <header className="rise flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         <div>
-          <h1 className="text-2xl font-semibold">{asset.name}</h1>
-          <p className="text-muted">
-            {asset.symbol} ·{" "}
-            {asset.trades_continuously
-              ? "trades around the clock"
-              : "trades in US market hours only"}
+          <Link to="/" className="text-xs text-muted hover:text-ink">
+            ← Overview
+          </Link>
+          <h1 className="display text-fluid-h2 mt-2">{asset.name}</h1>
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: `var(${assetColorVar(asset)})` }}
+              aria-hidden="true"
+            />
+            <span className="num">{asset.symbol}</span>
+            <span aria-hidden="true">·</span>
+            {asset.trades_continuously ? "trades around the clock" : "trades in US market hours only"}
           </p>
         </div>
-        <LivePriceTag asset={asset} lastBar={timeframe === "1Hour" ? last : undefined} />
+        <LivePriceTag asset={asset} lastBar={hourly.data?.bars.at(-1)} size="lg" align="left" />
       </header>
 
       <Panel
+        className="rise rise-2"
         title="Price"
         aside={
-          <div className="inline-flex overflow-hidden rounded-md border border-line" role="group" aria-label="Bar size">
+          <div
+            className="inline-flex rounded-full border border-line-strong bg-white/[0.03] p-0.5"
+            role="group"
+            aria-label="Bar size"
+          >
             {TIMEFRAMES.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 aria-pressed={timeframe === option.value}
                 onClick={() => setTimeframe(option.value)}
-                className={`px-3 py-1 text-xs ${
-                  timeframe === option.value ? "bg-accent text-panel" : "text-muted hover:text-ink"
+                className={`rounded-full px-3.5 py-1 text-xs font-medium transition-colors ${
+                  timeframe === option.value ? "bg-accent text-accent-ink" : "text-muted hover:text-ink"
                 }`}
               >
                 {option.label}
@@ -91,24 +96,26 @@ export function AssetPage() {
         {bars.isSuccess && rows.length === 0 && <Notice>No prices stored for this asset yet.</Notice>}
         {rows.length > 0 && first && last && (
           <>
-            <PriceChart
-              key={timeframe}
-              bars={rows}
-              timeframe={timeframe}
-              assetClass={asset.asset_class}
-              kind="candles"
-              colorVar={assetColorVar(asset)}
-              live={live}
-              height={380}
-              label={`${asset.name} ${timeframe === "1Hour" ? "hourly" : "daily"} price candles`}
-            />
+            <div className="h-[280px] sm:h-[400px]">
+              <PriceChart
+                key={timeframe}
+                bars={rows}
+                timeframe={timeframe}
+                assetClass={asset.asset_class}
+                kind="candles"
+                colorVar={assetColorVar(asset)}
+                live={live}
+                height="100%"
+                label={`${asset.name} ${timeframe === "1Hour" ? "hourly" : "daily"} price candles`}
+              />
+            </div>
             <Caption>
               {timeframe === "1Hour" ? "Hourly" : "Daily"} open, high, low, and close,{" "}
               {formatDate(first.ts)} to {formatDate(last.ts)} ({zoneLabel()}), n ={" "}
               {formatCount(rows.length)} bars. Source: {source}.
               {live ? " The last candle is still forming and is drawn from the live feed." : ""}
             </Caption>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Stat label="Highest in window" value={formatPrice(Math.max(...rows.map((b) => b.high)))} />
               <Stat label="Lowest in window" value={formatPrice(Math.min(...rows.map((b) => b.low)))} />
               <Stat label="Last stored close" value={formatPrice(last.close)} />
@@ -121,16 +128,18 @@ export function AssetPage() {
         )}
       </Panel>
 
-      <Panel title="Analysis">
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {TABS.map(([name, phase]) => (
-            <li key={name} className="rounded-md border border-dashed border-line px-3 py-2">
-              <div className="font-medium">{name}</div>
-              <div className="text-xs text-muted">Not built yet · {phase}</div>
+      <section>
+        <SectionLabel aside="not built yet">Analysis</SectionLabel>
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {TABS.map(([name, what, phase]) => (
+            <li key={name} className="well flex flex-col gap-2 p-4">
+              <span className="num text-[11px] uppercase tracking-wider text-accent">{phase}</span>
+              <span className="font-semibold leading-tight">{name}</span>
+              <span className="text-sm leading-snug text-muted">{what}</span>
             </li>
           ))}
         </ul>
-      </Panel>
+      </section>
     </div>
   );
 }
