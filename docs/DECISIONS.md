@@ -214,3 +214,22 @@ The user reports it tracks SPY almost exactly. The portfolio lab will value and 
 with `SPY` prices, one unit to one share. Not measured: the tracking difference, and
 whether one `SPYB` equals one SPY share or a fraction. Confirm the ratio in Phase 5
 before showing portfolio values.
+
+## 016. Raw layer and backfill design (2026-10-05)
+
+Made by Claude while building step 2, open to change:
+
+- Raw Parquet files are partitioned by source, symbol, and the date the response was
+  **received**, one file per response page. Spec 7.1 says "by source, symbol, and date"
+  without saying which date. The received date keeps the layer strictly append-only and
+  avoids about 11,000 one-day files per backfill.
+- Fields the provider adds later are kept in an `extra` JSON column, so a raw file never
+  silently loses data.
+- Backfill windows are calendar months (hourly bars, news) and calendar years (daily
+  bars). A window in the past is marked `done` and never refetched; the window holding
+  "now" is `partial` and refetched every run.
+- A bar is stored only once its period has ended. The hour or day still forming is
+  skipped, so stored values do not change later and a re-run changes zero rows.
+- Stock bars come from the consolidated (`sip`) feed, requested up to 16 minutes ago.
+  Hourly stock bars include extended-hours bars.
+- News is fetched from 2015-01-01 for every news symbol in the universe.

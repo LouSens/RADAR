@@ -9,8 +9,8 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 Update this block at the end of every work session.
 
 - Phase: 1 (in progress), on branch `phase-1-data-platform`. Phase 0 merged to `main` on 2026-10-05
-- Last completed step: Phase 1 step 1, database models, first migration, and `make migrate`
-- Next step: Phase 1 step 2, raw Parquet writer and resumable backfill
+- Last completed step: Phase 1 step 2, raw Parquet store and resumable backfill. The dev database holds the full history (run 2026-10-05)
+- Next step: Phase 1 step 3, validation, cleaning, flags, and gap detection
 - Key decisions (`docs/DECISIONS.md` 010 to 013): gold is `GLD` alone; crypto from location `us-1`; store 1Hour and 1Day bars; the user is in GMT+8, so give times in GMT+8 in chat
 - Open questions: none
 
@@ -47,7 +47,8 @@ make down            # stop everything
 make migrate         # run Alembic migrations
 make audit           # run the Phase 0 data probe and rewrite docs/DATA_AUDIT.md (about 70 minutes;
                      # `uv run radar audit --resume` runs only missing sections)
-make backfill        # historical backfill for the configured universe
+make backfill        # historical backfill for the configured universe (about 17 minutes the first
+                     # time, seconds after that; needs `make up` and `make migrate`)
 make test            # backend pytest + frontend vitest (database tests need `make up` first)
 make lint            # ruff, mypy, eslint, tsc
 make demo            # start the app in replay mode from stored data
