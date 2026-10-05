@@ -23,11 +23,13 @@ from sqlalchemy.orm import Session
 
 from radar.api.live import LiveHub
 from radar.api.schemas import (
+    ArticleOut,
     AssetOut,
     BarOut,
     BarsOut,
     CalibrationOut,
     CalibrationRowOut,
+    EventStudyOut,
     HealthOut,
     LevelIn,
     LevelOut,
@@ -41,8 +43,12 @@ from radar.api.schemas import (
     RiskLevelOut,
     RiskMethodOut,
     RiskOut,
+    SentimentAccuracyOut,
+    SentimentOut,
+    SentimentPoint,
     SeriesStatus,
     SimulationOut,
+    TopicSummary,
     VolatilityHorizonOut,
     VolatilityOut,
     VolatilityPoint,
@@ -53,12 +59,20 @@ from radar.db.models import (
     CalibrationReport,
     DataQualityReport,
     IngestionRun,
+    ModelRegistry,
+    NewsArticle,
+    NewsSentiment,
+    NewsSymbol,
+    NewsTopic,
     RegimeState,
     RiskMetric,
+    SentimentAggregate,
     VolatilityForecast,
 )
-from radar.models import simulator
+from radar.models import simulator, topics
+from radar.pipelines import event_study as event_study_job
 from radar.pipelines import risk as risk_job
+from radar.pipelines import sentiment as sentiment_job
 from radar.pipelines import simulation as simulation_job
 from radar.pipelines import volatility as volatility_job
 from radar.pipelines.regime import current_model
@@ -407,6 +421,144 @@ def get_risk(symbol: str, universe: UniverseDep, session: SessionDep) -> RiskOut
             "model_version": registered.version,
             "horizons": horizons,
             "drawdowns": registered.metrics.get("drawdowns", []),
+        }
+    )
+
+
+TOPIC_VERSION = topics.version_of(topics.MODEL_ID)
+
+
+def _strongest(
+    session: Session, asset: Asset, version: str, since: datetime, *, positive: bool, limit: int = 5
+) -> list[ArticleOut]:
+    order = NewsSentiment.score.desc() if positive else NewsSentiment.score.asc()
+    rows = session.execute(
+        select(NewsArticle, NewsSentiment.score, NewsTopic.topic)
+        .join(NewsSymbol, NewsSymbol.article_id == NewsArticle.id)
+        .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
+        .outerjoin(
+            NewsTopic,
+            (NewsTopic.article_id == NewsArticle.id) & (NewsTopic.model_version == TOPIC_VERSION),
+        )
+        .where(
+            NewsSymbol.symbol == asset.symbol,
+            NewsSentiment.model_version == version,
+            NewsArticle.duplicate_of.is_(None),
+            NewsArticle.created_at >= since,
+        )
+        .order_by(order, NewsArticle.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [
+        ArticleOut(
+            id=article.id,
+            created_at=article.created_at,
+            headline=article.headline,
+            url=article.url,
+            source=article.source,
+            score=score,
+            topic=topic,
+        )
+        for article, score, topic in rows
+        if (score > 0) == positive
+    ]
+
+
+def _topic_summary(
+    session: Session, asset: Asset, version: str, since: datetime
+) -> list[TopicSummary]:
+    rows = session.execute(
+        select(NewsTopic.topic, func.count(), func.avg(NewsSentiment.score))
+        .join(NewsArticle, NewsArticle.id == NewsTopic.article_id)
+        .join(NewsSymbol, NewsSymbol.article_id == NewsArticle.id)
+        .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
+        .where(
+            NewsSymbol.symbol == asset.symbol,
+            NewsTopic.model_version == TOPIC_VERSION,
+            NewsSentiment.model_version == version,
+            NewsArticle.duplicate_of.is_(None),
+            NewsArticle.created_at >= since,
+        )
+        .group_by(NewsTopic.topic)
+        .order_by(func.count().desc())
+    ).all()
+    return [
+        TopicSummary(topic=topic, article_count=count, score_mean=float(mean))
+        for topic, count, mean in rows
+    ]
+
+
+@router.get("/assets/{symbol:path}/sentiment", response_model=SentimentOut)
+def get_sentiment(
+    symbol: str,
+    universe: UniverseDep,
+    session: SessionDep,
+    days: Annotated[int, Query(ge=1, le=3650)] = 90,
+) -> SentimentOut:
+    """News tone over time, the articles with the strongest tone, and the model's accuracy."""
+    asset = find_asset(universe, symbol)
+    if asset.news_start is None:
+        raise HTTPException(status_code=404, detail=f"{asset.symbol} has no news coverage")
+    daily = list(
+        session.scalars(
+            select(SentimentAggregate)
+            .where(SentimentAggregate.symbol == asset.symbol, SentimentAggregate.bucket == "1Day")
+            .order_by(SentimentAggregate.ts.desc())
+            .limit(days)
+        )
+    )[::-1]
+    hourly = list(
+        session.scalars(
+            select(SentimentAggregate)
+            .where(SentimentAggregate.symbol == asset.symbol, SentimentAggregate.bucket == "1Hour")
+            .order_by(SentimentAggregate.ts.desc())
+            .limit(24 * 7)
+        )
+    )
+    if not daily or not hourly:
+        raise HTTPException(status_code=404, detail=f"No news tone for {asset.symbol} yet")
+    version = daily[-1].model_version
+    since = daily[0].ts
+    registered = session.scalars(
+        select(ModelRegistry)
+        .where(ModelRegistry.name == sentiment_job.MODEL_NAME, ModelRegistry.is_current)
+        .order_by(ModelRegistry.trained_at.desc())
+        .limit(1)
+    ).first()
+    accuracy = None
+    if registered is not None and registered.version == version:
+        accuracy = SentimentAccuracyOut.model_validate(registered.metrics)
+    return SentimentOut(
+        symbol=asset.symbol,
+        model_version=version,
+        news_start=asset.news_start,
+        as_of=hourly[0].ts,
+        current=hourly[0].score_decayed,
+        articles_24h=sum(h.article_count for h in hourly[:24]),
+        articles_7d=sum(h.article_count for h in hourly),
+        articles_in_window=sum(d.article_count for d in daily),
+        days_with_news=sum(d.article_count > 0 for d in daily),
+        daily=[SentimentPoint.model_validate(d, from_attributes=True) for d in daily],
+        most_positive=_strongest(session, asset, version, since, positive=True),
+        most_negative=_strongest(session, asset, version, since, positive=False),
+        topics=_topic_summary(session, asset, version, since),
+        accuracy=accuracy,
+    )
+
+
+@router.get("/assets/{symbol:path}/event-study", response_model=EventStudyOut)
+def get_event_study(symbol: str, universe: UniverseDep, session: SessionDep) -> EventStudyOut:
+    """Whether news tone has led price, followed it, or neither, with the evidence."""
+    asset = find_asset(universe, symbol)
+    stored = event_study_job.current(session, asset.symbol)
+    if stored is None:
+        raise HTTPException(status_code=404, detail=f"No event study for {asset.symbol} yet")
+    return EventStudyOut.model_validate(
+        {
+            **stored.metrics,
+            "symbol": asset.symbol,
+            "computed_at": stored.trained_at,
+            "min_events": stored.params["min_events"],
         }
     )
 

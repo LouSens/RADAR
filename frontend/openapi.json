@@ -1,6 +1,64 @@
 {
   "components": {
     "schemas": {
+      "ArticleOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "headline",
+          "url",
+          "source",
+          "score",
+          "topic"
+        ],
+        "title": "ArticleOut",
+        "type": "object"
+      },
       "AssetOut": {
         "properties": {
           "asset_class": {
@@ -246,6 +304,29 @@
         "title": "CalibrationRowOut",
         "type": "object"
       },
+      "ClassifierScoreOut": {
+        "properties": {
+          "accuracy": {
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "macro_f1": {
+            "title": "Macro F1",
+            "type": "number"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "accuracy",
+          "macro_f1"
+        ],
+        "title": "ClassifierScoreOut",
+        "type": "object"
+      },
       "DrawdownOut": {
         "properties": {
           "depth": {
@@ -282,6 +363,154 @@
           "recovered_day"
         ],
         "title": "DrawdownOut",
+        "type": "object"
+      },
+      "EventPathOut": {
+        "properties": {
+          "high": {
+            "items": {
+              "type": "number"
+            },
+            "title": "High",
+            "type": "array"
+          },
+          "low": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Low",
+            "type": "array"
+          },
+          "mean": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Mean",
+            "type": "array"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "offsets": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Offsets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "n",
+          "offsets",
+          "mean",
+          "low",
+          "high"
+        ],
+        "title": "EventPathOut",
+        "type": "object"
+      },
+      "EventStudyOut": {
+        "properties": {
+          "baseline": {
+            "$ref": "#/components/schemas/EventPathOut"
+          },
+          "by_topic": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TopicVerdict"
+            },
+            "title": "By Topic",
+            "type": "array"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "days_with_news": {
+            "title": "Days With News",
+            "type": "integer"
+          },
+          "first_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Day"
+          },
+          "lags": {
+            "items": {
+              "$ref": "#/components/schemas/LagOut"
+            },
+            "title": "Lags",
+            "type": "array"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Day"
+          },
+          "min_events": {
+            "title": "Min Events",
+            "type": "integer"
+          },
+          "n_events": {
+            "title": "N Events",
+            "type": "integer"
+          },
+          "n_negative": {
+            "title": "N Negative",
+            "type": "integer"
+          },
+          "n_positive": {
+            "title": "N Positive",
+            "type": "integer"
+          },
+          "negative": {
+            "$ref": "#/components/schemas/EventPathOut"
+          },
+          "positive": {
+            "$ref": "#/components/schemas/EventPathOut"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "computed_at",
+          "verdict",
+          "n_events",
+          "n_positive",
+          "n_negative",
+          "min_events",
+          "days_with_news",
+          "first_day",
+          "last_day",
+          "positive",
+          "negative",
+          "baseline",
+          "lags"
+        ],
+        "title": "EventStudyOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -354,6 +583,34 @@
           "series"
         ],
         "title": "HealthOut",
+        "type": "object"
+      },
+      "LagOut": {
+        "properties": {
+          "correlation": {
+            "title": "Correlation",
+            "type": "number"
+          },
+          "lag": {
+            "title": "Lag",
+            "type": "integer"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "significant": {
+            "title": "Significant",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lag",
+          "correlation",
+          "n",
+          "significant"
+        ],
+        "title": "LagOut",
         "type": "object"
       },
       "LevelIn": {
@@ -1073,6 +1330,195 @@
         "title": "RiskOut",
         "type": "object"
       },
+      "SentimentAccuracyOut": {
+        "description": "How the tone model did on headlines labelled by hand.",
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClassifierScoreOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "labelled_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labelled By",
+            "type": "array"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ClassifierScoreOut"
+          },
+          "topics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClassifierScoreOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "labelled_by",
+          "model"
+        ],
+        "title": "SentimentAccuracyOut",
+        "type": "object"
+      },
+      "SentimentOut": {
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SentimentAccuracyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "articles_24h": {
+            "title": "Articles 24H",
+            "type": "integer"
+          },
+          "articles_7d": {
+            "title": "Articles 7D",
+            "type": "integer"
+          },
+          "articles_in_window": {
+            "title": "Articles In Window",
+            "type": "integer"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/SentimentPoint"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "days_with_news": {
+            "title": "Days With News",
+            "type": "integer"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "most_negative": {
+            "items": {
+              "$ref": "#/components/schemas/ArticleOut"
+            },
+            "title": "Most Negative",
+            "type": "array"
+          },
+          "most_positive": {
+            "items": {
+              "$ref": "#/components/schemas/ArticleOut"
+            },
+            "title": "Most Positive",
+            "type": "array"
+          },
+          "news_start": {
+            "format": "date",
+            "title": "News Start",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "$ref": "#/components/schemas/TopicSummary"
+            },
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbol",
+          "model_version",
+          "news_start",
+          "as_of",
+          "current",
+          "articles_24h",
+          "articles_7d",
+          "articles_in_window",
+          "days_with_news",
+          "daily",
+          "most_positive",
+          "most_negative",
+          "topics",
+          "accuracy"
+        ],
+        "title": "SentimentOut",
+        "type": "object"
+      },
+      "SentimentPoint": {
+        "properties": {
+          "article_count": {
+            "title": "Article Count",
+            "type": "integer"
+          },
+          "score_decayed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Decayed"
+          },
+          "score_mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Mean"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts",
+          "article_count",
+          "score_mean",
+          "score_decayed"
+        ],
+        "title": "SentimentPoint",
+        "type": "object"
+      },
       "SeriesStatus": {
         "properties": {
           "bars": {
@@ -1191,6 +1637,57 @@
           "fan"
         ],
         "title": "SimulationOut",
+        "type": "object"
+      },
+      "TopicSummary": {
+        "properties": {
+          "article_count": {
+            "title": "Article Count",
+            "type": "integer"
+          },
+          "score_mean": {
+            "title": "Score Mean",
+            "type": "number"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "article_count",
+          "score_mean"
+        ],
+        "title": "TopicSummary",
+        "type": "object"
+      },
+      "TopicVerdict": {
+        "properties": {
+          "days_with_news": {
+            "title": "Days With News",
+            "type": "integer"
+          },
+          "n_events": {
+            "title": "N Events",
+            "type": "integer"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "verdict",
+          "n_events",
+          "days_with_news"
+        ],
+        "title": "TopicVerdict",
         "type": "object"
       },
       "ValidationError": {
@@ -1577,6 +2074,46 @@
         "summary": "Get Calibration"
       }
     },
+    "/api/v1/assets/{symbol}/event-study": {
+      "get": {
+        "description": "Whether news tone has led price, followed it, or neither, with the evidence.",
+        "operationId": "get_event_study_api_v1_assets__symbol__event_study_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventStudyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Event Study"
+      }
+    },
     "/api/v1/assets/{symbol}/regime": {
       "get": {
         "description": "The current market regime, its history, and how the model has measured.",
@@ -1667,6 +2204,58 @@
           }
         },
         "summary": "Get Risk"
+      }
+    },
+    "/api/v1/assets/{symbol}/sentiment": {
+      "get": {
+        "description": "News tone over time, the articles with the strongest tone, and the model's accuracy.",
+        "operationId": "get_sentiment_api_v1_assets__symbol__sentiment_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 90,
+              "maximum": 3650,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentimentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Sentiment"
       }
     },
     "/api/v1/assets/{symbol}/simulation": {

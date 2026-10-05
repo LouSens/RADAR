@@ -257,7 +257,7 @@ Check current stable versions when installing; do not pin from memory.
 
 **Data and maths:** pandas, NumPy, SciPy, PyArrow, statsmodels, scikit-learn, `hmmlearn`, `pandera` for schema validation, `exchange_calendars` for market calendars.
 
-**NLP:** Hugging Face `transformers` with the `ProsusAI/finbert` model, CPU inference.
+**NLP:** Hugging Face `transformers` and `torch` (CUDA build; optional install `uv sync --extra nlp`) with the `ProsusAI/finbert` model for tone and `MoritzLaurer/deberta-v3-base-zeroshot-v2.0` for topics. Runs on a graphics card when there is one, on the CPU otherwise.
 
 **Notebooks (development only):** `nbformat`, `nbconvert`, `ipykernel`, `matplotlib`.
 
@@ -284,6 +284,7 @@ Timestamps are `timestamptz` in UTC. Tables marked (H) are TimescaleDB hypertabl
 | `news_articles` | `id`, `created_at`, `updated_at`, `headline`, `summary`, `author`, `url`, `source` | provider article id is the key |
 | `news_symbols` | `article_id`, `symbol` | many-to-many |
 | `news_sentiment` | `article_id`, `model_version`, `p_pos`, `p_neg`, `p_neu`, `score` | `score = p_pos - p_neg` |
+| `news_topics` | `article_id`, `model_version`, `topic`, `confidence` | one topic per article |
 | `sentiment_agg` (H) | `symbol`, `bucket`, `ts`, `score_mean`, `score_decayed`, `article_count` | hourly and daily buckets |
 | `regime_states` (H) | `symbol`, `ts`, `model_version`, `probs` (JSON), `label` | filtered probabilities only |
 | `simulations` | `symbol` or `portfolio_id`, `as_of`, `model_id`, `seed`, `n_paths`, `start_price`, `horizons` (JSON: quantiles, ranges, histogram per horizon), `fan`, `paths`, `model_version` | one row per run; paths kept for the latest run only |
@@ -394,14 +395,14 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 
 - **Method:** score each article's headline and summary with FinBERT. `score = P(positive) - P(negative)`. Aggregate per symbol into hourly and daily buckets: mean score, article count, and an exponentially decayed score (half-life starts at 24 hours). Bitcoin uses articles tagged `BTCUSD`, from 2022. Gold uses the gold news set from 2023 (section 3.4).
 - **Baseline:** a finance sentiment word list (Loughran-McDonald).
-- **Evaluation:** hand-label a random sample of 200 stored headlines (stratified by symbol) and report accuracy and macro F1 for FinBERT and the baseline. This is an evaluation set only. Fine-tuning is a stretch goal and needs its own, larger labelled set.
+- **Evaluation:** label a random sample of 200 stored headlines (stratified by symbol) and report accuracy and macro F1 for FinBERT and the baseline. The current labels were written by Claude, not a person, and the app says so (`docs/DECISIONS.md` 030). This is an evaluation set only. Fine-tuning was tried in Phase 4 on a separate set of 1,800 labelled headlines with a time-ordered split; the fine-tuned model was not measurably better on the held-out test part and is not used (`docs/DECISIONS.md` 031).
 - **UI output:** sentiment line under the price chart, article count bars, and a list of the articles with the strongest scores linking to the source.
 - **News topics:** each article is also assigned one topic from a fixed, configured list (for example regulation, fund flows and ETFs, exchange failures and hacks, macro and central banks, adoption, price commentary, other) by a pretrained language model used zero-shot, with no training on our data. The model is chosen in Phase 4 for accuracy on the hand-labelled sample and must run on a CPU. Topic accuracy is reported with the sentiment accuracy. The UI shows article counts and tone per topic.
 - **Done when:** every stored article has a score for the current model version, aggregates update on arrival, and the evaluation numbers are in the model registry and visible in the methodology page.
 
 ### F4. Sentiment versus price
 
-- **Method, part 1 (event study):** define an event as a day where the daily sentiment z-score exceeds 2 in absolute value (trailing one-year window). For each event compute cumulative returns from 24 hours before to 72 hours after, minus the asset's mean return over the trailing 90 days. Average across events separately for positive and negative shocks. Confidence bands by bootstrap. Events closer than 72 hours apart are merged.
+- **Method, part 1 (event study):** define an event as a day where the daily sentiment z-score exceeds 2 in absolute value (trailing one-year window). For each event compute cumulative returns from 24 hours before to 72 hours after (in daily steps; sessions for stocks), minus the asset's mean return over the trailing 90 days. Average across events separately for positive and negative shocks. Confidence bands by bootstrap. Events closer than 72 hours apart are merged.
 - **Method, part 2 (lead-lag):** cross-correlation between daily sentiment and daily returns at lags from -5 to +5 days, with significance bands. Report whether the larger correlations sit where sentiment leads or where price leads.
 - **Baseline:** the same statistics on randomly chosen dates, matched on regime.
 - **Verdict labels:** `sentiment leads price`, `price leads sentiment`, `no measurable relationship`, or `not enough events` (fewer than 30).
@@ -595,7 +596,7 @@ Eight phases. Each ends in something that runs and can be shown.
 ### Later, not in version 1
 
 - Automatic trade journal from Binance history.
-- Fine-tuned sentiment model.
+- A fine-tuned sentiment model with a larger labelled set (the first attempt was not adopted: `docs/DECISIONS.md` 031).
 - Additional news or macro data sources for gold.
 
 ---

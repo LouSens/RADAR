@@ -267,3 +267,52 @@ class RiskMetric(Base):
     var: Mapped[float] = mapped_column(Double)
     expected_shortfall: Mapped[float] = mapped_column(Double)
     realised_loss: Mapped[float | None] = mapped_column(Double)
+
+
+class NewsSentiment(Base):
+    """The tone of one article according to one model version."""
+
+    __tablename__ = "news_sentiment"
+
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("news_articles.id", ondelete="CASCADE"), primary_key=True
+    )
+    model_version: Mapped[str] = mapped_column(Text, primary_key=True)
+    p_pos: Mapped[float] = mapped_column(Double)
+    p_neg: Mapped[float] = mapped_column(Double)
+    p_neu: Mapped[float] = mapped_column(Double)
+    # p_pos - p_neg, from -1 to +1.
+    score: Mapped[float] = mapped_column(Double)
+
+
+class SentimentAggregate(Base):
+    """Tone summarised per asset and bucket. `ts` is when the bucket ended."""
+
+    __tablename__ = "sentiment_agg"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    # "1Hour" or "1Day". A stock's day ends at the market close.
+    bucket: Mapped[str] = mapped_column(Text, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TZDateTime, primary_key=True)
+    model_version: Mapped[str] = mapped_column(Text)
+    article_count: Mapped[int] = mapped_column(Integer)
+    # Average over the bucket's own articles; empty when it had none.
+    score_mean: Mapped[float | None] = mapped_column(Double)
+    # Average over all earlier articles, each one's weight halving every 24 hours.
+    score_decayed: Mapped[float | None] = mapped_column(Double)
+
+
+class NewsTopic(Base):
+    """The topic one model version assigned to an article."""
+
+    __tablename__ = "news_topics"
+
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("news_articles.id", ondelete="CASCADE"), primary_key=True
+    )
+    model_version: Mapped[str] = mapped_column(Text, primary_key=True)
+    topic: Mapped[str] = mapped_column(Text)
+    # The model's share of belief in the winning topic, from 0 to 1.
+    confidence: Mapped[float] = mapped_column(Double)
+
+    __table_args__ = (Index("ix_news_topics_topic", "model_version", "topic"),)

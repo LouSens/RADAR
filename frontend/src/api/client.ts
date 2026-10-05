@@ -21,6 +21,8 @@ export type VolatilityHorizon = components["schemas"]["VolatilityHorizonOut"];
 export type Risk = components["schemas"]["RiskOut"];
 export type RiskHorizon = components["schemas"]["RiskHorizonOut"];
 export type RiskMethod = components["schemas"]["RiskMethodOut"];
+export type Sentiment = components["schemas"]["SentimentOut"];
+export type EventStudy = components["schemas"]["EventStudyOut"];
 export type Timeframe = "1Hour" | "1Day";
 
 const BASE = "/api/v1";

@@ -25,6 +25,9 @@ TABLES = {
     "calibration_reports",
     "volatility_forecasts",
     "risk_metrics",
+    "news_sentiment",
+    "sentiment_agg",
+    "news_topics",
 }
 
 

@@ -66,7 +66,7 @@ export function RegimePanel({ asset }: { asset: Asset }) {
   const evaluation = regime.evaluation;
 
   return (
-    <section className="glass p-5 sm:p-7">
+    <section id="market-state" className="glass scroll-mt-24 p-5 sm:p-7">
       <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
           <h2 className="text-base font-semibold tracking-tight">Market state</h2>

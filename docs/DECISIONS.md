@@ -576,3 +576,132 @@ Evaluation tables live in `model_registry.metrics`.
 
 **Not built in Phase 3:** shading the price chart itself by regime. The Market state
 panel shows the regime of each day as a band beside the chart instead.
+
+## 029. Navigation moves to a sidebar (2026-10-05)
+
+Asked for by the user. On screens 768 px and wider, navigation is a left sidebar
+(Overview, the primary markets, System with its status dot) that collapses to an icon
+rail; the choice is remembered in the browser. Under the market being viewed it lists
+that page's sections (Market state, Outlook, Expected swings, Downside risk) as jump
+links. Phones keep the slim top bar and the bottom tab bar. This replaces the floating
+top capsule of decision 023 on larger screens; the rest of 023 stands.
+
+## 030. Phase 4: news sentiment, topics, and the sentiment-versus-price study (2026-10-06)
+
+**Decided by the user**
+
+- `torch` is added, in its CUDA build, so the language models run on the user's
+  graphics card (RTX 4050). The spec said CPU inference; the code uses the graphics
+  card when there is one and the CPU otherwise.
+- The Loughran-McDonald word list is downloaded for the baseline. It is free for
+  research use and needs a licence for commercial use, so it lives in the gitignored
+  `data/lexicons/` and is never committed.
+- The 200-headline evaluation sample is labelled by Claude, not by a person. The app
+  says so wherever the accuracy figure is shown. The labels were written before any
+  model output for those headlines existed. They are stored by article id only
+  (`backend/src/radar/sentiment_labels.csv`), with no article text.
+
+**Choices made by Claude, open to change**
+
+- `torch` and `transformers` are an optional install (`uv sync --extra nlp`), so CI and
+  the containers do not download them. **Consequence:** the Docker worker cannot score
+  articles. Scoring runs on the host with `uv run radar sentiment` (or a worker started
+  on the host). The Docker worker still refreshes the summaries from stored scores.
+- A day's sentiment bucket ends at midnight UTC for crypto and at the market close for
+  stocks, so weekend and overnight news lands in the next session, beside the price
+  move that could reflect it.
+- The event study uses daily steps: the day before the event to three days after.
+  For crypto that is the spec's 24 hours before to 72 hours after; for stocks the steps
+  are sessions.
+- **Verdict rule.** With fewer than 30 events: `not enough events`. Otherwise compare
+  the strongest significant correlation where tone came first (lags 1 to 5) with the
+  strongest where price came first (lags -5 to -1); significance allows for five lags
+  a side (Bonferroni). Neither significant: `no measurable relationship`. The same-day
+  correlation is ignored because it cannot say which came first. The event-study paths
+  are shown as supporting evidence and do not enter the rule.
+- Topics: seven fixed topics (regulation, funds and flows, security, macro, adoption,
+  price commentary, other), the same for every asset. Two zero-shot models were tried
+  on the labelled sample: `MoritzLaurer/deberta-v3-base-zeroshot-v2.0` (60.0% accuracy)
+  and `cross-encoder/nli-deberta-v3-small` (39.0%). The first is used.
+- Study results are stored in `model_registry` rows (`event_study`, `sentiment`), not
+  in tables of their own.
+
+**Measured on 2026-10-06**
+
+| | Accuracy | Macro F1 | n |
+|---|---|---|---|
+| FinBERT | 65.5% | 0.654 | 200 |
+| Word-list baseline | 51.5% | 0.502 | 200 |
+| Topic model | 60.0% | 0.489 | 200 |
+
+| Asset | Events | Verdict | Strongest link |
+|---|---|---|---|
+| BTC/USD | 89 (2022 on) | price leads sentiment | tone tracks the previous day's return, correlation 0.34 |
+| SPY | 98 (2016 on) | price leads sentiment | correlation 0.06 with the previous day's return |
+| GLD | 22 (2023 on) | not enough events | none; all 22 events are positive ones |
+
+No asset shows news tone leading price. The app states this.
+
+**By topic (added once every article had a topic).** The study was repeated for each
+topic. Price commentary shows `price leads sentiment` for Bitcoin (65 events) and US
+stocks (110). Every other topic with 30 or more events shows `no measurable
+relationship`. No gold topic has enough events.
+
+**Not done in Phase 4**
+
+- Re-running the F9 tree model with sentiment as an input (decision 028).
+
+## 031. Fine-tuning the sentiment model, and model notebooks (2026-10-06)
+
+Asked for by the user: fine-tune if it helps, with labels written by Claude, no leakage,
+a proper pipeline, and notebooks that document the models.
+
+**Data.** 1,800 stored headlines (720 Bitcoin, 720 US stocks, 360 gold), drawn at random
+with seed 20261006 and labelled by Claude from the headline alone, in random order and
+without knowing which part each would land in. Stored by article id only in
+`backend/src/radar/sentiment_training_labels.csv`.
+
+**Leakage guards** (`models/dataset.py`, enforced by `pipelines/finetune.check_dataset`
+before any training):
+
+- Headlines are reduced to a key with numbers, case, and punctuation removed; a key
+  appears once in the whole dataset, so templated headlines cannot sit in two parts.
+- No article or headline key is shared with the earlier 200-headline sample.
+- The split is by time: train to 2025-05-09 (1,261), validation to 2026-01-26 (270),
+  test from 2026-01-26 (269).
+- The training function is never given the test part. The epoch is chosen on
+  validation; the test part is scored once, afterwards.
+
+**Settings**, fixed before any result was seen: 4 epochs, learning rate 2e-5, batch 16,
+weight decay 0.01, 10% warm-up, seed 13.
+
+**Rule for adoption**, fixed in advance: the fine-tuned model replaces the original only
+if it is more accurate on the test part and McNemar's test gives p below 0.05.
+
+**Result: not adopted.**
+
+| On the 269 test headlines | Accuracy | Macro F1 |
+|---|---|---|
+| Original FinBERT | 58.7% | 0.593 |
+| Fine-tuned | 63.6% | 0.638 |
+| Word-list baseline | 48.3% | |
+
+The fine-tuned model was right where the original was wrong on 33 headlines and the
+reverse on 20: McNemar p = 0.098. That is not below 0.05, so the app keeps the original
+FinBERT. On the earlier 200-headline sample the fine-tuned model scored 72.5% against
+65.5%, but that sample overlaps the training period in time and does not decide.
+
+**Not done, on purpose.** The settings were not changed and the run was not repeated
+after seeing the test result. Doing so would turn the test part into a tuning set. A
+fair retry needs either a new, later test set, or more labelled headlines so that a
+5-point gain becomes measurable (about 700 test headlines would be needed).
+
+**Caveat stated in the app and the notebook.** The labels are Claude's. Fine-tuning on
+them teaches FinBERT to agree with that labeller, and every accuracy figure here is
+agreement with that labeller, not with human judgement.
+
+**Notebooks.** `notebooks/02` to `06` cover the regime model, the outlook simulation,
+volatility and tail risk, news, and the fine-tuning run. Their sources are plain Python
+files in `notebooks/src/` (percent format), built and executed by
+`backend/scripts/build_notebooks.py`. They import the app's own modules and print no
+article text.

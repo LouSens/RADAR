@@ -225,6 +225,8 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets/{symbol}/calibration",
         "/api/v1/assets/{symbol}/volatility",
         "/api/v1/assets/{symbol}/risk",
+        "/api/v1/assets/{symbol}/sentiment",
+        "/api/v1/assets/{symbol}/event-study",
         "/api/v1/health",
     }
     assert {"AssetOut", "BarsOut", "HealthOut", "LiveBar", "LiveNews"} <= set(
@@ -578,3 +580,161 @@ def test_risk_route_serves_current_limits_with_their_backtests(
     assert ninety_five["filtered"]["breaches"] == 73
     assert ninety_five["historical"]["reliable"] is False
     assert body["drawdowns"][0]["depth"] == -0.767
+
+
+def test_sentiment_route_serves_tone_articles_and_accuracy(
+    client: TestClient, session: Session
+) -> None:
+    from radar.db.models import (
+        ModelRegistry,
+        NewsArticle,
+        NewsSentiment,
+        NewsSymbol,
+        NewsTopic,
+        SentimentAggregate,
+    )
+    from radar.models import topics
+
+    seed(session)
+    assert client.get("/api/v1/assets/eth-usd/sentiment").status_code == 404  # no news coverage
+    assert client.get("/api/v1/assets/btc-usd/sentiment").status_code == 404  # nothing scored
+
+    day = datetime(2026, 10, 1, tzinfo=UTC)
+    for i, (count, mean) in enumerate([(4, 0.2), (0, None), (6, -0.4)]):
+        session.add(
+            SentimentAggregate(
+                symbol="BTC/USD",
+                bucket="1Day",
+                ts=day + timedelta(days=i),
+                model_version="finbert-prosus-1",
+                article_count=count,
+                score_mean=mean,
+                score_decayed=0.1 * (i + 1),
+            )
+        )
+    for hour in range(30):
+        session.add(
+            SentimentAggregate(
+                symbol="BTC/USD",
+                bucket="1Hour",
+                ts=day + timedelta(days=2) - timedelta(hours=hour),
+                model_version="finbert-prosus-1",
+                article_count=1,
+                score_mean=0.0,
+                score_decayed=-0.25 if hour == 0 else 0.0,
+            )
+        )
+    for id_, score, repeat in ((1, 0.9, None), (2, -0.8, None), (3, 0.95, 1), (4, 0.1, None)):
+        when = day + timedelta(hours=id_)
+        session.add(
+            NewsArticle(
+                id=id_,
+                created_at=when,
+                updated_at=when,
+                headline=f"Invented headline {id_}",
+                url=f"https://example.test/{id_}",
+                source="test",
+                duplicate_of=repeat,
+            )
+        )
+        session.flush()
+        session.add(NewsSymbol(article_id=id_, symbol="BTC/USD"))
+        session.add(
+            NewsTopic(
+                article_id=id_,
+                model_version=topics.version_of(topics.MODEL_ID),
+                topic="price" if id_ != 2 else "security",
+                confidence=0.6,
+            )
+        )
+        session.add(
+            NewsSentiment(
+                article_id=id_,
+                model_version="finbert-prosus-1",
+                p_pos=max(score, 0),
+                p_neg=max(-score, 0),
+                p_neu=1 - abs(score),
+                score=score,
+            )
+        )
+    session.add(
+        ModelRegistry(
+            name="sentiment",
+            version="finbert-prosus-1",
+            train_start=day.date(),
+            train_end=day.date(),
+            is_current=True,
+            params={},
+            metrics={
+                "labelled_by": ["claude"],
+                "model": {"n": 200, "accuracy": 0.7, "macro_f1": 0.68, "classes": []},
+                "baseline": {"n": 200, "accuracy": 0.5, "macro_f1": 0.45, "classes": []},
+            },
+        )
+    )
+    session.commit()
+
+    body = client.get("/api/v1/assets/btc-usd/sentiment").json()
+    assert body["news_start"] == "2022-01-01"
+    assert body["current"] == -0.25  # the latest hour
+    assert body["articles_24h"] == 24
+    assert body["articles_7d"] == 30
+    assert body["articles_in_window"] == 10
+    assert body["days_with_news"] == 2
+    assert [p["score_mean"] for p in body["daily"]] == [0.2, None, -0.4]
+    # The repeat (article 3) is left out even though its score is the highest.
+    assert [a["id"] for a in body["most_positive"]] == [1, 4]
+    assert [a["id"] for a in body["most_negative"]] == [2]
+    assert body["most_positive"][0]["url"] == "https://example.test/1"
+    assert body["accuracy"]["model"] == {"n": 200, "accuracy": 0.7, "macro_f1": 0.68}
+    assert body["most_negative"][0]["topic"] == "security"
+    # Topics over the same window, most common first, repeats left out.
+    assert body["topics"] == [
+        {"topic": "price", "article_count": 2, "score_mean": 0.5},
+        {"topic": "security", "article_count": 1, "score_mean": -0.8},
+    ]
+    assert body["accuracy"]["baseline"]["accuracy"] == 0.5
+    assert body["accuracy"]["labelled_by"] == ["claude"]
+    assert len(client.get("/api/v1/assets/btc-usd/sentiment?days=1").json()["daily"]) == 1
+
+
+def test_event_study_route_serves_the_stored_verdict(client: TestClient, session: Session) -> None:
+    from radar.analytics import event_study
+    from radar.db.models import ModelRegistry
+
+    seed(session)
+    assert client.get("/api/v1/assets/gld/event-study").status_code == 404
+
+    empty = event_study.average_path(__import__("numpy").empty((0, 5))).model_dump()
+    session.add(
+        ModelRegistry(
+            name="event_study",
+            symbol="GLD",
+            version="event-study-1",
+            train_start=datetime(2023, 1, 3, tzinfo=UTC).date(),
+            train_end=datetime(2026, 10, 2, tzinfo=UTC).date(),
+            is_current=True,
+            params={"min_events": 30},
+            metrics={
+                "verdict": "not enough events",
+                "n_events": 12,
+                "n_positive": 5,
+                "n_negative": 7,
+                "n_days": 610,
+                "days_with_news": 610,
+                "first_day": "2023-01-03",
+                "last_day": "2026-10-02",
+                "positive": empty,
+                "negative": empty,
+                "baseline": empty,
+                "lags": [{"lag": 1, "correlation": 0.02, "n": 600, "significant": False}],
+            },
+        )
+    )
+    session.commit()
+    body = client.get("/api/v1/assets/gld/event-study").json()
+    assert body["verdict"] == "not enough events"
+    assert body["n_events"] == 12
+    assert body["min_events"] == 30
+    assert body["lags"] == [{"lag": 1, "correlation": 0.02, "n": 600, "significant": False}]
+    assert body["positive"]["n"] == 0
