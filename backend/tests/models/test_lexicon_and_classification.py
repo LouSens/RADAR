@@ -63,3 +63,18 @@ def test_report_handles_labels_that_never_occur() -> None:
     assert {c.label: c.support for c in result.classes} == {"a": 2, "b": 0, "c": 0}
     with pytest.raises(ValueError, match="same length"):
         classification.report(["a"], [], ["a"])
+
+
+def test_mcnemar_uses_only_the_items_where_the_two_differ() -> None:
+    truth = ["a"] * 40
+    first = ["a"] * 20 + ["b"] * 20  # right on the first 20
+    second = ["a"] * 38 + ["b"] * 2  # right on the first 38
+    result = classification.mcnemar(truth, first, second)
+    assert (result.only_first_right, result.only_second_right) == (0, 18)
+    assert result.p_value < 0.001
+    same = classification.mcnemar(truth, first, first)
+    assert same.p_value == 1.0
+    # Five wins against four is well within chance.
+    close = classification.mcnemar(["a"] * 9, ["a"] * 5 + ["b"] * 4, ["b"] * 5 + ["a"] * 4)
+    assert (close.only_first_right, close.only_second_right) == (5, 4)
+    assert close.p_value == 1.0

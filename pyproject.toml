@@ -82,6 +82,12 @@ module = ["pyarrow", "pyarrow.*", "exchange_calendars", "exchange_calendars.*", 
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# Optional (the nlp extra): treated as untyped whether or not they are installed, so the
+# check gives the same result on a laptop with them and in CI without them.
+module = ["torch", "torch.*", "transformers", "transformers.*"]
+follow_imports = "skip"
+
+[[tool.mypy.overrides]]
 # Jupyter's libraries ship without type hints.
 module = ["build_notebook"]
 disallow_untyped_calls = false

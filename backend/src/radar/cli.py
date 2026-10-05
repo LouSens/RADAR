@@ -235,6 +235,18 @@ def sentiment() -> int:
     return 0
 
 
+def finetune() -> int:
+    """Fine-tune the sentiment model on the labelled headlines and test it (needs nlp)."""
+    from radar.db.session import make_engine
+    from radar.models.lexicon import DEFAULT_PATH, Lexicon
+    from radar.pipelines import finetune as job
+
+    lexicon = Lexicon.load() if DEFAULT_PATH.is_file() else None
+    metrics = job.run(make_engine(), lexicon=lexicon)
+    log.info("finetune_done", adopted=metrics["adopted"], reason=metrics["reason"])
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -259,6 +271,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "volatility": (volatility, "forecast volatility and score the models"),
     "risk": (risk, "estimate tail risk and backtest each method"),
     "sentiment": (sentiment, "score news for tone and refresh the summaries"),
+    "finetune": (finetune, "fine-tune the sentiment model and test it on held-out headlines"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

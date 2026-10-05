@@ -51,17 +51,23 @@ class FinbertScorer:
     (`uv sync --extra nlp`).
     """
 
-    version = MODEL_VERSION
-
-    def __init__(self, batch_size: int = 64, device: str | None = None) -> None:
+    def __init__(
+        self,
+        model: str = MODEL_ID,
+        version: str = MODEL_VERSION,
+        batch_size: int = 64,
+        device: str | None = None,
+    ) -> None:
+        """`model` is a Hugging Face model id, or a folder holding a fine-tuned model."""
         import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
         self._torch = torch
+        self.version = version
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = batch_size
-        self._tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-        self._model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID).to(self.device)
+        self._tokenizer = AutoTokenizer.from_pretrained(model)
+        self._model = AutoModelForSequenceClassification.from_pretrained(model).to(self.device)
         self._model.eval()
         # Put the model's own label order into ours, whatever it is.
         names = {i: name.lower() for i, name in self._model.config.id2label.items()}
