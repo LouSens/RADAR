@@ -16,7 +16,7 @@ from radar.db.session import session_scope
 from radar.logging import get_logger
 from radar.quality.gaps import expected_index, find_gaps
 from radar.quality.news import clean_text, find_duplicates
-from radar.quality.outliers import flag_outliers
+from radar.quality.outliers import flag_outliers, flag_wicks
 from radar.quality.schemas import BAR_COLUMNS, invalid_rows
 from radar.universe import Asset, Universe
 
@@ -99,7 +99,10 @@ def check_series(session: Session, asset: Asset, timeframe: str) -> list[Finding
     # Hourly series have breaks (stock sessions, missing bars); daily ones are compared
     # bar to bar.
     step = pd.Timedelta(hours=1) if timeframe == "1Hour" else None
-    flags = flag_outliers(frame.set_index("ts")["close"], step=step)
+    indexed = frame.set_index("ts")
+    jumps = flag_outliers(indexed["close"], step=step)
+    wicks = flag_wicks(indexed[["open", "high", "low", "close"]])
+    flags = jumps | wicks
     stored = frame.set_index("ts")["is_outlier"]
     changed = flags[flags != stored]
     if len(changed):
@@ -125,6 +128,7 @@ def check_series(session: Session, asset: Asset, timeframe: str) -> list[Finding
             "ok",
             {
                 "flagged": int(flags.sum()),
+                "suspect_wicks": int(wicks.sum()),
                 "newly_changed": len(changed),
                 "examples": [ts.isoformat() for ts in flags[flags].index[:MAX_EXAMPLES]],
             },

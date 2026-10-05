@@ -61,12 +61,16 @@ asset_class = "crypto"
 bars_symbol = "PAXG/USD"
 history_start = 2021-01-01
 
+# US stocks. A primary asset because the user holds it (docs/DECISIONS.md 021).
 [[assets]]
 symbol = "SPY"
-name = "S&P 500 ETF"
+name = "US stocks (S&P 500)"
 asset_class = "stock"
+is_primary = true
 bars_symbol = "SPY"
 history_start = 2016-01-04
+news_symbols = ["SPY"]
+news_start = 2016-01-01
 
 
 # Macro drivers (docs/PROJECT_SPEC.md F8). Each fund stands for an outside force.

@@ -1,6 +1,8 @@
-# Phase 0 scope: `db` runs. `api` and `worker` are defined and build, but sit behind
-# the "app" profile until Phase 1 (worker) and Phase 2 (api) give them something to run.
-# `web` is added in Phase 2. See docs/DECISIONS.md.
+# `make up` starts everything: database, API, worker, and the web app on
+# http://localhost:8080.
+#
+# Only one worker may run per set of Alpaca keys (one stream connection per endpoint), so
+# stop any `uv run radar worker` on the host before starting this.
 
 services:
   db:
@@ -20,23 +22,33 @@ services:
       retries: 10
 
   api:
-    profiles: ["app"]
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: ["radar", "api"]
+    # Migrations run here, before anything reads the database.
+    command: ["sh", "-c", "radar migrate && radar api"]
     env_file: .env
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"  # inside the container; the host port is set under `ports`
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   worker:
-    profiles: ["app"]
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -46,10 +58,20 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
     depends_on:
-      db:
+      api:
         condition: service_healthy
     volumes:
       - ./data:/app/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
 
 volumes:
   db-data:

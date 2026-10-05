@@ -35,7 +35,7 @@ Contents:
 
 Write the name in capitals. Where a longer form is needed to tell it apart from other products with the same name, use "RADAR Markets". The Python package and repo name are lowercase `radar`.
 
-**One-line description:** A market outlook app for Bitcoin and gold that reports the current market regime, the plausible range of outcomes, and the measured effect of news, with the evidence shown beside every conclusion.
+**One-line description:** A market outlook app for Bitcoin, gold, and US stocks that reports the current market regime, the plausible range of outcomes, and the measured effect of news, with the evidence shown beside every conclusion.
 
 **Who it is for:** A self-directed investor who holds Bitcoin, gold, and a few other assets, makes their own decisions, and wants a disciplined read of conditions instead of opinions and price targets.
 
@@ -68,8 +68,8 @@ Write the name in capitals. Where a longer form is needed to tell it apart from 
 
 ### Asset universe
 
-- **Primary assets (full analysis, F1 to F5):** `BTC/USD` and gold, represented by `GLD` (section 3.7).
-- **Portfolio assets (F6 only):** `SPY`, `PAXG/USD`, and other crypto pairs Alpaca lists, such as `ETH/USD` and `SOL/USD`. The list is configuration, not code. `PAXG/USD` is here because the user holds it; its daily bars are complete on `us-1`, which is all the portfolio lab uses. It is not the gold instrument for F1 to F5 (section 3.7).
+- **Primary assets (full analysis, F1 to F5 and F8 to F10):** `BTC/USD`; gold, represented by `GLD` (section 3.7); and US stocks, represented by `SPY`. Bitcoin and gold remain the headline pair; `SPY` is primary because the user holds it. Which assets are primary is configuration, and every per-asset screen is built for whatever that list contains.
+- **Portfolio assets (F6 only):** `PAXG/USD` and other crypto pairs Alpaca lists, such as `ETH/USD` and `SOL/USD`. The list is configuration, not code. `PAXG/USD` is here because the user holds it; its daily bars are complete on `us-1`, which is all the portfolio lab uses. It is not the gold instrument for F1 to F5 (section 3.7).
 
 - **Macro driver assets (F8 only):** exchange-traded funds that stand for outside forces: `UUP` (US dollar), `TLT` (long-term US government bonds), `TIP` (inflation-linked bonds), `VIXY` (expected stock market volatility), plus `SPY` (US stocks). They are stored like any other stock. The list is configuration.
 
@@ -150,6 +150,7 @@ Symbol formats differ by endpoint: crypto market data uses `BTC/USD`; the news e
 | `PAXGUSD` | 2022-05-11 | none | 41 articles in total |
 | any of `GLD`, `IAU`, `GDX`, `PAXGUSD` | 2015-01-06 | 0.20 to 0.99 | 0.38 in 2022, then 1.48 to 1.93 |
 
+- **`SPY` news is plentiful:** 22 to 25 articles a day since 2019, from 2015. It is stored from 2015 and used from 2016, when `SPY` prices start.
 - **Bitcoin news starts in 2022.** F3 and F4 for Bitcoin cover 2022 onward, about 4.75 years at the audit date.
 - **Gold news is thin.** Gold news is the set of articles tagged `GLD`, the same instrument used for the gold price (section 3.7). It averaged 1.36 to 1.75 articles per day from 2023, under the 2 per day this spec first set as a floor. The decision (`docs/DECISIONS.md` 010c and 011): gold F3 is shown from 2023-01-01 only, always with its article count, and gold F4 reports whatever its own rules give, including `not enough events`. Before 2023 gold news is shown as "insufficient news coverage". Do not pad the data.
 
@@ -252,7 +253,7 @@ Only the `worker` opens Alpaca stream connections. Alpaca allows one connection 
 
 Check current stable versions when installing; do not pin from memory.
 
-**Backend:** Python 3.12+, `uv`, FastAPI, Pydantic, `pydantic-settings`, SQLAlchemy 2, Alembic, `psycopg` (PostgreSQL driver), `httpx`, `websockets`, APScheduler, `structlog`.
+**Backend:** Python 3.12+, `uv`, FastAPI, `uvicorn` (the server that runs it), Pydantic, `pydantic-settings`, SQLAlchemy 2, Alembic, `psycopg` (PostgreSQL driver), `httpx`, `websockets`, APScheduler, `structlog`.
 
 **Data and maths:** pandas, NumPy, SciPy, PyArrow, statsmodels, scikit-learn, `hmmlearn`, `pandera` for schema validation, `exchange_calendars` for market calendars.
 
@@ -264,9 +265,9 @@ Check current stable versions when installing; do not pin from memory.
 
 **Database:** PostgreSQL with TimescaleDB.
 
-**Frontend:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, `lightweight-charts` for price charts, a general chart library for histograms and bar charts.
+**Frontend:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, `react-router` (navigation), `openapi-typescript` (generates API types), `lightweight-charts` for price charts, a general chart library for histograms and bar charts.
 
-**Quality:** pytest, `respx`, `ruff`, `mypy`, `pandas-stubs`, Vitest, ESLint, GitHub Actions.
+**Quality:** pytest, `respx`, `ruff`, `mypy`, `pandas-stubs`, Vitest, Testing Library with `jsdom`, ESLint, GitHub Actions.
 
 **Daily brief text:** a deterministic template renderer is the default and has no external dependency. An LLM rewrite sits behind a `BriefWriter` interface and a feature flag, with the provider and model name set in environment variables.
 
@@ -444,7 +445,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 ### F8. Macro drivers
 
 - **Method:** rolling regression of each primary asset's daily return on the daily returns of the macro driver assets, on the mixed panel, over trailing 90-day and 250-day windows. Ridge regularisation, because the drivers are correlated with each other. Report each driver's coefficient with a bootstrap confidence interval, the share of variance explained (R squared), and how both have moved over time.
-- **Baseline:** a model with `SPY` as the only driver.
+- **Baseline:** a model with `SPY` as the only driver. When the asset being explained is `SPY` itself, it is left out of the drivers and the baseline is `VIXY` alone.
 - **Evaluation:** walk-forward. Fit on a window, then measure out-of-sample R squared on the following 20 trading days, against the baseline.
 - **Verdict per driver:** `moves with`, `moves against`, or `no measurable link` when the interval includes zero.
 - **UI output:** a bar per driver with its interval, a line of R squared over time, and one sentence naming the strongest current driver or saying that none is measurable.

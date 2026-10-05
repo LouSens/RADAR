@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     postgres_host: str = "127.0.0.1"
     postgres_port: int = 5432
 
+    # The API listens on this machine only by default. Containers set API_HOST=0.0.0.0.
+    api_host: str = "127.0.0.1"
+    api_port: int = 8000
+
     log_level: str = "INFO"
 
     def database_url(self, database: str | None = None) -> URL:

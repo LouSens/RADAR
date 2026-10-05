@@ -311,3 +311,87 @@ has no order, transfer, or settings calls.
 
 Still to confirm with the user in Phase 5: which Binance products to read (spot,
 futures, margin, earn), and the `SPYB` to `SPY` unit ratio (decision 015).
+
+## 021. `SPY` is a primary asset (2026-10-05)
+
+The user holds SPY (as `SPYB`, decision 015) and asked whether giving it the same
+analysis as Bitcoin and gold would be worthwhile. It is: `SPY` has the best data in the
+universe (ten years, no missing daily bars, 22 to 25 news articles a day), so every
+model has more to work with than it does for Bitcoin or gold.
+
+`SPY` gets its own regime, outlook, news, drivers, volatility, and tail-risk pages. Its
+news is now stored: this reverses the part of decision 013 that left `SPY` news out.
+
+Costs: about 82,500 more articles to store and, in Phase 4, to score for sentiment
+(a one-off CPU job); and one more asset page to build. When `SPY` is the asset being
+explained in F8, it is removed from its own drivers.
+
+## 022. Phase 2 choices (2026-10-05)
+
+Approved by the user: `uvicorn`, `react-router`, `openapi-typescript`, and Testing
+Library with `jsdom`, added to section 5.
+
+Made by Claude while building, open to change:
+
+- **The API listens for live events on a plain thread.** The worker publishes with
+  Postgres `NOTIFY`; the API holds one blocking `LISTEN` connection in a thread and
+  passes each event to every WebSocket client. This behaves the same on Windows and
+  Linux.
+- **Routes accept a symbol or a slug.** `BTC/USD` contains a slash, so every asset also
+  has a URL-safe slug (`btc-usd`), which the frontend uses.
+- **"Live" is a claim the app only makes with evidence.** A price is labelled live only
+  if it arrived from the stream in the last 3 minutes. Otherwise the app shows the last
+  stored price with its time and says it is not live.
+- **The bar still forming is drawn, not stored.** The newest candle comes from the live
+  feed and the caption says so.
+- **Charts show local time by shifting timestamps.** The chart library has no time zone
+  support; hourly timestamps are shifted by the viewer's offset before drawing. Daily
+  bars are placed on their trading day (New York for stocks, UTC for crypto).
+- **Stale rules for the status page.** A crypto series is behind when its latest bar
+  ended more than one bar length plus 3 hours ago; a stock series after 5 days, to
+  allow for weekends and holidays.
+- **Screens for later phases are honest placeholders** that say what they will show and
+  which phase builds them.
+- **TypeScript is held at version 5** because the API type generator does not yet
+  support version 6.
+- **`starlette`'s test client warns that `httpx` is deprecated in favour of `httpx2`.**
+  Tests pass; not acted on, because `httpx` is also the Alpaca client's library.
+
+## 023. Interface direction (2026-10-05)
+
+The user rejected the first two interfaces as generic, and asked for a responsive site
+in the visual language of their portfolio site (`C:\Users\David\portfolio-website`),
+designed as a real product. They then asked to leave the interface as it stands and
+revisit it in each phase.
+
+What that settled:
+
+- **Look.** One dark theme, the Inter typeface, liquid-glass surfaces, and an ambient
+  glow tinted by the market in view. Numbers use Inter with fixed-width digits; the
+  monospace face was dropped at the user's request. The accent is a cool blue instead of
+  the portfolio's orange, so it does not clash with rising and falling colours.
+- **Navigation.** A floating glass bar on top; on phones, a floating tab bar at the
+  bottom. One system-status dot replaces the status pills.
+- **Screens show only what exists.** The placeholder pages for the comparison,
+  portfolio, and signals screens, and every "not built yet" note, were removed. Those
+  screens enter the navigation when they are built.
+- **Overview.** A market picker, one large surface with the chosen market's price and
+  chart, and a side-by-side table (change over a day, week, month, and year, and the
+  52-week range). These use only stored bars and the live feed.
+- **Wording.** No developer language on screen. Chart captions stay, as the project
+  rules require, in a quiet line under each chart.
+
+## 024. Bars with a suspect high or low (2026-10-05)
+
+Found while building the 52-week range: `SPY`'s daily bar for 2026-02-02 has a low of
+68.47 against a close of 689.99, which passes schema validation but is almost certainly
+a bad print. A few crypto bars have similar wicks.
+
+The quality job now also flags a bar when its high or low sits far outside its open and
+close (30 robust deviations and at least 10%). It shares the existing `is_outlier`
+flag, which the API now returns. Flagged bars are kept. The interface draws them
+without wicks and uses their close, not their high or low, for ranges.
+
+Open for later phases: the daily-range feature (spec 7.4) and any model input that uses
+highs and lows must skip flagged bars. Some flagged wicks are real, such as Ethereum's
+fall to 700 on Kraken on 2021-02-22.

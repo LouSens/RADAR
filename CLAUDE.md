@@ -1,6 +1,6 @@
 # RADAR
 
-RADAR is a market outlook web app for Bitcoin and gold, with a portfolio layer on top. It tells the user what state the market is in, what range of outcomes is plausible, and what the news is doing to price. It is an analytics product. It never places trades.
+RADAR is a market outlook web app for Bitcoin, gold, and US stocks, with a portfolio layer on top. It tells the user what state the market is in, what range of outcomes is plausible, and what the news is doing to price. It is an analytics product. It never places trades.
 
 The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant to your task before writing code. Do not import the whole file into every session; open the section you need.
 
@@ -8,10 +8,11 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 1 complete on branch `phase-1-data-platform` (not yet merged to `main`)
-- Last completed step: Phase 1 step 6, the data profile (`docs/DATA_PROFILE.md`) and exploration notebook
-- Next step: merge Phase 1, then Phase 2 (API and dashboard shell)
-- Key decisions (`docs/DECISIONS.md` 010 to 019): gold is `GLD` alone; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), and tail risk (F10)
+- Phase: 2 complete on branch `phase-2-api-dashboard`. Phases 0 and 1 are merged to `main`
+- Last completed step: Phase 2 done-when verified on 2026-10-05: `make up` runs db, api, worker, and web under Docker Compose and the app at http://localhost:8080 shows live prices
+- Next step: Phase 3 (regime, outlook, volatility forecast, tail risk)
+- Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
+- Key decisions (`docs/DECISIONS.md` 010 to 024): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
@@ -40,10 +41,10 @@ These apply to every change.
 
 ## Commands
 
-Keep this list accurate as targets change. Each target wraps `uv run radar <target>`, which works without Make (for example `uv run radar audit`). Until Phase 2, `up` starts `db` only and `test` and `lint` cover the backend only.
+Keep this list accurate as targets change. Each target wraps `uv run radar <target>`, which works without Make (for example `uv run radar audit`). `test` and `lint` include the frontend once `npm --prefix frontend ci` has been run.
 
 ```
-make up              # start db, api, worker, web with docker compose
+make up              # start db, api, worker, web with docker compose; app on http://localhost:8080
 make down            # stop everything
 make migrate         # run Alembic migrations
 make audit           # run the Phase 0 data probe and rewrite docs/DATA_AUDIT.md (about 70 minutes;
@@ -54,6 +55,9 @@ make test            # backend pytest + frontend vitest (database tests need `ma
 make lint            # ruff, mypy, eslint, tsc
 make demo            # start the app in replay mode from stored data
 
+uv run radar api        # serve the API on http://127.0.0.1:8000 (development)
+npm --prefix frontend run dev   # serve the web app on http://localhost:5173 (development)
+uv run radar openapi    # rewrite frontend/openapi.json; then `npm --prefix frontend run gen:api`
 uv run radar quality    # check stored data, set flags, write data quality reports
 uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
 uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md

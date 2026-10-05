@@ -1,0 +1,433 @@
+@import "tailwindcss";
+
+/* One dark world, shared with the owner's portfolio site: near-black ground, Inter set
+   tight and heavy for display, the same face with fixed-width digits for numbers, and "liquid glass"
+   surfaces. The accent is a cool radar blue; rising and falling prices have their own
+   colours and never borrow the accent. */
+:root {
+  --bg: #06070a;
+  --ink: #f3f4f7;
+  --muted: #9a9daa;
+  --faint: #62657a;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --grid: rgba(255, 255, 255, 0.045);
+  --accent: #5cd6f7;
+  --accent-ink: #04222b;
+  --accent-dim: rgba(92, 214, 247, 0.1);
+  --accent-glow: rgba(92, 214, 247, 0.22);
+  --calm: #3ddc97;
+  --alert: #ff6b5e;
+  --btc: #f7a43b;
+  --gold: #e9c46a;
+  --stock: #8b93ff;
+  --radius-card: 24px;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-calm: var(--calm);
+  --color-alert: var(--alert);
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  scroll-behavior: smooth;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.65;
+  letter-spacing: -0.011em;
+  overflow-x: hidden;
+}
+
+/* The ground: a fine dot grid that fades out down the page. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 26px 26px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 78%);
+}
+
+::selection {
+  background: rgba(92, 214, 247, 0.32);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Numbers use the text face with fixed-width digits, so columns align without the
+   typewriter look of a monospace font. */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "cv11", "ss01";
+  letter-spacing: -0.02em;
+}
+
+.display {
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.title {
+  font-size: clamp(1.6rem, 1.25rem + 1.4vw, 2.1rem);
+  font-weight: 650;
+  letter-spacing: -0.028em;
+  line-height: 1.15;
+}
+
+.price-xl {
+  font-size: clamp(2.2rem, 1.5rem + 3vw, 3.4rem);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.price-lg {
+  font-size: clamp(1.5rem, 1.25rem + 0.9vw, 1.9rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.label {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  letter-spacing: -0.005em;
+}
+
+.text-fluid-h1 {
+  font-size: clamp(2.1rem, 1.1rem + 4.6vw, 4.4rem);
+}
+
+.text-fluid-h2 {
+  font-size: clamp(1.7rem, 1.2rem + 2.2vw, 2.9rem);
+}
+
+.text-fluid-price {
+  font-size: clamp(1.6rem, 1.1rem + 2vw, 2.6rem);
+}
+
+/* Liquid glass */
+.glass {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.012) 100%),
+    rgba(11, 12, 17, 0.78);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-card);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+/* The thin highlight along a glass card's top edge. */
+.glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+  pointer-events: none;
+}
+
+.glass-lift {
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s ease,
+    box-shadow 0.35s ease;
+}
+
+.glass-lift:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 24px 55px rgba(0, 0, 0, 0.6),
+    0 0 26px var(--accent-dim),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.well {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.6rem 1.15rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow:
+    0 8px 24px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.btn-primary:hover {
+  background: #86e2fa;
+}
+
+.btn-ghost {
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.btn-ghost:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* Radar: concentric rings with a slow sweep. Decorative. */
+.radar {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    repeating-radial-gradient(circle, transparent 0 38px, rgba(92, 214, 247, 0.1) 38px 39px),
+    radial-gradient(circle, rgba(92, 214, 247, 0.08), transparent 68%);
+  mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+}
+
+.radar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(92, 214, 247, 0.32), transparent 22%);
+  animation: sweep 9s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-dot {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.live-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* Content starts visible if animations are off; this only softens the entrance. */
+.rise {
+  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rise-2 {
+  animation-delay: 0.08s;
+}
+
+.rise-3 {
+  animation-delay: 0.16s;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --radius-card: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .rise,
+  .radar::after {
+    animation: none;
+  }
+
+  .glass-lift:hover {
+    transform: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Leave room for the phone tab bar and the device's home indicator. */
+.pb-tabbar {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .pb-tabbar {
+    padding-bottom: 4rem;
+  }
+}
+
+/* Ambient light behind the page, tinted by whichever market is in view. It moves slowly
+   and changes colour smoothly when the market changes. */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.aurora::before,
+.aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  transition: background 0.9s ease;
+}
+
+.aurora::before {
+  width: 46rem;
+  height: 30rem;
+  left: 50%;
+  top: -14rem;
+  translate: -50% 0;
+  background: color-mix(in srgb, var(--tint, var(--accent)) 26%, transparent);
+  animation: drift 22s ease-in-out infinite alternate;
+}
+
+.aurora::after {
+  width: 30rem;
+  height: 24rem;
+  right: -10rem;
+  top: 26rem;
+  background: color-mix(in srgb, var(--tint, var(--accent)) 12%, transparent);
+  animation: drift 28s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes drift {
+  to {
+    transform: translate3d(5rem, 2.5rem, 0) scale(1.12);
+  }
+}
+
+/* The stage: the one large surface that holds the price and its chart. */
+.stage {
+  border-radius: clamp(22px, 2.4vw, 32px);
+  overflow: hidden;
+}
+
+.stage-chart {
+  height: clamp(250px, 44vh, 470px);
+}
+
+/* A selectable market. The chosen one lights up in its own colour. */
+.market {
+  position: relative;
+  text-align: left;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.market:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.market[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--tone) 55%, transparent);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--tone) 16%, transparent), transparent 62%),
+    rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Floating navigation capsules. */
+.capsule {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02)),
+    rgba(12, 13, 19, 0.62);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.lens {
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before,
+  .aurora::after {
+    animation: none;
+  }
+}
