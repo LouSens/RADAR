@@ -11,7 +11,6 @@ log = get_logger(__name__)
 
 # Commands that exist in the Makefile but are built in a later phase.
 NOT_YET: dict[str, str] = {
-    "backfill": "Phase 1",
     "worker": "Phase 1",
     "api": "Phase 2",
     "demo": "Phase 7",
@@ -62,6 +61,33 @@ def migrate() -> int:
     return 0
 
 
+def backfill(args: argparse.Namespace) -> int:
+    """Fetch history for the universe into the raw layer and the database."""
+    from radar.config import load_settings
+    from radar.db.session import make_engine
+    from radar.ingest.backfill import Backfill
+    from radar.ingest.raw_store import RawStore
+    from radar.providers.alpaca_rest import AlpacaDataClient
+    from radar.universe import get_universe
+
+    settings = load_settings()
+    if settings.alpaca_api_key_id is None or settings.alpaca_api_secret_key is None:
+        log.error("missing_alpaca_keys", hint="copy .env.example to .env and fill in paper keys")
+        return 1
+    with AlpacaDataClient(settings.alpaca_api_key_id, settings.alpaca_api_secret_key) as client:
+        client.on_page = RawStore().record
+        job = Backfill(client, make_engine(settings=settings), get_universe())
+        result = job.run(bars=not args.skip_bars, news=not args.skip_news)
+    log.info(
+        "backfill_finished",
+        rows_changed=result.rows_changed,
+        windows_fetched=result.windows_fetched,
+        windows_skipped=result.windows_skipped,
+        failures=len(result.failures),
+    )
+    return 1 if result.failures else 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -99,6 +125,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit_parser.add_argument(
         "--resume", action="store_true", help="keep saved sections and run only the missing ones"
     )
+    backfill_parser = sub.add_parser("backfill", help="fetch history for the universe")
+    backfill_parser.add_argument("--skip-bars", action="store_true")
+    backfill_parser.add_argument("--skip-news", action="store_true")
     for name, phase in NOT_YET.items():
         sub.add_parser(name, help=f"not built yet ({phase})")
     args = parser.parse_args(argv)
@@ -106,6 +135,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     command: str = args.command
     if command == "audit":
         return audit(args)
+    if command == "backfill":
+        return backfill(args)
     if command in NOT_YET:
         log.error("command_not_built_yet", command=command, arrives_in=NOT_YET[command])
         return 2

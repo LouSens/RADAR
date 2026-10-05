@@ -42,6 +42,7 @@ MAX_BACKOFF_SECONDS = 60.0
 
 Sort = Literal["asc", "desc"]
 Param = str | int | bool | None
+PageHook = Callable[[str, Mapping[str, Param], dict[str, Any]], object]
 
 _LOC = re.compile(r"^[a-z]{2}(-\d)?$")
 _TIMEFRAME = re.compile(r"^\d{1,2}(Min|T|Hour|H|Day|D|Week|W|Month|M)$")
@@ -120,6 +121,8 @@ class AlpacaDataClient:
             event_hooks={"request": [self._assert_allowed_host]},
         )
         self.last_rate_limit: dict[str, str] = {}
+        # Called with (path, params, body) for every page read; the raw layer hooks in here.
+        self.on_page: PageHook | None = None
 
     def __enter__(self) -> Self:
         return self
@@ -199,6 +202,8 @@ class AlpacaDataClient:
         count = 0
         while True:
             page = self.get_json(path, {**params, "page_token": token})
+            if self.on_page is not None:
+                self.on_page(path, params, page)
             yield page
             count += 1
             previous, token = token, page.get("next_page_token")
