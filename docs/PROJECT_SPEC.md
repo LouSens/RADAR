@@ -66,7 +66,7 @@ Write the name in capitals. Where a longer form is needed to tell it apart from 
 ### Asset universe
 
 - **Primary assets (full analysis, F1 to F5):** `BTC/USD` and gold, represented by `GLD` (section 3.7).
-- **Portfolio assets (F6 only):** `SPY` and other crypto pairs Alpaca lists, such as `ETH/USD` and `SOL/USD`. The list is configuration, not code.
+- **Portfolio assets (F6 only):** `SPY`, `PAXG/USD`, and other crypto pairs Alpaca lists, such as `ETH/USD` and `SOL/USD`. The list is configuration, not code. `PAXG/USD` is here because the user holds it; its daily bars are complete on `us-1`, which is all the portfolio lab uses. It is not the gold instrument for F1 to F5 (section 3.7).
 
 ### Out of scope for version 1
 

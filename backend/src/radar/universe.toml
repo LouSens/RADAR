@@ -52,6 +52,15 @@ asset_class = "crypto"
 bars_symbol = "SOL/USD"
 history_start = 2021-06-17
 
+# Portfolio asset only (docs/DECISIONS.md 014). Daily bars are complete on us-1, which is
+# what the portfolio lab needs. Gold analysis and gold news use GLD, not this.
+[[assets]]
+symbol = "PAXG/USD"
+name = "PAX Gold"
+asset_class = "crypto"
+bars_symbol = "PAXG/USD"
+history_start = 2021-01-01
+
 [[assets]]
 symbol = "SPY"
 name = "S&P 500 ETF"

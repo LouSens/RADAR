@@ -193,3 +193,17 @@ Made by Claude while building, open to change:
 - `bars.loc` holds the crypto location, or the feed name for stocks.
 - Database tests run against a throwaway `radar_test` database on the dev server. They
   are skipped when no database is reachable, and required in CI.
+
+## 014. `PAXG/USD` stays as a portfolio asset (2026-10-05)
+
+The user holds PAXG, BTC, and SPY on Binance and asked whether PAXG can still be used
+for allocation. It can: the portfolio lab works on daily returns, and `PAXG/USD` has a
+daily bar on 100% of days since 2021-01-01 on `us-1`. What ruled PAXG out as the gold
+instrument was its short history, sparse minute bars, missing hours, and lack of news,
+none of which the portfolio lab depends on.
+
+`PAXG/USD` is in the universe as a non-primary asset. Decision 011 is unchanged: gold
+analysis (F1 to F5) uses `GLD`.
+
+Known gap: prices are Kraken's USD pairs, while the user's holdings are on Binance,
+mostly against USDT. The difference is small for valuation but is not measured.

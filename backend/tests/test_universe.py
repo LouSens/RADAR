@@ -43,7 +43,9 @@ def test_default_universe_matches_the_audit_decisions() -> None:
     assert universe.get("BTC/USD").news_start == date(2022, 1, 1)
     assert universe.news_symbols == ("BTCUSD", "GLD")
     assert universe.timeframes_for(universe.get("SPY")) == ("1Hour", "1Day")
-    assert "PAXG/USD" not in {a.symbol for a in universe.assets}
+    paxg = universe.get("PAXG/USD")
+    assert not paxg.is_primary
+    assert paxg.news_symbols == ()
 
 
 def test_loads_a_custom_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
