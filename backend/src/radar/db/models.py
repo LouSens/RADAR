@@ -91,6 +91,10 @@ class NewsArticle(Base):
     author: Mapped[str] = mapped_column(Text, server_default="")
     url: Mapped[str | None] = mapped_column(Text)
     source: Mapped[str] = mapped_column(Text, server_default="")
+    # Set by the quality job when this article repeats an earlier one; never deleted.
+    duplicate_of: Mapped[int | None] = mapped_column(
+        ForeignKey("news_articles.id", ondelete="SET NULL")
+    )
     received_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
 
     __table_args__ = (Index("ix_news_articles_created_at", "created_at"),)

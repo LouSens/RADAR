@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from radar.db.models import Bar, IngestionRun, NewsArticle, NewsSymbol
 from radar.providers import schemas
+from radar.quality.news import clean_text
 
 BATCH = 2_000
 BAR_VALUES = ("open", "high", "low", "close", "volume", "trade_count", "vwap", "is_quote_only")
@@ -62,8 +63,8 @@ def article_row(article: schemas.NewsArticle) -> dict[str, Any]:
         "id": article.id,
         "created_at": article.created_at,
         "updated_at": article.updated_at,
-        "headline": article.headline,
-        "summary": article.summary,
+        "headline": clean_text(article.headline),
+        "summary": clean_text(article.summary),
         "author": article.author,
         "url": article.url,
         "source": article.source,

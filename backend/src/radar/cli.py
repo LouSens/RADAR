@@ -83,9 +83,20 @@ def backfill(args: argparse.Namespace) -> int:
         rows_changed=result.rows_changed,
         windows_fetched=result.windows_fetched,
         windows_skipped=result.windows_skipped,
+        bars_rejected=result.bars_rejected,
         failures=len(result.failures),
     )
     return 1 if result.failures else 0
+
+
+def quality() -> int:
+    """Check stored data, set flags, and write data quality reports."""
+    from radar.db.session import make_engine
+    from radar.pipelines.quality import run_quality
+    from radar.universe import get_universe
+
+    findings = run_quality(make_engine(), get_universe())
+    return 1 if any(f.status == "fail" for f in findings) else 0
 
 
 def audit(args: argparse.Namespace) -> int:
@@ -105,6 +116,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "test": (test, "run the backend tests"),
     "up": (up, "start the containers with docker compose"),
     "down": (down, "stop the containers"),
+    "quality": (quality, "check stored data and write data quality reports"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

@@ -14,12 +14,14 @@ from typing import Final
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
+from radar.db.models import DataQualityReport
 from radar.db.session import session_scope
 from radar.ingest.upsert import bar_row, finished_windows, record_run, upsert_bars, upsert_news
 from radar.logging import get_logger
 from radar.providers.alpaca_rest import AlpacaDataClient
 from radar.providers.errors import AlpacaError
 from radar.providers.schemas import Bar, BarsPage, NewsArticle
+from radar.quality.schemas import split_valid_bars
 from radar.universe import Asset, Universe
 
 log = get_logger(__name__)
@@ -41,6 +43,7 @@ class BackfillResult:
     rows_changed: int = 0
     windows_fetched: int = 0
     windows_skipped: int = 0
+    bars_rejected: int = 0
     failures: list[str] = field(default_factory=list)
 
 
@@ -169,10 +172,18 @@ class Backfill:
                 for page in self._bar_pages(asset, timeframe, window, end)
                 for bar in page.bars.get(asset.bars_symbol, [])
             ]
-            rows = [
-                bar_row(asset.symbol, timeframe, loc, bar)
-                for bar in completed_bars(bars, timeframe, self.now)
-            ]
+            valid, rejected = split_valid_bars(completed_bars(bars, timeframe, self.now))
+            if rejected:
+                self.result.bars_rejected += len(rejected)
+                session.add(
+                    DataQualityReport(
+                        symbol=asset.symbol,
+                        check=f"bar_rejected:{timeframe}",
+                        status="fail",
+                        detail={"rejected": len(rejected), "examples": rejected[:20]},
+                    )
+                )
+            rows = [bar_row(asset.symbol, timeframe, loc, bar) for bar in valid]
             return upsert_bars(session, rows) if rows else 0
 
         self._run_windows(key, windows_for(timeframe, start, end), end, fetch)
