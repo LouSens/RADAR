@@ -67,7 +67,8 @@ def synthesise_news(body: dict[str, Any]) -> dict[str, Any]:
 
 def write(name: str, body: dict[str, Any]) -> None:
     FIXTURES.mkdir(parents=True, exist_ok=True)
-    (FIXTURES / name).write_text(json.dumps(body, indent=2) + "\n", encoding="utf-8")
+    text = json.dumps(body, indent=2) + "\n"
+    (FIXTURES / name).write_text(text, encoding="utf-8", newline="\n")
     log.info("fixture_written", name=name)
 
 
