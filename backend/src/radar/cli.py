@@ -11,7 +11,6 @@ log = get_logger(__name__)
 
 # Commands that exist in the Makefile but are built in a later phase.
 NOT_YET: dict[str, str] = {
-    "audit": "Phase 0, step 4",
     "migrate": "Phase 1",
     "backfill": "Phase 1",
     "worker": "Phase 1",
@@ -50,6 +49,17 @@ def down() -> int:
     return _run(["docker", "compose", "down"])
 
 
+def audit(args: argparse.Namespace) -> int:
+    from radar.pipelines.audit import run_audit
+
+    return run_audit(
+        news_start_year=args.news_start_year,
+        skip_news=args.skip_news,
+        skip_streams=args.skip_streams,
+        render_only=args.render_only,
+    )
+
+
 COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "lint": (lint, "run ruff and mypy"),
     "test": (test, "run the backend tests"),
@@ -64,11 +74,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     for name, (_, help_text) in COMMANDS.items():
         sub.add_parser(name, help=help_text)
+    audit_parser = sub.add_parser("audit", help="probe the live data API, write docs/DATA_AUDIT.md")
+    audit_parser.add_argument("--news-start-year", type=int, default=2015)
+    audit_parser.add_argument("--skip-news", action="store_true", help="skip the long news scan")
+    audit_parser.add_argument("--skip-streams", action="store_true", help="skip WebSocket probes")
+    audit_parser.add_argument(
+        "--render-only", action="store_true", help="rebuild the report from the last saved results"
+    )
     for name, phase in NOT_YET.items():
         sub.add_parser(name, help=f"not built yet ({phase})")
     args = parser.parse_args(argv)
 
     command: str = args.command
+    if command == "audit":
+        return audit(args)
     if command in NOT_YET:
         log.error("command_not_built_yet", command=command, arrives_in=NOT_YET[command])
         return 2
