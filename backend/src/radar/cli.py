@@ -1,9 +1,11 @@
 """The `radar` command. Every Makefile target calls one of these subcommands."""
 
 import argparse
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from radar.logging import configure_logging, get_logger
 
@@ -24,17 +26,37 @@ def _run(*commands: Sequence[str]) -> int:
     return 0
 
 
+def _npm(*args: str) -> list[str]:
+    # npm is a .cmd shim on Windows, which needs the shell to resolve it.
+    npm = shutil.which("npm") or "npm"
+    return [npm, "--prefix", "frontend", *args]
+
+
+def _has_frontend() -> bool:
+    return Path("frontend/node_modules").is_dir()
+
+
 def lint() -> int:
     py = sys.executable
-    return _run(
+    commands: list[Sequence[str]] = [
         [py, "-m", "ruff", "check", "."],
         [py, "-m", "ruff", "format", "--check", "."],
         [py, "-m", "mypy"],
-    )
+    ]
+    if _has_frontend():
+        commands += [_npm("run", "lint"), _npm("run", "typecheck")]
+    else:
+        log.warning("frontend_skipped", hint="run `npm --prefix frontend ci` to include it")
+    return _run(*commands)
 
 
 def test() -> int:
-    return _run([sys.executable, "-m", "pytest"])
+    commands: list[Sequence[str]] = [[sys.executable, "-m", "pytest"]]
+    if _has_frontend():
+        commands.append(_npm("test"))
+    else:
+        log.warning("frontend_skipped", hint="run `npm --prefix frontend ci` to include it")
+    return _run(*commands)
 
 
 def up() -> int:
@@ -126,6 +148,23 @@ def api() -> int:
     return 0
 
 
+def openapi(args: argparse.Namespace) -> int:
+    """Write the API schema, which generates the frontend's types. Needs no database."""
+    import json
+    from pathlib import Path
+
+    from sqlalchemy import create_engine
+
+    from radar.api.app import create_app
+    from radar.universe import get_universe
+
+    # The engine is never connected: building the schema only inspects the routes.
+    app = create_app(create_engine("postgresql+psycopg://"), get_universe())
+    text = json.dumps(app.openapi(), indent=2, sort_keys=True) + "\n"
+    Path(args.output).write_text(text, encoding="utf-8", newline="\n")
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -139,8 +178,8 @@ def audit(args: argparse.Namespace) -> int:
 
 
 COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
-    "lint": (lint, "run ruff and mypy"),
-    "test": (test, "run the backend tests"),
+    "lint": (lint, "run ruff, mypy, eslint, and tsc"),
+    "test": (test, "run the backend and frontend tests"),
     "up": (up, "start the containers with docker compose"),
     "down": (down, "stop the containers"),
     "quality": (quality, "check stored data and write data quality reports"),
@@ -167,6 +206,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit_parser.add_argument(
         "--resume", action="store_true", help="keep saved sections and run only the missing ones"
     )
+    openapi_parser = sub.add_parser("openapi", help="write the API schema for the frontend")
+    openapi_parser.add_argument("--output", default="frontend/openapi.json")
     backfill_parser = sub.add_parser("backfill", help="fetch history for the universe")
     backfill_parser.add_argument("--skip-bars", action="store_true")
     backfill_parser.add_argument("--skip-news", action="store_true")
@@ -179,6 +220,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return audit(args)
     if command == "backfill":
         return backfill(args)
+    if command == "openapi":
+        return openapi(args)
     if command in NOT_YET:
         log.error("command_not_built_yet", command=command, arrives_in=NOT_YET[command])
         return 2
