@@ -270,3 +270,54 @@ class VolatilityOut(BaseModel):
     as_of: AwareDatetime
     model_version: str
     horizons: list[VolatilityHorizonOut]
+
+
+class RiskMethodOut(BaseModel):
+    """One method's current limit at one level, and how its past limits held."""
+
+    # "historical", "filtered" (scaled to the volatility forecast), or "simulator".
+    method: str
+    # The loss, as a fraction, that should be exceeded only (1 - level) of the time.
+    var: float
+    # The average loss in the periods that do exceed it.
+    expected_shortfall: float
+    # Periods tested; for horizons longer than a day they do not overlap.
+    n: int
+    breaches: int
+    expected_breaches: float
+    breach_rate: float
+    kupiec_p_value: float | None
+    clustering_p_value: float | None
+    # False when the limit was broken measurably more or less often than stated.
+    reliable: bool
+
+
+class RiskLevelOut(BaseModel):
+    level: float
+    methods: list[RiskMethodOut]
+
+
+class RiskHorizonOut(BaseModel):
+    horizon_days: int
+    steps: int
+    # The method with the best backtest, whose figures are displayed.
+    shown: str
+    first_day: date
+    last_day: date
+    levels: list[RiskLevelOut]
+
+
+class DrawdownOut(BaseModel):
+    peak_day: date
+    trough_day: date
+    depth: float
+    recovered_day: date | None
+
+
+class RiskOut(BaseModel):
+    symbol: str
+    as_of: AwareDatetime
+    model_version: str
+    horizons: list[RiskHorizonOut]
+    # The deepest falls in daily closing prices over the stored history.
+    drawdowns: list[DrawdownOut]

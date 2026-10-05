@@ -224,6 +224,7 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets/{symbol}/simulation/level",
         "/api/v1/assets/{symbol}/calibration",
         "/api/v1/assets/{symbol}/volatility",
+        "/api/v1/assets/{symbol}/risk",
         "/api/v1/health",
     }
     assert {"AssetOut", "BarsOut", "HealthOut", "LiveBar", "LiveNews"} <= set(
@@ -486,3 +487,94 @@ def test_volatility_route_serves_the_shown_model(client: TestClient, session: Se
     assert week["scores"][0]["dm_p_value_vs_har"] is None
     short = client.get("/api/v1/assets/btc-usd/volatility", params={"days": 2}).json()
     assert len(short["horizons"][0]["history"]) == 2
+
+
+def test_risk_route_serves_current_limits_with_their_backtests(
+    client: TestClient, session: Session
+) -> None:
+    from radar.db.models import ModelRegistry, RiskMetric
+
+    seed(session)
+    assert client.get("/api/v1/assets/btc-usd/risk").status_code == 404
+
+    def backtest(method: str, level: float, breaches: int, reliable: bool) -> dict[str, object]:
+        return {
+            "method": method,
+            "level": level,
+            "n": 1351,
+            "breaches": breaches,
+            "expected_breaches": 1351 * (1 - level),
+            "breach_rate": breaches / 1351,
+            "kupiec_p_value": 0.5 if reliable else 0.001,
+            "clustering_p_value": None,
+            "reliable": reliable,
+            "first_day": "2023-01-22",
+            "last_day": "2026-10-03",
+        }
+
+    session.add(
+        ModelRegistry(
+            name="tail_risk",
+            symbol="BTC/USD",
+            version="tail-risk-1",
+            train_start=datetime(2021, 1, 2, tzinfo=UTC).date(),
+            train_end=datetime(2026, 10, 4, tzinfo=UTC).date(),
+            is_current=True,
+            params={},
+            metrics={
+                "horizons": {
+                    "1": {
+                        "steps": 1,
+                        "shown": "filtered",
+                        "backtests": [
+                            backtest("historical", 0.95, 110, False),
+                            backtest("filtered", 0.95, 73, True),
+                            backtest("filtered", 0.99, 12, True),
+                        ],
+                    }
+                },
+                "drawdowns": [
+                    {
+                        "peak_day": "2021-11-08",
+                        "trough_day": "2022-11-21",
+                        "depth": -0.767,
+                        "recovered_day": "2024-03-05",
+                    }
+                ],
+            },
+        )
+    )
+    day = datetime(2026, 10, 5, tzinfo=UTC)
+    for ts, scale in ((day - timedelta(days=1), 2.0), (day, 1.0)):
+        for method, level, var in (
+            ("historical", 0.95, 0.04),
+            ("filtered", 0.95, 0.03),
+            ("filtered", 0.99, 0.05),
+        ):
+            session.add(
+                RiskMetric(
+                    symbol="BTC/USD",
+                    horizon_days=1,
+                    level=level,
+                    method=method,
+                    ts=ts,
+                    model_version="tail-risk-1",
+                    var=var * scale,
+                    expected_shortfall=var * scale * 1.3,
+                )
+            )
+    session.commit()
+
+    body = client.get("/api/v1/assets/btc-usd/risk").json()
+    assert datetime.fromisoformat(body["as_of"]) == day
+    (horizon,) = body["horizons"]
+    assert horizon["shown"] == "filtered"
+    assert [level["level"] for level in horizon["levels"]] == [0.95, 0.99]
+    ninety_five = {m["method"]: m for m in horizon["levels"][0]["methods"]}
+    assert ninety_five["filtered"]["var"] == pytest.approx(
+        0.03
+    )  # the latest day, not the one before
+    assert ninety_five["filtered"]["expected_shortfall"] == pytest.approx(0.039)
+    assert ninety_five["filtered"]["breaches"] == 73
+    assert ninety_five["historical"]["reliable"] is False
+    assert body["drawdowns"][0]["depth"] == -0.767

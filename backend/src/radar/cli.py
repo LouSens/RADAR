@@ -200,6 +200,17 @@ def volatility() -> int:
     return 0
 
 
+def risk() -> int:
+    """Estimate tail risk for every day not yet covered, and backtest each method."""
+    from radar.db.session import make_engine
+    from radar.pipelines import risk as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe())
+    log.info("risk_done", rows_changed=changed)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -222,6 +233,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "profile": (profile, "measure the stored data and write docs/DATA_PROFILE.md"),
     "api": (api, "serve the HTTP API and live WebSocket"),
     "volatility": (volatility, "forecast volatility and score the models"),
+    "risk": (risk, "estimate tail risk and backtest each method"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

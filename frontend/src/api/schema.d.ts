@@ -84,6 +84,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Risk
+         * @description Value at Risk and expected shortfall, with how often each limit has been broken.
+         */
+        get: operations["get_risk_api_v1_assets__symbol__risk_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{symbol}/simulation": {
         parameters: {
             query?: never;
@@ -270,6 +290,23 @@ export interface components {
             pinball_model: number;
             /** Steps */
             steps: number;
+        };
+        /** DrawdownOut */
+        DrawdownOut: {
+            /** Depth */
+            depth: number;
+            /**
+             * Peak Day
+             * Format: date
+             */
+            peak_day: string;
+            /** Recovered Day */
+            recovered_day: string | null;
+            /**
+             * Trough Day
+             * Format: date
+             */
+            trough_day: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -537,6 +574,76 @@ export interface components {
             /** Typical Duration Days */
             typical_duration_days: number;
         };
+        /** RiskHorizonOut */
+        RiskHorizonOut: {
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Horizon Days */
+            horizon_days: number;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** Levels */
+            levels: components["schemas"]["RiskLevelOut"][];
+            /** Shown */
+            shown: string;
+            /** Steps */
+            steps: number;
+        };
+        /** RiskLevelOut */
+        RiskLevelOut: {
+            /** Level */
+            level: number;
+            /** Methods */
+            methods: components["schemas"]["RiskMethodOut"][];
+        };
+        /**
+         * RiskMethodOut
+         * @description One method's current limit at one level, and how its past limits held.
+         */
+        RiskMethodOut: {
+            /** Breach Rate */
+            breach_rate: number;
+            /** Breaches */
+            breaches: number;
+            /** Clustering P Value */
+            clustering_p_value: number | null;
+            /** Expected Breaches */
+            expected_breaches: number;
+            /** Expected Shortfall */
+            expected_shortfall: number;
+            /** Kupiec P Value */
+            kupiec_p_value: number | null;
+            /** Method */
+            method: string;
+            /** N */
+            n: number;
+            /** Reliable */
+            reliable: boolean;
+            /** Var */
+            var: number;
+        };
+        /** RiskOut */
+        RiskOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Drawdowns */
+            drawdowns: components["schemas"]["DrawdownOut"][];
+            /** Horizons */
+            horizons: components["schemas"]["RiskHorizonOut"][];
+            /** Model Version */
+            model_version: string;
+            /** Symbol */
+            symbol: string;
+        };
         /** SeriesStatus */
         SeriesStatus: {
             /** Bars */
@@ -785,6 +892,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RegimeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_risk_api_v1_assets__symbol__risk_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskOut"];
                 };
             };
             /** @description Validation Error */

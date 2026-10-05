@@ -17,6 +17,7 @@ from radar.ingest.live import BarHandler, LiveConsumer, NewsHandler, StreamSpec,
 from radar.ingest.raw_store import RawStore
 from radar.logging import get_logger
 from radar.pipelines import regime as regime_job
+from radar.pipelines import risk as risk_job
 from radar.pipelines import simulation as simulation_job
 from radar.pipelines import volatility as volatility_job
 from radar.pipelines.quality import run_quality
@@ -144,6 +145,15 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=20,
             id="volatility",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Tail risk: after the volatility forecasts it depends on.
+        scheduler.add_job(
+            partial(risk_job.run, engine, universe),
+            "cron",
+            minute=30,
+            id="risk",
             max_instances=1,
             coalesce=True,
         )

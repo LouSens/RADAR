@@ -24,6 +24,7 @@ TABLES = {
     "simulations",
     "calibration_reports",
     "volatility_forecasts",
+    "risk_metrics",
 }
 
 

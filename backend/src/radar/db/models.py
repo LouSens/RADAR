@@ -246,3 +246,24 @@ class VolatilityForecast(Base):
     model_version: Mapped[str] = mapped_column(Text)
     forecast: Mapped[float] = mapped_column(Double)
     realised: Mapped[float | None] = mapped_column(Double)
+
+
+class RiskMetric(Base):
+    """Value at Risk and expected shortfall estimated at `ts`, by one method.
+
+    Each is the fraction of a position lost over the horizon. `realised_loss` is what
+    followed, filled in once the horizon has ended.
+    """
+
+    __tablename__ = "risk_metrics"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    horizon_days: Mapped[int] = mapped_column(Integer, primary_key=True)
+    level: Mapped[float] = mapped_column(Double, primary_key=True)
+    # "historical", "filtered", or "simulator".
+    method: Mapped[str] = mapped_column(Text, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TZDateTime, primary_key=True)
+    model_version: Mapped[str] = mapped_column(Text)
+    var: Mapped[float] = mapped_column(Double)
+    expected_shortfall: Mapped[float] = mapped_column(Double)
+    realised_loss: Mapped[float | None] = mapped_column(Double)

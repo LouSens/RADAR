@@ -246,6 +246,44 @@
         "title": "CalibrationRowOut",
         "type": "object"
       },
+      "DrawdownOut": {
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "number"
+          },
+          "peak_day": {
+            "format": "date",
+            "title": "Peak Day",
+            "type": "string"
+          },
+          "recovered_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovered Day"
+          },
+          "trough_day": {
+            "format": "date",
+            "title": "Trough Day",
+            "type": "string"
+          }
+        },
+        "required": [
+          "peak_day",
+          "trough_day",
+          "depth",
+          "recovered_day"
+        ],
+        "title": "DrawdownOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -858,6 +896,183 @@
         "title": "RegimeStateOut",
         "type": "object"
       },
+      "RiskHorizonOut": {
+        "properties": {
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/RiskLevelOut"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "shown": {
+            "title": "Shown",
+            "type": "string"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "horizon_days",
+          "steps",
+          "shown",
+          "first_day",
+          "last_day",
+          "levels"
+        ],
+        "title": "RiskHorizonOut",
+        "type": "object"
+      },
+      "RiskLevelOut": {
+        "properties": {
+          "level": {
+            "title": "Level",
+            "type": "number"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/RiskMethodOut"
+            },
+            "title": "Methods",
+            "type": "array"
+          }
+        },
+        "required": [
+          "level",
+          "methods"
+        ],
+        "title": "RiskLevelOut",
+        "type": "object"
+      },
+      "RiskMethodOut": {
+        "description": "One method's current limit at one level, and how its past limits held.",
+        "properties": {
+          "breach_rate": {
+            "title": "Breach Rate",
+            "type": "number"
+          },
+          "breaches": {
+            "title": "Breaches",
+            "type": "integer"
+          },
+          "clustering_p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clustering P Value"
+          },
+          "expected_breaches": {
+            "title": "Expected Breaches",
+            "type": "number"
+          },
+          "expected_shortfall": {
+            "title": "Expected Shortfall",
+            "type": "number"
+          },
+          "kupiec_p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kupiec P Value"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "reliable": {
+            "title": "Reliable",
+            "type": "boolean"
+          },
+          "var": {
+            "title": "Var",
+            "type": "number"
+          }
+        },
+        "required": [
+          "method",
+          "var",
+          "expected_shortfall",
+          "n",
+          "breaches",
+          "expected_breaches",
+          "breach_rate",
+          "kupiec_p_value",
+          "clustering_p_value",
+          "reliable"
+        ],
+        "title": "RiskMethodOut",
+        "type": "object"
+      },
+      "RiskOut": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "drawdowns": {
+            "items": {
+              "$ref": "#/components/schemas/DrawdownOut"
+            },
+            "title": "Drawdowns",
+            "type": "array"
+          },
+          "horizons": {
+            "items": {
+              "$ref": "#/components/schemas/RiskHorizonOut"
+            },
+            "title": "Horizons",
+            "type": "array"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "as_of",
+          "model_version",
+          "horizons",
+          "drawdowns"
+        ],
+        "title": "RiskOut",
+        "type": "object"
+      },
       "SeriesStatus": {
         "properties": {
           "bars": {
@@ -1412,6 +1627,46 @@
           }
         },
         "summary": "Get Regime"
+      }
+    },
+    "/api/v1/assets/{symbol}/risk": {
+      "get": {
+        "description": "Value at Risk and expected shortfall, with how often each limit has been broken.",
+        "operationId": "get_risk_api_v1_assets__symbol__risk_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Risk"
       }
     },
     "/api/v1/assets/{symbol}/simulation": {

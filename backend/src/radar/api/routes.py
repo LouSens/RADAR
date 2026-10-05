@@ -37,6 +37,10 @@ from radar.api.schemas import (
     RegimeOut,
     RegimePoint,
     RegimeStateOut,
+    RiskHorizonOut,
+    RiskLevelOut,
+    RiskMethodOut,
+    RiskOut,
     SeriesStatus,
     SimulationOut,
     VolatilityHorizonOut,
@@ -50,9 +54,11 @@ from radar.db.models import (
     DataQualityReport,
     IngestionRun,
     RegimeState,
+    RiskMetric,
     VolatilityForecast,
 )
 from radar.models import simulator
+from radar.pipelines import risk as risk_job
 from radar.pipelines import simulation as simulation_job
 from radar.pipelines import volatility as volatility_job
 from radar.pipelines.regime import current_model
@@ -342,6 +348,65 @@ def get_volatility(
             "as_of": latest,
             "model_version": registered.version,
             "horizons": horizons,
+        }
+    )
+
+
+@router.get("/assets/{symbol:path}/risk", response_model=RiskOut)
+def get_risk(symbol: str, universe: UniverseDep, session: SessionDep) -> RiskOut:
+    """Value at Risk and expected shortfall, with how often each limit has been broken."""
+    asset = find_asset(universe, symbol)
+    registered = risk_job.current_model(session, asset.symbol)
+    latest = session.scalar(
+        select(func.max(RiskMetric.ts)).where(RiskMetric.symbol == asset.symbol)
+    )
+    if registered is None or latest is None:
+        raise HTTPException(status_code=404, detail=f"No risk figures for {asset.symbol} yet")
+    current = {
+        (r.horizon_days, r.level, r.method): r
+        for r in session.scalars(
+            select(RiskMetric).where(RiskMetric.symbol == asset.symbol, RiskMetric.ts == latest)
+        )
+    }
+    horizons = []
+    for horizon_days, stored in sorted(
+        registered.metrics["horizons"].items(), key=lambda item: int(item[0])
+    ):
+        by_level: dict[float, list[RiskMethodOut]] = {}
+        for backtest in stored["backtests"]:
+            row = current.get((int(horizon_days), backtest["level"], backtest["method"]))
+            if row is None:
+                continue
+            by_level.setdefault(backtest["level"], []).append(
+                RiskMethodOut.model_validate(
+                    {**backtest, "var": row.var, "expected_shortfall": row.expected_shortfall}
+                )
+            )
+        if not by_level or stored["shown"] is None:
+            continue
+        first = stored["backtests"][0]
+        horizons.append(
+            RiskHorizonOut(
+                horizon_days=int(horizon_days),
+                steps=stored["steps"],
+                shown=stored["shown"],
+                first_day=first["first_day"],
+                last_day=first["last_day"],
+                levels=[
+                    RiskLevelOut(level=level, methods=methods)
+                    for level, methods in sorted(by_level.items())
+                ],
+            )
+        )
+    if not horizons:
+        raise HTTPException(status_code=404, detail=f"No risk figures for {asset.symbol} yet")
+    return RiskOut.model_validate(
+        {
+            "symbol": asset.symbol,
+            "as_of": latest,
+            "model_version": registered.version,
+            "horizons": horizons,
+            "drawdowns": registered.metrics.get("drawdowns", []),
         }
     )
 
