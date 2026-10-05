@@ -200,7 +200,7 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
         )
         # The portfolio's analysis follows the prices: refreshed once an hour.
         scheduler.add_job(
-            partial(portfolio_job.run, engine, universe),
+            partial(portfolio_job.run, engine, universe, portfolio_job.binance_reader(universe)),
             "cron",
             minute=45,
             id="portfolio",

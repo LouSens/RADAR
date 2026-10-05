@@ -5,15 +5,24 @@ runs inside a request: the analysis is recomputed and stored there, so that ever
 read is only a read.
 """
 
-from typing import Literal
+from collections.abc import Callable
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from radar.api.routes import SessionDep, UniverseDep
-from radar.models.holdings import CsvSource, Holding, HoldingsSource, ManualSource, Unsupported
+from radar.models.holdings import (
+    CsvSource,
+    Holding,
+    Holdings,
+    HoldingsSource,
+    ManualSource,
+    Unsupported,
+)
 from radar.pipelines import portfolio as job
+from radar.providers.binance import BinanceError, BinanceReading, Leveraged
 from radar.universe import Universe
 
 router = APIRouter(prefix="/api/v1/portfolio")
@@ -37,6 +46,10 @@ class PortfolioOut(BaseModel):
     supported: list[SupportedAsset]
     # Why there is no analysis, when holdings exist but none could be made.
     problem: str | None = None
+    # True when a Binance key is configured, so holdings can be read from the exchange.
+    binance_available: bool = False
+    # Open leveraged exposure from the last exchange read.
+    leveraged: list[Leveraged] = []
 
 
 class HoldingsIn(BaseModel):
@@ -55,8 +68,21 @@ def _supported(universe: Universe) -> list[SupportedAsset]:
     ]
 
 
-def _store(session: Session, universe: Universe, source: HoldingsSource) -> PortfolioOut:
+def get_binance_reader(request: Request) -> Callable[[], BinanceReading] | None:
+    return job.binance_reader(request.app.state.universe)
+
+
+BinanceDep = Annotated[Callable[[], BinanceReading] | None, Depends(get_binance_reader)]
+
+
+def _store(
+    session: Session, universe: Universe, source: HoldingsSource, *, binance: bool
+) -> PortfolioOut:
     read = job.save(session, source)
+    return _finish(session, universe, read, binance=binance)
+
+
+def _finish(session: Session, universe: Universe, read: Holdings, *, binance: bool) -> PortfolioOut:
     problem = job.refresh(session, universe) if read.holdings else None
     session.commit()
     return PortfolioOut(
@@ -65,11 +91,13 @@ def _store(session: Session, universe: Universe, source: HoldingsSource) -> Port
         unsupported=read.unsupported,
         supported=_supported(universe),
         problem=problem,
+        binance_available=binance,
+        leveraged=[Leveraged.model_validate(p) for p in job.stored_leveraged(session)],
     )
 
 
 @router.get("", response_model=PortfolioOut)
-def get_portfolio(universe: UniverseDep, session: SessionDep) -> PortfolioOut:
+def get_portfolio(universe: UniverseDep, session: SessionDep, binance: BinanceDep) -> PortfolioOut:
     """The saved holdings and the assets that can be held."""
     source, holdings = job.stored_holdings(session)
     problem = (
@@ -78,25 +106,49 @@ def get_portfolio(universe: UniverseDep, session: SessionDep) -> PortfolioOut:
         else None
     )
     return PortfolioOut(
-        source=source, holdings=holdings, supported=_supported(universe), problem=problem
+        source=source,
+        holdings=holdings,
+        supported=_supported(universe),
+        problem=problem,
+        binance_available=binance is not None,
+        leveraged=[Leveraged.model_validate(p) for p in job.stored_leveraged(session)],
     )
 
 
 @router.put("", response_model=PortfolioOut)
-def put_portfolio(body: HoldingsIn, universe: UniverseDep, session: SessionDep) -> PortfolioOut:
+def put_portfolio(
+    body: HoldingsIn, universe: UniverseDep, session: SessionDep, binance: BinanceDep
+) -> PortfolioOut:
     """Replace the holdings with these, and analyse them."""
     known = [a.symbol for a in universe.assets]
-    return _store(session, universe, ManualSource(body.holdings, known))
+    return _store(
+        session, universe, ManualSource(body.holdings, known), binance=binance is not None
+    )
 
 
 @router.post("/import", response_model=PortfolioOut)
-def import_portfolio(body: CsvIn, universe: UniverseDep, session: SessionDep) -> PortfolioOut:
+def import_portfolio(
+    body: CsvIn, universe: UniverseDep, session: SessionDep, binance: BinanceDep
+) -> PortfolioOut:
     """Replace the holdings with those in a CSV file's text, and analyse them."""
     known = [a.symbol for a in universe.assets]
     try:
-        return _store(session, universe, CsvSource(body.csv, known))
+        return _store(session, universe, CsvSource(body.csv, known), binance=binance is not None)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.post("/binance", response_model=PortfolioOut)
+def read_binance(universe: UniverseDep, session: SessionDep, binance: BinanceDep) -> PortfolioOut:
+    """Replace the holdings with what the Binance account holds. This only reads."""
+    if binance is None:
+        raise HTTPException(status_code=409, detail="No Binance key is configured.")
+    try:
+        reading = binance()
+    except BinanceError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    job.store(session, reading.holdings, [p.model_dump() for p in reading.leveraged])
+    return _finish(session, universe, reading.holdings, binance=True)
 
 
 @router.get("/analysis", response_model=job.Analysis)

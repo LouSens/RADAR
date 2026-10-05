@@ -355,6 +355,8 @@ class Portfolio(Base):
     name: Mapped[str] = mapped_column(Text)
     # Where the holdings last came from: "manual", "csv", or "binance".
     source: Mapped[str] = mapped_column(Text)
+    # Open leveraged exposure as the source reported it; empty for manual and CSV.
+    leveraged: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")
     updated_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
 
 
