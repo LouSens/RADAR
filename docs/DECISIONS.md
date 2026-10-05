@@ -504,3 +504,75 @@ Choices made by Claude, open to change:
 Known limit: for the 95% range at the longest horizon, the adjustment for Bitcoin and
 gold currently sits at its widest setting, so the adjusted 95% range is close to the
 full spread of the simulated outcomes. The interface should say so where it applies.
+
+## 028. Phase 3 steps 2 to 4: storage, volatility forecast, tail risk (2026-10-05)
+
+Choices made by Claude while building, open to change. Results are walk-forward, out of
+sample, measured on 2026-10-05.
+
+**Outlook (F2) storage**
+
+- `simulations` holds one row per run, not one per run and horizon as the spec's table
+  listed: the horizons share one set of paths, so they are stored together. A run is
+  keyed by asset, day, and regime model; its seed is derived from those three, so a
+  rerun gives the same paths.
+- The simulated paths (10,000 by 30, about 1 MB) are kept for the latest run of each
+  asset only. Older runs keep their summaries. The level check reads the latest run.
+- Displayed ranges use the conformal adjustment from the latest calibration report.
+  Calibration is measured weekly; a run is stored once per completed day.
+- Known limit, updated: the 95% range sits at its widest setting for Bitcoin at 7 and
+  30 days and for gold at 21 sessions. Slowing the adjustment for high levels was tried
+  (rates of 0.1 and 0.2 times the miss rate, in place of a fixed 0.02) and did not
+  change this. The panel says so where it applies.
+
+**Volatility forecast (F9)**
+
+- The quantity forecast is per-day volatility over the next 1 or 7 days (5 sessions for
+  stocks): the square root of the average daily realised variance over those days.
+- **Departure from the spec, forced by the build order:** the second model is specified
+  with the daily sentiment aggregate as an input. Sentiment is built in Phase 4, so the
+  trees currently use the three HAR inputs and the regime probabilities only. The
+  comparison is repeated when sentiment exists.
+- The trees are shown only if their QLIKE is lower than HAR's and the Diebold-Mariano
+  test gives p below 0.05. They are not shown for any asset.
+
+| Asset | Horizon | Days | HAR | Trees | Yesterday repeated | Regime average |
+|---|---|---|---|---|---|---|
+| BTC/USD | 1 day | 1,601 | 0.467 | 0.566 | 0.924 | 0.535 |
+| BTC/USD | 7 days | 1,595 | 0.194 | 0.208 | 1.329 | 0.251 |
+| GLD | 1 session | 2,201 | 0.667 | 0.872 | 1.822 | 0.659 |
+| GLD | 5 sessions | 2,197 | 0.257 | 0.298 | 1.522 | 0.296 |
+| SPY | 1 session | 2,201 | 0.491 | 0.674 | 0.871 | 0.759 |
+| SPY | 5 sessions | 2,197 | 0.335 | 0.492 | 0.903 | 0.580 |
+
+QLIKE loss, lower is better. HAR beats both baselines with p below 0.05 in every row
+except gold at 1 session, where the regime average is level with it (p = 0.65).
+
+**Tail risk (F10)**
+
+- Loss limits are simple-return losses over the horizon. The historical and filtered
+  methods use a trailing window of 500 completed periods (at least 250).
+- The filtered method scales past outcomes by the stored HAR forecasts, not the trees.
+- For the 7-day horizon the backtest uses periods that do not overlap, so that the
+  clustering test is not triggered by overlap alone. This leaves 192 periods for
+  Bitcoin and 389 for the stocks, which is few for a 99% limit.
+- All methods are scored on the same periods. The method shown is the one with the
+  fewest limits failing Kupiec's test, then the smallest distance from the stated rates.
+- Money figures for the user's holdings arrive with the portfolio in Phase 5; until
+  then the panel shows percentages.
+
+| Asset | Horizon | Shown | 95% breaches (expected) | 99% breaches (expected) | Unreliable limits |
+|---|---|---|---|---|---|
+| BTC/USD | 1 day | filtered | 73 (67.6) | 12 (13.5) | none |
+| BTC/USD | 7 days | simulator | 6 (9.6) | 2 (1.9) | none |
+| GLD | 1 session | filtered | 106 (97.6) | 21 (19.5) | historical at both levels; simulator at 99% |
+| GLD | 5 sessions | filtered | 26 (19.5) | 7 (3.9) | historical at both levels; simulator at 99% |
+| SPY | 1 session | filtered | 91 (97.6) | 22 (19.5) | simulator at 99% |
+| SPY | 5 sessions | filtered | 16 (19.5) | 5 (3.9) | none |
+
+**Tables.** `volatility_forecasts` has a `model` column and `risk_metrics` a `method`
+column and `realised_loss`, so every method's history is stored, not only the one shown.
+Evaluation tables live in `model_registry.metrics`.
+
+**Not built in Phase 3:** shading the price chart itself by regime. The Market state
+panel shows the regime of each day as a band beside the chart instead.

@@ -286,16 +286,16 @@ Timestamps are `timestamptz` in UTC. Tables marked (H) are TimescaleDB hypertabl
 | `news_sentiment` | `article_id`, `model_version`, `p_pos`, `p_neg`, `p_neu`, `score` | `score = p_pos - p_neg` |
 | `sentiment_agg` (H) | `symbol`, `bucket`, `ts`, `score_mean`, `score_decayed`, `article_count` | hourly and daily buckets |
 | `regime_states` (H) | `symbol`, `ts`, `model_version`, `probs` (JSON), `label` | filtered probabilities only |
-| `simulations` | `symbol` or `portfolio_id`, `as_of`, `horizon_days`, `quantiles`, `histogram`, `model_version` | one row per run and horizon |
-| `calibration_reports` | `symbol`, `model_version`, `horizon_days`, `nominal`, `empirical`, `n` | coverage of past intervals |
+| `simulations` | `symbol` or `portfolio_id`, `as_of`, `model_id`, `seed`, `n_paths`, `start_price`, `horizons` (JSON: quantiles, ranges, histogram per horizon), `fan`, `paths`, `model_version` | one row per run; paths kept for the latest run only |
+| `calibration_reports` | `symbol`, `model_version`, `horizon_days`, `nominal`, `empirical`, `empirical_conformal`, `n`, `conformal_miss_rate`, pinball losses | coverage of past intervals, raw and adjusted |
 | `signals` | `id`, `symbol`, `ts`, `type`, `payload`, `track_record_id` | |
 | `signal_track_records` | `type`, `symbol`, `computed_at`, `n`, forward-return statistics, `baseline`, `verdict` | |
 | `portfolios`, `holdings` | `portfolio_id`, `symbol`, `quantity`, `source` | source is `manual` or `csv` in version 1 |
 | `briefs` | `date`, `symbol`, `payload` (JSON), `text` | payload is the grounded input |
 | `model_registry` | `name`, `version`, `trained_at`, `train_window`, `metrics`, `artefact_path` | |
 | `factor_exposures` (H) | `symbol`, `ts`, `window_days`, `model_version`, `betas` (JSON), `r_squared`, `n` | F8, one row per asset, day, and window |
-| `volatility_forecasts` (H) | `symbol`, `ts`, `horizon_days`, `model_version`, `forecast`, `realised` | F9; `realised` is filled in once known |
-| `risk_metrics` (H) | `symbol` or `portfolio_id`, `ts`, `horizon_days`, `level`, `method`, `var`, `expected_shortfall` | F10 |
+| `volatility_forecasts` (H) | `symbol`, `ts`, `horizon_days`, `model`, `model_version`, `forecast`, `realised` | F9; one row per model; `realised` is filled in once known |
+| `risk_metrics` (H) | `symbol` or `portfolio_id`, `ts`, `horizon_days`, `level`, `method`, `var`, `expected_shortfall`, `realised_loss` | F10; one row per method |
 | `ingestion_runs` | `job`, `window`, `status`, `rows`, `started_at`, `finished_at` | |
 | `data_quality_reports` | `ts`, `symbol`, `check`, `status`, `detail` | |
 
@@ -454,7 +454,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 ### F9. Volatility forecast
 
 - **Method:** a HAR model (heterogeneous autoregressive): next-period realised volatility regressed on the average realised volatility of the last day, week, and month, fitted on log volatility. Horizons of 1 and 7 days (5 sessions for gold).
-- **Second model:** gradient-boosted trees (scikit-learn) on the same inputs plus the current regime probabilities and the daily sentiment aggregate. It is shown only if it beats HAR out of sample.
+- **Second model:** gradient-boosted trees (scikit-learn) on the same inputs plus the current regime probabilities and the daily sentiment aggregate. It is shown only if it beats HAR out of sample (lower QLIKE with a Diebold-Mariano p-value below 0.05). Until Phase 4 builds sentiment the trees run without it; the comparison is repeated then (`docs/DECISIONS.md` 028).
 - **Baselines:** yesterday's volatility carried forward, and the average volatility of the current regime from F1.
 - **Evaluation:** walk-forward with an expanding window. QLIKE loss and mean squared error against both baselines, with a Diebold-Mariano test for whether the difference is real.
 - **UI output:** forecast beside the last realised value, a chart of past forecasts against what happened, and the evaluation table.
@@ -465,7 +465,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 
 - **Measures:** Value at Risk and expected shortfall at 95% and 99%, over 1 day and 7 days, for each primary asset and for the portfolio. Value at Risk is the loss that should be exceeded only 5% (or 1%) of the time; expected shortfall is the average loss when it is exceeded.
 - **Methods compared:** historical simulation; filtered historical simulation (past returns rescaled to the F9 volatility forecast); and the F2 regime-switching simulator's own distribution.
-- **Evaluation:** walk-forward backtest. Count how often the realised loss exceeded each limit and compare with the nominal rate, using Kupiec's coverage test and Christoffersen's test for whether breaches cluster.
+- **Evaluation:** walk-forward backtest. Count how often the realised loss exceeded each limit and compare with the nominal rate, using Kupiec's coverage test and Christoffersen's test for whether breaches cluster. For the 7-day horizon the periods tested do not overlap.
 - **UI output:** the figures as a percentage and in money for the user's holdings, the breach count against the expected count, and the worst historical drawdowns with their dates.
 - **Done when:** breach rates are stored and shown for every method and level, the method displayed is the one with the best backtest, and a limit that fails its coverage test is marked as unreliable in the UI.
 
