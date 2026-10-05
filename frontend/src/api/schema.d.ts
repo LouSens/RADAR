@@ -264,10 +264,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Portfolio
+         * @description The saved holdings and the assets that can be held.
+         */
+        get: operations["get_portfolio_api_v1_portfolio_get"];
+        /**
+         * Put Portfolio
+         * @description Replace the holdings with these, and analyse them.
+         */
+        put: operations["put_portfolio_api_v1_portfolio_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio/analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Analysis
+         * @description Where the portfolio's risk comes from, its loss limits, and past episodes replayed.
+         */
+        get: operations["get_analysis_api_v1_portfolio_analysis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Portfolio
+         * @description Replace the holdings with those in a CSV file's text, and analyse them.
+         */
+        post: operations["import_portfolio_api_v1_portfolio_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * Analysis
+         * @description Everything the Portfolio screen shows, as stored.
+         */
+        Analysis: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Limits */
+            limits: components["schemas"]["LimitHorizon"][];
+            /** Model Version */
+            model_version: string;
+            /** Positions */
+            positions: components["schemas"]["Position"][];
+            /** Stress */
+            stress: components["schemas"]["StressResult"][];
+            trust: components["schemas"]["Trusts"];
+            /** Value */
+            value: number;
+            xray: components["schemas"]["Xray"];
+        };
         /** ArticleOut */
         ArticleOut: {
             /**
@@ -312,6 +399,42 @@ export interface components {
             symbol: string;
             /** Trades Continuously */
             trades_continuously: boolean;
+        };
+        /**
+         * Backtest
+         * @description How one method's limit held at one level. Every period is out of sample.
+         */
+        Backtest: {
+            /** Breach Rate */
+            breach_rate: number;
+            /** Breaches */
+            breaches: number;
+            /** Clustering P Value */
+            clustering_p_value: number | null;
+            /** Expected Breaches */
+            expected_breaches: number;
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Kupiec P Adjusted */
+            kupiec_p_adjusted?: number | null;
+            /** Kupiec P Value */
+            kupiec_p_value: number | null;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** Level */
+            level: number;
+            /** Method */
+            method: string;
+            /** N */
+            n: number;
+            /** Reliable */
+            reliable: boolean;
         };
         /** BarOut */
         BarOut: {
@@ -422,6 +545,11 @@ export interface components {
             /** N */
             n: number;
         };
+        /** CsvIn */
+        CsvIn: {
+            /** Csv */
+            csv: string;
+        };
         /** DirectionOut */
         DirectionOut: {
             /** Both Polar */
@@ -501,6 +629,21 @@ export interface components {
             /** Verdict */
             verdict: string;
         };
+        /** Fall */
+        Fall: {
+            /** Depth */
+            depth: number;
+            /**
+             * Peak Day
+             * Format: date
+             */
+            peak_day: string;
+            /**
+             * Trough Day
+             * Format: date
+             */
+            trough_day: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -527,6 +670,31 @@ export interface components {
             status: "ok" | "degraded" | "down";
             /** Stream Clients */
             stream_clients: number;
+        };
+        /** Holding */
+        Holding: {
+            /** Quantity */
+            quantity: number;
+            /** Symbol */
+            symbol: string;
+            /** Tag */
+            tag?: ("core" | "satellite") | null;
+        };
+        /** HoldingRisk */
+        HoldingRisk: {
+            /** Daily Volatility */
+            daily_volatility: number;
+            /** Risk Share */
+            risk_share: number;
+            /** Symbol */
+            symbol: string;
+            /** Weight */
+            weight: number;
+        };
+        /** HoldingsIn */
+        HoldingsIn: {
+            /** Holdings */
+            holdings: components["schemas"]["Holding"][];
         };
         /** LagOut */
         LagOut: {
@@ -574,6 +742,37 @@ export interface components {
             symbol: string;
             /** Touches */
             touches: number;
+        };
+        /**
+         * Limit
+         * @description One method's current limit at one level, and how its past limits held.
+         */
+        Limit: {
+            backtest: components["schemas"]["Backtest"];
+            /** Expected Shortfall */
+            expected_shortfall: number;
+            /** Method */
+            method: string;
+            /** Var */
+            var: number;
+        };
+        /** LimitHorizon */
+        LimitHorizon: {
+            /** Horizon Days */
+            horizon_days: number;
+            /** Levels */
+            levels: components["schemas"]["LimitLevel"][];
+            /** Shown */
+            shown: string;
+            /** Steps */
+            steps: number;
+        };
+        /** LimitLevel */
+        LimitLevel: {
+            /** Level */
+            level: number;
+            /** Methods */
+            methods: components["schemas"]["Limit"][];
         };
         /**
          * LiveBar
@@ -659,6 +858,39 @@ export interface components {
             level: number;
             /** Low */
             low: number;
+        };
+        /** PortfolioOut */
+        PortfolioOut: {
+            /** Holdings */
+            holdings: components["schemas"]["Holding"][];
+            /** Problem */
+            problem?: string | null;
+            /** Source */
+            source: string | null;
+            /** Supported */
+            supported: components["schemas"]["SupportedAsset"][];
+            /**
+             * Unsupported
+             * @default []
+             */
+            unsupported: components["schemas"]["Unsupported"][];
+        };
+        /** Position */
+        Position: {
+            /** Name */
+            name: string;
+            /** Price */
+            price: number;
+            /** Quantity */
+            quantity: number;
+            /** Symbol */
+            symbol: string;
+            /** Tag */
+            tag: string | null;
+            /** Value */
+            value: number;
+            /** Weight */
+            weight: number;
         };
         /** QualitySummary */
         QualitySummary: {
@@ -976,6 +1208,55 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /** StressPart */
+        StressPart: {
+            /** Change */
+            change: number;
+            /** Contribution */
+            contribution: number;
+            /** Symbol */
+            symbol: string;
+        };
+        /** StressResult */
+        StressResult: {
+            /** Available */
+            available: boolean;
+            /** Change */
+            change?: number | null;
+            /**
+             * Covered Weight
+             * @default 0
+             */
+            covered_weight: number;
+            /** Deepest Fall */
+            deepest_fall?: number | null;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Missing
+             * @default []
+             */
+            missing: string[];
+            /** Name */
+            name: string;
+            /**
+             * Parts
+             * @default []
+             */
+            parts: components["schemas"]["StressPart"][];
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Worst Day */
+            worst_day?: string | null;
+            /** Worst Day Change */
+            worst_day_change?: number | null;
+        };
         /** SummaryNews */
         SummaryNews: {
             /** Articles 24H */
@@ -1049,6 +1330,18 @@ export interface components {
             state: components["schemas"]["TrustOut"];
             swings: components["schemas"]["TrustOut"];
         };
+        /** SupportedAsset */
+        SupportedAsset: {
+            /**
+             * Asset Class
+             * @enum {string}
+             */
+            asset_class: "crypto" | "stock";
+            /** Name */
+            name: string;
+            /** Symbol */
+            symbol: string;
+        };
         /** TopicSummary */
         TopicSummary: {
             /** Article Count */
@@ -1120,6 +1413,16 @@ export interface components {
             /** Resolved */
             resolved: number;
         };
+        /** Trust */
+        Trust: {
+            /**
+             * Grade
+             * @enum {string}
+             */
+            grade: "solid" | "fair" | "rough";
+            /** Reason */
+            reason: string;
+        };
         /** TrustOut */
         TrustOut: {
             /**
@@ -1129,6 +1432,22 @@ export interface components {
             grade: "solid" | "fair" | "rough";
             /** Reason */
             reason: string;
+        };
+        /** Trusts */
+        Trusts: {
+            risk: components["schemas"]["Trust"];
+            stress: components["schemas"]["Trust"];
+            xray: components["schemas"]["Trust"];
+        };
+        /**
+         * Unsupported
+         * @description Something the source held that RADAR cannot use, and why.
+         */
+        Unsupported: {
+            /** Reason */
+            reason: string;
+            /** Symbol */
+            symbol: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1210,6 +1529,32 @@ export interface components {
             mse: number;
             /** Qlike */
             qlike: number;
+        };
+        /** Xray */
+        Xray: {
+            /** Correlation */
+            correlation: number[][];
+            /** Daily Volatility */
+            daily_volatility: number;
+            deepest_fall: components["schemas"]["Fall"];
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Holdings */
+            holdings: components["schemas"]["HoldingRisk"][];
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** N Days */
+            n_days: number;
+            /** Symbols */
+            symbols: string[];
+            /** Undiversified Volatility */
+            undiversified_volatility: number;
         };
     };
     responses: never;
@@ -1612,6 +1957,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthOut"];
+                };
+            };
+        };
+    };
+    get_portfolio_api_v1_portfolio_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+        };
+    };
+    put_portfolio_api_v1_portfolio_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoldingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_analysis_api_v1_portfolio_analysis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Analysis"];
+                };
+            };
+        };
+    };
+    import_portfolio_api_v1_portfolio_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CsvIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

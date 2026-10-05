@@ -258,6 +258,17 @@ def track() -> int:
     return 0
 
 
+def portfolio() -> int:
+    """Recompute the stored analysis of the saved holdings with the latest prices."""
+    from radar.db.session import make_engine
+    from radar.pipelines import portfolio as job
+    from radar.universe import get_universe
+
+    stored = job.run(make_engine(), get_universe())
+    log.info("portfolio_done", analyses_stored=stored)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -284,6 +295,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "sentiment": (sentiment, "score news for tone and refresh the summaries"),
     "finetune": (finetune, "fine-tune the sentiment model and test it on held-out headlines"),
     "track": (track, "log today's forecasts and score those that have come due"),
+    "portfolio": (portfolio, "recompute the portfolio analysis with the latest prices"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

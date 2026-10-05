@@ -17,6 +17,7 @@ from radar.ingest.live import BarHandler, LiveConsumer, NewsHandler, StreamSpec,
 from radar.ingest.raw_store import RawStore
 from radar.logging import get_logger
 from radar.pipelines import event_study as event_study_job
+from radar.pipelines import portfolio as portfolio_job
 from radar.pipelines import regime as regime_job
 from radar.pipelines import risk as risk_job
 from radar.pipelines import sentiment as sentiment_job
@@ -184,6 +185,15 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=40,
             id="track-record",
+            max_instances=1,
+            coalesce=True,
+        )
+        # The portfolio's analysis follows the prices: refreshed once an hour.
+        scheduler.add_job(
+            partial(portfolio_job.run, engine, universe),
+            "cron",
+            minute=45,
+            id="portfolio",
             max_instances=1,
             coalesce=True,
         )

@@ -148,6 +148,38 @@ def grade_risk(methods: list[dict[str, object]]) -> Trust:
     )
 
 
+def grade_xray(n_days: int) -> Trust:
+    """Solid when the mix was measured over three years of shared sessions or more."""
+    if n_days >= 750:
+        return Trust(
+            grade="solid",
+            reason=f"Measured over {n_days:,} trading days that every holding has prices for.",
+        )
+    return Trust(
+        grade="fair",
+        reason=f"Measured over only {n_days:,} trading days that every holding has prices "
+        "for; how holdings move together changes over time.",
+    )
+
+
+def grade_stress(available: int, partial: int, total: int) -> Trust:
+    """Solid when every episode could be replayed with every holding."""
+    if total == 0 or available == 0:
+        return Trust(
+            grade="rough", reason="None of the past episodes has prices for these holdings."
+        )
+    if available == total and partial == 0:
+        return Trust(
+            grade="solid",
+            reason=f"All {total} episodes were replayed with every holding, on real prices.",
+        )
+    return Trust(
+        grade="fair",
+        reason=f"{available} of {total} episodes could be replayed, {partial} of them "
+        "without some holdings. The past is a guide, not a limit on what can happen.",
+    )
+
+
 def grade_news(accuracy: dict[str, object] | None) -> Trust:
     """Graded on the low end of the accuracy range: 80% for solid, 65% for fair."""
     if not accuracy:

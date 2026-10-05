@@ -344,3 +344,42 @@ class ForecastLog(Base):
     resolved_at: Mapped[datetime | None] = mapped_column(TZDateTime)
 
     __table_args__ = (UniqueConstraint("symbol", "kind", "horizon_days", "key", "as_of"),)
+
+
+class Portfolio(Base):
+    """A set of holdings. Version 1 has one, with id 1."""
+
+    __tablename__ = "portfolios"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    # Where the holdings last came from: "manual", "csv", or "binance".
+    source: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+
+
+class PortfolioHolding(Base):
+    __tablename__ = "holdings"
+
+    portfolio_id: Mapped[int] = mapped_column(
+        ForeignKey("portfolios.id", ondelete="CASCADE"), primary_key=True
+    )
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    quantity: Mapped[float] = mapped_column(Double)
+    # "core", "satellite", or null.
+    tag: Mapped[str | None] = mapped_column(Text)
+
+
+class PortfolioAnalysis(Base):
+    """The latest risk analysis of a portfolio. Replaced whenever holdings or prices change."""
+
+    __tablename__ = "portfolio_analyses"
+
+    portfolio_id: Mapped[int] = mapped_column(
+        ForeignKey("portfolios.id", ondelete="CASCADE"), primary_key=True
+    )
+    # The close of the last session the analysis used.
+    as_of: Mapped[datetime] = mapped_column(TZDateTime)
+    computed_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+    model_version: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)

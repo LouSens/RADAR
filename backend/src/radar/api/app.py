@@ -9,6 +9,7 @@ from sqlalchemy import Engine
 
 from radar import __version__
 from radar.api.live import LiveHub
+from radar.api.portfolio import router as portfolio_router
 from radar.api.routes import router
 from radar.api.schemas import LiveBar, LiveNews
 from radar.db.session import make_engine
@@ -38,6 +39,7 @@ def create_app(engine: Engine | None = None, universe: Universe | None = None) -
     app.state.universe = universe or get_universe()
     app.state.hub = LiveHub()
     app.include_router(router)
+    app.include_router(portfolio_router)
 
     # Publish the WebSocket message shapes in the OpenAPI schema, so the frontend's
     # generated types cover them too.
