@@ -781,3 +781,38 @@ there are some.
 
 **Not done here.** Items 1 (labels from a person), 5 (stability across sub-periods and
 seeds), and 6 (sensitivity to settings) from the list offered to the user.
+
+## 033. Product pass: answers first, one trust mark per claim, weak parts demoted (2026-10-06)
+
+Asked for by the user after the evidence step, before Phase 5.
+
+**Answers first.** Each market page now opens with an "In brief" card: one sentence each
+for the market state, the one-week outlook range, expected swings, the one-day loss
+limit, and news, then "What changed this week". The sections below it are folded; each
+shows its claim in one line and opens to the evidence. A link to a section opens it.
+New route `GET /assets/{symbol}/summary`.
+
+**One trust mark per claim.** Every claim carries Solid, Fair, or Rough, with the reason
+in one sentence. The rules are fixed and tested in `analytics/summary.py`:
+
+| Claim | Solid when |
+|---|---|
+| Market state | on 1,000 or more unseen days, rougher states were followed by larger swings and the model beat the 30-day rule |
+| Outlook | the stated 80% lies inside the 95% range of how often the adjusted one-week range held, and the simulator was within 1% of the constant-volatility forecast or better |
+| Expected swings | the shown model beat "yesterday repeated" beyond chance and was not measurably worse than the regime average |
+| Downside risk | both one-day limits of the shown method held at their stated rates after correction |
+| News | the low end of the tone model's accuracy range is 80% or more (65% for Fair) |
+
+On 2026-10-06 the first four are Solid for all three markets and News is Rough.
+
+**What changed** lists only: a change of state in the last 7 days; expected swings 15%
+or more different from a week ago; decayed news tone 0.15 or more different from a week
+ago. Otherwise it says nothing notable changed.
+
+**Demoted.** This departs from the F3 "UI output" line in the spec, with the user's
+agreement:
+
+- The lists of most positive and most negative articles are replaced by recent
+  headlines, newest first, with no tone score shown. A single article's tone agrees with
+  its label about 61% of the time, which is too weak to rank on.
+- The topic breakdown is folded away inside the News section and labelled rough.

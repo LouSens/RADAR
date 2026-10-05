@@ -623,7 +623,7 @@ def get_summary(symbol: str, universe: UniverseDep, session: SessionDep) -> Summ
     """The answers in brief, what changed this week, and a trust grade for each claim."""
     asset = find_asset(universe, symbol)
     week = 7 if asset.asset_class == "crypto" else 5
-    regime = _optional(lambda: get_regime(symbol, universe, session, days=30))
+    regime = _optional(lambda: get_regime(symbol, universe, session, days=5000))
     simulation = _optional(lambda: get_simulation(symbol, universe, session))
     calibration = _optional(lambda: get_calibration(symbol, universe, session))
     volatility = _optional(lambda: get_volatility(symbol, universe, session, days=30))

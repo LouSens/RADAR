@@ -24,6 +24,8 @@ export type RiskMethod = components["schemas"]["RiskMethodOut"];
 export type Sentiment = components["schemas"]["SentimentOut"];
 export type EventStudy = components["schemas"]["EventStudyOut"];
 export type TrackRecord = components["schemas"]["TrackRecordOut"];
+export type Summary = components["schemas"]["SummaryOut"];
+export type Trust = components["schemas"]["TrustOut"];
 export type Timeframe = "1Hour" | "1Day";
 
 const BASE = "/api/v1";

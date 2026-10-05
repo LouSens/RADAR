@@ -1,9 +1,9 @@
-import type { Asset, TrackRecord } from "../api/client";
+import type { TrackRecord } from "../api/client";
 import { useTrackRecord } from "../api/queries";
 import { formatCount, formatShare } from "../lib/format";
 import { stepsLabel } from "../lib/outlook";
 import { formatDate } from "../lib/time";
-import { Caption } from "./ui";
+import { Caption, Panel, type PanelProps } from "./ui";
 
 type Row = TrackRecord["rows"][number];
 
@@ -39,16 +39,20 @@ function result(row: Row): string {
   return `${formatCount(row.resolved)} scored`;
 }
 
-export function TrackRecordPanel({ asset }: { asset: Asset }) {
+export function TrackRecordPanel({ asset, defaultOpen }: PanelProps) {
   const record = useTrackRecord(asset.slug).data;
   if (!record || record.rows.length === 0 || !record.recording_since) return null;
   const longest = Math.max(...record.rows.map((row) => row.horizon_days));
 
   return (
-    <section id="live-record" className="glass flex scroll-mt-24 flex-col gap-4 p-5 sm:p-7">
+    <Panel
+      id="live-record"
+      title="Live record"
+      defaultOpen={defaultOpen}
+      headline={`${formatCount(record.recorded)} logged, ${formatCount(record.resolved)} scored`}
+    >
       <header>
-        <h2 className="text-base font-semibold tracking-tight">Live record</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
+        <p className="text-sm leading-relaxed text-muted">
           <span className="num text-ink">{formatCount(record.recorded)}</span> forecasts written
           down since {formatDate(record.recording_since)};{" "}
           <span className="num text-ink">{formatCount(record.resolved)}</span> have an outcome so
@@ -78,6 +82,6 @@ export function TrackRecordPanel({ asset }: { asset: Asset }) {
         is the honest reading. A {stepsLabel(longest, asset.trades_continuously)} forecast needs
         that long before it can be scored.
       </Caption>
-    </section>
+    </Panel>
   );
 }

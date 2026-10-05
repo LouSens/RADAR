@@ -1,7 +1,8 @@
-import type { Asset, Regime } from "../api/client";
+import type { Regime } from "../api/client";
 import { useRegime } from "../api/queries";
 import { formatCount, formatShare } from "../lib/format";
 import { formatDate, formatDateTime, zoneLabel } from "../lib/time";
+import { Panel, type PanelProps } from "./ui";
 
 const TONE: Record<string, string> = {
   calm: "var(--calm)",
@@ -57,7 +58,7 @@ function Timeline({ regime }: { regime: Regime }) {
   );
 }
 
-export function RegimePanel({ asset }: { asset: Asset }) {
+export function RegimePanel({ asset, trust, defaultOpen }: PanelProps) {
   const query = useRegime(asset.slug);
   const regime = query.data;
   if (query.isPending || query.isError || !regime) return null;
@@ -66,11 +67,16 @@ export function RegimePanel({ asset }: { asset: Asset }) {
   const evaluation = regime.evaluation;
 
   return (
-    <section id="market-state" className="glass scroll-mt-24 p-5 sm:p-7">
+    <Panel
+      id="market-state"
+      title="Market state"
+      trust={trust}
+      defaultOpen={defaultOpen}
+      headline={`${title(regime.label)}, ${days(regime.days_in_state)} so far`}
+    >
       <div className="grid grid-cols-1 gap-x-12 gap-y-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
-          <h2 className="text-base font-semibold tracking-tight">Market state</h2>
-          <div className="mt-4 flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <span
               className="h-3 w-3 rounded-full"
               style={{ background: tone(regime.label) }}
@@ -122,7 +128,8 @@ export function RegimePanel({ asset }: { asset: Asset }) {
                       <div className="flex justify-between gap-3">
                         <dt className="label">Usually next</dt>
                         <dd>
-                          {title(next[0])} <span className="num text-muted">{formatShare(next[1], 0)}</span>
+                          {title(next[0])}{" "}
+                          <span className="num text-muted">{formatShare(next[1], 0)}</span>
                         </dd>
                       </div>
                     )}
@@ -155,6 +162,6 @@ export function RegimePanel({ asset }: { asset: Asset }) {
         )}{" "}
         A change of state is detected after it begins, not before.
       </p>
-    </section>
+    </Panel>
   );
 }

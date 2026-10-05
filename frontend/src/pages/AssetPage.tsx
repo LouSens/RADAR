@@ -2,12 +2,13 @@ import type { CSSProperties } from "react";
 import { useParams } from "react-router-dom";
 
 import { useMarket } from "../api/market";
-import { useAssets } from "../api/queries";
+import { useAssets, useSummary } from "../api/queries";
 import { MarketStage } from "../components/MarketStage";
 import { NewsPanel } from "../components/NewsPanel";
 import { OutlookPanel } from "../components/OutlookPanel";
 import { RegimePanel } from "../components/RegimePanel";
 import { RiskPanel } from "../components/RiskPanel";
+import { SummaryCard } from "../components/SummaryCard";
 import { TrackRecordPanel } from "../components/TrackRecordPanel";
 import { VolatilityPanel } from "../components/VolatilityPanel";
 import { Change, Message, RangeBar, StatRow, assetColorVar } from "../components/ui";
@@ -19,6 +20,8 @@ export function AssetPage() {
   const assets = useAssets();
   const asset = assets.data?.find((a) => a.slug === slug);
   const market = useMarket(asset);
+  const summary = useSummary(asset?.slug).data ?? undefined;
+  const trust = summary?.trust;
 
   if (assets.isPending) return <Message>Loading…</Message>;
   if (!asset) return <Message>That market could not be found.</Message>;
@@ -36,15 +39,17 @@ export function AssetPage() {
         <MarketStage key={asset.slug} asset={asset} allowCandles />
       </div>
 
-      <RegimePanel asset={asset} />
+      {summary && <SummaryCard asset={asset} summary={summary} />}
 
-      <OutlookPanel key={asset.slug} asset={asset} />
+      <RegimePanel asset={asset} trust={trust?.state} />
 
-      <VolatilityPanel asset={asset} />
+      <OutlookPanel key={asset.slug} asset={asset} trust={trust?.outlook} />
 
-      <RiskPanel asset={asset} />
+      <VolatilityPanel asset={asset} trust={trust?.swings} />
 
-      <NewsPanel asset={asset} />
+      <RiskPanel asset={asset} trust={trust?.risk} />
+
+      <NewsPanel asset={asset} trust={trust?.news} />
 
       <TrackRecordPanel asset={asset} />
 
