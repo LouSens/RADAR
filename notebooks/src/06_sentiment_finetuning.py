@@ -28,6 +28,8 @@ from radar.db.session import make_engine, session_scope
 from radar.models import classification, dataset, finetune, sentiment
 from radar.models.lexicon import DEFAULT_PATH, Lexicon
 from radar.pipelines import finetune as job
+from IPython.display import display
+
 from radar.pipelines.labels import load_labels
 
 plt.rcParams.update({"figure.figsize": (9, 3.4), "axes.grid": True, "grid.alpha": 0.3})
@@ -286,11 +288,96 @@ for symbol, group in test.groupby("symbol"):
 pd.DataFrame(by_market).T
 
 # %% [markdown]
+# ## 8. A larger test, fixed in advance
+#
+# The test in section 5 had 269 headlines. A 5-point gain on that few could easily be
+# luck, and the result was indeed "not measurable". Rather than adjust the model and try
+# again (which would turn the test into a tuning set), the **same saved model** was
+# scored on a fresh set of 700 headlines:
+#
+# - all later than every training and validation headline;
+# - sharing no article and no headline key with anything labelled before;
+# - labelled before either model had scored them;
+# - with the adoption rule written down and committed before the labels existed.
+#
+# Nothing was retrained and no setting was changed.
+
+# %%
+replication = record.get("replication")
+if replication is None:
+    print("The larger test has not been run yet.")
+else:
+    display(pd.DataFrame(
+        {
+            "Original FinBERT": {"accuracy": replication["base"]["accuracy"], "macro F1": replication["base"]["macro_f1"]},
+            "Fine-tuned": {"accuracy": replication["fine_tuned"]["accuracy"], "macro F1": replication["fine_tuned"]["macro_f1"]},
+            **({"Word list": {"accuracy": replication["baseline"]["accuracy"], "macro F1": replication["baseline"]["macro_f1"]}} if "baseline" in replication else {}),
+        }
+    ).T.assign(headlines=replication["n"]))
+    comparison2 = replication["comparison"]
+    display(pd.Series(
+        {
+            "headlines": replication["n"],
+            "from": replication["first"],
+            "to": replication["last"],
+            "only the original was right": comparison2["only_first_right"],
+            "only the fine-tuned model was right": comparison2["only_second_right"],
+            "p-value": f"{comparison2['p_value']:.2g}",
+            "first decision (269 headlines)": record.get("first_decision", {}).get("reason"),
+            "decision now": record["reason"],
+            "fine-tuned model adopted": record["adopted"],
+        },
+        name="value",
+    ).to_frame())
+
+# %%
+if replication is not None:
+    from radar.models import evidence
+
+    rows = {}
+    for name, key in (("Original FinBERT", "base"), ("Fine-tuned", "fine_tuned")):
+        low, high = evidence.share_interval(replication[key]["accuracy"], replication["n"])
+        rows[name] = {"accuracy": replication[key]["accuracy"], "95% range, low": low, "95% range, high": high}
+    ranges = pd.DataFrame(rows).T
+    fig, ax = plt.subplots(figsize=(7, 2.6))
+    ax.errorbar(
+        ranges["accuracy"], ranges.index,
+        xerr=[ranges["accuracy"] - ranges["95% range, low"], ranges["95% range, high"] - ranges["accuracy"]],
+        fmt="o", capsize=5,
+    )
+    ax.set(title=f"Accuracy on {replication['n']} unseen headlines, with 95% ranges", xlim=(0.4, 0.75))
+    display(ranges)
+    display(pd.DataFrame(replication["by_symbol"]).T.rename(columns={"n": "headlines", "base": "original"}))
+
+# %% [markdown]
+# **Reading this.** When the two ranges do not overlap, the gain is not luck. Note what
+# the test does *not* say: an accuracy near 60% is still modest. Roughly four headlines
+# in ten get a different label from the labeller's. Section 9 looks at what kind of
+# mistakes those are.
+#
+# ## 9. What kind of mistakes?
+#
+# Calling a mildly positive headline "neutral" is a small error. Calling a negative
+# headline "positive" is a serious one. The second kind is what would mislead a reader.
+
+# %%
+if replication is not None and "direction" in replication:
+    display(pd.DataFrame(
+        {"Original FinBERT": replication["direction_base"], "Fine-tuned": replication["direction"]}
+    ).T.rename(columns={
+        "n": "headlines", "opposite": "direction backwards", "opposite_rate": "share backwards",
+        "both_polar": "both took a side", "same_direction": "same side when both did",
+    }))
+
+# %% [markdown]
 # ## What to take from this
 #
 # - The decision to use the fine-tuned model follows a rule fixed in advance: more
-#   accurate on the unseen test headlines **and** a McNemar p-value under 0.05. The
-#   table in section 5 shows whether it passed.
+#   accurate on unseen test headlines **and** a McNemar p-value under 0.05. The first
+#   test (section 5) was too small to tell; the larger one (section 8) decides.
+# - Accuracy around 60% on single headlines is modest. The app therefore shows the
+#   figure with its range beside the tone reading, and leans on daily averages of many
+#   articles, not on any one article's score.
 # - Agreement here is with one labeller. A person labelling the same headlines might
 #   disagree with some labels, and a model trained to match them inherits their habits.
 # - With a few hundred test headlines per market, the per-market figures in section 7

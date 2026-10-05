@@ -190,15 +190,25 @@ def run(
     return metrics
 
 
-def adopted_model(session: Session) -> ModelRegistry | None:
-    """The fine-tuned model in use, if one has been adopted and its files are present."""
+def adopted_record(session: Session) -> ModelRegistry | None:
+    """The registry row of the fine-tuned model in use, if one has been adopted.
+
+    This says which model's scores the app shows. It does not need the model's files,
+    so it works on a machine that only reads stored scores.
+    """
     row = session.scalars(
         select(ModelRegistry)
         .where(ModelRegistry.name == MODEL_NAME, ModelRegistry.is_current)
         .order_by(ModelRegistry.trained_at.desc())
         .limit(1)
     ).first()
-    if row is None or not row.metrics.get("adopted") or row.artefact_path is None:
+    return row if row is not None and row.metrics.get("adopted") else None
+
+
+def adopted_model(session: Session) -> ModelRegistry | None:
+    """The adopted fine-tuned model, only if its files are on this machine to load."""
+    row = adopted_record(session)
+    if row is None or row.artefact_path is None:
         return None
     return row if Path(row.artefact_path).is_dir() else None
 

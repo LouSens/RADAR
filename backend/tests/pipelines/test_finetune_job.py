@@ -115,6 +115,8 @@ def test_adopted_model_needs_the_decision_and_the_files(session: Session, tmp_pa
     session.query(ModelRegistry).delete()
     register(session, adopted=True, path=tmp_path / "missing")
     assert job.adopted_model(session) is None  # adopted, but the files are not on this machine
+    record = job.adopted_record(session)
+    assert record is not None  # the decision still stands for reading stored scores
 
     session.query(ModelRegistry).delete()
     register(session, adopted=True, path=tmp_path)

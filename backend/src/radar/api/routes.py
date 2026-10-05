@@ -505,7 +505,7 @@ def _accuracy(session: Session, version: str) -> SentimentAccuracyOut | None:
         .limit(1)
     ).first()
     stored = reference.metrics if reference is not None and reference.version == version else {}
-    tuned = finetune_job.adopted_model(session)
+    tuned = finetune_job.adopted_record(session)
     if tuned is not None and tuned.version == version and "replication" in tuned.metrics:
         test = tuned.metrics["replication"]
         return SentimentAccuracyOut.model_validate(
