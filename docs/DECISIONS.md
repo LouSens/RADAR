@@ -233,3 +233,23 @@ Made by Claude while building step 2, open to change:
 - Stock bars come from the consolidated (`sip`) feed, requested up to 16 minutes ago.
   Hourly stock bars include extended-hours bars.
 - News is fetched from 2015-01-01 for every news symbol in the universe.
+
+## 017. Three features added to version 1 (2026-10-05)
+
+The user judged the plan too thin and approved three additions from a list of five:
+F8 macro drivers, F9 volatility forecast, F10 tail risk. Not adopted: liquidity
+measures from quotes and order books, and widening the asset list.
+
+The user's stated purpose for the app: to show what can be built on Alpaca's free tier.
+RADAR uses Alpaca's market data and news only; it never calls the trading API.
+
+Consequences:
+
+- Four macro driver funds join the universe: `UUP`, `TLT`, `TIP`, `VIXY`.
+- F9 and F10 are built in Phase 3, F8 in Phase 5. Phase 1 is unchanged apart from
+  backfilling the four funds.
+- Three results tables are added to section 6.
+
+Not decided: the read-only Binance connector stays in "later", and the hard rule
+against position endpoints in `CLAUDE.md` is unchanged, because the user has not
+answered either question.

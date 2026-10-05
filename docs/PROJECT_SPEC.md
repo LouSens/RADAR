@@ -28,10 +28,10 @@ Contents:
 | Letter | Stands for | Feature |
 |---|---|---|
 | R | Regimes | F1, the regime detector |
-| A | Analytics | F3 to F5, news sentiment and cross-asset analysis |
-| D | Distributions | F2, the outcome simulator |
+| A | Analytics | F3 to F5 and F8: news sentiment, cross-asset analysis, macro drivers |
+| D | Distributions | F2 and F9: the outcome simulator and the volatility forecast |
 | A | Alerts | F7, signals and the daily brief |
-| R | Risk | F6, the portfolio lab |
+| R | Risk | F6 and F10: the portfolio lab and tail risk |
 
 Write the name in capitals. Where a longer form is needed to tell it apart from other products with the same name, use "RADAR Markets". The Python package and repo name are lowercase `radar`.
 
@@ -62,11 +62,16 @@ Write the name in capitals. Where a longer form is needed to tell it apart from 
 | F5 | Bitcoin versus gold | Is Bitcoin currently moving with gold or against it? |
 | F6 | Portfolio lab | Where does my portfolio's risk come from, and what would a risk-based allocation look like? |
 | F7 | Signals and daily brief | What changed today, and how reliable has this kind of change been? |
+| F8 | Macro drivers | Which outside forces (the dollar, interest rates, stocks, market fear) are Bitcoin and gold moving with right now? |
+| F9 | Volatility forecast | How large are the price swings likely to be over the next day and week? |
+| F10 | Tail risk | How much could be lost on a bad day, and how often has that limit been broken? |
 
 ### Asset universe
 
 - **Primary assets (full analysis, F1 to F5):** `BTC/USD` and gold, represented by `GLD` (section 3.7).
 - **Portfolio assets (F6 only):** `SPY`, `PAXG/USD`, and other crypto pairs Alpaca lists, such as `ETH/USD` and `SOL/USD`. The list is configuration, not code. `PAXG/USD` is here because the user holds it; its daily bars are complete on `us-1`, which is all the portfolio lab uses. It is not the gold instrument for F1 to F5 (section 3.7).
+
+- **Macro driver assets (F8 only):** exchange-traded funds that stand for outside forces: `UUP` (US dollar), `TLT` (long-term US government bonds), `TIP` (inflation-linked bonds), `VIXY` (expected stock market volatility), plus `SPY` (US stocks). They are stored like any other stock. The list is configuration.
 
 ### Out of scope for version 1
 
@@ -285,6 +290,9 @@ Timestamps are `timestamptz` in UTC. Tables marked (H) are TimescaleDB hypertabl
 | `portfolios`, `holdings` | `portfolio_id`, `symbol`, `quantity`, `source` | source is `manual` or `csv` in version 1 |
 | `briefs` | `date`, `symbol`, `payload` (JSON), `text` | payload is the grounded input |
 | `model_registry` | `name`, `version`, `trained_at`, `train_window`, `metrics`, `artefact_path` | |
+| `factor_exposures` (H) | `symbol`, `ts`, `window_days`, `model_version`, `betas` (JSON), `r_squared`, `n` | F8, one row per asset, day, and window |
+| `volatility_forecasts` (H) | `symbol`, `ts`, `horizon_days`, `model_version`, `forecast`, `realised` | F9; `realised` is filled in once known |
+| `risk_metrics` (H) | `symbol` or `portfolio_id`, `ts`, `horizon_days`, `level`, `method`, `var`, `expected_shortfall` | F10 |
 | `ingestion_runs` | `job`, `window`, `status`, `rows`, `started_at`, `finished_at` | |
 | `data_quality_reports` | `ts`, `symbol`, `check`, `status`, `detail` | |
 
@@ -425,6 +433,33 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 - **Daily brief:** a JSON payload assembled from F1 to F6 results, rendered to a short paragraph per asset by a template. If the LLM writer is enabled, it receives only the payload and its output is rejected and replaced by the template version if it contains any number not in the payload.
 - **Done when:** each signal shown in the UI links to its track record, the grounding test passes, and the template writer works with no API key set.
 
+### F8. Macro drivers
+
+- **Method:** rolling regression of each primary asset's daily return on the daily returns of the macro driver assets, on the mixed panel, over trailing 90-day and 250-day windows. Ridge regularisation, because the drivers are correlated with each other. Report each driver's coefficient with a bootstrap confidence interval, the share of variance explained (R squared), and how both have moved over time.
+- **Baseline:** a model with `SPY` as the only driver.
+- **Evaluation:** walk-forward. Fit on a window, then measure out-of-sample R squared on the following 20 trading days, against the baseline.
+- **Verdict per driver:** `moves with`, `moves against`, or `no measurable link` when the interval includes zero.
+- **UI output:** a bar per driver with its interval, a line of R squared over time, and one sentence naming the strongest current driver or saying that none is measurable.
+- **Done when:** the no-lookahead test passes, intervals are shown beside every coefficient, and `no measurable link` displays correctly for a driver whose interval includes zero.
+
+### F9. Volatility forecast
+
+- **Method:** a HAR model (heterogeneous autoregressive): next-period realised volatility regressed on the average realised volatility of the last day, week, and month, fitted on log volatility. Horizons of 1 and 7 days (5 sessions for gold).
+- **Second model:** gradient-boosted trees (scikit-learn) on the same inputs plus the current regime probabilities and the daily sentiment aggregate. It is shown only if it beats HAR out of sample.
+- **Baselines:** yesterday's volatility carried forward, and the average volatility of the current regime from F1.
+- **Evaluation:** walk-forward with an expanding window. QLIKE loss and mean squared error against both baselines, with a Diebold-Mariano test for whether the difference is real.
+- **UI output:** forecast beside the last realised value, a chart of past forecasts against what happened, and the evaluation table.
+- **Use elsewhere:** the forecast scales the F10 risk figures. It does not change the F2 simulator in version 1.
+- **Done when:** the no-lookahead test passes, the evaluation table is stored for every horizon, and the UI states which model is shown and why.
+
+### F10. Tail risk
+
+- **Measures:** Value at Risk and expected shortfall at 95% and 99%, over 1 day and 7 days, for each primary asset and for the portfolio. Value at Risk is the loss that should be exceeded only 5% (or 1%) of the time; expected shortfall is the average loss when it is exceeded.
+- **Methods compared:** historical simulation; filtered historical simulation (past returns rescaled to the F9 volatility forecast); and the F2 regime-switching simulator's own distribution.
+- **Evaluation:** walk-forward backtest. Count how often the realised loss exceeded each limit and compare with the nominal rate, using Kupiec's coverage test and Christoffersen's test for whether breaches cluster.
+- **UI output:** the figures as a percentage and in money for the user's holdings, the breach count against the expected count, and the worst historical drawdowns with their dates.
+- **Done when:** breach rates are stored and shown for every method and level, the method displayed is the one with the best backtest, and a limit that fails its coverage test is marked as unreliable in the UI.
+
 ---
 
 ## 9. API
@@ -451,6 +486,10 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `GET /signals/track-records/{type}` | full track record |
 | `GET /briefs/latest` | today's brief |
 | `GET /methodology` | model versions, evaluation metrics, data coverage |
+| `GET /assets/{symbol}/drivers` | macro driver coefficients, intervals, R squared history |
+| `GET /assets/{symbol}/volatility` | forecasts, past forecasts against realised, evaluation |
+| `GET /assets/{symbol}/risk` | Value at Risk and expected shortfall with breach history |
+| `GET /portfolio/risk` | the same tail-risk figures for the portfolio |
 | `GET /health` | pipeline and data status |
 | `WS /stream` | live bars, new signals, new articles |
 
@@ -461,7 +500,7 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 Six screens:
 
 1. **Overview:** today's brief, current regime for Bitcoin and gold, latest signals, live prices.
-2. **Asset page (Bitcoin, Gold):** tabs for Regime, Outlook (simulator and calibration), and News (sentiment and the sentiment-versus-price study).
+2. **Asset page (Bitcoin, Gold):** tabs for Regime, Outlook (simulator, calibration, volatility forecast, and tail risk), News (sentiment and the sentiment-versus-price study), and Drivers (F8).
 3. **Bitcoin versus gold:** F5.
 4. **Portfolio:** holdings entry, X-ray, allocation comparison, portfolio outlook, rebalancing.
 5. **Signals:** feed with filters; each signal opens its track record.
@@ -506,9 +545,11 @@ Eight phases. Each ends in something that runs and can be shown.
 
 1. F1: HMM module, walk-forward evaluation, baseline, registry entry, scoring job.
 2. F2: simulator, calibration job, baseline comparison.
-3. Asset page tabs for Regime and Outlook.
+3. F9: HAR and gradient-boosted volatility forecasts, baselines, evaluation.
+4. F10: tail-risk measures for single assets, with the breach backtest.
+5. Asset page tabs for Regime and Outlook.
 
-*Done when:* the done-when items for F1 and F2 hold and the calibration panel shows real coverage numbers.
+*Done when:* the done-when items for F1, F2, F9, and F10 hold and the calibration panel shows real coverage numbers.
 
 ### Phase 4: News
 
@@ -520,10 +561,10 @@ Eight phases. Each ends in something that runs and can be shown.
 
 ### Phase 5: Relationship and portfolio
 
-1. F5 and its screen.
+1. F5 and its screen, and F8 with the Drivers tab.
 2. F6: holdings sources, risk model, allocations, backtest, portfolio simulation, core and satellite report, and the Portfolio screen.
 
-*Done when:* the done-when items for F5 and F6 hold on a sample portfolio fixture.
+*Done when:* the done-when items for F5, F6, and F8 hold on a sample portfolio fixture, and portfolio tail risk (F10) is shown.
 
 ### Phase 6: Signals and brief
 

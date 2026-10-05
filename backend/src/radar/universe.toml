@@ -68,3 +68,33 @@ asset_class = "stock"
 bars_symbol = "SPY"
 history_start = 2016-01-04
 
+
+# Macro drivers (docs/PROJECT_SPEC.md F8). Each fund stands for an outside force.
+
+[[assets]]
+symbol = "UUP"
+name = "US dollar"
+asset_class = "stock"
+bars_symbol = "UUP"
+history_start = 2016-01-04
+
+[[assets]]
+symbol = "TLT"
+name = "Long-term US government bonds"
+asset_class = "stock"
+bars_symbol = "TLT"
+history_start = 2016-01-04
+
+[[assets]]
+symbol = "TIP"
+name = "Inflation-linked US bonds"
+asset_class = "stock"
+bars_symbol = "TIP"
+history_start = 2016-01-04
+
+[[assets]]
+symbol = "VIXY"
+name = "Expected stock market volatility"
+asset_class = "stock"
+bars_symbol = "VIXY"
+history_start = 2016-01-04

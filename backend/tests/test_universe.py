@@ -34,7 +34,14 @@ def test_default_universe_matches_the_audit_decisions() -> None:
     assert universe.crypto_location == "us-1"
     assert universe.timeframes.crypto == ("1Hour", "1Day")
     assert [a.symbol for a in universe.primary] == ["BTC/USD", "GLD"]
-    assert {a.symbol for a in universe.of_class("stock")} == {"SPY", "GLD"}
+    assert {a.symbol for a in universe.of_class("stock")} == {
+        "SPY",
+        "GLD",
+        "UUP",
+        "TLT",
+        "TIP",
+        "VIXY",
+    }
 
     gold = universe.get("GLD")
     assert gold.news_symbols == ("GLD",)
