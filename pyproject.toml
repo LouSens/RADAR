@@ -37,7 +37,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "PT", "RUF", "S", "T2
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["backend/src", "backend/tests"]
+files = ["backend/src", "backend/tests", "backend/scripts"]
 mypy_path = "backend/src"
 plugins = ["pydantic.mypy"]
 
