@@ -355,3 +355,28 @@ def evaluate(
         macro_f1=round(metrics["model"]["macro_f1"], 3),
     )
     return metrics
+
+
+class NewsJob:
+    """The worker's news job: score and classify new articles, then refresh summaries.
+
+    The language models are loaded once, on first use. Where they are not installed the
+    job still refreshes the summaries from scores already stored.
+    """
+
+    def __init__(self, engine: Engine, universe: Universe) -> None:
+        self.engine = engine
+        self.universe = universe
+        self._loaded = False
+        self._scorer: sentiment.Scorer | None = None
+        self._topics: topics.TopicScorer | None = None
+
+    def __call__(self) -> int:
+        if not self._loaded:
+            self._scorer = load_scorer()
+            self._topics = load_topic_scorer() if self._scorer is not None else None
+            self._loaded = True
+        changed = run(self.engine, self.universe, self._scorer)
+        if self._topics is not None:
+            changed += classify_articles(self.engine, self._topics)
+        return changed

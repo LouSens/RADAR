@@ -16,8 +16,10 @@ from radar.db.session import make_engine
 from radar.ingest.live import BarHandler, LiveConsumer, NewsHandler, StreamSpec, Syncer, notify
 from radar.ingest.raw_store import RawStore
 from radar.logging import get_logger
+from radar.pipelines import event_study as event_study_job
 from radar.pipelines import regime as regime_job
 from radar.pipelines import risk as risk_job
+from radar.pipelines import sentiment as sentiment_job
 from radar.pipelines import simulation as simulation_job
 from radar.pipelines import volatility as volatility_job
 from radar.pipelines.quality import run_quality
@@ -154,6 +156,24 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=30,
             id="risk",
+            max_instances=1,
+            coalesce=True,
+        )
+        # News: tone and topics every ten minutes; the tone-versus-price study daily.
+        scheduler.add_job(
+            sentiment_job.NewsJob(engine, universe),
+            "cron",
+            minute="2-59/10",
+            id="news",
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            partial(event_study_job.run, engine, universe),
+            "cron",
+            hour=1,
+            minute=40,
+            id="event-study",
             max_instances=1,
             coalesce=True,
         )

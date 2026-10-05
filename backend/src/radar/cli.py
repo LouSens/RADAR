@@ -222,6 +222,9 @@ def sentiment() -> int:
 
     engine, universe = make_engine(), get_universe()
     changed = job.run(engine, universe, job.load_scorer())
+    topic_scorer = job.load_topic_scorer()
+    if topic_scorer is not None:
+        changed += job.classify_articles(engine, topic_scorer)
     if DEFAULT_PATH.is_file():
         job.evaluate(engine, lexicon=Lexicon.load())
     else:
