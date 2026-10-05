@@ -229,6 +229,9 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets/{symbol}/event-study",
         "/api/v1/assets/{symbol}/track-record",
         "/api/v1/assets/{symbol}/summary",
+        "/api/v1/portfolio",
+        "/api/v1/portfolio/import",
+        "/api/v1/portfolio/analysis",
         "/api/v1/health",
     }
     assert {"AssetOut", "BarsOut", "HealthOut", "LiveBar", "LiveNews"} <= set(
@@ -241,11 +244,16 @@ def test_api_has_no_trading_routes(client: TestClient) -> None:
     for word in ("order", "position", "account", "transfer", "trade"):
         assert word not in paths
     assert client.post("/api/v1/assets").status_code == 405
-    # The one POST route only counts stored simulated paths.
+    # Two POST routes: one counts stored simulated paths, one reads holdings from the
+    # text of a file. The only other writing route saves typed-in holdings. None of them
+    # reaches a broker or an exchange.
     routes = client.get("/openapi.json").json()["paths"]
     assert [p for p, item in routes.items() if "post" in item] == [
-        "/api/v1/assets/{symbol}/simulation/level"
+        "/api/v1/assets/{symbol}/simulation/level",
+        "/api/v1/portfolio/import",
     ]
+    assert [p for p, item in routes.items() if "put" in item] == ["/api/v1/portfolio"]
+    assert not [p for p, item in routes.items() if "delete" in item or "patch" in item]
 
 
 def test_regime_route_serves_stored_readings(client: TestClient, session: Session) -> None:

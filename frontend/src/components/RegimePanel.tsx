@@ -58,7 +58,7 @@ function Timeline({ regime }: { regime: Regime }) {
   );
 }
 
-export function RegimePanel({ asset, trust, defaultOpen }: PanelProps) {
+export function RegimePanel({ asset, trust }: PanelProps) {
   const query = useRegime(asset.slug);
   const regime = query.data;
   if (query.isPending || query.isError || !regime) return null;
@@ -71,7 +71,6 @@ export function RegimePanel({ asset, trust, defaultOpen }: PanelProps) {
       id="market-state"
       title="Market state"
       trust={trust}
-      defaultOpen={defaultOpen}
       headline={`${title(regime.label)}, ${days(regime.days_in_state)} so far`}
     >
       <div className="grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">

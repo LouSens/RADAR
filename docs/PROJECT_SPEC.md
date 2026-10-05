@@ -291,7 +291,8 @@ Timestamps are `timestamptz` in UTC. Tables marked (H) are TimescaleDB hypertabl
 | `calibration_reports` | `symbol`, `model_version`, `horizon_days`, `nominal`, `empirical`, `empirical_conformal`, `n`, `conformal_miss_rate`, pinball losses | coverage of past intervals, raw and adjusted |
 | `signals` | `id`, `symbol`, `ts`, `type`, `payload`, `track_record_id` | |
 | `signal_track_records` | `type`, `symbol`, `computed_at`, `n`, forward-return statistics, `baseline`, `verdict` | |
-| `portfolios`, `holdings` | `portfolio_id`, `symbol`, `quantity`, `source` | source is `manual` or `csv` in version 1 |
+| `portfolios`, `holdings` | `portfolio_id`, `symbol`, `quantity`, `tag`; `source` on the portfolio | source is `manual`, `csv`, or `binance` |
+| `portfolio_analyses` | `portfolio_id`, `as_of`, `computed_at`, `model_version`, `payload` (JSON) | the latest analysis only; replaced when holdings or prices change (`docs/DECISIONS.md` 037) |
 | `briefs` | `date`, `symbol`, `payload` (JSON), `text` | payload is the grounded input |
 | `model_registry` | `name`, `version`, `trained_at`, `train_window`, `metrics`, `artefact_path` | |
 | `factor_exposures` (H) | `symbol`, `ts`, `window_days`, `model_version`, `betas` (JSON), `r_squared`, `n` | F8, one row per asset, day, and window |
@@ -488,9 +489,9 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `GET /assets/{symbol}/sentiment` | aggregates and top articles |
 | `GET /assets/{symbol}/event-study` | event paths, lead-lag, verdict |
 | `GET /relationships/btc-gold` | correlation series, by-regime table, tracking gap |
-| `GET/PUT /portfolio` | holdings and tags |
-| `POST /portfolio/import` | CSV upload |
-| `GET /portfolio/xray` | risk breakdown |
+| `GET/PUT /portfolio` | holdings and tags; saving recomputes the analysis |
+| `POST /portfolio/import` | holdings from the text of a CSV file |
+| `GET /portfolio/analysis` | risk breakdown, loss limits, and stress episodes (`docs/DECISIONS.md` 037) |
 | `GET /portfolio/allocations` | allocation comparison and backtest summary |
 | `GET /portfolio/simulation` | portfolio outcome distribution |
 | `GET /signals` | recent signals with track record summaries |
@@ -500,7 +501,6 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `GET /assets/{symbol}/drivers` | macro driver coefficients, intervals, R squared history |
 | `GET /assets/{symbol}/volatility` | forecasts, past forecasts against realised, evaluation |
 | `GET /assets/{symbol}/risk` | Value at Risk and expected shortfall with breach history |
-| `GET /portfolio/risk` | the same tail-risk figures for the portfolio |
 | `GET /assets/{symbol}/summary` | the answers in brief, what changed this week, and a trust grade per claim |
 | `GET /assets/{symbol}/track-record` | forecasts logged when made, and how they turned out |
 | `GET /health` | pipeline and data status |

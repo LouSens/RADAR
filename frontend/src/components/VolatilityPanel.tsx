@@ -103,7 +103,7 @@ function verdict(pValue: number | null | undefined, worse: boolean): string {
   return worse ? "Measurably worse" : "Measurably better";
 }
 
-export function VolatilityPanel({ asset, trust, defaultOpen }: PanelProps) {
+export function VolatilityPanel({ asset, trust }: PanelProps) {
   const volatility = useVolatility(asset.slug).data;
   const [key, setKey] = useState<HorizonKey>("1");
   if (!volatility) return null;
@@ -121,7 +121,6 @@ export function VolatilityPanel({ asset, trust, defaultOpen }: PanelProps) {
       id="swings"
       title="Expected swings"
       trust={trust}
-      defaultOpen={defaultOpen}
       headline={nextDay ? `±${formatShare(nextDay.forecast)} a day` : undefined}
     >
       <div className="flex justify-end">

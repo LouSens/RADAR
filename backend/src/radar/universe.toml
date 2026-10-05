@@ -102,3 +102,32 @@ name = "Expected stock market volatility"
 asset_class = "stock"
 bars_symbol = "VIXY"
 history_start = 2016-01-04
+
+
+# Stress episodes (docs/PROJECT_SPEC.md F6). The portfolio is replayed through each one.
+# Dates are New York sessions, first and last included.
+
+[[stress_episodes]]
+name = "Covid crash"
+start = 2020-02-19
+end = 2020-03-23
+
+[[stress_episodes]]
+name = "Crypto sell-off of May 2021"
+start = 2021-05-07
+end = 2021-05-24
+
+[[stress_episodes]]
+name = "Rising interest rates, 2022"
+start = 2022-01-03
+end = 2022-10-14
+
+[[stress_episodes]]
+name = "Terra collapse, May to June 2022"
+start = 2022-05-04
+end = 2022-06-17
+
+[[stress_episodes]]
+name = "FTX collapse, November 2022"
+start = 2022-11-04
+end = 2022-11-21

@@ -56,10 +56,25 @@ class Timeframes(_Config):
         return self
 
 
+class StressEpisode(_Config):
+    """A named stretch of history the portfolio is replayed through (spec F6)."""
+
+    name: str
+    start: date
+    end: date
+
+    @model_validator(mode="after")
+    def _check(self) -> Self:
+        if self.end <= self.start:
+            raise ValueError(f"{self.name}: the episode must end after it starts")
+        return self
+
+
 class Universe(_Config):
     crypto_location: str = Field(pattern=_LOCATION.pattern)
     timeframes: Timeframes
     assets: tuple[Asset, ...]
+    stress_episodes: tuple[StressEpisode, ...] = ()
 
     @model_validator(mode="after")
     def _check(self) -> Self:

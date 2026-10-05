@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import type { Asset, Trust } from "../api/client";
 import { formatChange } from "../lib/format";
@@ -214,81 +214,47 @@ export function TrustBadge({ trust }: { trust: Trust | undefined }) {
 export interface PanelProps {
   asset: Asset;
   trust?: Trust;
-  defaultOpen?: boolean;
 }
 
 /**
- * One section of a market page. Closed, it shows the claim and how far to trust it;
- * opened, it shows the evidence. A link to its id opens it.
+ * One section of a market page, always laid out the same way: its name and trust mark,
+ * the claim in one line, why it earned that mark, then the evidence.
  */
 export function Panel({
   id,
   title,
   headline,
   trust,
-  defaultOpen = false,
   children,
 }: {
   id: string;
   title: string;
   headline?: ReactNode;
   trust?: Trust;
-  defaultOpen?: boolean;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  useEffect(() => {
-    const openIfTarget = () => {
-      if (window.location.hash === `#${id}`) setOpen(true);
-    };
-    openIfTarget();
-    window.addEventListener("hashchange", openIfTarget);
-    return () => window.removeEventListener("hashchange", openIfTarget);
-  }, [id]);
-
   return (
-    <section id={id} className="glass scroll-mt-24">
-      <h2>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={`${id}-body`}
-          onClick={() => setOpen((was) => !was)}
-          className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 p-5 text-left @xl:px-7"
-        >
-          <span className="text-base font-semibold tracking-tight">{title}</span>
+    <section id={id} className="glass" aria-labelledby={`${id}-title`}>
+      <header className="p-5 @xl:p-7">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id={`${id}-title`} className="label">
+            {title}
+          </h2>
           <TrustBadge trust={trust} />
-          <span className="num ml-auto min-w-0 text-sm text-muted">{headline}</span>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`shrink-0 text-faint transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-            aria-hidden="true"
-          >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
-          <span className="sr-only">{open ? "Hide the detail" : "Show the detail"}</span>
-        </button>
-      </h2>
-      {open && (
-        <div id={`${id}-body`} className="flex flex-col gap-6 border-t border-line p-5 @xl:p-7">
-          {trust && (
-            <p className="text-sm leading-relaxed text-muted">
-              <span className="font-medium text-ink">
-                Why {GRADE[trust.grade].word.toLowerCase()}:
-              </span>{" "}
-              {trust.reason}
-            </p>
-          )}
-          {children}
         </div>
-      )}
+        {headline && (
+          <p className="num mt-1.5 text-xl font-semibold leading-snug tracking-tight">{headline}</p>
+        )}
+        {trust && (
+          <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-muted">
+            <span className="font-medium text-ink">
+              Why {GRADE[trust.grade].word.toLowerCase()}:
+            </span>{" "}
+            {trust.reason}
+          </p>
+        )}
+      </header>
+      <div className="flex flex-col gap-6 border-t border-line p-5 @xl:p-7">{children}</div>
     </section>
   );
 }
