@@ -8,11 +8,12 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 2 complete on branch `phase-2-api-dashboard`. Phases 0 and 1 are merged to `main`
-- Last completed step: Phase 2 done-when verified on 2026-10-05: `make up` runs db, api, worker, and web under Docker Compose and the app at http://localhost:8080 shows live prices
-- Next step: Phase 3 (regime, outlook, volatility forecast, tail risk)
+- Phase: 3 is complete on branch `phase-3-regime-outlook` (pull request open or merged: check `git log main`). Phases 0 to 2 are merged to `main`
+- Last completed step: Phase 3 steps 1 to 5: regime (F1), outcome simulator with calibration (F2), volatility forecast (F9), tail risk (F10), each with model module, walk-forward evaluation, stored results, job, API route, and a panel on the asset page
+- Next step: Phase 4 (news): FinBERT sentiment and topics (F3), event study and lead-lag (F4), News section on the asset page. Then re-run the F9 tree comparison with sentiment as an input
+- Carried forward: shading the price chart by regime is not built (decision 028); the user asked about moving navigation to a dashboard sidebar, to be settled when the interface is next revisited
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 024): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 028): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
@@ -58,6 +59,10 @@ make demo            # start the app in replay mode from stored data
 uv run radar api        # serve the API on http://127.0.0.1:8000 (development)
 npm --prefix frontend run dev   # serve the web app on http://localhost:5173 (development)
 uv run radar openapi    # rewrite frontend/openapi.json; then `npm --prefix frontend run gen:api`
+uv run radar regime     # train the regime model where missing, then score (--retrain to refit)
+uv run radar simulate   # store today's outcome simulation (--recalibrate to measure past ranges again)
+uv run radar volatility # forecast volatility for new days and score the models
+uv run radar risk       # estimate tail risk for new days and backtest (run after volatility)
 uv run radar quality    # check stored data, set flags, write data quality reports
 uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
 uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md

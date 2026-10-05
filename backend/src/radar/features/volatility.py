@@ -84,3 +84,19 @@ def realised_volatility_stock(
         previous_close = close_by_session[session]
     frame = pd.DataFrame(rows, columns=["session", "rv", "returns", "flagged"])
     return frame.set_index("session")
+
+
+# Half-life, in days, of the smoothing applied to log volatility for the regime model.
+REGIME_VOLATILITY_HALFLIFE = 5.0
+
+
+def smoothed_log_volatility(
+    realised: pd.Series, halflife: float = REGIME_VOLATILITY_HALFLIFE
+) -> pd.Series:
+    """Exponentially weighted average of log realised volatility.
+
+    Realised volatility for a single day is noisy; this is the level it has been running
+    at. Each value uses that day and earlier days only, so it adds no lookahead.
+    """
+    logged = pd.Series(np.log(realised.to_numpy(dtype=float)), index=realised.index)
+    return logged.ewm(halflife=halflife, adjust=True).mean()

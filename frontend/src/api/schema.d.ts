@@ -44,6 +44,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/calibration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Calibration
+         * @description How often the simulator's past ranges contained what happened.
+         */
+        get: operations["get_calibration_api_v1_assets__symbol__calibration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{symbol}/regime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Regime
+         * @description The current market regime, its history, and how the model has measured.
+         */
+        get: operations["get_regime_api_v1_assets__symbol__regime_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{symbol}/risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Risk
+         * @description Value at Risk and expected shortfall, with how often each limit has been broken.
+         */
+        get: operations["get_risk_api_v1_assets__symbol__risk_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{symbol}/simulation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Simulation
+         * @description The latest stored simulator run: the outcome distribution at each horizon.
+         */
+        get: operations["get_simulation_api_v1_assets__symbol__simulation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{symbol}/simulation/level": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Simulation Level
+         * @description Chances of ending beyond, and of touching, a price level. Counted from stored paths.
+         */
+        post: operations["post_simulation_level_api_v1_assets__symbol__simulation_level_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{symbol}/volatility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Volatility
+         * @description The volatility forecast, past forecasts against what happened, and model scores.
+         */
+        get: operations["get_volatility_api_v1_assets__symbol__volatility_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -128,6 +248,66 @@ export interface components {
             /** Timeframe */
             timeframe: string;
         };
+        /** CalibrationOut */
+        CalibrationOut: {
+            /**
+             * Computed At
+             * Format: date-time
+             */
+            computed_at: string;
+            /** Model Version */
+            model_version: string;
+            /** Rows */
+            rows: components["schemas"]["CalibrationRowOut"][];
+            /** Symbol */
+            symbol: string;
+        };
+        /** CalibrationRowOut */
+        CalibrationRowOut: {
+            /** Empirical */
+            empirical: number;
+            /** Empirical Conformal */
+            empirical_conformal: number;
+            /**
+             * First Origin
+             * Format: date
+             */
+            first_origin: string;
+            /** Horizon Days */
+            horizon_days: number;
+            /**
+             * Last Origin
+             * Format: date
+             */
+            last_origin: string;
+            /** N */
+            n: number;
+            /** Nominal */
+            nominal: number;
+            /** Pinball Baseline */
+            pinball_baseline: number;
+            /** Pinball Model */
+            pinball_model: number;
+            /** Steps */
+            steps: number;
+        };
+        /** DrawdownOut */
+        DrawdownOut: {
+            /** Depth */
+            depth: number;
+            /**
+             * Peak Day
+             * Format: date
+             */
+            peak_day: string;
+            /** Recovered Day */
+            recovered_day: string | null;
+            /**
+             * Trough Day
+             * Format: date
+             */
+            trough_day: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -154,6 +334,42 @@ export interface components {
             status: "ok" | "degraded" | "down";
             /** Stream Clients */
             stream_clients: number;
+        };
+        /** LevelIn */
+        LevelIn: {
+            /** Horizon Days */
+            horizon_days: number;
+            /** Level */
+            level: number;
+        };
+        /**
+         * LevelOut
+         * @description Two different questions about one price level, kept apart.
+         */
+        LevelOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Ends Above */
+            ends_above: number;
+            /** Ends Below */
+            ends_below: number;
+            /** Horizon Days */
+            horizon_days: number;
+            /** Level */
+            level: number;
+            /** N Paths */
+            n_paths: number;
+            /** Start Price */
+            start_price: number;
+            /** Steps */
+            steps: number;
+            /** Symbol */
+            symbol: string;
+            /** Touches */
+            touches: number;
         };
         /**
          * LiveBar
@@ -201,6 +417,45 @@ export interface components {
              */
             type: "news";
         };
+        /** OutlookHorizon */
+        OutlookHorizon: {
+            /** Expected Worst Drawdown */
+            expected_worst_drawdown: number;
+            /** Histogram Counts */
+            histogram_counts: number[];
+            /** Histogram Edges */
+            histogram_edges: number[];
+            /** Horizon Days */
+            horizon_days: number;
+            /** Intervals */
+            intervals: components["schemas"]["OutlookRange"][];
+            /** Mean Return */
+            mean_return: number;
+            /** Quantiles */
+            quantiles: {
+                [key: string]: number;
+            };
+            /** Steps */
+            steps: number;
+        };
+        /**
+         * OutlookRange
+         * @description A central range of simulated prices, raw and after the conformal adjustment.
+         */
+        OutlookRange: {
+            /** Adjusted High */
+            adjusted_high: number | null;
+            /** Adjusted Is Widest */
+            adjusted_is_widest: boolean;
+            /** Adjusted Low */
+            adjusted_low: number | null;
+            /** High */
+            high: number;
+            /** Level */
+            level: number;
+            /** Low */
+            low: number;
+        };
         /** QualitySummary */
         QualitySummary: {
             /** Failures */
@@ -211,6 +466,183 @@ export interface components {
             last_run: string | null;
             /** Warnings */
             warnings: number;
+        };
+        /**
+         * RegimeEvaluationOut
+         * @description Walk-forward results: every figure is from days the model had not seen.
+         */
+        RegimeEvaluationOut: {
+            /** Average Run Length */
+            average_run_length: number;
+            /** Baseline Log Density */
+            baseline_log_density: number;
+            /**
+             * First Test Day
+             * Format: date
+             */
+            first_test_day: string;
+            /**
+             * Last Test Day
+             * Format: date
+             */
+            last_test_day: string;
+            /** Model Log Density */
+            model_log_density: number;
+            /** N Days */
+            n_days: number;
+            /** Next Day Volatility */
+            next_day_volatility: {
+                [key: string]: number;
+            };
+            /** Volatility Is Ordered */
+            volatility_is_ordered: boolean;
+        };
+        /** RegimeModelOut */
+        RegimeModelOut: {
+            /** Bic By States */
+            bic_by_states: {
+                [key: string]: number;
+            };
+            /** N Train */
+            n_train: number;
+            /**
+             * Train End
+             * Format: date
+             */
+            train_end: string;
+            /**
+             * Train Start
+             * Format: date
+             */
+            train_start: string;
+            /**
+             * Trained At
+             * Format: date-time
+             */
+            trained_at: string;
+            /** Version */
+            version: string;
+        };
+        /** RegimeOut */
+        RegimeOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Days In State */
+            days_in_state: number;
+            evaluation: components["schemas"]["RegimeEvaluationOut"] | null;
+            /** History */
+            history: components["schemas"]["RegimePoint"][];
+            /** Label */
+            label: string;
+            model: components["schemas"]["RegimeModelOut"];
+            /** Probabilities */
+            probabilities: {
+                [key: string]: number;
+            };
+            /** Probability */
+            probability: number;
+            /** States */
+            states: components["schemas"]["RegimeStateOut"][];
+            /** Symbol */
+            symbol: string;
+        };
+        /** RegimePoint */
+        RegimePoint: {
+            /** Label */
+            label: string;
+            /** Probability */
+            probability: number;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+        };
+        /** RegimeStateOut */
+        RegimeStateOut: {
+            /** Label */
+            label: string;
+            /** Next States */
+            next_states: {
+                [key: string]: number;
+            };
+            /** Typical Daily Volatility */
+            typical_daily_volatility: number;
+            /** Typical Duration Days */
+            typical_duration_days: number;
+        };
+        /** RiskHorizonOut */
+        RiskHorizonOut: {
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Horizon Days */
+            horizon_days: number;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** Levels */
+            levels: components["schemas"]["RiskLevelOut"][];
+            /** Shown */
+            shown: string;
+            /** Steps */
+            steps: number;
+        };
+        /** RiskLevelOut */
+        RiskLevelOut: {
+            /** Level */
+            level: number;
+            /** Methods */
+            methods: components["schemas"]["RiskMethodOut"][];
+        };
+        /**
+         * RiskMethodOut
+         * @description One method's current limit at one level, and how its past limits held.
+         */
+        RiskMethodOut: {
+            /** Breach Rate */
+            breach_rate: number;
+            /** Breaches */
+            breaches: number;
+            /** Clustering P Value */
+            clustering_p_value: number | null;
+            /** Expected Breaches */
+            expected_breaches: number;
+            /** Expected Shortfall */
+            expected_shortfall: number;
+            /** Kupiec P Value */
+            kupiec_p_value: number | null;
+            /** Method */
+            method: string;
+            /** N */
+            n: number;
+            /** Reliable */
+            reliable: boolean;
+            /** Var */
+            var: number;
+        };
+        /** RiskOut */
+        RiskOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Drawdowns */
+            drawdowns: components["schemas"]["DrawdownOut"][];
+            /** Horizons */
+            horizons: components["schemas"]["RiskHorizonOut"][];
+            /** Model Version */
+            model_version: string;
+            /** Symbol */
+            symbol: string;
         };
         /** SeriesStatus */
         SeriesStatus: {
@@ -239,6 +671,30 @@ export interface components {
             /** Timeframe */
             timeframe: string;
         };
+        /** SimulationOut */
+        SimulationOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Fan */
+            fan: {
+                [key: string]: number[];
+            };
+            /** Horizons */
+            horizons: components["schemas"]["OutlookHorizon"][];
+            /** Model Version */
+            model_version: string;
+            /** N Paths */
+            n_paths: number;
+            /** Seed */
+            seed: number;
+            /** Start Price */
+            start_price: number;
+            /** Symbol */
+            symbol: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -251,6 +707,74 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VolatilityHorizonOut */
+        VolatilityHorizonOut: {
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Forecast */
+            forecast: number;
+            /** History */
+            history: components["schemas"]["VolatilityPoint"][];
+            /** Horizon Days */
+            horizon_days: number;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** Last Realised */
+            last_realised: number | null;
+            /** N */
+            n: number;
+            /** Reason */
+            reason: string;
+            /** Scores */
+            scores: components["schemas"]["VolatilityScoreOut"][];
+            /** Shown */
+            shown: string;
+            /** Steps */
+            steps: number;
+        };
+        /** VolatilityOut */
+        VolatilityOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Horizons */
+            horizons: components["schemas"]["VolatilityHorizonOut"][];
+            /** Model Version */
+            model_version: string;
+            /** Symbol */
+            symbol: string;
+        };
+        /** VolatilityPoint */
+        VolatilityPoint: {
+            /** Forecast */
+            forecast: number;
+            /** Realised */
+            realised: number | null;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+        };
+        /** VolatilityScoreOut */
+        VolatilityScoreOut: {
+            /** Dm P Value Vs Har */
+            dm_p_value_vs_har?: number | null;
+            /** Model */
+            model: string;
+            /** Mse */
+            mse: number;
+            /** Qlike */
+            qlike: number;
         };
     };
     responses: never;
@@ -304,6 +828,200 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BarsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_calibration_api_v1_assets__symbol__calibration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibrationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_regime_api_v1_assets__symbol__regime_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegimeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_risk_api_v1_assets__symbol__risk_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_simulation_api_v1_assets__symbol__simulation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_simulation_level_api_v1_assets__symbol__simulation_level_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LevelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LevelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_volatility_api_v1_assets__symbol__volatility_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolatilityOut"];
                 };
             };
             /** @description Validation Error */

@@ -6,7 +6,7 @@ Every timestamp is timezone-aware UTC. The frontend converts to the viewer's zon
 from datetime import date
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel
+from pydantic import AwareDatetime, BaseModel, Field
 
 
 class AssetOut(BaseModel):
@@ -93,3 +93,231 @@ class LiveNews(BaseModel):
     type: Literal["news"]
     id: int
     symbols: list[str]
+
+
+class RegimeStateOut(BaseModel):
+    label: str
+    # Average size of a day's price swing in this state, as a fraction (0.02 is 2%).
+    typical_daily_volatility: float
+    typical_duration_days: float
+    # Probability of each other state being next, once this one ends.
+    next_states: dict[str, float]
+
+
+class RegimePoint(BaseModel):
+    ts: AwareDatetime
+    label: str
+    probability: float
+
+
+class RegimeEvaluationOut(BaseModel):
+    """Walk-forward results: every figure is from days the model had not seen."""
+
+    n_days: int
+    first_test_day: date
+    last_test_day: date
+    next_day_volatility: dict[str, float]
+    volatility_is_ordered: bool
+    model_log_density: float
+    baseline_log_density: float
+    average_run_length: float
+
+
+class RegimeModelOut(BaseModel):
+    version: str
+    trained_at: AwareDatetime
+    train_start: date
+    train_end: date
+    n_train: int
+    bic_by_states: dict[str, float]
+
+
+class RegimeOut(BaseModel):
+    symbol: str
+    # When the latest reading became known: the end of the day it describes.
+    as_of: AwareDatetime
+    label: str
+    probability: float
+    probabilities: dict[str, float]
+    # Consecutive days, counting back from the latest, with this label.
+    days_in_state: int
+    states: list[RegimeStateOut]
+    history: list[RegimePoint]
+    model: RegimeModelOut
+    evaluation: RegimeEvaluationOut | None
+
+
+class OutlookRange(BaseModel):
+    """A central range of simulated prices, raw and after the conformal adjustment."""
+
+    level: float
+    low: float
+    high: float
+    # Widened or narrowed using how earlier ranges held. Null until that has been measured.
+    adjusted_low: float | None
+    adjusted_high: float | None
+    # True when the adjustment is as wide as it can go, so the range is nearly every outcome.
+    adjusted_is_widest: bool
+
+
+class OutlookHorizon(BaseModel):
+    horizon_days: int
+    # Trading steps simulated: days for crypto, market sessions for stocks.
+    steps: int
+    quantiles: dict[str, float]
+    intervals: list[OutlookRange]
+    histogram_edges: list[float]
+    histogram_counts: list[int]
+    # Average of each path's largest peak-to-trough fall, as a negative fraction.
+    expected_worst_drawdown: float
+    mean_return: float
+
+
+class SimulationOut(BaseModel):
+    symbol: str
+    # When the inputs became known: the end of the last day the run used.
+    as_of: AwareDatetime
+    start_price: float
+    n_paths: int
+    seed: int
+    model_version: str
+    horizons: list[OutlookHorizon]
+    # Price quantiles at the end of each step, starting from the start price.
+    fan: dict[str, list[float]]
+
+
+class LevelIn(BaseModel):
+    level: float = Field(gt=0)
+    horizon_days: int
+
+
+class LevelOut(BaseModel):
+    """Two different questions about one price level, kept apart."""
+
+    symbol: str
+    as_of: AwareDatetime
+    start_price: float
+    level: float
+    horizon_days: int
+    steps: int
+    n_paths: int
+    # Share of simulated paths at or beyond the level at the end of the horizon.
+    ends_above: float
+    ends_below: float
+    # Share of paths whose daily close reaches the level at any point in the horizon.
+    touches: float
+
+
+class CalibrationRowOut(BaseModel):
+    horizon_days: int
+    steps: int
+    nominal: float
+    # Share of past ranges that contained the outcome, raw and after adjustment.
+    empirical: float
+    empirical_conformal: float
+    n: int
+    # Average pinball loss; lower is better. The baseline is a constant-volatility random walk.
+    pinball_model: float
+    pinball_baseline: float
+    first_origin: date
+    last_origin: date
+
+
+class CalibrationOut(BaseModel):
+    symbol: str
+    model_version: str
+    computed_at: AwareDatetime
+    rows: list[CalibrationRowOut]
+
+
+class VolatilityScoreOut(BaseModel):
+    # "har" (regression on recent volatility), "gbt" (tree model), "carry" (yesterday
+    # carried forward), or "regime" (average for the current market state).
+    model: str
+    # Average loss on days the model had not seen; lower is better.
+    qlike: float
+    mse: float
+    # Diebold-Mariano p-value for the difference from "har". Null for "har" itself.
+    dm_p_value_vs_har: float | None = None
+
+
+class VolatilityPoint(BaseModel):
+    ts: AwareDatetime
+    forecast: float
+    # What happened over the days the forecast covered. Null until they have ended.
+    realised: float | None
+
+
+class VolatilityHorizonOut(BaseModel):
+    horizon_days: int
+    steps: int
+    # The model whose forecast is shown, and why it was chosen.
+    shown: str
+    reason: str
+    # Per-day volatility expected over the next `steps` days, as a fraction.
+    forecast: float
+    # The latest completed outcome: per-day volatility over the last `steps` days.
+    last_realised: float | None
+    history: list[VolatilityPoint]
+    n: int
+    first_day: date
+    last_day: date
+    scores: list[VolatilityScoreOut]
+
+
+class VolatilityOut(BaseModel):
+    symbol: str
+    as_of: AwareDatetime
+    model_version: str
+    horizons: list[VolatilityHorizonOut]
+
+
+class RiskMethodOut(BaseModel):
+    """One method's current limit at one level, and how its past limits held."""
+
+    # "historical", "filtered" (scaled to the volatility forecast), or "simulator".
+    method: str
+    # The loss, as a fraction, that should be exceeded only (1 - level) of the time.
+    var: float
+    # The average loss in the periods that do exceed it.
+    expected_shortfall: float
+    # Periods tested; for horizons longer than a day they do not overlap.
+    n: int
+    breaches: int
+    expected_breaches: float
+    breach_rate: float
+    kupiec_p_value: float | None
+    clustering_p_value: float | None
+    # False when the limit was broken measurably more or less often than stated.
+    reliable: bool
+
+
+class RiskLevelOut(BaseModel):
+    level: float
+    methods: list[RiskMethodOut]
+
+
+class RiskHorizonOut(BaseModel):
+    horizon_days: int
+    steps: int
+    # The method with the best backtest, whose figures are displayed.
+    shown: str
+    first_day: date
+    last_day: date
+    levels: list[RiskLevelOut]
+
+
+class DrawdownOut(BaseModel):
+    peak_day: date
+    trough_day: date
+    depth: float
+    recovered_day: date | None
+
+
+class RiskOut(BaseModel):
+    symbol: str
+    as_of: AwareDatetime
+    model_version: str
+    horizons: list[RiskHorizonOut]
+    # The deepest falls in daily closing prices over the stored history.
+    drawdowns: list[DrawdownOut]

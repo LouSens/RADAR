@@ -165,6 +165,52 @@ def openapi(args: argparse.Namespace) -> int:
     return 0
 
 
+def regime(args: argparse.Namespace) -> int:
+    """Train the regime model where needed, then score every stored day."""
+    from radar.db.session import make_engine
+    from radar.pipelines import regime as job
+    from radar.universe import get_universe
+
+    changed = job.run(
+        make_engine(), get_universe(), retrain=args.retrain, evaluate=not args.skip_evaluation
+    )
+    log.info("regime_done", rows_changed=changed)
+    return 0
+
+
+def simulate(args: argparse.Namespace) -> int:
+    """Measure the simulator's past ranges where needed, then store today's run."""
+    from radar.db.session import make_engine
+    from radar.pipelines import simulation as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe(), recalibrate=args.recalibrate)
+    log.info("simulate_done", rows_changed=changed)
+    return 0
+
+
+def volatility() -> int:
+    """Forecast volatility for every day not yet covered, and score the models."""
+    from radar.db.session import make_engine
+    from radar.pipelines import volatility as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe())
+    log.info("volatility_done", rows_changed=changed)
+    return 0
+
+
+def risk() -> int:
+    """Estimate tail risk for every day not yet covered, and backtest each method."""
+    from radar.db.session import make_engine
+    from radar.pipelines import risk as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe())
+    log.info("risk_done", rows_changed=changed)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -186,6 +232,8 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "worker": (worker, "run live ingestion and scheduled jobs"),
     "profile": (profile, "measure the stored data and write docs/DATA_PROFILE.md"),
     "api": (api, "serve the HTTP API and live WebSocket"),
+    "volatility": (volatility, "forecast volatility and score the models"),
+    "risk": (risk, "estimate tail risk and backtest each method"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 
@@ -206,6 +254,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit_parser.add_argument(
         "--resume", action="store_true", help="keep saved sections and run only the missing ones"
     )
+    regime_parser = sub.add_parser("regime", help="train and score the regime model")
+    regime_parser.add_argument("--retrain", action="store_true", help="fit a new model first")
+    regime_parser.add_argument(
+        "--skip-evaluation", action="store_true", help="skip the walk-forward evaluation"
+    )
+    simulate_parser = sub.add_parser("simulate", help="run the outcome simulator and store it")
+    simulate_parser.add_argument(
+        "--recalibrate", action="store_true", help="measure past ranges again first (minutes)"
+    )
     openapi_parser = sub.add_parser("openapi", help="write the API schema for the frontend")
     openapi_parser.add_argument("--output", default="frontend/openapi.json")
     backfill_parser = sub.add_parser("backfill", help="fetch history for the universe")
@@ -222,6 +279,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return backfill(args)
     if command == "openapi":
         return openapi(args)
+    if command == "regime":
+        return regime(args)
+    if command == "simulate":
+        return simulate(args)
     if command in NOT_YET:
         log.error("command_not_built_yet", command=command, arrives_in=NOT_YET[command])
         return 2

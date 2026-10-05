@@ -16,6 +16,10 @@ from radar.db.session import make_engine
 from radar.ingest.live import BarHandler, LiveConsumer, NewsHandler, StreamSpec, Syncer, notify
 from radar.ingest.raw_store import RawStore
 from radar.logging import get_logger
+from radar.pipelines import regime as regime_job
+from radar.pipelines import risk as risk_job
+from radar.pipelines import simulation as simulation_job
+from radar.pipelines import volatility as volatility_job
 from radar.pipelines.quality import run_quality
 from radar.providers.alpaca_rest import AlpacaDataClient
 from radar.providers.alpaca_stream import (
@@ -94,6 +98,62 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=10,
             id="quality",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Regimes: score a few minutes after each hourly sync; refit once a week.
+        scheduler.add_job(
+            partial(regime_job.run, engine, universe),
+            "cron",
+            minute=5,
+            id="regime-score",
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            partial(regime_job.run, engine, universe, retrain=True),
+            "cron",
+            day_of_week="sun",
+            hour=2,
+            minute=30,
+            id="regime-refit",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Outlook: a new run once a day's regime reading exists; coverage measured weekly.
+        scheduler.add_job(
+            partial(simulation_job.run, engine, universe),
+            "cron",
+            minute=15,
+            id="simulate",
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            partial(simulation_job.run, engine, universe, recalibrate=True),
+            "cron",
+            day_of_week="sun",
+            hour=3,
+            minute=30,
+            id="calibrate",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Volatility: forecasts for each newly completed day.
+        scheduler.add_job(
+            partial(volatility_job.run, engine, universe),
+            "cron",
+            minute=20,
+            id="volatility",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Tail risk: after the volatility forecasts it depends on.
+        scheduler.add_job(
+            partial(risk_job.run, engine, universe),
+            "cron",
+            minute=30,
+            id="risk",
             max_instances=1,
             coalesce=True,
         )

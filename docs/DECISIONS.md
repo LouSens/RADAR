@@ -395,3 +395,184 @@ without wicks and uses their close, not their high or low, for ranges.
 Open for later phases: the daily-range feature (spec 7.4) and any model input that uses
 highs and lows must skip flagged bars. Some flagged wicks are real, such as Ethereum's
 fall to 700 on Kraken on 2021-02-22.
+
+## 025. The regime model as specified does not give usable regimes (2026-10-05)
+
+Spec F1 says: a hidden Markov model on each day's [log return, log realised volatility],
+2 to 4 states chosen by BIC, "expect 3". Fitted on the real data on 2026-10-05:
+
+- BIC chooses 4 states for Bitcoin, gold, and SPY, not 3.
+- The states last 1.5 to 7 days. The product promises "what kind of market this is" and
+  "how long each state has tended to last"; a state that flips every two days is a
+  volatility reading, not a regime.
+- For gold the model splits days by the sign of the return (one state averages +0.45% a
+  day, the next -0.52%), and next-day volatility is **not** ordered by state out of
+  sample (calm 0.74%, normal 0.73%). That fails F1's done-when.
+- It does beat the rule-based baseline on one-step-ahead log density for all three.
+
+The cause: one day's realised volatility is noisy, so the model chases daily noise.
+
+Measured alternatives, 3 states, filtered states over full history (average length of an
+unbroken run of one state; all have next-day volatility ordered):
+
+| Variant | Bitcoin | Gold | SPY |
+|---|---|---|---|
+| As specified, 3 states | 2 to 4 days | 2.0 days | 4.4 days |
+| Volatility only (no return) | 9.3 days | 25.0 days | 7.0 days |
+| Return plus volatility smoothed over about 5 days | 23.1 days | 24.3 days | 24.1 days |
+
+"Smoothed" is an exponentially weighted average of log realised volatility with a
+5-day half-life, using that day and earlier days only, so it adds no lookahead.
+
+Options:
+1. Return plus smoothed volatility, fixed at 3 states. Recommended: regimes last about a
+   month for all three assets, the two inputs of the spec are kept, and the three names
+   (calm, normal, turbulent) keep one meaning across assets. BIC by state count is still
+   reported on the methodology page.
+2. Volatility only, 3 states. Simpler, but regime length differs a lot by asset.
+3. As specified. Honest to the original text, but gold fails its own acceptance test.
+
+**Decided by the user on 2026-10-05: option 1.** Return plus volatility smoothed with a
+5-day half-life, 3 states. Spec F1 updated.
+
+## 026. Regime pipeline choices (2026-10-05)
+
+Made by Claude while building, open to change:
+
+- **MLflow uses a local SQLite store,** `data/mlflow/mlflow.db`, with artefacts beside
+  it. Spec section 5 said "a local file store", but the current MLflow refuses the plain
+  file store. A failure to log to MLflow is a warning, not an error: the registry row in
+  Postgres is what the app depends on.
+- **Model parameters live in `model_registry.params`.** Scoring and the API read the
+  model from the database, so the worker container and the host do not need to share a
+  model file. A JSON copy is still written under `data/models` and logged to MLflow.
+- **A regime reading is stamped when its day ended:** midnight UTC of the next day for
+  crypto, the session close for stocks. A value stamped `t` therefore uses data up to
+  `t` only.
+- **Walk-forward settings.** Expanding window, first 500 days for training only, refit
+  every 63 days (the evaluation refits about 30 times per asset; a 21-day step took
+  several minutes per asset for no visible gain).
+- **Schedule.** Regimes are scored at five past each hour and refitted on Sundays at
+  02:30 UTC. The promotion gate of spec 7.10 is Phase 7: until then a refit always
+  replaces the current model.
+
+Measured on 2026-10-05 (walk-forward, out of sample):
+
+| Asset | Days tested | Next-day volatility: calm, normal, turbulent | Ordered | Log density, model vs rule | Average run |
+|---|---|---|---|---|---|
+| BTC/USD | 1,602 | 1.96%, 2.71%, 3.63% | yes | 2.017 vs 1.972 | 34.1 days |
+| GLD | 2,202 | 0.61%, 0.75%, 1.14% | yes | 3.440 vs 3.054 | 16.8 days |
+| SPY | 2,202 | 0.54%, 0.67%, 1.24% | yes | 3.183 vs 2.558 | 21.8 days |
+
+BIC still prefers 4 states for all three; 3 is used by decision 025.
+
+## 027. Simulator calibration: measured results and choices (2026-10-05)
+
+Walk-forward, out of sample, on 2026-10-05. For every day after the first 500 the
+simulator ran with a regime model fitted on earlier days only and returns up to that day
+only (2,000 paths per day; the regime model refitted every 63 days). Share of ranges that
+contained the outcome, raw and after the conformal adjustment:
+
+| Asset | Horizon | Cases | 50% raw / adjusted | 80% raw / adjusted | 95% raw / adjusted |
+|---|---|---|---|---|---|
+| BTC/USD | 1 day | 1,601 | 52.5% / 50.4% | 81.8% / 80.1% | 95.3% / 94.9% |
+| BTC/USD | 7 days | 1,595 | 58.2% / 50.3% | 83.3% / 80.3% | 93.5% / 94.7% |
+| BTC/USD | 30 days | 1,572 | 57.9% / 49.8% | 79.5% / 80.3% | 93.2% / 94.8% |
+| GLD | 1 session | 2,201 | 47.7% / 50.1% | 78.1% / 80.1% | 93.5% / 95.0% |
+| GLD | 5 sessions | 2,197 | 50.4% / 50.1% | 79.0% / 80.1% | 92.1% / 95.0% |
+| GLD | 21 sessions | 2,181 | 48.3% / 49.7% | 77.0% / 80.1% | 93.3% / 94.5% |
+| SPY | 1 session | 2,201 | 48.5% / 49.9% | 79.0% / 80.0% | 94.3% / 95.0% |
+| SPY | 5 sessions | 2,197 | 51.3% / 50.2% | 81.7% / 80.1% | 95.4% / 95.0% |
+| SPY | 21 sessions | 2,181 | 53.3% / 50.4% | 85.0% / 80.5% | 94.6% / 95.2% |
+
+Against the constant-volatility baseline (pinball loss, lower is better): the simulator
+is clearly better for `SPY` at every horizon, slightly better for Bitcoin at 1 and 30
+days and level at 7, and slightly **worse** for gold at 5 and 21 sessions (0.00489 vs
+0.00486, and 0.00970 vs 0.00940). The app must show this comparison as it is.
+
+Choices made by Claude, open to change:
+
+- **Horizons in trading steps.** 1, 7, and 30 days are 1, 7, and 30 days for crypto
+  and 1, 5, and 21 sessions for stocks (spec 3.7).
+- **Touching a level** is judged at daily closes, and the current price counts.
+- **The conformal adjustment is left unbounded,** as the method needs for its long-run
+  guarantee. Bounding it to within a factor of three of the stated miss rate was tried
+  and rejected: 30-day coverage fell to 74% to 88%.
+- **The live range uses the median adjustment of the last 250 forecasts,** not the
+  latest value, which swings after every hit or miss.
+
+Known limit: for the 95% range at the longest horizon, the adjustment for Bitcoin and
+gold currently sits at its widest setting, so the adjusted 95% range is close to the
+full spread of the simulated outcomes. The interface should say so where it applies.
+
+## 028. Phase 3 steps 2 to 4: storage, volatility forecast, tail risk (2026-10-05)
+
+Choices made by Claude while building, open to change. Results are walk-forward, out of
+sample, measured on 2026-10-05.
+
+**Outlook (F2) storage**
+
+- `simulations` holds one row per run, not one per run and horizon as the spec's table
+  listed: the horizons share one set of paths, so they are stored together. A run is
+  keyed by asset, day, and regime model; its seed is derived from those three, so a
+  rerun gives the same paths.
+- The simulated paths (10,000 by 30, about 1 MB) are kept for the latest run of each
+  asset only. Older runs keep their summaries. The level check reads the latest run.
+- Displayed ranges use the conformal adjustment from the latest calibration report.
+  Calibration is measured weekly; a run is stored once per completed day.
+- Known limit, updated: the 95% range sits at its widest setting for Bitcoin at 7 and
+  30 days and for gold at 21 sessions. Slowing the adjustment for high levels was tried
+  (rates of 0.1 and 0.2 times the miss rate, in place of a fixed 0.02) and did not
+  change this. The panel says so where it applies.
+
+**Volatility forecast (F9)**
+
+- The quantity forecast is per-day volatility over the next 1 or 7 days (5 sessions for
+  stocks): the square root of the average daily realised variance over those days.
+- **Departure from the spec, forced by the build order:** the second model is specified
+  with the daily sentiment aggregate as an input. Sentiment is built in Phase 4, so the
+  trees currently use the three HAR inputs and the regime probabilities only. The
+  comparison is repeated when sentiment exists.
+- The trees are shown only if their QLIKE is lower than HAR's and the Diebold-Mariano
+  test gives p below 0.05. They are not shown for any asset.
+
+| Asset | Horizon | Days | HAR | Trees | Yesterday repeated | Regime average |
+|---|---|---|---|---|---|---|
+| BTC/USD | 1 day | 1,601 | 0.467 | 0.566 | 0.924 | 0.535 |
+| BTC/USD | 7 days | 1,595 | 0.194 | 0.208 | 1.329 | 0.251 |
+| GLD | 1 session | 2,201 | 0.667 | 0.872 | 1.822 | 0.659 |
+| GLD | 5 sessions | 2,197 | 0.257 | 0.298 | 1.522 | 0.296 |
+| SPY | 1 session | 2,201 | 0.491 | 0.674 | 0.871 | 0.759 |
+| SPY | 5 sessions | 2,197 | 0.335 | 0.492 | 0.903 | 0.580 |
+
+QLIKE loss, lower is better. HAR beats both baselines with p below 0.05 in every row
+except gold at 1 session, where the regime average is level with it (p = 0.65).
+
+**Tail risk (F10)**
+
+- Loss limits are simple-return losses over the horizon. The historical and filtered
+  methods use a trailing window of 500 completed periods (at least 250).
+- The filtered method scales past outcomes by the stored HAR forecasts, not the trees.
+- For the 7-day horizon the backtest uses periods that do not overlap, so that the
+  clustering test is not triggered by overlap alone. This leaves 192 periods for
+  Bitcoin and 389 for the stocks, which is few for a 99% limit.
+- All methods are scored on the same periods. The method shown is the one with the
+  fewest limits failing Kupiec's test, then the smallest distance from the stated rates.
+- Money figures for the user's holdings arrive with the portfolio in Phase 5; until
+  then the panel shows percentages.
+
+| Asset | Horizon | Shown | 95% breaches (expected) | 99% breaches (expected) | Unreliable limits |
+|---|---|---|---|---|---|
+| BTC/USD | 1 day | filtered | 73 (67.6) | 12 (13.5) | none |
+| BTC/USD | 7 days | simulator | 6 (9.6) | 2 (1.9) | none |
+| GLD | 1 session | filtered | 106 (97.6) | 21 (19.5) | historical at both levels; simulator at 99% |
+| GLD | 5 sessions | filtered | 26 (19.5) | 7 (3.9) | historical at both levels; simulator at 99% |
+| SPY | 1 session | filtered | 91 (97.6) | 22 (19.5) | simulator at 99% |
+| SPY | 5 sessions | filtered | 16 (19.5) | 5 (3.9) | none |
+
+**Tables.** `volatility_forecasts` has a `model` column and `risk_metrics` a `method`
+column and `realised_loss`, so every method's history is stored, not only the one shown.
+Evaluation tables live in `model_registry.metrics`.
+
+**Not built in Phase 3:** shading the price chart itself by regime. The Market state
+panel shows the regime of each day as a band beside the chart instead.

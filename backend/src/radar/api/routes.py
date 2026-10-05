@@ -26,11 +26,42 @@ from radar.api.schemas import (
     AssetOut,
     BarOut,
     BarsOut,
+    CalibrationOut,
+    CalibrationRowOut,
     HealthOut,
+    LevelIn,
+    LevelOut,
     QualitySummary,
+    RegimeEvaluationOut,
+    RegimeModelOut,
+    RegimeOut,
+    RegimePoint,
+    RegimeStateOut,
+    RiskHorizonOut,
+    RiskLevelOut,
+    RiskMethodOut,
+    RiskOut,
     SeriesStatus,
+    SimulationOut,
+    VolatilityHorizonOut,
+    VolatilityOut,
+    VolatilityPoint,
+    VolatilityScoreOut,
 )
-from radar.db.models import Bar, DataQualityReport, IngestionRun
+from radar.db.models import (
+    Bar,
+    CalibrationReport,
+    DataQualityReport,
+    IngestionRun,
+    RegimeState,
+    RiskMetric,
+    VolatilityForecast,
+)
+from radar.models import simulator
+from radar.pipelines import risk as risk_job
+from radar.pipelines import simulation as simulation_job
+from radar.pipelines import volatility as volatility_job
+from radar.pipelines.regime import current_model
 from radar.universe import Asset, Universe
 
 router = APIRouter(prefix="/api/v1")
@@ -130,6 +161,253 @@ def get_bars(
             )
             for r in rows
         ],
+    )
+
+
+@router.get("/assets/{symbol:path}/regime", response_model=RegimeOut)
+def get_regime(
+    symbol: str,
+    universe: UniverseDep,
+    session: SessionDep,
+    days: Annotated[int, Query(ge=1, le=5000)] = 365,
+) -> RegimeOut:
+    """The current market regime, its history, and how the model has measured."""
+    asset = find_asset(universe, symbol)
+    registered = current_model(session, asset.symbol)
+    if registered is None:
+        raise HTTPException(status_code=404, detail=f"No regime model for {asset.symbol} yet")
+    rows = list(
+        session.scalars(
+            select(RegimeState)
+            .where(RegimeState.symbol == asset.symbol, RegimeState.model_id == registered.id)
+            .order_by(RegimeState.ts.desc())
+            .limit(days)
+        )
+    )[::-1]
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"No regime readings for {asset.symbol} yet")
+    latest = rows[-1]
+    streak = 0
+    for row in reversed(rows):
+        if row.label != latest.label:
+            break
+        streak += 1
+    walk = registered.metrics.get("walk_forward")
+    return RegimeOut(
+        symbol=asset.symbol,
+        as_of=latest.ts,
+        label=latest.label,
+        probability=latest.probability,
+        probabilities=latest.probs,
+        days_in_state=streak,
+        states=[RegimeStateOut.model_validate(s) for s in registered.metrics["states"]],
+        history=[RegimePoint(ts=r.ts, label=r.label, probability=r.probability) for r in rows],
+        model=RegimeModelOut(
+            version=registered.version,
+            trained_at=registered.trained_at,
+            train_start=registered.train_start,
+            train_end=registered.train_end,
+            n_train=registered.params["n_train"],
+            bic_by_states=registered.metrics["bic_by_states"],
+        ),
+        evaluation=RegimeEvaluationOut.model_validate(walk) if walk else None,
+    )
+
+
+@router.get("/assets/{symbol:path}/simulation", response_model=SimulationOut)
+def get_simulation(symbol: str, universe: UniverseDep, session: SessionDep) -> SimulationOut:
+    """The latest stored simulator run: the outcome distribution at each horizon."""
+    asset = find_asset(universe, symbol)
+    run = simulation_job.latest(session, asset.symbol)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"No simulation for {asset.symbol} yet")
+    return SimulationOut.model_validate(
+        {
+            "symbol": asset.symbol,
+            "as_of": run.as_of,
+            "start_price": run.start_price,
+            "n_paths": run.n_paths,
+            "seed": run.seed,
+            "model_version": run.model_version,
+            "horizons": run.horizons,
+            "fan": run.fan,
+        }
+    )
+
+
+@router.post("/assets/{symbol:path}/simulation/level", response_model=LevelOut)
+def post_simulation_level(
+    symbol: str, body: LevelIn, universe: UniverseDep, session: SessionDep
+) -> LevelOut:
+    """Chances of ending beyond, and of touching, a price level. Counted from stored paths."""
+    asset = find_asset(universe, symbol)
+    run = simulation_job.latest(session, asset.symbol)
+    if run is None or run.paths is None:
+        raise HTTPException(status_code=404, detail=f"No simulation for {asset.symbol} yet")
+    steps = next((h["steps"] for h in run.horizons if h["horizon_days"] == body.horizon_days), None)
+    if steps is None:
+        raise HTTPException(status_code=422, detail="That horizon is not simulated")
+    result = simulator.level_probabilities(
+        simulation_job.decode_paths(run), steps, run.start_price, body.level
+    )
+    return LevelOut(
+        symbol=asset.symbol,
+        as_of=run.as_of,
+        start_price=run.start_price,
+        level=body.level,
+        horizon_days=body.horizon_days,
+        steps=steps,
+        n_paths=run.n_paths,
+        ends_above=result.ends_above,
+        ends_below=result.ends_below,
+        touches=result.touches,
+    )
+
+
+@router.get("/assets/{symbol:path}/calibration", response_model=CalibrationOut)
+def get_calibration(symbol: str, universe: UniverseDep, session: SessionDep) -> CalibrationOut:
+    """How often the simulator's past ranges contained what happened."""
+    asset = find_asset(universe, symbol)
+    rows = list(
+        session.scalars(
+            select(CalibrationReport)
+            .where(
+                CalibrationReport.symbol == asset.symbol,
+                CalibrationReport.model_version == simulator.MODEL_VERSION,
+            )
+            .order_by(CalibrationReport.horizon_days, CalibrationReport.nominal)
+        )
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"No calibration for {asset.symbol} yet")
+    return CalibrationOut(
+        symbol=asset.symbol,
+        model_version=simulator.MODEL_VERSION,
+        computed_at=max(r.computed_at for r in rows),
+        rows=[CalibrationRowOut.model_validate(r, from_attributes=True) for r in rows],
+    )
+
+
+@router.get("/assets/{symbol:path}/volatility", response_model=VolatilityOut)
+def get_volatility(
+    symbol: str,
+    universe: UniverseDep,
+    session: SessionDep,
+    days: Annotated[int, Query(ge=1, le=5000)] = 365,
+) -> VolatilityOut:
+    """The volatility forecast, past forecasts against what happened, and model scores."""
+    asset = find_asset(universe, symbol)
+    registered = volatility_job.current_model(session, asset.symbol)
+    if registered is None:
+        raise HTTPException(status_code=404, detail=f"No volatility forecast for {asset.symbol}")
+    steps = volatility_job.HORIZON_STEPS[asset.asset_class]
+    horizons = []
+    for horizon_days, evaluation in sorted(
+        registered.metrics["horizons"].items(), key=lambda item: int(item[0])
+    ):
+        rows = list(
+            session.scalars(
+                select(VolatilityForecast)
+                .where(
+                    VolatilityForecast.symbol == asset.symbol,
+                    VolatilityForecast.horizon_days == int(horizon_days),
+                    VolatilityForecast.model == evaluation["shown"],
+                )
+                .order_by(VolatilityForecast.ts.desc())
+                .limit(days)
+            )
+        )[::-1]
+        if not rows:
+            continue
+        known = [r.realised for r in rows if r.realised is not None]
+        horizons.append(
+            VolatilityHorizonOut(
+                horizon_days=int(horizon_days),
+                steps=steps[int(horizon_days)],
+                shown=evaluation["shown"],
+                reason=evaluation["reason"],
+                forecast=rows[-1].forecast,
+                last_realised=known[-1] if known else None,
+                history=[
+                    VolatilityPoint(ts=r.ts, forecast=r.forecast, realised=r.realised) for r in rows
+                ],
+                n=evaluation["n"],
+                first_day=evaluation["first_day"],
+                last_day=evaluation["last_day"],
+                scores=[VolatilityScoreOut.model_validate(s) for s in evaluation["scores"]],
+            )
+        )
+    if not horizons:
+        raise HTTPException(status_code=404, detail=f"No volatility forecast for {asset.symbol}")
+    latest = session.scalar(
+        select(func.max(VolatilityForecast.ts)).where(VolatilityForecast.symbol == asset.symbol)
+    )
+    return VolatilityOut.model_validate(
+        {
+            "symbol": asset.symbol,
+            "as_of": latest,
+            "model_version": registered.version,
+            "horizons": horizons,
+        }
+    )
+
+
+@router.get("/assets/{symbol:path}/risk", response_model=RiskOut)
+def get_risk(symbol: str, universe: UniverseDep, session: SessionDep) -> RiskOut:
+    """Value at Risk and expected shortfall, with how often each limit has been broken."""
+    asset = find_asset(universe, symbol)
+    registered = risk_job.current_model(session, asset.symbol)
+    latest = session.scalar(
+        select(func.max(RiskMetric.ts)).where(RiskMetric.symbol == asset.symbol)
+    )
+    if registered is None or latest is None:
+        raise HTTPException(status_code=404, detail=f"No risk figures for {asset.symbol} yet")
+    current = {
+        (r.horizon_days, r.level, r.method): r
+        for r in session.scalars(
+            select(RiskMetric).where(RiskMetric.symbol == asset.symbol, RiskMetric.ts == latest)
+        )
+    }
+    horizons = []
+    for horizon_days, stored in sorted(
+        registered.metrics["horizons"].items(), key=lambda item: int(item[0])
+    ):
+        by_level: dict[float, list[RiskMethodOut]] = {}
+        for backtest in stored["backtests"]:
+            row = current.get((int(horizon_days), backtest["level"], backtest["method"]))
+            if row is None:
+                continue
+            by_level.setdefault(backtest["level"], []).append(
+                RiskMethodOut.model_validate(
+                    {**backtest, "var": row.var, "expected_shortfall": row.expected_shortfall}
+                )
+            )
+        if not by_level or stored["shown"] is None:
+            continue
+        first = stored["backtests"][0]
+        horizons.append(
+            RiskHorizonOut(
+                horizon_days=int(horizon_days),
+                steps=stored["steps"],
+                shown=stored["shown"],
+                first_day=first["first_day"],
+                last_day=first["last_day"],
+                levels=[
+                    RiskLevelOut(level=level, methods=methods)
+                    for level, methods in sorted(by_level.items())
+                ],
+            )
+        )
+    if not horizons:
+        raise HTTPException(status_code=404, detail=f"No risk figures for {asset.symbol} yet")
+    return RiskOut.model_validate(
+        {
+            "symbol": asset.symbol,
+            "as_of": latest,
+            "model_version": registered.version,
+            "horizons": horizons,
+            "drawdowns": registered.metrics.get("drawdowns", []),
+        }
     )
 
 

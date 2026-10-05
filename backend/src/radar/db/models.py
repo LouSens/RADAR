@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     MetaData,
     Text,
     UniqueConstraint,
@@ -144,3 +145,125 @@ class DataQualityReport(Base):
     detail: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
 
     __table_args__ = (Index("ix_data_quality_reports_ts", "ts"),)
+
+
+class ModelRegistry(Base):
+    """One row per trained model. The parameters are stored here, so scoring needs no file."""
+
+    __tablename__ = "model_registry"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(Text)
+    symbol: Mapped[str | None] = mapped_column(ForeignKey("assets.symbol"))
+    version: Mapped[str] = mapped_column(Text)
+    trained_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+    train_start: Mapped[date] = mapped_column(Date)
+    train_end: Mapped[date] = mapped_column(Date)
+    # The model in use for this name and symbol. At most one row is current.
+    is_current: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    params: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default="{}")
+    artefact_path: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (Index("ix_model_registry_name_symbol", "name", "symbol", "trained_at"),)
+
+
+class RegimeState(Base):
+    """Filtered regime probabilities. `ts` is when the day they describe had ended."""
+
+    __tablename__ = "regime_states"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    model_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TZDateTime, primary_key=True)
+    label: Mapped[str] = mapped_column(Text)
+    probability: Mapped[float] = mapped_column(Double)
+    probs: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class Simulation(Base):
+    """One simulator run for one asset. Reproducible from `seed` and the data up to `as_of`."""
+
+    __tablename__ = "simulations"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"))
+    # When the inputs became known: the end of the last day the run used.
+    as_of: Mapped[datetime] = mapped_column(TZDateTime)
+    # The regime model the run started from.
+    model_id: Mapped[int] = mapped_column(BigInteger)
+    model_version: Mapped[str] = mapped_column(Text)
+    seed: Mapped[int] = mapped_column(BigInteger)
+    n_paths: Mapped[int] = mapped_column(Integer)
+    max_steps: Mapped[int] = mapped_column(Integer)
+    start_price: Mapped[float] = mapped_column(Double)
+    # One entry per horizon: quantiles, ranges, histogram, drawdown.
+    horizons: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    fan: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # Compressed float32 cumulative log returns, shape (n_paths, max_steps). Kept for the
+    # latest run of each asset only; older runs keep their summaries.
+    paths: Mapped[bytes | None] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("symbol", "as_of", "model_id"),)
+
+
+class CalibrationReport(Base):
+    """How often the simulator's past ranges held, per horizon and range."""
+
+    __tablename__ = "calibration_reports"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    model_version: Mapped[str] = mapped_column(Text, primary_key=True)
+    horizon_days: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nominal: Mapped[float] = mapped_column(Double, primary_key=True)
+    steps: Mapped[int] = mapped_column(Integer)
+    empirical: Mapped[float] = mapped_column(Double)
+    empirical_conformal: Mapped[float] = mapped_column(Double)
+    n: Mapped[int] = mapped_column(Integer)
+    conformal_miss_rate: Mapped[float] = mapped_column(Double)
+    pinball_model: Mapped[float] = mapped_column(Double)
+    pinball_baseline: Mapped[float] = mapped_column(Double)
+    first_origin: Mapped[date] = mapped_column(Date)
+    last_origin: Mapped[date] = mapped_column(Date)
+    computed_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+
+
+class VolatilityForecast(Base):
+    """A volatility forecast made at `ts` for the following days, by one model.
+
+    `forecast` and `realised` are per-day volatility as a fraction. `realised` is filled
+    in once the days it covers have ended.
+    """
+
+    __tablename__ = "volatility_forecasts"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    horizon_days: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # "har", "gbt", or one of the simple rivals "carry" and "regime".
+    model: Mapped[str] = mapped_column(Text, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TZDateTime, primary_key=True)
+    model_version: Mapped[str] = mapped_column(Text)
+    forecast: Mapped[float] = mapped_column(Double)
+    realised: Mapped[float | None] = mapped_column(Double)
+
+
+class RiskMetric(Base):
+    """Value at Risk and expected shortfall estimated at `ts`, by one method.
+
+    Each is the fraction of a position lost over the horizon. `realised_loss` is what
+    followed, filled in once the horizon has ended.
+    """
+
+    __tablename__ = "risk_metrics"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    horizon_days: Mapped[int] = mapped_column(Integer, primary_key=True)
+    level: Mapped[float] = mapped_column(Double, primary_key=True)
+    # "historical", "filtered", or "simulator".
+    method: Mapped[str] = mapped_column(Text, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TZDateTime, primary_key=True)
+    model_version: Mapped[str] = mapped_column(Text)
+    var: Mapped[float] = mapped_column(Double)
+    expected_shortfall: Mapped[float] = mapped_column(Double)
+    realised_loss: Mapped[float | None] = mapped_column(Double)

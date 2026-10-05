@@ -4,6 +4,10 @@ import { useParams } from "react-router-dom";
 import { useMarket } from "../api/market";
 import { useAssets } from "../api/queries";
 import { MarketStage } from "../components/MarketStage";
+import { OutlookPanel } from "../components/OutlookPanel";
+import { RegimePanel } from "../components/RegimePanel";
+import { RiskPanel } from "../components/RiskPanel";
+import { VolatilityPanel } from "../components/VolatilityPanel";
 import { Change, Message, RangeBar, StatRow, assetColorVar } from "../components/ui";
 import { formatPrice } from "../lib/format";
 import { formatDate } from "../lib/time";
@@ -29,6 +33,14 @@ export function AssetPage() {
       <div className="rise">
         <MarketStage key={asset.slug} asset={asset} allowCandles />
       </div>
+
+      <RegimePanel asset={asset} />
+
+      <OutlookPanel key={asset.slug} asset={asset} />
+
+      <VolatilityPanel asset={asset} />
+
+      <RiskPanel asset={asset} />
 
       <section className="glass rise rise-2 grid grid-cols-1 gap-x-12 gap-y-6 p-5 sm:p-7 lg:grid-cols-2">
         <div>
