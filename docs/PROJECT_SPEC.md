@@ -253,7 +253,7 @@ Only the `worker` opens Alpaca stream connections. Alpaca allows one connection 
 
 Check current stable versions when installing; do not pin from memory.
 
-**Backend:** Python 3.12+, `uv`, FastAPI, Pydantic, `pydantic-settings`, SQLAlchemy 2, Alembic, `psycopg` (PostgreSQL driver), `httpx`, `websockets`, APScheduler, `structlog`.
+**Backend:** Python 3.12+, `uv`, FastAPI, `uvicorn` (the server that runs it), Pydantic, `pydantic-settings`, SQLAlchemy 2, Alembic, `psycopg` (PostgreSQL driver), `httpx`, `websockets`, APScheduler, `structlog`.
 
 **Data and maths:** pandas, NumPy, SciPy, PyArrow, statsmodels, scikit-learn, `hmmlearn`, `pandera` for schema validation, `exchange_calendars` for market calendars.
 
@@ -265,9 +265,9 @@ Check current stable versions when installing; do not pin from memory.
 
 **Database:** PostgreSQL with TimescaleDB.
 
-**Frontend:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, `lightweight-charts` for price charts, a general chart library for histograms and bar charts.
+**Frontend:** React, TypeScript, Vite, Tailwind CSS, TanStack Query, `react-router` (navigation), `openapi-typescript` (generates API types), `lightweight-charts` for price charts, a general chart library for histograms and bar charts.
 
-**Quality:** pytest, `respx`, `ruff`, `mypy`, `pandas-stubs`, Vitest, ESLint, GitHub Actions.
+**Quality:** pytest, `respx`, `ruff`, `mypy`, `pandas-stubs`, Vitest, Testing Library with `jsdom`, ESLint, GitHub Actions.
 
 **Daily brief text:** a deterministic template renderer is the default and has no external dependency. An LLM rewrite sits behind a `BriefWriter` interface and a feature flag, with the provider and model name set in environment variables.
 

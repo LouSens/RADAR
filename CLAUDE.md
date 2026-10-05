@@ -8,10 +8,10 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 1 complete and merged to `main` on 2026-10-05 (pull request 2). Phase 2 not started; branch `phase-2-api-dashboard` exists
-- Last completed step: Phase 1 step 6, the data profile (`docs/DATA_PROFILE.md`) and exploration notebook
-- Next step: Phase 2 (API and dashboard shell): restate its done-when criteria and file list first
-- Key decisions (`docs/DECISIONS.md` 010 to 021): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), and tail risk (F10)
+- Phase: 2 (in progress) on branch `phase-2-api-dashboard`. Phases 0 and 1 are merged to `main`
+- Last completed step: Phase 2 steps 1 and 2: FastAPI routes and live WebSocket; React shell with live charts and the status page. Verified running locally against real data on 2026-10-05
+- Next step: verify `make up` (the full stack under Docker Compose), which is Phase 2's done-when
+- Key decisions (`docs/DECISIONS.md` 010 to 022): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
@@ -40,10 +40,10 @@ These apply to every change.
 
 ## Commands
 
-Keep this list accurate as targets change. Each target wraps `uv run radar <target>`, which works without Make (for example `uv run radar audit`). Until Phase 2, `up` starts `db` only and `test` and `lint` cover the backend only.
+Keep this list accurate as targets change. Each target wraps `uv run radar <target>`, which works without Make (for example `uv run radar audit`). `test` and `lint` include the frontend once `npm --prefix frontend ci` has been run.
 
 ```
-make up              # start db, api, worker, web with docker compose
+make up              # start db, api, worker, web with docker compose; app on http://localhost:8080
 make down            # stop everything
 make migrate         # run Alembic migrations
 make audit           # run the Phase 0 data probe and rewrite docs/DATA_AUDIT.md (about 70 minutes;
@@ -54,6 +54,9 @@ make test            # backend pytest + frontend vitest (database tests need `ma
 make lint            # ruff, mypy, eslint, tsc
 make demo            # start the app in replay mode from stored data
 
+uv run radar api        # serve the API on http://127.0.0.1:8000 (development)
+npm --prefix frontend run dev   # serve the web app on http://localhost:5173 (development)
+uv run radar openapi    # rewrite frontend/openapi.json; then `npm --prefix frontend run gen:api`
 uv run radar quality    # check stored data, set flags, write data quality reports
 uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
 uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md
