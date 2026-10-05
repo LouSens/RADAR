@@ -348,6 +348,232 @@
         "title": "QualitySummary",
         "type": "object"
       },
+      "RegimeEvaluationOut": {
+        "description": "Walk-forward results: every figure is from days the model had not seen.",
+        "properties": {
+          "average_run_length": {
+            "title": "Average Run Length",
+            "type": "number"
+          },
+          "baseline_log_density": {
+            "title": "Baseline Log Density",
+            "type": "number"
+          },
+          "first_test_day": {
+            "format": "date",
+            "title": "First Test Day",
+            "type": "string"
+          },
+          "last_test_day": {
+            "format": "date",
+            "title": "Last Test Day",
+            "type": "string"
+          },
+          "model_log_density": {
+            "title": "Model Log Density",
+            "type": "number"
+          },
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "next_day_volatility": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Next Day Volatility",
+            "type": "object"
+          },
+          "volatility_is_ordered": {
+            "title": "Volatility Is Ordered",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "n_days",
+          "first_test_day",
+          "last_test_day",
+          "next_day_volatility",
+          "volatility_is_ordered",
+          "model_log_density",
+          "baseline_log_density",
+          "average_run_length"
+        ],
+        "title": "RegimeEvaluationOut",
+        "type": "object"
+      },
+      "RegimeModelOut": {
+        "properties": {
+          "bic_by_states": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Bic By States",
+            "type": "object"
+          },
+          "n_train": {
+            "title": "N Train",
+            "type": "integer"
+          },
+          "train_end": {
+            "format": "date",
+            "title": "Train End",
+            "type": "string"
+          },
+          "train_start": {
+            "format": "date",
+            "title": "Train Start",
+            "type": "string"
+          },
+          "trained_at": {
+            "format": "date-time",
+            "title": "Trained At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "trained_at",
+          "train_start",
+          "train_end",
+          "n_train",
+          "bic_by_states"
+        ],
+        "title": "RegimeModelOut",
+        "type": "object"
+      },
+      "RegimeOut": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "days_in_state": {
+            "title": "Days In State",
+            "type": "integer"
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RegimeEvaluationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/RegimePoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "model": {
+            "$ref": "#/components/schemas/RegimeModelOut"
+          },
+          "probabilities": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Probabilities",
+            "type": "object"
+          },
+          "probability": {
+            "title": "Probability",
+            "type": "number"
+          },
+          "states": {
+            "items": {
+              "$ref": "#/components/schemas/RegimeStateOut"
+            },
+            "title": "States",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "as_of",
+          "label",
+          "probability",
+          "probabilities",
+          "days_in_state",
+          "states",
+          "history",
+          "model",
+          "evaluation"
+        ],
+        "title": "RegimeOut",
+        "type": "object"
+      },
+      "RegimePoint": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "probability": {
+            "title": "Probability",
+            "type": "number"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ts",
+          "label",
+          "probability"
+        ],
+        "title": "RegimePoint",
+        "type": "object"
+      },
+      "RegimeStateOut": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "next_states": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Next States",
+            "type": "object"
+          },
+          "typical_daily_volatility": {
+            "title": "Typical Daily Volatility",
+            "type": "number"
+          },
+          "typical_duration_days": {
+            "title": "Typical Duration Days",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "typical_daily_volatility",
+          "typical_duration_days",
+          "next_states"
+        ],
+        "title": "RegimeStateOut",
+        "type": "object"
+      },
       "SeriesStatus": {
         "properties": {
           "bars": {
@@ -577,6 +803,58 @@
           }
         },
         "summary": "Get Bars"
+      }
+    },
+    "/api/v1/assets/{symbol}/regime": {
+      "get": {
+        "description": "The current market regime, its history, and how the model has measured.",
+        "operationId": "get_regime_api_v1_assets__symbol__regime_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 365,
+              "maximum": 5000,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegimeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Regime"
       }
     },
     "/api/v1/health": {

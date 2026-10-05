@@ -9,6 +9,7 @@ export type Health = components["schemas"]["HealthOut"];
 export type SeriesStatus = components["schemas"]["SeriesStatus"];
 export type LiveBar = components["schemas"]["LiveBar"];
 export type LiveNews = components["schemas"]["LiveNews"];
+export type Regime = components["schemas"]["RegimeOut"];
 export type Timeframe = "1Hour" | "1Day";
 
 const BASE = "/api/v1";

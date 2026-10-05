@@ -93,3 +93,55 @@ class LiveNews(BaseModel):
     type: Literal["news"]
     id: int
     symbols: list[str]
+
+
+class RegimeStateOut(BaseModel):
+    label: str
+    # Average size of a day's price swing in this state, as a fraction (0.02 is 2%).
+    typical_daily_volatility: float
+    typical_duration_days: float
+    # Probability of each other state being next, once this one ends.
+    next_states: dict[str, float]
+
+
+class RegimePoint(BaseModel):
+    ts: AwareDatetime
+    label: str
+    probability: float
+
+
+class RegimeEvaluationOut(BaseModel):
+    """Walk-forward results: every figure is from days the model had not seen."""
+
+    n_days: int
+    first_test_day: date
+    last_test_day: date
+    next_day_volatility: dict[str, float]
+    volatility_is_ordered: bool
+    model_log_density: float
+    baseline_log_density: float
+    average_run_length: float
+
+
+class RegimeModelOut(BaseModel):
+    version: str
+    trained_at: AwareDatetime
+    train_start: date
+    train_end: date
+    n_train: int
+    bic_by_states: dict[str, float]
+
+
+class RegimeOut(BaseModel):
+    symbol: str
+    # When the latest reading became known: the end of the day it describes.
+    as_of: AwareDatetime
+    label: str
+    probability: float
+    probabilities: dict[str, float]
+    # Consecutive days, counting back from the latest, with this label.
+    days_in_state: int
+    states: list[RegimeStateOut]
+    history: list[RegimePoint]
+    model: RegimeModelOut
+    evaluation: RegimeEvaluationOut | None

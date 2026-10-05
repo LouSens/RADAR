@@ -28,9 +28,15 @@ from radar.api.schemas import (
     BarsOut,
     HealthOut,
     QualitySummary,
+    RegimeEvaluationOut,
+    RegimeModelOut,
+    RegimeOut,
+    RegimePoint,
+    RegimeStateOut,
     SeriesStatus,
 )
-from radar.db.models import Bar, DataQualityReport, IngestionRun
+from radar.db.models import Bar, DataQualityReport, IngestionRun, RegimeState
+from radar.pipelines.regime import current_model
 from radar.universe import Asset, Universe
 
 router = APIRouter(prefix="/api/v1")
@@ -130,6 +136,56 @@ def get_bars(
             )
             for r in rows
         ],
+    )
+
+
+@router.get("/assets/{symbol:path}/regime", response_model=RegimeOut)
+def get_regime(
+    symbol: str,
+    universe: UniverseDep,
+    session: SessionDep,
+    days: Annotated[int, Query(ge=1, le=5000)] = 365,
+) -> RegimeOut:
+    """The current market regime, its history, and how the model has measured."""
+    asset = find_asset(universe, symbol)
+    registered = current_model(session, asset.symbol)
+    if registered is None:
+        raise HTTPException(status_code=404, detail=f"No regime model for {asset.symbol} yet")
+    rows = list(
+        session.scalars(
+            select(RegimeState)
+            .where(RegimeState.symbol == asset.symbol, RegimeState.model_id == registered.id)
+            .order_by(RegimeState.ts.desc())
+            .limit(days)
+        )
+    )[::-1]
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"No regime readings for {asset.symbol} yet")
+    latest = rows[-1]
+    streak = 0
+    for row in reversed(rows):
+        if row.label != latest.label:
+            break
+        streak += 1
+    walk = registered.metrics.get("walk_forward")
+    return RegimeOut(
+        symbol=asset.symbol,
+        as_of=latest.ts,
+        label=latest.label,
+        probability=latest.probability,
+        probabilities=latest.probs,
+        days_in_state=streak,
+        states=[RegimeStateOut.model_validate(s) for s in registered.metrics["states"]],
+        history=[RegimePoint(ts=r.ts, label=r.label, probability=r.probability) for r in rows],
+        model=RegimeModelOut(
+            version=registered.version,
+            trained_at=registered.trained_at,
+            train_start=registered.train_start,
+            train_end=registered.train_end,
+            n_train=registered.params["n_train"],
+            bic_by_states=registered.metrics["bic_by_states"],
+        ),
+        evaluation=RegimeEvaluationOut.model_validate(walk) if walk else None,
     )
 
 

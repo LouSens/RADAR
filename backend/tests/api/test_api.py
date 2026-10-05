@@ -219,6 +219,7 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
     assert set(schema["paths"]) == {
         "/api/v1/assets",
         "/api/v1/assets/{symbol}/bars",
+        "/api/v1/assets/{symbol}/regime",
         "/api/v1/health",
     }
     assert {"AssetOut", "BarsOut", "HealthOut", "LiveBar", "LiveNews"} <= set(
@@ -231,3 +232,79 @@ def test_api_has_no_trading_routes(client: TestClient) -> None:
     for word in ("order", "position", "account", "transfer", "trade"):
         assert word not in paths
     assert client.post("/api/v1/assets").status_code == 405
+
+
+def test_regime_route_serves_stored_readings(client: TestClient, session: Session) -> None:
+    from radar.db.models import ModelRegistry, RegimeState
+
+    seed(session)
+    assert client.get("/api/v1/assets/btc-usd/regime").status_code == 404  # no model yet
+
+    states = [
+        {
+            "label": label,
+            "typical_daily_volatility": vol,
+            "typical_duration_days": 30.0,
+            "next_states": {"normal": 1.0}
+            if label != "normal"
+            else {"calm": 0.6, "turbulent": 0.4},
+            "mean_daily_return": 0.0,
+        }
+        for label, vol in (("calm", 0.01), ("normal", 0.02), ("turbulent", 0.04))
+    ]
+    model = ModelRegistry(
+        name="regime",
+        symbol="BTC/USD",
+        version="regime-hmm-1",
+        train_start=datetime(2021, 1, 2, tzinfo=UTC).date(),
+        train_end=datetime(2026, 10, 4, tzinfo=UTC).date(),
+        is_current=True,
+        params={"n_train": 2102},
+        metrics={
+            "states": states,
+            "bic_by_states": {"2": 9743.0, "3": 8575.0, "4": 7687.0},
+            "walk_forward": {
+                "n_days": 1602,
+                "n_refits": 26,
+                "first_test_day": "2022-05-17",
+                "last_test_day": "2026-10-04",
+                "model_log_density": 2.017,
+                "baseline_log_density": 1.972,
+                "next_day_volatility": {"calm": 0.0196, "normal": 0.0271, "turbulent": 0.0363},
+                "days_per_state": {"calm": 600, "normal": 600, "turbulent": 402},
+                "volatility_is_ordered": True,
+                "average_run_length": 34.1,
+            },
+        },
+    )
+    session.add(model)
+    session.flush()
+    day = datetime(2026, 10, 1, tzinfo=UTC)
+    for i, label in enumerate(["normal", "calm", "calm", "calm"]):
+        probs = {"calm": 0.05, "normal": 0.05, "turbulent": 0.0, label: 0.9}
+        session.add(
+            RegimeState(
+                symbol="BTC/USD",
+                model_id=model.id,
+                ts=day + timedelta(days=i),
+                label=label,
+                probability=0.9,
+                probs=probs,
+            )
+        )
+    session.commit()
+
+    body = client.get("/api/v1/assets/btc-usd/regime").json()
+    assert body["label"] == "calm"
+    assert body["days_in_state"] == 3
+    assert body["probability"] == 0.9
+    assert datetime.fromisoformat(body["as_of"]) == day + timedelta(days=3)
+    assert [p["label"] for p in body["history"]] == ["normal", "calm", "calm", "calm"]
+    assert [s["label"] for s in body["states"]] == ["calm", "normal", "turbulent"]
+    assert body["evaluation"]["volatility_is_ordered"] is True
+    assert body["evaluation"]["n_days"] == 1602
+    assert body["model"]["n_train"] == 2102
+
+    assert (
+        len(client.get("/api/v1/assets/btc-usd/regime", params={"days": 2}).json()["history"]) == 2
+    )

@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getJson, type Asset, type Bars, type Health, type Timeframe } from "./client";
+import {
+  ApiError,
+  getJson,
+  type Asset,
+  type Bars,
+  type Health,
+  type Regime,
+  type Timeframe,
+} from "./client";
 
 export function useAssets() {
   return useQuery({
@@ -38,5 +46,22 @@ export function useHealth() {
     queryKey: ["health"],
     queryFn: () => getJson<Health>("/health"),
     refetchInterval: 15_000,
+  });
+}
+
+/** The market regime for an asset. `null` means no model has been trained for it yet. */
+export function useRegime(slug: string | undefined, days = 365) {
+  return useQuery({
+    queryKey: ["regime", slug, days],
+    queryFn: async () => {
+      try {
+        return await getJson<Regime>(`/assets/${slug}/regime`, { days });
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }
+    },
+    enabled: slug !== undefined,
+    refetchInterval: 5 * 60_000,
   });
 }

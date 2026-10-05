@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/regime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Regime
+         * @description The current market regime, its history, and how the model has measured.
+         */
+        get: operations["get_regime_api_v1_assets__symbol__regime_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -212,6 +232,113 @@ export interface components {
             /** Warnings */
             warnings: number;
         };
+        /**
+         * RegimeEvaluationOut
+         * @description Walk-forward results: every figure is from days the model had not seen.
+         */
+        RegimeEvaluationOut: {
+            /** Average Run Length */
+            average_run_length: number;
+            /** Baseline Log Density */
+            baseline_log_density: number;
+            /**
+             * First Test Day
+             * Format: date
+             */
+            first_test_day: string;
+            /**
+             * Last Test Day
+             * Format: date
+             */
+            last_test_day: string;
+            /** Model Log Density */
+            model_log_density: number;
+            /** N Days */
+            n_days: number;
+            /** Next Day Volatility */
+            next_day_volatility: {
+                [key: string]: number;
+            };
+            /** Volatility Is Ordered */
+            volatility_is_ordered: boolean;
+        };
+        /** RegimeModelOut */
+        RegimeModelOut: {
+            /** Bic By States */
+            bic_by_states: {
+                [key: string]: number;
+            };
+            /** N Train */
+            n_train: number;
+            /**
+             * Train End
+             * Format: date
+             */
+            train_end: string;
+            /**
+             * Train Start
+             * Format: date
+             */
+            train_start: string;
+            /**
+             * Trained At
+             * Format: date-time
+             */
+            trained_at: string;
+            /** Version */
+            version: string;
+        };
+        /** RegimeOut */
+        RegimeOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Days In State */
+            days_in_state: number;
+            evaluation: components["schemas"]["RegimeEvaluationOut"] | null;
+            /** History */
+            history: components["schemas"]["RegimePoint"][];
+            /** Label */
+            label: string;
+            model: components["schemas"]["RegimeModelOut"];
+            /** Probabilities */
+            probabilities: {
+                [key: string]: number;
+            };
+            /** Probability */
+            probability: number;
+            /** States */
+            states: components["schemas"]["RegimeStateOut"][];
+            /** Symbol */
+            symbol: string;
+        };
+        /** RegimePoint */
+        RegimePoint: {
+            /** Label */
+            label: string;
+            /** Probability */
+            probability: number;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+        };
+        /** RegimeStateOut */
+        RegimeStateOut: {
+            /** Label */
+            label: string;
+            /** Next States */
+            next_states: {
+                [key: string]: number;
+            };
+            /** Typical Daily Volatility */
+            typical_daily_volatility: number;
+            /** Typical Duration Days */
+            typical_duration_days: number;
+        };
         /** SeriesStatus */
         SeriesStatus: {
             /** Bars */
@@ -304,6 +431,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BarsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_regime_api_v1_assets__symbol__regime_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegimeOut"];
                 };
             };
             /** @description Validation Error */
