@@ -131,3 +131,183 @@ For `BTC/USD`, a 1Hour request returns about one week (167 or 168 bars) per page
 whatever `limit` is sent, so a full hourly history is about 300 calls. `PAXG/USD` pages
 hold more (975 to 1,847 bars), which fits a page being capped by underlying minute bars.
 1Day history fits in one page. See audit section 2.7.
+
+## 011. Gold is represented by `GLD` alone (2026-10-05)
+
+The user asked for one gold instrument, chosen for data quality, in place of the mix of
+`PAXG/USD` for price, `GLD` as a cross-check, and four tickers for news. They also
+offered switching the product to Bitcoin and `SPY`. The user left the choice to Claude.
+
+Measured on 2026-10-05:
+
+- `XAU/USD`: not available on the Basic plan (`403`).
+- `PAXG/USD` on `us-1`: starts 2021, 96.0% of hours present, minute bars too sparse to
+  use, 41 news articles in total.
+- `GLD`: starts 2016-01-04, 2,703 daily bars with none at zero volume, every sampled
+  session has all its hourly bars, about 8.1 million shares a day, 1.36 to 1.75 news
+  articles per day from 2023.
+
+**Decided: `GLD`.** It has the best data of the three and twice the history. The
+product stays "Bitcoin and gold"; `SPY` stays a portfolio asset.
+
+Costs accepted:
+
+- Gold has no weekend or overnight prices. Bitcoin against gold uses the mixed panel
+  only, and the tracking-gap panel is dropped.
+- Live gold on the free plan is the IEX feed in market hours; history is the
+  consolidated feed, 15 minutes delayed.
+- Gold news is `GLD` articles only, slightly fewer than the four-ticker set of 010c.
+- Realised volatility for a stock session adds the squared overnight return to the
+  hourly returns of regular hours. This rule was written by Claude and has not been
+  reviewed by the user.
+
+`PAXG/USD` is removed from the universe. This supersedes the gold parts of 010a and
+010c; `us-1` remains the location for the remaining crypto assets.
+
+## 012. Times are shown in the viewer's time zone (2026-10-05)
+
+The user is in GMT+8 and finds UTC hard to read. Storage and APIs stay in UTC (hard
+rule). The frontend shows the browser's local time with the zone named. Reports written
+for the user give times in GMT+8.
+
+## 013. Phase 1 choices (2026-10-05)
+
+Approved by the user:
+
+- `psycopg` added as the PostgreSQL driver. `jupyter` and `matplotlib` will be added as
+  dev-only dependencies when the exploration notebook is written.
+- News is backfilled only for symbols the universe uses. `SPY` news (about 82,500
+  articles, 80% of the volume) is not stored; no feature analyses it.
+- The mixed panel takes the crypto price at 16:00 New York from the close of the hourly
+  bar that ends at that time, the last price known at the stock close.
+
+Made by Claude while building, open to change:
+
+- `news_symbols.symbol` holds the canonical asset symbol (`BTC/USD`), not the provider
+  tag (`BTCUSD`). Tags for symbols outside the universe are not stored in the clean
+  layer; the raw layer keeps every tag.
+- `news_articles` has no `content` column, as in spec section 6. Sentiment uses headline
+  and summary. Article bodies are not requested from the API.
+- `bars` has two columns beyond section 6: `is_outlier` (the review flag of section 7.2)
+  and `received_at`.
+- `bars.loc` holds the crypto location, or the feed name for stocks.
+- Database tests run against a throwaway `radar_test` database on the dev server. They
+  are skipped when no database is reachable, and required in CI.
+
+## 014. `PAXG/USD` stays as a portfolio asset (2026-10-05)
+
+The user holds PAXG, BTC, and SPY on Binance and asked whether PAXG can still be used
+for allocation. It can: the portfolio lab works on daily returns, and `PAXG/USD` has a
+daily bar on 100% of days since 2021-01-01 on `us-1`. What ruled PAXG out as the gold
+instrument was its short history, sparse minute bars, missing hours, and lack of news,
+none of which the portfolio lab depends on.
+
+`PAXG/USD` is in the universe as a non-primary asset. Decision 011 is unchanged: gold
+analysis (F1 to F5) uses `GLD`.
+
+Known gap: prices are Kraken's USD pairs, while the user's holdings are on Binance,
+mostly against USDT. The difference is small for valuation but is not measured.
+
+## 015. The user's SPY holding is the tokenised `SPYB` on Binance (2026-10-05)
+
+The user reports it tracks SPY almost exactly. The portfolio lab will value and model it
+with `SPY` prices, one unit to one share. Not measured: the tracking difference, and
+whether one `SPYB` equals one SPY share or a fraction. Confirm the ratio in Phase 5
+before showing portfolio values.
+
+## 016. Raw layer and backfill design (2026-10-05)
+
+Made by Claude while building step 2, open to change:
+
+- Raw Parquet files are partitioned by source, symbol, and the date the response was
+  **received**, one file per response page. Spec 7.1 says "by source, symbol, and date"
+  without saying which date. The received date keeps the layer strictly append-only and
+  avoids about 11,000 one-day files per backfill.
+- Fields the provider adds later are kept in an `extra` JSON column, so a raw file never
+  silently loses data.
+- Backfill windows are calendar months (hourly bars, news) and calendar years (daily
+  bars). A window in the past is marked `done` and never refetched; the window holding
+  "now" is `partial` and refetched every run.
+- A bar is stored only once its period has ended. The hour or day still forming is
+  skipped, so stored values do not change later and a re-run changes zero rows.
+- Stock bars come from the consolidated (`sip`) feed, requested up to 16 minutes ago.
+  Hourly stock bars include extended-hours bars.
+- News is fetched from 2015-01-01 for every news symbol in the universe.
+
+## 017. Three features added to version 1 (2026-10-05)
+
+The user judged the plan too thin and approved three additions from a list of five:
+F8 macro drivers, F9 volatility forecast, F10 tail risk. Not adopted: liquidity
+measures from quotes and order books, and widening the asset list.
+
+The user's stated purpose for the app: to show what can be built on Alpaca's free tier.
+RADAR uses Alpaca's market data and news only; it never calls the trading API.
+
+Consequences:
+
+- Four macro driver funds join the universe: `UUP`, `TLT`, `TIP`, `VIXY`.
+- F9 and F10 are built in Phase 3, F8 in Phase 5. Phase 1 is unchanged apart from
+  backfilling the four funds.
+- Three results tables are added to section 6.
+
+Not decided: the read-only Binance connector stays in "later", and the hard rule
+against position endpoints in `CLAUDE.md` is unchanged, because the user has not
+answered either question.
+
+## 018. Five more additions to version 1 (2026-10-05)
+
+Approved by the user from a list of nine: the cross-asset correlation grid, a
+fast-adapting (exponentially weighted) correlation, stress scenarios, news topics, and
+conformal adjustment of the outlook ranges. They extend F5, F6, F3 and F4, and F2; no
+new feature numbers.
+
+Not adopted: PCA, change-point detection, price-direction prediction, reinforcement
+learning, Black-Litterman, Kelly sizing.
+
+None of these changes Phase 1.
+
+## 019. Phase 1 steps 3 to 6: choices made while building (2026-10-05)
+
+Made by Claude, open to change:
+
+- **Live bars are not stored.** The streams push live prices to the app and trigger a
+  REST gap-fill; every stored bar comes from the REST API through the same code as the
+  backfill. A dropped stream or a restarted worker therefore cannot leave a hole, and
+  live and historical data cannot disagree.
+- **A third stream for stocks.** Live `GLD` needs the IEX stock stream
+  (`wss://stream.data.alpaca.markets/v2/iex`), in addition to crypto and news. All three
+  connected on the Basic plan when tested on 2026-10-05.
+- **Duplicate news is marked, not deleted.** `news_articles.duplicate_of` points at the
+  earlier article with the same headline and asset within 24 hours.
+- **Outlier flags skip returns across a break.** On hourly series a return is judged
+  only when the previous bar is exactly one hour earlier, so overnight and weekend gaps
+  in stock data are not flagged as outliers.
+- **Rejected bars.** A bar that fails schema validation is not stored; the rejection is
+  written to `data_quality_reports`. None of the 433,338 bars stored on 2026-10-05 failed.
+- **Stock realised volatility** uses the daily open, the hourly closes inside regular
+  hours, and the overnight move from the previous close. Extended-hours bars are stored
+  but not used.
+- **Mixed panel fill.** If the crypto bar ending at a session close is missing, the
+  latest bar from the previous 6 hours is used and the cell is flagged. Older than
+  that, the price is left empty.
+- **The Phase 1 measurements live in `docs/DATA_PROFILE.md`,** not in the audit file,
+  because `make audit` regenerates the audit file from the provider.
+- **`pandas-stubs`** added as a dev dependency so `mypy --strict` can check pandas code.
+
+Measured, worth knowing (see `docs/DATA_PROFILE.md`):
+
+- `GLD` and `PAXG/USD` daily returns correlate at 0.96 on the mixed panel.
+- `PAXG/USD` has no realised-volatility value on 8.3% of days (too few hourly bars).
+- Volatility clusters in every asset: squared-return autocorrelation at lag 1 is 0.15
+  for Bitcoin and 0.17 for `GLD`.
+
+## 020. Read-only Binance holdings in version 1 (2026-10-05)
+
+The user confirmed the Binance connector is read-only and wants their Binance portfolio
+analysed. It moves from "later" into F6 (Phase 5). The hard rule in `CLAUDE.md` gains
+one narrow exception: reading balances and open positions with a key that cannot trade
+or withdraw. Everything else in the rule stands, and a test must prove the connector
+has no order, transfer, or settings calls.
+
+Still to confirm with the user in Phase 5: which Binance products to read (spot,
+futures, margin, earn), and the `SPYB` to `SPY` unit ratio (decision 015).

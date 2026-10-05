@@ -1,0 +1,100 @@
+# The asset universe. This file is configuration: change it here, not in code.
+# Set RADAR_UNIVERSE_FILE to load a different file.
+#
+# The values below follow docs/DATA_AUDIT.md and docs/DECISIONS.md (010, 011).
+
+# Alpaca crypto location used for history and for the live stream.
+crypto_location = "us-1"
+
+# Bar timeframes stored for every asset class.
+[timeframes]
+crypto = ["1Hour", "1Day"]
+stock = ["1Hour", "1Day"]
+
+# symbol:       canonical symbol used in the database and the API
+# bars_symbol:  symbol on the market data endpoints
+# news_symbols: symbols on the news endpoint whose articles count for this asset
+# news_start:   first date news for this asset is used in analysis
+# history_start: first date bars exist for this asset
+
+[[assets]]
+symbol = "BTC/USD"
+name = "Bitcoin"
+asset_class = "crypto"
+is_primary = true
+bars_symbol = "BTC/USD"
+history_start = 2021-01-01
+news_symbols = ["BTCUSD"]
+news_start = 2022-01-01
+
+# Gold. One instrument, chosen for data quality (docs/DECISIONS.md 011).
+[[assets]]
+symbol = "GLD"
+name = "Gold"
+asset_class = "stock"
+is_primary = true
+bars_symbol = "GLD"
+history_start = 2016-01-04
+news_symbols = ["GLD"]
+news_start = 2023-01-01
+
+[[assets]]
+symbol = "ETH/USD"
+name = "Ethereum"
+asset_class = "crypto"
+bars_symbol = "ETH/USD"
+history_start = 2021-01-01
+
+[[assets]]
+symbol = "SOL/USD"
+name = "Solana"
+asset_class = "crypto"
+bars_symbol = "SOL/USD"
+history_start = 2021-06-17
+
+# Portfolio asset only (docs/DECISIONS.md 014). Daily bars are complete on us-1, which is
+# what the portfolio lab needs. Gold analysis and gold news use GLD, not this.
+[[assets]]
+symbol = "PAXG/USD"
+name = "PAX Gold"
+asset_class = "crypto"
+bars_symbol = "PAXG/USD"
+history_start = 2021-01-01
+
+[[assets]]
+symbol = "SPY"
+name = "S&P 500 ETF"
+asset_class = "stock"
+bars_symbol = "SPY"
+history_start = 2016-01-04
+
+
+# Macro drivers (docs/PROJECT_SPEC.md F8). Each fund stands for an outside force.
+
+[[assets]]
+symbol = "UUP"
+name = "US dollar"
+asset_class = "stock"
+bars_symbol = "UUP"
+history_start = 2016-01-04
+
+[[assets]]
+symbol = "TLT"
+name = "Long-term US government bonds"
+asset_class = "stock"
+bars_symbol = "TLT"
+history_start = 2016-01-04
+
+[[assets]]
+symbol = "TIP"
+name = "Inflation-linked US bonds"
+asset_class = "stock"
+bars_symbol = "TIP"
+history_start = 2016-01-04
+
+[[assets]]
+symbol = "VIXY"
+name = "Expected stock market volatility"
+asset_class = "stock"
+bars_symbol = "VIXY"
+history_start = 2016-01-04

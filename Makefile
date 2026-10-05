@@ -1,7 +1,7 @@
 # Every target is a thin wrapper around a `uv run radar <command>` entry point,
 # so the project works the same without Make installed.
 
-.PHONY: up down migrate audit backfill test lint demo
+.PHONY: up down migrate audit backfill quality test lint demo
 
 up:
 	uv run radar up
@@ -17,6 +17,9 @@ audit:
 
 backfill:
 	uv run radar backfill
+
+quality:
+	uv run radar quality
 
 test:
 	uv run radar test

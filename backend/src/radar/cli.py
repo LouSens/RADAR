@@ -11,9 +11,6 @@ log = get_logger(__name__)
 
 # Commands that exist in the Makefile but are built in a later phase.
 NOT_YET: dict[str, str] = {
-    "migrate": "Phase 1",
-    "backfill": "Phase 1",
-    "worker": "Phase 1",
     "api": "Phase 2",
     "demo": "Phase 7",
 }
@@ -49,6 +46,75 @@ def down() -> int:
     return _run(["docker", "compose", "down"])
 
 
+def migrate() -> int:
+    """Apply database migrations, then sync the assets table with the universe."""
+    from radar.db.assets import sync_assets
+    from radar.db.session import make_engine, session_scope, upgrade
+    from radar.universe import get_universe
+
+    engine = make_engine()
+    upgrade(engine)
+    with session_scope(engine) as session:
+        count = sync_assets(session, get_universe())
+    log.info("migrated", assets=count)
+    return 0
+
+
+def backfill(args: argparse.Namespace) -> int:
+    """Fetch history for the universe into the raw layer and the database."""
+    from radar.config import load_settings
+    from radar.db.session import make_engine
+    from radar.ingest.backfill import Backfill
+    from radar.ingest.raw_store import RawStore
+    from radar.providers.alpaca_rest import AlpacaDataClient
+    from radar.universe import get_universe
+
+    settings = load_settings()
+    if settings.alpaca_api_key_id is None or settings.alpaca_api_secret_key is None:
+        log.error("missing_alpaca_keys", hint="copy .env.example to .env and fill in paper keys")
+        return 1
+    with AlpacaDataClient(settings.alpaca_api_key_id, settings.alpaca_api_secret_key) as client:
+        client.on_page = RawStore().record
+        job = Backfill(client, make_engine(settings=settings), get_universe())
+        result = job.run(bars=not args.skip_bars, news=not args.skip_news)
+    log.info(
+        "backfill_finished",
+        rows_changed=result.rows_changed,
+        windows_fetched=result.windows_fetched,
+        windows_skipped=result.windows_skipped,
+        bars_rejected=result.bars_rejected,
+        failures=len(result.failures),
+    )
+    return 1 if result.failures else 0
+
+
+def quality() -> int:
+    """Check stored data, set flags, and write data quality reports."""
+    from radar.db.session import make_engine
+    from radar.pipelines.quality import run_quality
+    from radar.universe import get_universe
+
+    findings = run_quality(make_engine(), get_universe())
+    return 1 if any(f.status == "fail" for f in findings) else 0
+
+
+def worker() -> int:
+    """Run the live streams and the scheduled jobs until stopped."""
+    from radar.pipelines.worker import run_worker
+
+    return run_worker()
+
+
+def profile() -> int:
+    """Measure the stored data and write docs/DATA_PROFILE.md."""
+    from radar.db.session import make_engine
+    from radar.pipelines.profile import write_profile
+    from radar.universe import get_universe
+
+    write_profile(make_engine(), get_universe())
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -66,6 +132,10 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "test": (test, "run the backend tests"),
     "up": (up, "start the containers with docker compose"),
     "down": (down, "stop the containers"),
+    "quality": (quality, "check stored data and write data quality reports"),
+    "worker": (worker, "run live ingestion and scheduled jobs"),
+    "profile": (profile, "measure the stored data and write docs/DATA_PROFILE.md"),
+    "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 
 
@@ -85,6 +155,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     audit_parser.add_argument(
         "--resume", action="store_true", help="keep saved sections and run only the missing ones"
     )
+    backfill_parser = sub.add_parser("backfill", help="fetch history for the universe")
+    backfill_parser.add_argument("--skip-bars", action="store_true")
+    backfill_parser.add_argument("--skip-news", action="store_true")
     for name, phase in NOT_YET.items():
         sub.add_parser(name, help=f"not built yet ({phase})")
     args = parser.parse_args(argv)
@@ -92,6 +165,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     command: str = args.command
     if command == "audit":
         return audit(args)
+    if command == "backfill":
+        return backfill(args)
     if command in NOT_YET:
         log.error("command_not_built_yet", command=command, arrives_in=NOT_YET[command])
         return 2

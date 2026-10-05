@@ -11,6 +11,27 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: timescale/timescaledb:latest-pg17
+        env:
+          POSTGRES_USER: radar
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: radar
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U radar -d radar"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      POSTGRES_USER: radar
+      POSTGRES_PASSWORD: ci-only-password
+      POSTGRES_DB: radar
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      RADAR_REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: astral-sh/setup-uv@v10.2.0

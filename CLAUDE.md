@@ -8,10 +8,11 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 0 complete (CI green on branch `phase-0-bootstrap`, 2026-10-05); not yet merged to `main`
-- Last completed step: spec updated to match `docs/DATA_AUDIT.md` (audit run 2026-10-05)
-- Next step: merge `phase-0-bootstrap`, then Phase 1 (data platform)
-- Decisions that shape Phase 1 (`docs/DECISIONS.md` 010): crypto from location `us-1`; store 1Hour and 1Day bars only; gold news is the `GLD`, `IAU`, `GDX`, `PAXGUSD` set from 2023
+- Phase: 1 complete on branch `phase-1-data-platform` (not yet merged to `main`)
+- Last completed step: Phase 1 step 6, the data profile (`docs/DATA_PROFILE.md`) and exploration notebook
+- Next step: merge Phase 1, then Phase 2 (API and dashboard shell)
+- Key decisions (`docs/DECISIONS.md` 010 to 019): gold is `GLD` alone; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), and tail risk (F10)
+- The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
 ## How to work in this repo
@@ -26,7 +27,7 @@ Update this block at the end of every work session.
 
 These apply to every change.
 
-- **No trading.** Do not import, call, or wrap any order, position, or transfer endpoint from Alpaca or any other provider. Market data and news endpoints only.
+- **No trading.** Do not import, call, or wrap any order, position, or transfer endpoint from Alpaca or any other provider. Market data and news endpoints only. One exception, approved by the user on 2026-10-05: a read-only Binance `HoldingsSource` may call Binance endpoints that **read** account balances and open positions, with an API key that has no trading and no withdrawal permission. It must never call an endpoint that places, changes, or cancels an order, moves funds, or changes account settings, and a test must assert that.
 - **Paper keys only.** The Alpaca keys in `.env` must be paper account keys, never live keys. The only Alpaca host this app calls is `data.alpaca.markets` (and its `stream.data.alpaca.markets` WebSocket). Never call `api.alpaca.markets` or `paper-api.alpaca.markets`. A test asserts that the provider clients reject any other base URL.
 - **No secrets in the repo.** Keys live in `.env`, which is gitignored. `.env.example` holds names only. Never print keys in logs, tests, or error messages.
 - **No lookahead.** A value shown for time `t` may only use data with timestamp `<= t`. This covers features, labels, regime probabilities (use filtered, never smoothed, for anything displayed as "current" or used in a backtest), scalers, and train/test splits. Every model module needs a test that proves it.
@@ -47,10 +48,16 @@ make down            # stop everything
 make migrate         # run Alembic migrations
 make audit           # run the Phase 0 data probe and rewrite docs/DATA_AUDIT.md (about 70 minutes;
                      # `uv run radar audit --resume` runs only missing sections)
-make backfill        # historical backfill for the configured universe
-make test            # backend pytest + frontend vitest
+make backfill        # historical backfill for the configured universe (about 17 minutes the first
+                     # time, seconds after that; needs `make up` and `make migrate`)
+make test            # backend pytest + frontend vitest (database tests need `make up` first)
 make lint            # ruff, mypy, eslint, tsc
 make demo            # start the app in replay mode from stored data
+
+uv run radar quality    # check stored data, set flags, write data quality reports
+uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
+uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md
+uv run python backend/scripts/build_notebook.py   # rebuild notebooks/01_exploration.ipynb
 ```
 
 ## Code conventions
