@@ -10,8 +10,10 @@ import {
   type Health,
   type LevelAnswer,
   type Regime,
+  type Risk,
   type Simulation,
   type Timeframe,
+  type Volatility,
 } from "./client";
 
 export function useAssets() {
@@ -105,5 +107,25 @@ export function useLevel(slug: string) {
   return useMutation({
     mutationFn: (input: { level: number; horizon_days: number }) =>
       postJson<LevelAnswer>(`/assets/${slug}/simulation/level`, input),
+  });
+}
+
+/** The volatility forecast, its history, and how each method scored. */
+export function useVolatility(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["volatility", slug],
+    queryFn: () => orNull(() => getJson<Volatility>(`/assets/${slug}/volatility`)),
+    enabled: slug !== undefined,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
+/** Loss limits and how often each has been broken. */
+export function useRisk(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["risk", slug],
+    queryFn: () => orNull(() => getJson<Risk>(`/assets/${slug}/risk`)),
+    enabled: slug !== undefined,
+    refetchInterval: 5 * 60_000,
   });
 }

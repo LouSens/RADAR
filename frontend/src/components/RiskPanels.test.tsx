@@ -1,0 +1,207 @@
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { Asset, Risk, RiskMethod, Volatility } from "../api/client";
+import { oddsLabel, RiskPanel } from "./RiskPanel";
+import { linePaths, VolatilityPanel } from "./VolatilityPanel";
+
+const state = vi.hoisted(() => ({ volatility: null as unknown, risk: null as unknown }));
+vi.mock("../api/queries", () => ({
+  useVolatility: () => ({ data: state.volatility }),
+  useRisk: () => ({ data: state.risk }),
+}));
+
+const GOLD: Asset = {
+  symbol: "GLD",
+  slug: "gld",
+  name: "Gold",
+  asset_class: "stock",
+  is_primary: true,
+  history_start: "2016-01-04",
+  news_start: "2023-01-01",
+  trades_continuously: false,
+};
+
+const VOLATILITY: Volatility = {
+  symbol: "GLD",
+  as_of: "2026-10-02T20:00:00Z",
+  model_version: "volatility-har-1",
+  horizons: [
+    {
+      horizon_days: 1,
+      steps: 1,
+      shown: "har",
+      reason: "trees_did_not_beat_har",
+      forecast: 0.0124,
+      last_realised: 0.01,
+      history: [
+        { ts: "2026-09-30T20:00:00Z", forecast: 0.011, realised: 0.012 },
+        { ts: "2026-10-01T20:00:00Z", forecast: 0.012, realised: 0.01 },
+        { ts: "2026-10-02T20:00:00Z", forecast: 0.0124, realised: null },
+      ],
+      n: 2201,
+      first_day: "2017-12-28",
+      last_day: "2026-10-01",
+      scores: [
+        { model: "har", qlike: 0.667, mse: 3e-5, dm_p_value_vs_har: null },
+        { model: "gbt", qlike: 0.872, mse: 3.2e-5, dm_p_value_vs_har: 0.0 },
+        { model: "carry", qlike: 1.822, mse: 4.8e-5, dm_p_value_vs_har: 0.0 },
+        { model: "regime", qlike: 0.659, mse: 3.4e-5, dm_p_value_vs_har: 0.647 },
+      ],
+    },
+  ],
+};
+
+function method(name: string, values: Partial<RiskMethod>): RiskMethod {
+  return {
+    method: name,
+    var: 0.02,
+    expected_shortfall: 0.028,
+    n: 1951,
+    breaches: 106,
+    expected_breaches: 97.55,
+    breach_rate: 0.054,
+    kupiec_p_value: 0.39,
+    clustering_p_value: 0.18,
+    reliable: true,
+    ...values,
+  };
+}
+
+const RISK: Risk = {
+  symbol: "GLD",
+  as_of: "2026-10-02T20:00:00Z",
+  model_version: "tail-risk-1",
+  horizons: [
+    {
+      horizon_days: 1,
+      steps: 1,
+      shown: "filtered",
+      first_day: "2019-01-02",
+      last_day: "2026-10-01",
+      levels: [
+        {
+          level: 0.95,
+          methods: [
+            method("historical", { var: 0.017, breaches: 130, reliable: false }),
+            method("filtered", {}),
+          ],
+        },
+        {
+          level: 0.99,
+          methods: [
+            method("filtered", {
+              var: 0.034,
+              expected_shortfall: 0.041,
+              breaches: 31,
+              expected_breaches: 19.51,
+              reliable: false,
+            }),
+          ],
+        },
+      ],
+    },
+  ],
+  drawdowns: [
+    { peak_day: "2020-08-06", trough_day: "2022-09-26", depth: -0.22, recovered_day: "2023-12-01" },
+    { peak_day: "2026-01-29", trough_day: "2026-07-16", depth: -0.264, recovered_day: null },
+  ],
+};
+
+describe("VolatilityPanel", () => {
+  afterEach(cleanup);
+  beforeEach(() => {
+    state.volatility = VOLATILITY;
+  });
+
+  it("shows nothing until a forecast is stored", () => {
+    state.volatility = null;
+    expect(render(<VolatilityPanel asset={GOLD} />).container).toBeEmptyDOMElement();
+  });
+
+  it("shows the forecast beside the last realised value, without a direction", () => {
+    render(<VolatilityPanel asset={GOLD} />);
+    expect(
+      screen.getByText("Typical daily move expected over the next 1 market session"),
+    ).toBeVisible();
+    expect(screen.getByText("±1.24%")).toBeVisible();
+    expect(screen.getByText("±1.00%")).toBeVisible();
+    expect(screen.getByText("+24.00%")).toBeVisible();
+    expect(screen.getByText(/says nothing about which direction/)).toBeVisible();
+  });
+
+  it("states which method is shown and how the others compare", () => {
+    render(<VolatilityPanel asset={GOLD} />);
+    expect(screen.getByText("Shown")).toBeVisible();
+    expect(screen.getAllByText("Measurably worse")).toHaveLength(2);
+    // The state average scored slightly lower, but not by a measurable margin.
+    expect(screen.getByText("No measurable difference")).toBeVisible();
+    expect(screen.getByText(/Scored on 2,201 days/)).toBeVisible();
+    expect(screen.getByText(/so the simpler one is shown/)).toBeVisible();
+  });
+
+  it("falls back to the first period when the chosen one is not stored", () => {
+    render(<VolatilityPanel asset={GOLD} />);
+    fireEvent.click(screen.getByRole("button", { name: "1 week" }));
+    expect(screen.getByText("±1.24%")).toBeVisible();
+  });
+
+  it("draws the outcome line only where the outcome is known", () => {
+    const paths = linePaths(VOLATILITY.horizons[0]?.history ?? [], 200, 100);
+    expect(paths?.high).toBe(0.0124);
+    expect(paths?.forecast.split(/[ML]/).filter(Boolean)).toHaveLength(3);
+    expect(paths?.realised.split(/[ML]/).filter(Boolean)).toHaveLength(2);
+    expect(linePaths([], 200, 100)).toBeUndefined();
+  });
+});
+
+describe("RiskPanel", () => {
+  afterEach(cleanup);
+  beforeEach(() => {
+    state.risk = RISK;
+  });
+
+  it("shows nothing until risk figures are stored", () => {
+    state.risk = null;
+    expect(render(<RiskPanel asset={GOLD} />).container).toBeEmptyDOMElement();
+  });
+
+  it("shows each limit from the best method, with breaches against expected", () => {
+    render(<RiskPanel asset={GOLD} />);
+    expect(screen.getByText("Loss limit for 19 in 20 periods of 1 market session")).toBeVisible();
+    expect(screen.getByText("Loss limit for 99 in 100 periods of 1 market session")).toBeVisible();
+    expect(screen.getAllByText("2.0%").length).toBeGreaterThan(0);
+    expect(screen.getByText("98")).toBeVisible(); // 97.55 expected breaches at 95%
+    expect(screen.getByText("Past losses scaled to expected swings")).toBeVisible();
+    expect(screen.getByText("(shown)")).toBeVisible();
+  });
+
+  it("marks a limit that failed its coverage test as unreliable", () => {
+    render(<RiskPanel asset={GOLD} />);
+    // Only the 99% limit of the shown method failed; the 95% one held.
+    expect(screen.getAllByText(/Treat it as unreliable/)).toHaveLength(1);
+    expect(screen.getByText(/130 of 1,951, unreliable/)).toBeVisible();
+  });
+
+  it("lists the deepest falls with their dates", () => {
+    render(<RiskPanel asset={GOLD} />);
+    expect(screen.getByText("-26.4%")).toBeVisible();
+    expect(screen.getByText(/not yet recovered/)).toBeVisible();
+    expect(screen.getByText(/recovered by/)).toBeVisible();
+  });
+
+  it("names odds in plain terms", () => {
+    expect(oddsLabel(0.95)).toBe("19 in 20");
+    expect(oddsLabel(0.99)).toBe("99 in 100");
+  });
+
+  it("never tells the reader what to do", () => {
+    const { container } = render(
+      <>
+        <RiskPanel asset={GOLD} />
+        <VolatilityPanel asset={GOLD} />
+      </>,
+    );
+    expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
+  });
+});
