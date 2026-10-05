@@ -11,7 +11,6 @@ log = get_logger(__name__)
 
 # Commands that exist in the Makefile but are built in a later phase.
 NOT_YET: dict[str, str] = {
-    "worker": "Phase 1",
     "api": "Phase 2",
     "demo": "Phase 7",
 }
@@ -99,6 +98,13 @@ def quality() -> int:
     return 1 if any(f.status == "fail" for f in findings) else 0
 
 
+def worker() -> int:
+    """Run the live streams and the scheduled jobs until stopped."""
+    from radar.pipelines.worker import run_worker
+
+    return run_worker()
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -117,6 +123,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "up": (up, "start the containers with docker compose"),
     "down": (down, "stop the containers"),
     "quality": (quality, "check stored data and write data quality reports"),
+    "worker": (worker, "run live ingestion and scheduled jobs"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

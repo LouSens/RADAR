@@ -5,6 +5,7 @@ and gap-fill are built in Phase 1. The only host allowed is `stream.data.alpaca.
 """
 
 import json
+import re
 from collections.abc import Mapping, Sequence
 from types import TracebackType
 from typing import Any, Self
@@ -19,6 +20,8 @@ STREAM_HOST = "stream.data.alpaca.markets"
 CRYPTO_STREAM_URL = f"wss://{STREAM_HOST}/v1beta3/crypto/us"
 KRAKEN_US_STREAM_URL = f"wss://{STREAM_HOST}/v1beta3/crypto/us-1"
 NEWS_STREAM_URL = f"wss://{STREAM_HOST}/v1beta1/news"
+# Real-time stock data on the free plan comes from the IEX exchange only.
+STOCK_STREAM_URL = f"wss://{STREAM_HOST}/v2/iex"
 
 CONTROL_TYPES = frozenset({"success", "error", "subscription"})
 
@@ -41,6 +44,19 @@ def validate_stream_url(url: str) -> str:
             f"Refusing stream URL with host {parsed.host!r}: only wss://{STREAM_HOST} is allowed"
         )
     return url
+
+
+def crypto_stream_url(loc: str) -> str:
+    if not re.fullmatch(r"[a-z]{2}(-\d)?", loc):
+        raise ValueError(f"Invalid crypto location: {loc!r}")
+    return f"wss://{STREAM_HOST}/v1beta3/crypto/{loc}"
+
+
+def parse_messages(raw: str | bytes) -> list[dict[str, Any]]:
+    """Parse one frame into its list of messages."""
+    payload = json.loads(raw)
+    messages = payload if isinstance(payload, list) else [payload]
+    return [m for m in messages if isinstance(m, dict)]
 
 
 def control_messages(raw: str | bytes) -> list[dict[str, Any]]:
@@ -68,6 +84,10 @@ class StreamSession:
 
     def close(self) -> None:
         self._ws.close()
+
+    def read(self, timeout: float | None = None) -> list[dict[str, Any]]:
+        """Read the next frame, control and data messages alike. Raises TimeoutError."""
+        return parse_messages(self._ws.recv(timeout=timeout))
 
     def read_control(self, timeout: float = 5.0) -> list[dict[str, Any]]:
         """Read frames until one carries a control message. Raises TimeoutError if none."""
