@@ -178,6 +178,17 @@ def regime(args: argparse.Namespace) -> int:
     return 0
 
 
+def simulate(args: argparse.Namespace) -> int:
+    """Measure the simulator's past ranges where needed, then store today's run."""
+    from radar.db.session import make_engine
+    from radar.pipelines import simulation as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe(), recalibrate=args.recalibrate)
+    log.info("simulate_done", rows_changed=changed)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -224,6 +235,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     regime_parser.add_argument(
         "--skip-evaluation", action="store_true", help="skip the walk-forward evaluation"
     )
+    simulate_parser = sub.add_parser("simulate", help="run the outcome simulator and store it")
+    simulate_parser.add_argument(
+        "--recalibrate", action="store_true", help="measure past ranges again first (minutes)"
+    )
     openapi_parser = sub.add_parser("openapi", help="write the API schema for the frontend")
     openapi_parser.add_argument("--output", default="frontend/openapi.json")
     backfill_parser = sub.add_parser("backfill", help="fetch history for the universe")
@@ -242,6 +257,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return openapi(args)
     if command == "regime":
         return regime(args)
+    if command == "simulate":
+        return simulate(args)
     if command in NOT_YET:
         log.error("command_not_built_yet", command=command, arrives_in=NOT_YET[command])
         return 2

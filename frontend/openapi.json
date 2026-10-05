@@ -154,6 +154,98 @@
         "title": "BarsOut",
         "type": "object"
       },
+      "CalibrationOut": {
+        "properties": {
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CalibrationRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "model_version",
+          "computed_at",
+          "rows"
+        ],
+        "title": "CalibrationOut",
+        "type": "object"
+      },
+      "CalibrationRowOut": {
+        "properties": {
+          "empirical": {
+            "title": "Empirical",
+            "type": "number"
+          },
+          "empirical_conformal": {
+            "title": "Empirical Conformal",
+            "type": "number"
+          },
+          "first_origin": {
+            "format": "date",
+            "title": "First Origin",
+            "type": "string"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "last_origin": {
+            "format": "date",
+            "title": "Last Origin",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "nominal": {
+            "title": "Nominal",
+            "type": "number"
+          },
+          "pinball_baseline": {
+            "title": "Pinball Baseline",
+            "type": "number"
+          },
+          "pinball_model": {
+            "title": "Pinball Model",
+            "type": "number"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "horizon_days",
+          "steps",
+          "nominal",
+          "empirical",
+          "empirical_conformal",
+          "n",
+          "pinball_model",
+          "pinball_baseline",
+          "first_origin",
+          "last_origin"
+        ],
+        "title": "CalibrationRowOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -224,6 +316,85 @@
           "series"
         ],
         "title": "HealthOut",
+        "type": "object"
+      },
+      "LevelIn": {
+        "properties": {
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "level": {
+            "exclusiveMinimum": 0.0,
+            "title": "Level",
+            "type": "number"
+          }
+        },
+        "required": [
+          "level",
+          "horizon_days"
+        ],
+        "title": "LevelIn",
+        "type": "object"
+      },
+      "LevelOut": {
+        "description": "Two different questions about one price level, kept apart.",
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "ends_above": {
+            "title": "Ends Above",
+            "type": "number"
+          },
+          "ends_below": {
+            "title": "Ends Below",
+            "type": "number"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "level": {
+            "title": "Level",
+            "type": "number"
+          },
+          "n_paths": {
+            "title": "N Paths",
+            "type": "integer"
+          },
+          "start_price": {
+            "title": "Start Price",
+            "type": "number"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "touches": {
+            "title": "Touches",
+            "type": "number"
+          }
+        },
+        "required": [
+          "symbol",
+          "as_of",
+          "start_price",
+          "level",
+          "horizon_days",
+          "steps",
+          "n_paths",
+          "ends_above",
+          "ends_below",
+          "touches"
+        ],
+        "title": "LevelOut",
         "type": "object"
       },
       "LiveBar": {
@@ -310,6 +481,119 @@
           "symbols"
         ],
         "title": "LiveNews",
+        "type": "object"
+      },
+      "OutlookHorizon": {
+        "properties": {
+          "expected_worst_drawdown": {
+            "title": "Expected Worst Drawdown",
+            "type": "number"
+          },
+          "histogram_counts": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Histogram Counts",
+            "type": "array"
+          },
+          "histogram_edges": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Histogram Edges",
+            "type": "array"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "intervals": {
+            "items": {
+              "$ref": "#/components/schemas/OutlookRange"
+            },
+            "title": "Intervals",
+            "type": "array"
+          },
+          "mean_return": {
+            "title": "Mean Return",
+            "type": "number"
+          },
+          "quantiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Quantiles",
+            "type": "object"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "horizon_days",
+          "steps",
+          "quantiles",
+          "intervals",
+          "histogram_edges",
+          "histogram_counts",
+          "expected_worst_drawdown",
+          "mean_return"
+        ],
+        "title": "OutlookHorizon",
+        "type": "object"
+      },
+      "OutlookRange": {
+        "description": "A central range of simulated prices, raw and after the conformal adjustment.",
+        "properties": {
+          "adjusted_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted High"
+          },
+          "adjusted_is_widest": {
+            "title": "Adjusted Is Widest",
+            "type": "boolean"
+          },
+          "adjusted_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjusted Low"
+          },
+          "high": {
+            "title": "High",
+            "type": "number"
+          },
+          "level": {
+            "title": "Level",
+            "type": "number"
+          },
+          "low": {
+            "title": "Low",
+            "type": "number"
+          }
+        },
+        "required": [
+          "level",
+          "low",
+          "high",
+          "adjusted_low",
+          "adjusted_high",
+          "adjusted_is_widest"
+        ],
+        "title": "OutlookRange",
         "type": "object"
       },
       "QualitySummary": {
@@ -636,6 +920,64 @@
         "title": "SeriesStatus",
         "type": "object"
       },
+      "SimulationOut": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "fan": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Fan",
+            "type": "object"
+          },
+          "horizons": {
+            "items": {
+              "$ref": "#/components/schemas/OutlookHorizon"
+            },
+            "title": "Horizons",
+            "type": "array"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "n_paths": {
+            "title": "N Paths",
+            "type": "integer"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "integer"
+          },
+          "start_price": {
+            "title": "Start Price",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "as_of",
+          "start_price",
+          "n_paths",
+          "seed",
+          "model_version",
+          "horizons",
+          "fan"
+        ],
+        "title": "SimulationOut",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -805,6 +1147,46 @@
         "summary": "Get Bars"
       }
     },
+    "/api/v1/assets/{symbol}/calibration": {
+      "get": {
+        "description": "How often the simulator's past ranges contained what happened.",
+        "operationId": "get_calibration_api_v1_assets__symbol__calibration_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Calibration"
+      }
+    },
     "/api/v1/assets/{symbol}/regime": {
       "get": {
         "description": "The current market regime, its history, and how the model has measured.",
@@ -855,6 +1237,96 @@
           }
         },
         "summary": "Get Regime"
+      }
+    },
+    "/api/v1/assets/{symbol}/simulation": {
+      "get": {
+        "description": "The latest stored simulator run: the outcome distribution at each horizon.",
+        "operationId": "get_simulation_api_v1_assets__symbol__simulation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Simulation"
+      }
+    },
+    "/api/v1/assets/{symbol}/simulation/level": {
+      "post": {
+        "description": "Chances of ending beyond, and of touching, a price level. Counted from stored paths.",
+        "operationId": "post_simulation_level_api_v1_assets__symbol__simulation_level_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LevelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Simulation Level"
       }
     },
     "/api/v1/health": {

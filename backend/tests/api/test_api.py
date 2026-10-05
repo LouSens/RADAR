@@ -220,6 +220,9 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets",
         "/api/v1/assets/{symbol}/bars",
         "/api/v1/assets/{symbol}/regime",
+        "/api/v1/assets/{symbol}/simulation",
+        "/api/v1/assets/{symbol}/simulation/level",
+        "/api/v1/assets/{symbol}/calibration",
         "/api/v1/health",
     }
     assert {"AssetOut", "BarsOut", "HealthOut", "LiveBar", "LiveNews"} <= set(
@@ -232,6 +235,11 @@ def test_api_has_no_trading_routes(client: TestClient) -> None:
     for word in ("order", "position", "account", "transfer", "trade"):
         assert word not in paths
     assert client.post("/api/v1/assets").status_code == 405
+    # The one POST route only counts stored simulated paths.
+    routes = client.get("/openapi.json").json()["paths"]
+    assert [p for p, item in routes.items() if "post" in item] == [
+        "/api/v1/assets/{symbol}/simulation/level"
+    ]
 
 
 def test_regime_route_serves_stored_readings(client: TestClient, session: Session) -> None:
@@ -308,3 +316,105 @@ def test_regime_route_serves_stored_readings(client: TestClient, session: Sessio
     assert (
         len(client.get("/api/v1/assets/btc-usd/regime", params={"days": 2}).json()["history"]) == 2
     )
+
+
+def test_simulation_level_and_calibration_routes(client: TestClient, session: Session) -> None:
+    import numpy as np
+
+    from radar.db.models import CalibrationReport, Simulation
+    from radar.models import simulator
+    from radar.pipelines.simulation import encode_paths, horizon_payload
+
+    seed(session)
+    assert client.get("/api/v1/assets/btc-usd/simulation").status_code == 404
+    assert client.get("/api/v1/assets/btc-usd/calibration").status_code == 404
+    level = {"level": 110.0, "horizon_days": 7}
+    assert client.post("/api/v1/assets/btc-usd/simulation/level", json=level).status_code == 404
+
+    # 1,000 paths that rise 1% a day and 1,000 that fall 1% a day, for 30 days.
+    daily = np.concatenate([np.full((1000, 30), 0.01), np.full((1000, 30), -0.01)])
+    cumulative = np.cumsum(daily, axis=1).astype("<f4").astype(float)
+    miss = {(7, 0.8): 0.1}
+    session.add(
+        Simulation(
+            symbol="BTC/USD",
+            as_of=datetime(2026, 10, 5, tzinfo=UTC),
+            model_id=1,
+            model_version=simulator.MODEL_VERSION,
+            seed=42,
+            n_paths=2000,
+            max_steps=30,
+            start_price=100.0,
+            horizons=[horizon_payload(cumulative, d, d, 100.0, miss) for d in (1, 7, 30)],
+            fan=simulator.fan(cumulative, 100.0),
+            paths=encode_paths(cumulative),
+        )
+    )
+    session.add(
+        CalibrationReport(
+            symbol="BTC/USD",
+            model_version=simulator.MODEL_VERSION,
+            horizon_days=7,
+            nominal=0.8,
+            steps=7,
+            empirical=0.833,
+            empirical_conformal=0.803,
+            n=1595,
+            conformal_miss_rate=0.1,
+            pinball_model=0.0101,
+            pinball_baseline=0.0102,
+            first_origin=datetime(2022, 5, 17, tzinfo=UTC).date(),
+            last_origin=datetime(2026, 9, 27, tzinfo=UTC).date(),
+        )
+    )
+    session.commit()
+
+    body = client.get("/api/v1/assets/btc-usd/simulation").json()
+    assert body["seed"] == 42
+    assert body["n_paths"] == 2000
+    assert [h["horizon_days"] for h in body["horizons"]] == [1, 7, 30]
+    week = body["horizons"][1]
+    assert week["quantiles"]["0.95"] == pytest.approx(100 * np.exp(0.07), rel=1e-5)
+    eighty = next(i for i in week["intervals"] if i["level"] == 0.8)
+    assert eighty["adjusted_low"] is not None
+    assert eighty["adjusted_is_widest"] is False
+    assert next(i for i in week["intervals"] if i["level"] == 0.5)["adjusted_low"] is None
+    assert len(body["fan"]["0.5"]) == 31
+
+    # Half the paths end above 105 after a week; the same half touch it on the way.
+    answer = client.post(
+        "/api/v1/assets/btc-usd/simulation/level", json={"level": 105.0, "horizon_days": 7}
+    ).json()
+    assert answer["ends_above"] == 0.5
+    assert answer["ends_below"] == 0.5
+    assert answer["touches"] == 0.5
+    assert answer["steps"] == 7
+    # The price it starts at counts as touched.
+    here = client.post(
+        "/api/v1/assets/btc-usd/simulation/level", json={"level": 100.0, "horizon_days": 30}
+    ).json()
+    assert here["touches"] == 1.0
+    bad = client.post(
+        "/api/v1/assets/btc-usd/simulation/level", json={"level": 105.0, "horizon_days": 3}
+    )
+    assert bad.status_code == 422
+    negative = client.post(
+        "/api/v1/assets/btc-usd/simulation/level", json={"level": -1, "horizon_days": 7}
+    )
+    assert negative.status_code == 422
+
+    report = client.get("/api/v1/assets/btc-usd/calibration").json()
+    assert report["rows"] == [
+        {
+            "horizon_days": 7,
+            "steps": 7,
+            "nominal": 0.8,
+            "empirical": 0.833,
+            "empirical_conformal": 0.803,
+            "n": 1595,
+            "pinball_model": 0.0101,
+            "pinball_baseline": 0.0102,
+            "first_origin": "2022-05-17",
+            "last_origin": "2026-09-27",
+        }
+    ]

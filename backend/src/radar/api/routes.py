@@ -26,7 +26,11 @@ from radar.api.schemas import (
     AssetOut,
     BarOut,
     BarsOut,
+    CalibrationOut,
+    CalibrationRowOut,
     HealthOut,
+    LevelIn,
+    LevelOut,
     QualitySummary,
     RegimeEvaluationOut,
     RegimeModelOut,
@@ -34,8 +38,17 @@ from radar.api.schemas import (
     RegimePoint,
     RegimeStateOut,
     SeriesStatus,
+    SimulationOut,
 )
-from radar.db.models import Bar, DataQualityReport, IngestionRun, RegimeState
+from radar.db.models import (
+    Bar,
+    CalibrationReport,
+    DataQualityReport,
+    IngestionRun,
+    RegimeState,
+)
+from radar.models import simulator
+from radar.pipelines import simulation as simulation_job
 from radar.pipelines.regime import current_model
 from radar.universe import Asset, Universe
 
@@ -186,6 +199,80 @@ def get_regime(
             bic_by_states=registered.metrics["bic_by_states"],
         ),
         evaluation=RegimeEvaluationOut.model_validate(walk) if walk else None,
+    )
+
+
+@router.get("/assets/{symbol:path}/simulation", response_model=SimulationOut)
+def get_simulation(symbol: str, universe: UniverseDep, session: SessionDep) -> SimulationOut:
+    """The latest stored simulator run: the outcome distribution at each horizon."""
+    asset = find_asset(universe, symbol)
+    run = simulation_job.latest(session, asset.symbol)
+    if run is None:
+        raise HTTPException(status_code=404, detail=f"No simulation for {asset.symbol} yet")
+    return SimulationOut.model_validate(
+        {
+            "symbol": asset.symbol,
+            "as_of": run.as_of,
+            "start_price": run.start_price,
+            "n_paths": run.n_paths,
+            "seed": run.seed,
+            "model_version": run.model_version,
+            "horizons": run.horizons,
+            "fan": run.fan,
+        }
+    )
+
+
+@router.post("/assets/{symbol:path}/simulation/level", response_model=LevelOut)
+def post_simulation_level(
+    symbol: str, body: LevelIn, universe: UniverseDep, session: SessionDep
+) -> LevelOut:
+    """Chances of ending beyond, and of touching, a price level. Counted from stored paths."""
+    asset = find_asset(universe, symbol)
+    run = simulation_job.latest(session, asset.symbol)
+    if run is None or run.paths is None:
+        raise HTTPException(status_code=404, detail=f"No simulation for {asset.symbol} yet")
+    steps = next((h["steps"] for h in run.horizons if h["horizon_days"] == body.horizon_days), None)
+    if steps is None:
+        raise HTTPException(status_code=422, detail="That horizon is not simulated")
+    result = simulator.level_probabilities(
+        simulation_job.decode_paths(run), steps, run.start_price, body.level
+    )
+    return LevelOut(
+        symbol=asset.symbol,
+        as_of=run.as_of,
+        start_price=run.start_price,
+        level=body.level,
+        horizon_days=body.horizon_days,
+        steps=steps,
+        n_paths=run.n_paths,
+        ends_above=result.ends_above,
+        ends_below=result.ends_below,
+        touches=result.touches,
+    )
+
+
+@router.get("/assets/{symbol:path}/calibration", response_model=CalibrationOut)
+def get_calibration(symbol: str, universe: UniverseDep, session: SessionDep) -> CalibrationOut:
+    """How often the simulator's past ranges contained what happened."""
+    asset = find_asset(universe, symbol)
+    rows = list(
+        session.scalars(
+            select(CalibrationReport)
+            .where(
+                CalibrationReport.symbol == asset.symbol,
+                CalibrationReport.model_version == simulator.MODEL_VERSION,
+            )
+            .order_by(CalibrationReport.horizon_days, CalibrationReport.nominal)
+        )
+    )
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"No calibration for {asset.symbol} yet")
+    return CalibrationOut(
+        symbol=asset.symbol,
+        model_version=simulator.MODEL_VERSION,
+        computed_at=max(r.computed_at for r in rows),
+        rows=[CalibrationRowOut.model_validate(r, from_attributes=True) for r in rows],
     )
 
 

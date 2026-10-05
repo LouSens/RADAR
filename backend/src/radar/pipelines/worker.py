@@ -17,6 +17,7 @@ from radar.ingest.live import BarHandler, LiveConsumer, NewsHandler, StreamSpec,
 from radar.ingest.raw_store import RawStore
 from radar.logging import get_logger
 from radar.pipelines import regime as regime_job
+from radar.pipelines import simulation as simulation_job
 from radar.pipelines.quality import run_quality
 from radar.providers.alpaca_rest import AlpacaDataClient
 from radar.providers.alpaca_stream import (
@@ -114,6 +115,25 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             hour=2,
             minute=30,
             id="regime-refit",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Outlook: a new run once a day's regime reading exists; coverage measured weekly.
+        scheduler.add_job(
+            partial(simulation_job.run, engine, universe),
+            "cron",
+            minute=15,
+            id="simulate",
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.add_job(
+            partial(simulation_job.run, engine, universe, recalibrate=True),
+            "cron",
+            day_of_week="sun",
+            hour=3,
+            minute=30,
+            id="calibrate",
             max_instances=1,
             coalesce=True,
         )

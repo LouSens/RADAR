@@ -216,10 +216,11 @@ def _forward(model: RegimeModel, x: np.ndarray) -> tuple[np.ndarray, np.ndarray]
     density of that day's observation given all earlier days.
     """
     emissions = _log_emissions(model, x)
-    log_transition = np.log(np.array(model.transition))
+    with np.errstate(divide="ignore"):  # a zero probability is a valid -inf in log space
+        log_transition = np.log(np.array(model.transition))
+        prior = np.log(np.array(model.start_prob))
     filtered = np.empty_like(emissions)
     step = np.empty(len(x))
-    prior = np.log(np.array(model.start_prob))
     for t in range(len(x)):
         joint = prior + emissions[t]
         step[t] = logsumexp(joint)
@@ -251,7 +252,8 @@ def smoothed_probabilities(model: RegimeModel, observations: pd.DataFrame) -> pd
     clean = observations[list(FEATURES)].dropna()
     x = model.standardise(clean)
     emissions = _log_emissions(model, x)
-    log_transition = np.log(np.array(model.transition))
+    with np.errstate(divide="ignore"):
+        log_transition = np.log(np.array(model.transition))
     filtered, _ = _forward(model, x)
     backward = np.zeros_like(filtered)
     for t in range(len(x) - 2, -1, -1):

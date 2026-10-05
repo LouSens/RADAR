@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/calibration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Calibration
+         * @description How often the simulator's past ranges contained what happened.
+         */
+        get: operations["get_calibration_api_v1_assets__symbol__calibration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{symbol}/regime": {
         parameters: {
             query?: never;
@@ -58,6 +78,46 @@ export interface paths {
         get: operations["get_regime_api_v1_assets__symbol__regime_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{symbol}/simulation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Simulation
+         * @description The latest stored simulator run: the outcome distribution at each horizon.
+         */
+        get: operations["get_simulation_api_v1_assets__symbol__simulation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{symbol}/simulation/level": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Simulation Level
+         * @description Chances of ending beyond, and of touching, a price level. Counted from stored paths.
+         */
+        post: operations["post_simulation_level_api_v1_assets__symbol__simulation_level_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -148,6 +208,49 @@ export interface components {
             /** Timeframe */
             timeframe: string;
         };
+        /** CalibrationOut */
+        CalibrationOut: {
+            /**
+             * Computed At
+             * Format: date-time
+             */
+            computed_at: string;
+            /** Model Version */
+            model_version: string;
+            /** Rows */
+            rows: components["schemas"]["CalibrationRowOut"][];
+            /** Symbol */
+            symbol: string;
+        };
+        /** CalibrationRowOut */
+        CalibrationRowOut: {
+            /** Empirical */
+            empirical: number;
+            /** Empirical Conformal */
+            empirical_conformal: number;
+            /**
+             * First Origin
+             * Format: date
+             */
+            first_origin: string;
+            /** Horizon Days */
+            horizon_days: number;
+            /**
+             * Last Origin
+             * Format: date
+             */
+            last_origin: string;
+            /** N */
+            n: number;
+            /** Nominal */
+            nominal: number;
+            /** Pinball Baseline */
+            pinball_baseline: number;
+            /** Pinball Model */
+            pinball_model: number;
+            /** Steps */
+            steps: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -174,6 +277,42 @@ export interface components {
             status: "ok" | "degraded" | "down";
             /** Stream Clients */
             stream_clients: number;
+        };
+        /** LevelIn */
+        LevelIn: {
+            /** Horizon Days */
+            horizon_days: number;
+            /** Level */
+            level: number;
+        };
+        /**
+         * LevelOut
+         * @description Two different questions about one price level, kept apart.
+         */
+        LevelOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Ends Above */
+            ends_above: number;
+            /** Ends Below */
+            ends_below: number;
+            /** Horizon Days */
+            horizon_days: number;
+            /** Level */
+            level: number;
+            /** N Paths */
+            n_paths: number;
+            /** Start Price */
+            start_price: number;
+            /** Steps */
+            steps: number;
+            /** Symbol */
+            symbol: string;
+            /** Touches */
+            touches: number;
         };
         /**
          * LiveBar
@@ -220,6 +359,45 @@ export interface components {
              * @constant
              */
             type: "news";
+        };
+        /** OutlookHorizon */
+        OutlookHorizon: {
+            /** Expected Worst Drawdown */
+            expected_worst_drawdown: number;
+            /** Histogram Counts */
+            histogram_counts: number[];
+            /** Histogram Edges */
+            histogram_edges: number[];
+            /** Horizon Days */
+            horizon_days: number;
+            /** Intervals */
+            intervals: components["schemas"]["OutlookRange"][];
+            /** Mean Return */
+            mean_return: number;
+            /** Quantiles */
+            quantiles: {
+                [key: string]: number;
+            };
+            /** Steps */
+            steps: number;
+        };
+        /**
+         * OutlookRange
+         * @description A central range of simulated prices, raw and after the conformal adjustment.
+         */
+        OutlookRange: {
+            /** Adjusted High */
+            adjusted_high: number | null;
+            /** Adjusted Is Widest */
+            adjusted_is_widest: boolean;
+            /** Adjusted Low */
+            adjusted_low: number | null;
+            /** High */
+            high: number;
+            /** Level */
+            level: number;
+            /** Low */
+            low: number;
         };
         /** QualitySummary */
         QualitySummary: {
@@ -366,6 +544,30 @@ export interface components {
             /** Timeframe */
             timeframe: string;
         };
+        /** SimulationOut */
+        SimulationOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Fan */
+            fan: {
+                [key: string]: number[];
+            };
+            /** Horizons */
+            horizons: components["schemas"]["OutlookHorizon"][];
+            /** Model Version */
+            model_version: string;
+            /** N Paths */
+            n_paths: number;
+            /** Seed */
+            seed: number;
+            /** Start Price */
+            start_price: number;
+            /** Symbol */
+            symbol: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -444,6 +646,37 @@ export interface operations {
             };
         };
     };
+    get_calibration_api_v1_assets__symbol__calibration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalibrationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_regime_api_v1_assets__symbol__regime_get: {
         parameters: {
             query?: {
@@ -464,6 +697,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RegimeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_simulation_api_v1_assets__symbol__simulation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_simulation_level_api_v1_assets__symbol__simulation_level_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LevelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LevelOut"];
                 };
             };
             /** @description Validation Error */

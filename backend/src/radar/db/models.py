@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     MetaData,
     Text,
     UniqueConstraint,
@@ -178,3 +179,51 @@ class RegimeState(Base):
     label: Mapped[str] = mapped_column(Text)
     probability: Mapped[float] = mapped_column(Double)
     probs: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class Simulation(Base):
+    """One simulator run for one asset. Reproducible from `seed` and the data up to `as_of`."""
+
+    __tablename__ = "simulations"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"))
+    # When the inputs became known: the end of the last day the run used.
+    as_of: Mapped[datetime] = mapped_column(TZDateTime)
+    # The regime model the run started from.
+    model_id: Mapped[int] = mapped_column(BigInteger)
+    model_version: Mapped[str] = mapped_column(Text)
+    seed: Mapped[int] = mapped_column(BigInteger)
+    n_paths: Mapped[int] = mapped_column(Integer)
+    max_steps: Mapped[int] = mapped_column(Integer)
+    start_price: Mapped[float] = mapped_column(Double)
+    # One entry per horizon: quantiles, ranges, histogram, drawdown.
+    horizons: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    fan: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # Compressed float32 cumulative log returns, shape (n_paths, max_steps). Kept for the
+    # latest run of each asset only; older runs keep their summaries.
+    paths: Mapped[bytes | None] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("symbol", "as_of", "model_id"),)
+
+
+class CalibrationReport(Base):
+    """How often the simulator's past ranges held, per horizon and range."""
+
+    __tablename__ = "calibration_reports"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    model_version: Mapped[str] = mapped_column(Text, primary_key=True)
+    horizon_days: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nominal: Mapped[float] = mapped_column(Double, primary_key=True)
+    steps: Mapped[int] = mapped_column(Integer)
+    empirical: Mapped[float] = mapped_column(Double)
+    empirical_conformal: Mapped[float] = mapped_column(Double)
+    n: Mapped[int] = mapped_column(Integer)
+    conformal_miss_rate: Mapped[float] = mapped_column(Double)
+    pinball_model: Mapped[float] = mapped_column(Double)
+    pinball_baseline: Mapped[float] = mapped_column(Double)
+    first_origin: Mapped[date] = mapped_column(Date)
+    last_origin: Mapped[date] = mapped_column(Date)
+    computed_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())

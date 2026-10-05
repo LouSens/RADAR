@@ -21,6 +21,8 @@ TABLES = {
     "data_quality_reports",
     "model_registry",
     "regime_states",
+    "simulations",
+    "calibration_reports",
 }
 
 
