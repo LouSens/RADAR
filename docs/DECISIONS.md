@@ -356,3 +356,42 @@ Made by Claude while building, open to change:
   support version 6.
 - **`starlette`'s test client warns that `httpx` is deprecated in favour of `httpx2`.**
   Tests pass; not acted on, because `httpx` is also the Alpaca client's library.
+
+## 023. Interface direction (2026-10-05)
+
+The user rejected the first two interfaces as generic, and asked for a responsive site
+in the visual language of their portfolio site (`C:\Users\David\portfolio-website`),
+designed as a real product. They then asked to leave the interface as it stands and
+revisit it in each phase.
+
+What that settled:
+
+- **Look.** One dark theme, the Inter typeface, liquid-glass surfaces, and an ambient
+  glow tinted by the market in view. Numbers use Inter with fixed-width digits; the
+  monospace face was dropped at the user's request. The accent is a cool blue instead of
+  the portfolio's orange, so it does not clash with rising and falling colours.
+- **Navigation.** A floating glass bar on top; on phones, a floating tab bar at the
+  bottom. One system-status dot replaces the status pills.
+- **Screens show only what exists.** The placeholder pages for the comparison,
+  portfolio, and signals screens, and every "not built yet" note, were removed. Those
+  screens enter the navigation when they are built.
+- **Overview.** A market picker, one large surface with the chosen market's price and
+  chart, and a side-by-side table (change over a day, week, month, and year, and the
+  52-week range). These use only stored bars and the live feed.
+- **Wording.** No developer language on screen. Chart captions stay, as the project
+  rules require, in a quiet line under each chart.
+
+## 024. Bars with a suspect high or low (2026-10-05)
+
+Found while building the 52-week range: `SPY`'s daily bar for 2026-02-02 has a low of
+68.47 against a close of 689.99, which passes schema validation but is almost certainly
+a bad print. A few crypto bars have similar wicks.
+
+The quality job now also flags a bar when its high or low sits far outside its open and
+close (30 robust deviations and at least 10%). It shares the existing `is_outlier`
+flag, which the API now returns. Flagged bars are kept. The interface draws them
+without wicks and uses their close, not their high or low, for ranges.
+
+Open for later phases: the daily-range feature (spec 7.4) and any model input that uses
+highs and lows must skip flagged bars. Some flagged wicks are real, such as Ethereum's
+fall to 700 on Kraken on 2021-02-22.

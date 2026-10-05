@@ -8,10 +8,11 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 2 (in progress) on branch `phase-2-api-dashboard`. Phases 0 and 1 are merged to `main`
-- Last completed step: Phase 2 steps 1 and 2: FastAPI routes and live WebSocket; React shell with live charts and the status page. Verified running locally against real data on 2026-10-05
-- Next step: verify `make up` (the full stack under Docker Compose), which is Phase 2's done-when
-- Key decisions (`docs/DECISIONS.md` 010 to 022): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Phase: 2 complete on branch `phase-2-api-dashboard`. Phases 0 and 1 are merged to `main`
+- Last completed step: Phase 2 done-when verified on 2026-10-05: `make up` runs db, api, worker, and web under Docker Compose and the app at http://localhost:8080 shows live prices
+- Next step: Phase 3 (regime, outlook, volatility forecast, tail risk)
+- Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
+- Key decisions (`docs/DECISIONS.md` 010 to 024): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
