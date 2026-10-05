@@ -15,6 +15,7 @@ import {
   type Sentiment,
   type Simulation,
   type Timeframe,
+  type TrackRecord,
   type Volatility,
 } from "./client";
 
@@ -149,5 +150,15 @@ export function useEventStudy(slug: string | undefined) {
     queryFn: () => orNull(() => getJson<EventStudy>(`/assets/${slug}/event-study`)),
     enabled: slug !== undefined,
     staleTime: 60 * 60_000,
+  });
+}
+
+/** Forecasts logged on the day they were made, and how they have turned out. */
+export function useTrackRecord(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["track-record", slug],
+    queryFn: () => orNull(() => getJson<TrackRecord>(`/assets/${slug}/track-record`)),
+    enabled: slug !== undefined,
+    refetchInterval: 10 * 60_000,
   });
 }

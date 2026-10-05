@@ -21,6 +21,8 @@ const HORIZONS = [
 ] as const;
 type HorizonKey = (typeof HORIZONS)[number]["value"];
 
+const spread = (low: number | null | undefined, high: number | null | undefined) =>
+  low == null || high == null ? "" : ` (${formatShare(low, 0)} to ${formatShare(high, 0)})`;
 const percent = (level: number) => `${Math.round(level * 100)}%`;
 const rangeText = (low: number, high: number) => `${formatPrice(low)} to ${formatPrice(high)}`;
 
@@ -237,8 +239,18 @@ function TrackRecord({
             {rows.map((row) => (
               <tr key={row.nominal} className="border-t border-line">
                 <td className="num py-2">{percent(row.nominal)}</td>
-                <td className="num py-2 text-right">{formatShare(row.empirical, 1)}</td>
-                <td className="num py-2 text-right">{formatShare(row.empirical_conformal, 1)}</td>
+                <td className="num py-2 text-right">
+                  {formatShare(row.empirical, 1)}
+                  <span className="text-muted">
+                    {spread(row.empirical_low, row.empirical_high)}
+                  </span>
+                </td>
+                <td className="num py-2 text-right">
+                  {formatShare(row.empirical_conformal, 1)}
+                  <span className="text-muted">
+                    {spread(row.conformal_low, row.conformal_high)}
+                  </span>
+                </td>
                 <td className="num py-2 text-right">{formatCount(row.n)}</td>
               </tr>
             ))}
@@ -249,8 +261,10 @@ function TrackRecord({
         For every day from {formatDate(first.first_origin)} to {formatDate(first.last_origin)} the
         simulation was run using only what was known that day, looking{" "}
         {stepsLabel(first.steps, asset.trades_continuously)} ahead, then compared with what
-        happened. A range that works should hold about as often as it states. The adjustment widens
-        or narrows each range using how earlier ranges held.{" "}
+        happened. A range that works should hold about as often as it states. The figures in
+        brackets are where the true rate plausibly lies; a range is doing its job when its stated
+        level falls inside them. The adjustment widens or narrows each range using how earlier
+        ranges held.{" "}
         {level
           ? "Its forecast error was about level with a simple forecast that assumes constant volatility."
           : `Its forecast error was ${formatShare(Math.abs(error), 1)} ${

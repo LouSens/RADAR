@@ -184,6 +184,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/track-record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Track Record
+         * @description How forecasts logged on the day they were made have turned out since.
+         */
+        get: operations["get_track_record_api_v1_assets__symbol__track_record_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{symbol}/volatility": {
         parameters: {
             query?: never;
@@ -324,10 +344,18 @@ export interface components {
         };
         /** CalibrationRowOut */
         CalibrationRowOut: {
+            /** Conformal High */
+            conformal_high?: number | null;
+            /** Conformal Low */
+            conformal_low?: number | null;
             /** Empirical */
             empirical: number;
             /** Empirical Conformal */
             empirical_conformal: number;
+            /** Empirical High */
+            empirical_high?: number | null;
+            /** Empirical Low */
+            empirical_low?: number | null;
             /**
              * First Origin
              * Format: date
@@ -355,10 +383,25 @@ export interface components {
         ClassifierScoreOut: {
             /** Accuracy */
             accuracy: number;
+            /** Accuracy High */
+            accuracy_high?: number | null;
+            /** Accuracy Low */
+            accuracy_low?: number | null;
             /** Macro F1 */
             macro_f1: number;
             /** N */
             n: number;
+        };
+        /** DirectionOut */
+        DirectionOut: {
+            /** Both Polar */
+            both_polar: number;
+            /** N */
+            n: number;
+            /** Opposite Rate */
+            opposite_rate: number;
+            /** Same Direction */
+            same_direction: number | null;
         };
         /** DrawdownOut */
         DrawdownOut: {
@@ -423,6 +466,8 @@ export interface components {
             positive: components["schemas"]["EventPathOut"];
             /** Symbol */
             symbol: string;
+            /** Tests In Family */
+            tests_in_family?: number | null;
             /** Verdict */
             verdict: string;
         };
@@ -738,6 +783,10 @@ export interface components {
         RiskMethodOut: {
             /** Breach Rate */
             breach_rate: number;
+            /** Breach Rate High */
+            breach_rate_high?: number | null;
+            /** Breach Rate Low */
+            breach_rate_low?: number | null;
             /** Breaches */
             breaches: number;
             /** Clustering P Value */
@@ -746,6 +795,8 @@ export interface components {
             expected_breaches: number;
             /** Expected Shortfall */
             expected_shortfall: number;
+            /** Kupiec P Adjusted */
+            kupiec_p_adjusted?: number | null;
             /** Kupiec P Value */
             kupiec_p_value: number | null;
             /** Method */
@@ -779,9 +830,21 @@ export interface components {
          */
         SentimentAccuracyOut: {
             baseline?: components["schemas"]["ClassifierScoreOut"] | null;
+            direction?: components["schemas"]["DirectionOut"] | null;
+            /**
+             * Fine Tuned
+             * @default false
+             */
+            fine_tuned: boolean;
+            /**
+             * Held Out
+             * @default false
+             */
+            held_out: boolean;
             /** Labelled By */
             labelled_by: string[];
             model: components["schemas"]["ClassifierScoreOut"];
+            original?: components["schemas"]["ClassifierScoreOut"] | null;
             topics?: components["schemas"]["ClassifierScoreOut"] | null;
         };
         /** SentimentOut */
@@ -904,6 +967,57 @@ export interface components {
             topic: string;
             /** Verdict */
             verdict: string;
+        };
+        /**
+         * TrackRecordOut
+         * @description Forecasts logged on the day they were made and scored afterwards. Not a backtest.
+         */
+        TrackRecordOut: {
+            /** Recorded */
+            recorded: number;
+            /** Recording Since */
+            recording_since: string | null;
+            /** Resolved */
+            resolved: number;
+            /** Rows */
+            rows: components["schemas"]["TrackRecordRow"][];
+            /** Symbol */
+            symbol: string;
+        };
+        /** TrackRecordRow */
+        TrackRecordRow: {
+            /** Expected Share */
+            expected_share: number | null;
+            /**
+             * First As Of
+             * Format: date-time
+             */
+            first_as_of: string;
+            /** Forecast To Outcome */
+            forecast_to_outcome: number | null;
+            /** Held */
+            held: number | null;
+            /** Held High */
+            held_high: number | null;
+            /** Held Low */
+            held_low: number | null;
+            /** Held Share */
+            held_share: number | null;
+            /** Horizon Days */
+            horizon_days: number;
+            /** Key */
+            key: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Last As Of
+             * Format: date-time
+             */
+            last_as_of: string;
+            /** Recorded */
+            recorded: number;
+            /** Resolved */
+            resolved: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1263,6 +1377,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LevelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_track_record_api_v1_assets__symbol__track_record_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackRecordOut"];
                 };
             };
             /** @description Validation Error */

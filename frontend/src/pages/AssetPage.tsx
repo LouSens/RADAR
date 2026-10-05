@@ -8,6 +8,7 @@ import { NewsPanel } from "../components/NewsPanel";
 import { OutlookPanel } from "../components/OutlookPanel";
 import { RegimePanel } from "../components/RegimePanel";
 import { RiskPanel } from "../components/RiskPanel";
+import { TrackRecordPanel } from "../components/TrackRecordPanel";
 import { VolatilityPanel } from "../components/VolatilityPanel";
 import { Change, Message, RangeBar, StatRow, assetColorVar } from "../components/ui";
 import { formatPrice } from "../lib/format";
@@ -44,6 +45,8 @@ export function AssetPage() {
       <RiskPanel asset={asset} />
 
       <NewsPanel asset={asset} />
+
+      <TrackRecordPanel asset={asset} />
 
       <section className="glass rise rise-2 grid grid-cols-1 gap-x-12 gap-y-6 p-5 sm:p-7 lg:grid-cols-2">
         <div>

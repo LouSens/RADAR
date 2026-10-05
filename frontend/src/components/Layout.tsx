@@ -96,6 +96,7 @@ const SECTIONS = [
   { id: "swings", label: "Expected swings" },
   { id: "risk", label: "Downside risk" },
   { id: "news", label: "News" },
+  { id: "live-record", label: "Live record" },
 ] as const;
 
 const COLLAPSED_KEY = "radar.sidebar.collapsed";

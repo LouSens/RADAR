@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Asset, EventStudy, Sentiment } from "../api/client";
-import { NewsPanel, toneWord } from "./NewsPanel";
+import { NewsPanel, toneWord, trustGrade } from "./NewsPanel";
 
 const state = vi.hoisted(() => ({ sentiment: null as unknown, study: null as unknown }));
 vi.mock("../api/queries", () => ({
@@ -54,9 +54,12 @@ const SENTIMENT: Sentiment = {
   ],
   accuracy: {
     labelled_by: ["claude"],
-    model: { n: 200, accuracy: 0.71, macro_f1: 0.7 },
+    model: { n: 200, accuracy: 0.71, macro_f1: 0.7, accuracy_low: 0.64, accuracy_high: 0.77 },
     baseline: { n: 200, accuracy: 0.52, macro_f1: 0.48 },
-    topics: { n: 200, accuracy: 0.58, macro_f1: 0.5 },
+    topics: { n: 200, accuracy: 0.58, macro_f1: 0.5, accuracy_low: 0.51, accuracy_high: 0.65 },
+    direction: { n: 200, opposite_rate: 0.06, both_polar: 110, same_direction: 0.89 },
+    held_out: false,
+    fine_tuned: false,
   },
 };
 
@@ -139,12 +142,22 @@ describe("NewsPanel", () => {
     expect(screen.queryByText(/unusually positive news \(green\)/)).toBeNull();
   });
 
-  it("reports the model's accuracy and who labelled the sample", () => {
+  it("puts accuracy up front with its range, a grade, and who labelled the sample", () => {
     render(<NewsPanel asset={BITCOIN} />);
-    expect(screen.getByText(/labelled by an AI model \(Claude\), not a person/)).toBeVisible();
-    expect(screen.getByText(/agreed with the label 71% of the time/)).toBeVisible();
-    expect(screen.getByText(/counting positive and negative words agreed 52%/)).toBeVisible();
-    expect(screen.getByText(/subject it assigned matched 58%/)).toBeVisible();
+    expect(screen.getByText("Rough")).toBeVisible(); // 71% with a low end of 64%
+    expect(screen.getByText("Agreed with the label, on 200 headlines")).toBeVisible();
+    expect(screen.getByText("(64% to 77%)")).toBeVisible();
+    expect(screen.getByText("Counting positive and negative words")).toBeVisible();
+    expect(screen.getByText("52%")).toBeVisible();
+    expect(screen.getByText(/written by an AI model \(Claude\), not a person/)).toBeVisible();
+    expect(screen.getByText(/A single article's tone is often wrong/)).toBeVisible();
+  });
+
+  it("grades trust from the low end of the range", () => {
+    expect(trustGrade(0.85)).toBe("Reliable");
+    expect(trustGrade(0.7)).toBe("Fair");
+    expect(trustGrade(0.57)).toBe("Rough");
+    expect(trustGrade(null)).toBe("Rough");
   });
 
   it("gives each subject its own verdict", () => {
