@@ -1196,3 +1196,93 @@ holding as missing for any episode before it existed.
 **On the real account:** `PURR` (208 sessions) is 1.1% of the money and about 11% of the
 risk; the one-day 95% limit rose from 0.50% to 0.55%.
 
+
+## 044. Phase 5C: does news predict swings? The rule, written before the test (2026-10-07)
+
+Third part of decision 035, and the item owed since decision 028. The earlier study
+(decision 030) found news tone does not lead price direction. The open question is
+whether the amount and tone of news says anything about the size of the swings that
+follow, beyond what recent swings already say.
+
+**What is compared.** For each primary market and each forecast horizon, walk-forward
+from the first day news is used for that market:
+
+| Model | Inputs |
+|---|---|
+| HAR (the one shown today) | swings of the last day, week, and month |
+| HAR with news | the same, plus the four news inputs below |
+| Trees | the HAR inputs |
+| Trees with news | the HAR inputs plus the four news inputs |
+
+News inputs for day `t`, all from articles published by the end of day `t`: the log of
+one plus the article count; that figure minus its own average over the previous 22
+days (a surprise in volume); the day's average tone; and the size of that tone
+regardless of sign. A day with no articles has a count of zero and a neutral tone.
+
+**Rule, fixed now.** News is said to improve the forecast for a market and horizon only
+if a model with news has a lower QLIKE than the same model without news, and the
+Diebold-Mariano p-value for that difference is below 0.05 after Benjamini-Hochberg
+correction across every market, horizon, and model pair tested. This is stricter than
+the spec's F9 line, which has no correction, because twelve comparisons are made at
+once. If the rule is met anywhere, wiring news into the forecast that is shown is a
+separate step for the user to approve. If it is met nowhere, the screen says news added
+nothing measurable, and no further variants are tried on this data.
+
+**Not tuned.** The inputs, the 22-day window, the refit interval, and the tree settings
+are set before the run and are not changed after seeing results.
+
+## 045. Phase 5C result: news adds nothing measurable to the swings forecast (2026-10-07)
+
+The test of decision 044 was run once, on 2026-10-07, with the rule and settings fixed
+beforehand. Code: `models/news_volatility.py`, `pipelines/news_volatility.py`, run with
+`radar news-swings`.
+
+**Result.** None of the twelve comparisons met the rule. News is not wired into the
+forecast, and no further variants are tried on this data.
+
+| Market | Horizon | Model | Days | Error without news | With news | Change | p | p, corrected |
+|---|---|---|---|---|---|---|---|---|
+| Bitcoin | 1 day | HAR | 1,466 | 0.473 | 0.478 | 1.1% worse | 0.27 | 0.65 |
+| Bitcoin | 1 day | Trees | 1,466 | 0.585 | 0.591 | 0.9% worse | 0.75 | 0.82 |
+| Bitcoin | 1 week | HAR | 1,460 | 0.190 | 0.198 | 4.1% worse | 0.09 | 0.36 |
+| Bitcoin | 1 week | Trees | 1,460 | 0.226 | 0.223 | 1.2% better | 0.46 | 0.77 |
+| Gold | 1 day | HAR | 668 | 0.728 | 0.731 | 0.5% worse | 0.70 | 0.82 |
+| Gold | 1 day | Trees | 668 | 1.002 | 1.021 | 2.0% worse | 0.58 | 0.77 |
+| Gold | 1 week | HAR | 664 | 0.314 | 0.315 | 0.3% worse | 0.86 | 0.86 |
+| Gold | 1 week | Trees | 664 | 0.438 | 0.430 | 1.9% better | 0.47 | 0.77 |
+| US stocks | 1 day | HAR | 2,429 | 0.482 | 0.478 | 0.8% better | 0.048 | 0.29 |
+| US stocks | 1 day | Trees | 2,429 | 0.624 | 0.619 | 0.7% better | 0.56 | 0.77 |
+| US stocks | 1 week | HAR | 2,425 | 0.319 | 0.314 | 1.7% better | 0.12 | 0.36 |
+| US stocks | 1 week | Trees | 2,425 | 0.478 | 0.453 | 5.2% better | 0.039 | 0.29 |
+
+Error is QLIKE; lower is better. Periods: Bitcoin from 30 September 2022, gold from
+2 February 2024, US stocks from 2 February 2017, each to early October 2026.
+
+**Reading it honestly.**
+
+- For Bitcoin and gold, news made the forecast slightly worse more often than better.
+- For US stocks all four comparisons lean the right way, and two have an uncorrected
+  p-value just under 0.05. Under the spec's original F9 line, which had no correction,
+  one of those would have counted. Under the rule fixed in decision 044 it does not:
+  with twelve comparisons, one or two results at that level are what chance alone gives.
+- The largest lean, 5.2%, is for the tree model, which is not the one shown, because HAR
+  beats it with or without news.
+- So the fair statement is "no measurable gain", with a hint for US stocks that is too
+  weak to act on. It would need new data to test again, not another pass over this data.
+
+**What this settles.**
+
+- The item owed since decision 028 (the F9 tree model with sentiment as an input) is
+  done: it does not beat HAR.
+- Together with decision 030 (news tone does not lead price direction), the evidence in
+  this app is that news is not a usable trigger, for direction or for the size of
+  swings. This shapes Phase 5D: rebalancing signals will be driven by the swings
+  forecast, the market state, and drift, and not by headlines.
+- It lowers the value of pushing single-headline tone accuracy higher, since the daily
+  tone figure adds nothing to either forecast. The accuracy experiment the user asked
+  to defer is still theirs to call.
+
+**On the screen.** The Daily movement tab now ends with "Does news improve this
+forecast?", showing the error with and without news as paired bars for the horizon in
+view, and the verdict in words. New route `GET /assets/{symbol}/news-and-swings`.
+
