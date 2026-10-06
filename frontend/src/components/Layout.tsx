@@ -24,6 +24,12 @@ const icon = {
       <path d="M3 12h4l2.5-6 4 12 2.5-6h5" />
     </>
   ),
+  together: (
+    <>
+      <circle cx="9" cy="12" r="5.5" />
+      <circle cx="15" cy="12" r="5.5" />
+    </>
+  ),
   portfolio: (
     <>
       <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12V3.5Z" />
@@ -127,7 +133,7 @@ const sideLink = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 const tab = ({ isActive }: { isActive: boolean }) =>
-  `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[20px] py-2 text-[11px] font-medium transition-all duration-300 ${
+  `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[20px] py-2 text-[10.5px] font-medium transition-all duration-300 ${
     isActive ? "lens text-ink" : "text-muted"
   }`;
 
@@ -183,6 +189,13 @@ function Sidebar({
             </div>
           );
         })}
+        <NavLink to="/together" className={sideLink} title="Markets together">
+          <span className="grid w-[22px] shrink-0 place-items-center">
+            <Icon>{icon.together}</Icon>
+          </span>
+          <span className={hidden}>Markets together</span>
+        </NavLink>
+
         <p className={`label mt-5 px-2.5 pb-1 text-xs ${collapsed ? "sr-only" : ""}`}>Yours</p>
         {collapsed && <div className="mx-2.5 my-3 border-t border-line" aria-hidden="true" />}
         <NavLink to="/portfolio" className={sideLink} title="Portfolio">
@@ -281,7 +294,7 @@ export function Layout() {
         aria-label="Main, phone"
         className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:hidden"
       >
-        <div className="capsule pointer-events-auto mx-auto flex max-w-md gap-1 rounded-[26px] p-1.5">
+        <div className="capsule pointer-events-auto mx-auto flex max-w-lg gap-0.5 rounded-[26px] p-1.5">
           <NavLink to="/" end className={tab}>
             <Icon>{icon.home}</Icon>
             Overview
@@ -289,9 +302,15 @@ export function Layout() {
           {primary.map((asset) => (
             <NavLink key={asset.slug} to={`/asset/${asset.slug}`} className={tab}>
               <AssetGlyph asset={asset} />
-              <span className="max-w-full truncate px-1">{shortName(asset)}</span>
+              <span className="max-w-full truncate px-0.5">
+                {shortName(asset).replace(/^US s/, "S")}
+              </span>
             </NavLink>
           ))}
+          <NavLink to="/together" className={tab}>
+            <Icon>{icon.together}</Icon>
+            <span className="max-w-full truncate px-0.5">Together</span>
+          </NavLink>
           <NavLink to="/portfolio" className={tab}>
             <Icon>{icon.portfolio}</Icon>
             <span className="max-w-full truncate px-1">Portfolio</span>

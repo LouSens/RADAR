@@ -63,6 +63,12 @@ def account(
             if spot_status != 200:
                 return httpx.Response(spot_status, json={"code": -2015, "msg": "Invalid API-key."})
             return httpx.Response(200, json=SPOT)
+        if path == "/sapi/v1/asset/get-funding-asset":
+            return httpx.Response(
+                200, json=[{"asset": "SPYB", "free": "3", "locked": "0", "freeze": "1"}]
+            )
+        if path == "/sapi/v1/simple-earn/locked/position":
+            return httpx.Response(200, json={"rows": [{"asset": "USDC", "amount": "1000"}]})
         if path == "/sapi/v1/margin/account":
             return httpx.Response(margin_status, json=MARGIN if margin_status == 200 else {})
         if path == "/fapi/v2/positionRisk":
@@ -81,12 +87,13 @@ def test_it_reads_balances_and_nets_them_with_futures() -> None:
     assert [(h.symbol, round(h.quantity, 8)) for h in reading.holdings.holdings] == [
         ("BTC/USD", 0.3),  # 0.5 held, 0.2 sold short in futures
         ("ETH/USD", 2.5),  # 2 lent out through savings, 0.5 in margin
+        ("SPY", 4.0),  # a tokenised US stock in the Funding wallet
+        ("USD", 1250.0),  # 250 in the wallet and 1,000 in fixed-term savings, as cash
     ]
     left_out = {u.symbol: u.reason for u in reading.holdings.unsupported}
     assert left_out == {
         "DOGE": "RADAR has no price history for this.",
         "PAXG/USD": "Net short or flat after futures. Only long exposure is analysed.",
-        "USDT": "A cash balance. It is left out of the risk figures.",
     }
     bitcoin, gold = reading.leveraged
     assert (bitcoin.symbol, bitcoin.quantity, bitcoin.leverage) == ("BTC/USD", -0.2, 5)
@@ -103,10 +110,17 @@ def test_every_request_is_a_get_to_a_reading_endpoint_and_is_signed() -> None:
     assert [(r.method, r.url.host, r.url.path) for r in requests] == [
         ("GET", "api.binance.com", "/api/v3/time"),
         ("GET", "api.binance.com", "/api/v3/account"),
+        ("POST", "api.binance.com", "/sapi/v1/asset/get-funding-asset"),
+        ("GET", "api.binance.com", "/sapi/v1/simple-earn/locked/position"),
         ("GET", "api.binance.com", "/sapi/v1/margin/account"),
         ("GET", "fapi.binance.com", "/fapi/v2/positionRisk"),
     ]
-    assert all((r.url.host, r.url.path) in binance.ALLOWED for r in requests)
+    reading = binance.ALLOWED | binance.READ_BY_POST
+    assert all((r.url.host, r.url.path) in reading for r in requests)
+    # The one POST is the Funding wallet read, and like every request it has no body.
+    assert [r.url.path for r in requests if r.method != "GET"] == [
+        "/sapi/v1/asset/get-funding-asset"
+    ]
     assert all(r.content == b"" for r in requests)
     assert "x-mbx-apikey" not in requests[0].headers  # the clock needs no key
     for request in requests[1:]:
@@ -125,6 +139,8 @@ def test_every_request_is_a_get_to_a_reading_endpoint_and_is_signed() -> None:
     ("method", "host", "path"),
     [
         ("POST", "api.binance.com", "/api/v3/account"),
+        ("GET", "api.binance.com", "/sapi/v1/asset/get-funding-asset"),
+        ("POST", "api.binance.com", "/sapi/v1/asset/dust"),
         ("DELETE", "api.binance.com", "/api/v3/account"),
         ("GET", "api.binance.com", "/api/v3/openOrders"),
         ("POST", "api.binance.com", "/api/v3/order"),
@@ -144,12 +160,12 @@ def test_anything_but_reading_is_refused_before_it_is_sent(
 ) -> None:
     with pytest.raises(DisallowedRequestError):
         binance.check(method, host, path)
-    if (host, path) in binance.ALLOWED:
-        return  # the client has no way to send anything but a GET
+    if (host, path) in binance.ALLOWED | binance.READ_BY_POST:
+        return  # the client picks the method itself: each endpoint has exactly one
     requests: list[httpx.Request] = []
     source = BinanceSource(KEY, SECRET, KNOWN, transport=account(requests))
     with pytest.raises(DisallowedRequestError):
-        source._get((host, path), signed=True, clock=1)
+        source._read((host, path), signed=True, clock=1)
     assert requests == []
 
 
@@ -160,17 +176,22 @@ def test_the_source_has_no_way_to_trade_or_move_funds() -> None:
     members = [name for name, _ in inspect.getmembers(binance) if banned.search(name)]
     assert members == []
     source = Path(inspect.getfile(binance)).read_text(encoding="utf-8")
-    # No writing verb is ever used on the HTTP client, and no trading path is spelled out.
-    assert not re.search(r"\.(post|put|delete|patch|request)\(", source)
+    # The HTTP client is only ever used through the one checked method, and no trading
+    # path is spelled out.
+    assert not re.search(r"\.(get|post|put|delete|patch|request)\(f?[\"']http", source)
+    assert source.count("self._client.send(") == 1
     assert not re.search(r"/(order|openOrders|withdraw|transfer|leverage|loan|repay)\b", source)
-    assert len(binance.ALLOWED) == 4
+    assert len(binance.ALLOWED) == 5
+    assert frozenset({("api.binance.com", "/sapi/v1/asset/get-funding-asset")}) == (
+        binance.READ_BY_POST
+    )
 
 
 def test_margin_or_futures_being_switched_off_is_not_an_error() -> None:
     requests: list[httpx.Request] = []
     source = BinanceSource(KEY, SECRET, KNOWN, transport=account(requests, margin_status=400))
     symbols = [h.symbol for h in source.read().holdings]
-    assert symbols == ["BTC/USD", "ETH/USD"]
+    assert symbols == ["BTC/USD", "ETH/USD", "SPY", "USD"]
 
 
 def test_a_refused_key_gives_a_plain_error_without_credentials(

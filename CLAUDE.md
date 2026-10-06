@@ -8,9 +8,11 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: 4, the evidence step, the product pass, and the layout fix are merged to `main`. Phase 5A and the tabbed market page are on branch `asset-tabs` (pull request open or merged: check `git log main`)
-- Last completed step: Phase 5A (decision 037): holdings by manual entry and CSV, the portfolio X-ray, loss limits, stress episodes, and the Portfolio screen; and the market page as tabs with real addresses (decision 036). Before that, fluid layout and chart fixes (decision 034) and the product pass (decision 033): an "In brief" card and `GET /assets/{symbol}/summary`; a Solid, Fair, or Rough trust mark on every claim from fixed rules in `analytics/summary.py`; sections folded behind their claims; news articles listed unranked and topics folded away
-- Next step: Phase 5B (F5, risk transmission, weekend gaps, F8), then 5C news into the swings forecast (settles decision 028), then 5D allocations; the order is confirmed (decision 035). Owed from 5A: the read-only Binance holdings source, when the user has a key (it needs its client, env names, and the test that it reaches only reading endpoints). Still owed: stability and sensitivity checks; labels from a person
+- Phase: everything up to Phase 5A is merged to `main`. Phase 5B and the Binance source are on branch `phase-5b` (pull request open or merged: check `git log main`)
+- Last completed step: Phase 5B (decision 039): correlations, risk transmission, weekend gaps, macro drivers, the "Markets together" screen and the "Outside forces" tabs; and the read-only Binance source with cash as a holding and the portfolio tied to market states, drivers, and the weekend (decision 038). Before that, Phase 5A (decision 037): holdings by manual entry and CSV, the portfolio X-ray, loss limits, stress episodes, and the Portfolio screen; and the market page as tabs with real addresses (decision 036). Before that, fluid layout and chart fixes (decision 034) and the product pass (decision 033): an "In brief" card and `GET /assets/{symbol}/summary`; a Solid, Fair, or Rough trust mark on every claim from fixed rules in `analytics/summary.py`; sections folded behind their claims; news articles listed unranked and topics folded away
+- Next step: Phase 5C, news into the swings forecast (settles decision 028), then 5D allocations, which must treat cash as a holding (decision 035). Still owed: stability and sensitivity checks; labels from a person
+- Before merging, run exactly what CI runs: `uv run radar lint` covers the tests directory too; a pull request was once merged with a red type check in a test file
+- The Binance client may only call the endpoints listed in `providers/binance.py`; adding one needs the user's agreement and a test
 - Sections are pages behind tabs (`components/Tabs.tsx`), never folding panels; a new section gets its own address (decision 036)
 - Layout rules (decision 034): inside the page use container variants (`@xl:`, `@4xl:`), not `sm:` or `lg:`; phones have bottom tabs only, no top bar; charts must not pan or zoom into empty time
 - Every new section must use the shared `Panel` and take a trust grade from `analytics/summary.py`
@@ -18,7 +20,7 @@ Update this block at the end of every work session.
 - The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
 - Carried forward: shading the price chart by regime is not built (decision 028)
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 037): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 039): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
@@ -34,7 +36,7 @@ Update this block at the end of every work session.
 
 These apply to every change.
 
-- **No trading.** Do not import, call, or wrap any order, position, or transfer endpoint from Alpaca or any other provider. Market data and news endpoints only. One exception, approved by the user on 2026-10-05: a read-only Binance `HoldingsSource` may call Binance endpoints that **read** account balances and open positions, with an API key that has no trading and no withdrawal permission. It must never call an endpoint that places, changes, or cancels an order, moves funds, or changes account settings, and a test must assert that.
+- **No trading.** Do not import, call, or wrap any order, position, or transfer endpoint from Alpaca or any other provider. Market data and news endpoints only. One exception, approved by the user on 2026-10-05: a read-only Binance `HoldingsSource` may call Binance endpoints that **read** account balances and open positions, with an API key that has no trading and no withdrawal permission. It must never call an endpoint that places, changes, or cancels an order, moves funds, or changes account settings, and a test must assert that. The endpoints it may call are listed in `providers/binance.py`; one of them, the Funding wallet read, is a POST because Binance serves it no other way (`docs/DECISIONS.md` 038).
 - **Paper keys only.** The Alpaca keys in `.env` must be paper account keys, never live keys. The only Alpaca host this app calls is `data.alpaca.markets` (and its `stream.data.alpaca.markets` WebSocket). Never call `api.alpaca.markets` or `paper-api.alpaca.markets`. A test asserts that the provider clients reject any other base URL.
 - **No secrets in the repo.** Keys live in `.env`, which is gitignored. `.env.example` holds names only. Never print keys in logs, tests, or error messages.
 - **No lookahead.** A value shown for time `t` may only use data with timestamp `<= t`. This covers features, labels, regime probabilities (use filtered, never smoothed, for anything displayed as "current" or used in a backtest), scalers, and train/test splits. Every model module needs a test that proves it.
@@ -72,7 +74,9 @@ uv run radar sentiment  # score news tone and topics (needs `uv sync --extra nlp
                         # measure accuracy, rerun the sentiment-versus-price study
 uv run radar finetune   # fine-tune the sentiment model and test it on held-out headlines (needs nlp)
 uv run radar track      # log today's forecasts and score those whose days have ended
-uv run radar portfolio  # recompute the stored portfolio analysis with the latest prices
+uv run radar portfolio  # recompute the stored portfolio analysis with the latest prices (reads
+                        # Binance again first when that is the source and a key is set)
+uv run radar relationships  # recompute correlations, risk transmission, weekend gaps, drivers
 uv run radar quality    # check stored data, set flags, write data quality reports
 uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
 uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md

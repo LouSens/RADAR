@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 
 from radar.api.routes import SessionDep, UniverseDep
 from radar.models.holdings import (
+    CASH,
+    CASH_NAME,
     CsvSource,
     Holding,
     Holdings,
@@ -33,7 +35,7 @@ MAX_CSV_CHARACTERS = 200_000
 class SupportedAsset(BaseModel):
     symbol: str
     name: str
-    asset_class: Literal["crypto", "stock"]
+    asset_class: Literal["crypto", "stock", "cash"]
 
 
 class PortfolioOut(BaseModel):
@@ -65,7 +67,7 @@ def _supported(universe: Universe) -> list[SupportedAsset]:
     return [
         SupportedAsset(symbol=a.symbol, name=a.name, asset_class=a.asset_class)
         for a in universe.assets
-    ]
+    ] + [SupportedAsset(symbol=CASH, name=CASH_NAME, asset_class="cash")]
 
 
 def get_binance_reader(request: Request) -> Callable[[], BinanceReading] | None:

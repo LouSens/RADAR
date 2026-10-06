@@ -137,6 +137,28 @@ export function HoldingsEditor({ portfolio }: { portfolio: Portfolio }) {
         <button type="button" className="btn btn-ghost" onClick={() => file.current?.click()}>
           Load a CSV file
         </button>
+        {portfolio.binance_available && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={save.isPending}
+            onClick={() =>
+              save.mutate(
+                { binance: true },
+                {
+                  onSuccess: (saved) =>
+                    setRows(
+                      saved.holdings.length > 0
+                        ? saved.holdings.map((h) => row(h.symbol, String(h.quantity)))
+                        : [row("", "")],
+                    ),
+                },
+              )
+            }
+          >
+            Read from Binance
+          </button>
+        )}
         <input
           ref={file}
           type="file"
@@ -183,7 +205,37 @@ export function HoldingsEditor({ portfolio }: { portfolio: Portfolio }) {
         )}
       </div>
 
+      {(result?.leveraged ?? portfolio.leveraged).length > 0 && (
+        <div className="border-t border-line pt-5">
+          <h3 className="text-sm font-semibold tracking-tight">Leveraged exposure on Binance</h3>
+          <ul className="mt-2">
+            {(result?.leveraged ?? portfolio.leveraged).map((item) => (
+              <li
+                key={`${item.symbol}-${item.quantity}`}
+                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-line py-2 text-sm first:border-t-0"
+              >
+                <span>
+                  {item.symbol}{" "}
+                  <span className="num text-muted">
+                    {item.quantity > 0 ? "long" : "short"} {Math.abs(item.quantity)} at{" "}
+                    {item.leverage}× leverage
+                  </span>
+                </span>
+                <span className="num text-muted">
+                  {item.distance_to_liquidation != null
+                    ? `${(item.distance_to_liquidation * 100).toFixed(1)}% from liquidation`
+                    : "no liquidation price reported"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <Caption>
+        {portfolio.binance_available
+          ? "Reading from Binance fetches balances and open exposure only, and is repeated every hour while Binance is the source. Cash balances are left out of the risk figures. "
+          : ""}
         Quantities are units held: coins, or shares. A CSV file needs a first row naming a symbol
         column and a quantity column, for example <span className="num">symbol,quantity</span>.
         Names such as BTC, BTCUSDT, or BTC/USD are all understood. Holdings stay on this

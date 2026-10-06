@@ -23,7 +23,7 @@ from radar.db.models import Portfolio, PortfolioAnalysis, PortfolioHolding
 from radar.features.panels import MixedPanel
 from radar.models import drivers as driver_model
 from radar.models import portfolio as model
-from radar.models.holdings import Holding, Holdings, HoldingsSource
+from radar.models.holdings import CASH, CASH_NAME, Holding, Holdings, HoldingsSource
 from radar.models.tail_risk import MIN_WINDOW
 from radar.pipelines.datasets import build_mixed_panel
 from radar.providers.binance import BinanceError, BinanceReading, BinanceSource
@@ -96,7 +96,7 @@ def stored_holdings(session: Session) -> tuple[str | None, list[Holding]]:
         .where(PortfolioHolding.portfolio_id == PORTFOLIO_ID)
         .order_by(PortfolioHolding.symbol)
     ).all()
-    return portfolio.source, [
+    holdings = [
         Holding(
             symbol=r.symbol,
             quantity=r.quantity,
@@ -104,6 +104,9 @@ def stored_holdings(session: Session) -> tuple[str | None, list[Holding]]:
         )
         for r in rows
     ]
+    if portfolio.cash > 0:
+        holdings.append(Holding(symbol=CASH, quantity=portfolio.cash))
+    return portfolio.source, holdings
 
 
 def save(
@@ -119,6 +122,8 @@ def store(
 ) -> Holdings:
     """Replace the stored holdings with ones already read. Does not commit."""
     now = datetime.now(UTC)
+    cash = sum(h.quantity for h in read.holdings if h.symbol == CASH)
+    assets = [h for h in read.holdings if h.symbol != CASH]
     session.execute(
         insert(Portfolio)
         .values(
@@ -127,15 +132,21 @@ def store(
             source=read.source,
             updated_at=now,
             leveraged=leveraged or [],
+            cash=cash,
         )
         .on_conflict_do_update(
             index_elements=[Portfolio.id],
-            set_={"source": read.source, "updated_at": now, "leveraged": leveraged or []},
+            set_={
+                "source": read.source,
+                "updated_at": now,
+                "leveraged": leveraged or [],
+                "cash": cash,
+            },
         )
     )
     session.execute(delete(PortfolioHolding).where(PortfolioHolding.portfolio_id == PORTFOLIO_ID))
     session.execute(delete(PortfolioAnalysis).where(PortfolioAnalysis.portfolio_id == PORTFOLIO_ID))
-    if read.holdings:
+    if assets:
         session.execute(
             insert(PortfolioHolding),
             [
@@ -145,7 +156,7 @@ def store(
                     "quantity": h.quantity,
                     "tag": h.tag,
                 }
-                for h in read.holdings
+                for h in assets
             ],
         )
     return read
@@ -159,6 +170,12 @@ def analyse(
     min_window: int = MIN_WINDOW,
 ) -> Analysis:
     """The full analysis of a set of holdings on a price panel. Pure given its inputs."""
+    cash = sum(h.quantity for h in holdings if h.symbol == CASH)
+    holdings = [h for h in holdings if h.symbol != CASH]
+    if not holdings:
+        raise model.NotEnoughHistoryError(
+            "Only cash is held, so there is no market risk to analyse."
+        )
     symbols = [h.symbol for h in holdings]
     prices = panel.prices[symbols]
     priced = prices.ffill().iloc[-1]
@@ -166,8 +183,11 @@ def analyse(
         missing = ", ".join(str(s) for s in priced[priced.isna()].index)
         raise model.NotEnoughHistoryError(f"No stored price for {missing}.")
     values = np.array([h.quantity * float(priced[h.symbol]) for h in holdings])
-    total = float(values.sum())
+    # Cash is part of the money and none of the risk: the weights of the priced
+    # holdings add up to less than one by exactly the share held in cash.
+    total = float(values.sum()) + cash
     weights = values / total
+    cash_weight = cash / total
     returns = panel.returns[symbols]
 
     xray = model.xray(returns, weights)
@@ -175,7 +195,23 @@ def analyse(
     episodes = [
         model.Episode(name=e.name, start=e.start, end=e.end) for e in universe.stress_episodes
     ]
-    stress = model.stress(prices, weights, episodes)
+    # Through a past episode cash is always there and never changes.
+    if cash > 0:
+        stress = model.stress(
+            prices.assign(**{CASH: 1.0}), np.append(weights, cash_weight), episodes
+        )
+        xray = xray.model_copy(
+            update={
+                "holdings": [
+                    *xray.holdings,
+                    model.HoldingRisk(
+                        symbol=CASH, weight=cash_weight, daily_volatility=0.0, risk_share=0.0
+                    ),
+                ]
+            }
+        )
+    else:
+        stress = model.stress(prices, weights, episodes)
 
     day = next((h for h in limits if h.horizon_days == 1), None)
     shown = (
@@ -219,7 +255,22 @@ def analyse(
                 weight=float(weights[i]),
             )
             for i, h in enumerate(holdings)
-        ],
+        ]
+        + (
+            [
+                Position(
+                    symbol=CASH,
+                    name=CASH_NAME,
+                    quantity=cash,
+                    tag=None,
+                    price=1.0,
+                    value=cash,
+                    weight=cash_weight,
+                )
+            ]
+            if cash > 0
+            else []
+        ),
         xray=xray,
         limits=limits,
         stress=stress,

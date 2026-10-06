@@ -5,6 +5,7 @@ export const PORTFOLIO_SECTIONS = [
   { path: "holdings", label: "Holdings" },
   { path: "sources", label: "Where risk comes from" },
   { path: "limits", label: "Loss limits" },
+  { path: "forces", label: "Outside forces" },
   { path: "episodes", label: "Past episodes" },
 ] as const;
 

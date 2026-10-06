@@ -21,3 +21,14 @@ export function formatChange(fraction: number): string {
 export function formatShare(fraction: number, digits = 2): string {
   return `${(fraction * 100).toFixed(digits)}%`;
 }
+
+/** An amount of money, as opposed to a price: always cents, or whole dollars when large. */
+export function formatMoney(value: number): string {
+  const digits = Math.abs(value) >= 1000 ? 0 : 2;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}

@@ -2,6 +2,7 @@
 
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -104,7 +105,8 @@ def test_an_empty_portfolio_lists_what_can_be_held(client: TestClient) -> None:
     body = client.get("/api/v1/portfolio").json()
     assert body["source"] is None
     assert body["holdings"] == []
-    assert [a["symbol"] for a in body["supported"]] == ["BTC/USD", "GLD", "SOL/USD"]
+    assert [a["symbol"] for a in body["supported"]] == ["BTC/USD", "GLD", "SOL/USD", "USD"]
+    assert body["supported"][-1]["name"] == "Cash (US dollars)"
     assert client.get("/api/v1/portfolio/analysis").status_code == 404
 
 
@@ -291,3 +293,44 @@ def test_the_analysis_ties_holdings_to_their_market_state_and_drivers(
     assert analysis["drivers"] is None
     assert analysis["states"] == []
     assert analysis["trust"]["drivers"] is None
+
+
+def test_cash_is_part_of_the_money_and_none_of_the_risk(client: TestClient) -> None:
+    def analysed(holdings: list[dict[str, object]]) -> Any:
+        assert client.put("/api/v1/portfolio", json={"holdings": holdings}).status_code == 200
+        return client.get("/api/v1/portfolio/analysis").json()
+
+    alone = analysed([{"symbol": "BTC", "quantity": 0.05}])
+    worth = alone["value"]
+    half = analysed([{"symbol": "BTC", "quantity": 0.05}, {"symbol": "USDT", "quantity": worth}])
+
+    saved = client.get("/api/v1/portfolio").json()
+    assert [(h["symbol"], h["quantity"]) for h in saved["holdings"]] == [
+        ("BTC/USD", 0.05),
+        ("USD", pytest.approx(worth)),
+    ]
+    assert half["value"] == pytest.approx(2 * worth)
+    positions = {p["symbol"]: p for p in half["positions"]}
+    assert positions["USD"]["name"] == "Cash (US dollars)"
+    assert positions["USD"]["weight"] == pytest.approx(0.5)
+    assert positions["BTC/USD"]["weight"] == pytest.approx(0.5)
+
+    # Half in cash: half the swing and half the loss limit, and all the risk is Bitcoin's.
+    x_alone, x_half = alone["xray"], half["xray"]
+    assert x_half["daily_volatility"] == pytest.approx(x_alone["daily_volatility"] / 2)
+    shares = {h["symbol"]: h["risk_share"] for h in x_half["holdings"]}
+    assert shares == {"BTC/USD": pytest.approx(1.0), "USD": 0.0}
+    day_limit = [a["limits"][0]["levels"][0]["methods"][0]["var"] for a in (half, alone)]
+    assert day_limit[0] < day_limit[1] * 0.6
+
+    # Through a past episode cash is there and unchanged, so the fall is half as deep.
+    spring_alone, spring_half = alone["stress"][0], half["stress"][0]
+    assert spring_half["missing"] == []
+    assert spring_half["change"] == pytest.approx(spring_alone["change"] / 2)
+    parts = {p["symbol"]: p for p in spring_half["parts"]}
+    assert parts["USD"]["contribution"] == 0
+
+    only_cash = client.put(
+        "/api/v1/portfolio", json={"holdings": [{"symbol": "USD", "quantity": 500}]}
+    ).json()
+    assert "Only cash is held" in only_cash["problem"]

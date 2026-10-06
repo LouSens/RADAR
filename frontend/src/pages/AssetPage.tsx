@@ -3,6 +3,7 @@ import { Navigate, useParams } from "react-router-dom";
 
 import { useMarket } from "../api/market";
 import { useAssets, useSummary } from "../api/queries";
+import { DriversPanel } from "../components/DriversPanel";
 import { MarketStage } from "../components/MarketStage";
 import { NewsPanel } from "../components/NewsPanel";
 import { OutlookPanel } from "../components/OutlookPanel";
@@ -99,6 +100,7 @@ export function AssetPage() {
           {section === "outlook" && <OutlookPanel asset={asset} trust={trust?.outlook} />}
           {section === "swings" && <VolatilityPanel asset={asset} trust={trust?.swings} />}
           {section === "risk" && <RiskPanel asset={asset} trust={trust?.risk} />}
+          {section === "drivers" && <DriversPanel asset={asset} />}
           {section === "news" && <NewsPanel asset={asset} trust={trust?.news} />}
           {section === "record" && <TrackRecordPanel asset={asset} />}
         </div>

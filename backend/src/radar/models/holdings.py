@@ -23,6 +23,11 @@ SourceName = Literal["manual", "csv", "binance"]
 # Names other venues use for assets RADAR stores under its own symbol.
 ALIASES: Mapping[str, str] = {"SPYB": "SPY", "XBT": "BTC/USD"}
 QUOTES = ("USDT", "USDC", "USD")
+# Cash is a holding like any other: it is part of the money and carries no price risk.
+# Dollar stablecoins are counted as dollars, one for one.
+CASH = "USD"
+CASH_NAME = "Cash (US dollars)"
+CASH_NAMES = frozenset({"USD", "CASH", "USDT", "USDC", "FDUSD", "BUSD", "TUSD", "DAI"})
 SYMBOL_COLUMNS = ("symbol", "asset", "ticker", "coin")
 QUANTITY_COLUMNS = ("quantity", "amount", "qty", "units", "balance")
 MAX_ROWS = 500
@@ -58,10 +63,13 @@ class HoldingsSource(Protocol):
 def resolve(raw: str, known: Iterable[str]) -> str | None:
     """RADAR's symbol for a name as typed or exported, or None when there is none.
 
-    "btc", "BTC/USD", "BTCUSDT", and "BTC-USD" all mean `BTC/USD`.
+    "btc", "BTC/USD", "BTCUSDT", and "BTC-USD" all mean `BTC/USD`. A dollar or a dollar
+    stablecoin on its own is cash.
     """
     symbols = set(known)
     name = raw.strip().upper().replace("-", "/").replace("_", "/")
+    if name in CASH_NAMES:
+        return CASH
     if name in ALIASES:
         name = ALIASES[name]
     if name in symbols:

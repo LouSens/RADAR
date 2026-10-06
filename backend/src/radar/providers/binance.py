@@ -1,10 +1,15 @@
 """Read-only Binance holdings source (spec F6; the exception in CLAUDE.md "No trading").
 
-This client can do exactly one thing: read what the account holds. Every request is a
-GET to one of the four endpoints listed in `ALLOWED`; anything else is refused before it
-leaves the process. There is no method here that places, changes, or cancels an order,
-moves funds, or changes a setting, and there must never be one. The API key should be
-created with reading permission only, so that the exchange would refuse those too.
+This client can do exactly one thing: read what the account holds. Every request goes to
+one of the six endpoints listed below, each of which only returns balances or open
+exposure; anything else is refused before it leaves the process. There is no method here
+that places, changes, or cancels an order, moves funds, or changes a setting, and there
+must never be one. The API key should be created with reading permission only, so that
+the exchange would refuse those too.
+
+Five endpoints are read with GET. The sixth, the Funding wallet, is one Binance only
+answers by POST even though it changes nothing; it is the single POST this client may
+send, it carries no body, and it is named in `READ_BY_POST`.
 
 The key and secret are never logged and never appear in an error message.
 """
@@ -29,11 +34,15 @@ CLOCK = (SPOT_HOST, "/api/v3/time")
 SPOT_BALANCES = (SPOT_HOST, "/api/v3/account")
 MARGIN_BALANCES = (SPOT_HOST, "/sapi/v1/margin/account")
 FUTURES_EXPOSURE = (FUTURES_HOST, "/fapi/v2/positionRisk")
+# Money placed in fixed-term savings. Flexible savings already show in the spot wallet.
+LOCKED_SAVINGS = (SPOT_HOST, "/sapi/v1/simple-earn/locked/position")
 # Every (host, path) this client may call. All are read with GET.
-ALLOWED = frozenset({CLOCK, SPOT_BALANCES, MARGIN_BALANCES, FUTURES_EXPOSURE})
+ALLOWED = frozenset({CLOCK, SPOT_BALANCES, MARGIN_BALANCES, FUTURES_EXPOSURE, LOCKED_SAVINGS})
+# The Funding wallet, where Binance also keeps tokenised US stocks. A read that
+# Binance only serves by POST.
+FUNDING_BALANCES = (SPOT_HOST, "/sapi/v1/asset/get-funding-asset")
+READ_BY_POST = frozenset({FUNDING_BALANCES})
 
-# Cash-like balances. They are real money but carry no market risk to analyse.
-CASH = frozenset({"USDT", "USDC", "FDUSD", "BUSD", "TUSD", "DAI", "USD", "EUR"})
 # Balances smaller than this many units are dust and are ignored.
 DUST = 1e-8
 TIMEOUT_SECONDS = 15.0
@@ -67,8 +76,12 @@ class BinanceReading(BaseModel):
 
 
 def check(method: str, host: str, path: str) -> None:
-    """Refuse anything that is not a GET to an allowed reading endpoint."""
-    if method != "GET" or (host, path) not in ALLOWED:
+    """Refuse anything that is not one of the reading endpoints, by its own method."""
+    endpoint = (host, path)
+    reading = (method == "GET" and endpoint in ALLOWED) or (
+        method == "POST" and endpoint in READ_BY_POST
+    )
+    if not reading:
         raise DisallowedRequestError(f"Refusing {method} {host}{path}: not a reading endpoint")
 
 
@@ -105,9 +118,10 @@ class BinanceSource:
     def close(self) -> None:
         self._client.close()
 
-    def _get(self, endpoint: tuple[str, str], *, signed: bool, clock: int | None = None) -> Any:
+    def _read(self, endpoint: tuple[str, str], *, signed: bool, clock: int | None = None) -> Any:
         host, path = endpoint
-        check("GET", host, path)
+        method = "POST" if endpoint in READ_BY_POST else "GET"
+        check(method, host, path)
         params: dict[str, str | int] = {}
         headers: dict[str, str] = {}
         if signed:
@@ -115,7 +129,11 @@ class BinanceSource:
             params["signature"] = sign(self._secret, urlencode(params))
             headers["X-MBX-APIKEY"] = self._key.get_secret_value()
         try:
-            response = self._client.get(f"https://{host}{path}", params=params, headers=headers)
+            response = self._client.send(
+                self._client.build_request(
+                    method, f"https://{host}{path}", params=params, headers=headers
+                )
+            )
         except httpx.HTTPError as error:
             raise BinanceError(
                 f"Could not reach Binance ({type(error).__name__}) for {path}."
@@ -133,30 +151,44 @@ class BinanceSource:
         return response.json()
 
     def read_account(self) -> BinanceReading:
-        """Read spot and margin balances and open futures exposure, and net them per asset."""
-        clock = int(self._get(CLOCK, signed=False)["serverTime"])
+        """Read spot, funding, savings, and margin balances and open futures exposure, netted per
+        asset. Dollar stablecoins are counted together as cash."""
+        clock = int(self._read(CLOCK, signed=False)["serverTime"])
         totals: dict[str, float] = {}
         unsupported: list[Unsupported] = []
-        cash: set[str] = set()
 
         def add(asset: str, quantity: float) -> None:
             if abs(quantity) < DUST:
                 return
-            if asset in CASH:
-                cash.add(asset)
-                return
             totals[asset] = totals.get(asset, 0.0) + quantity
 
-        spot = self._get(SPOT_BALANCES, signed=True, clock=clock)
+        spot = self._read(SPOT_BALANCES, signed=True, clock=clock)
         for balance in spot.get("balances", []):
             add(
                 underlying(str(balance["asset"])),
                 float(balance["free"]) + float(balance["locked"]),
             )
 
-        # Margin and futures may not be switched on for the account; that is not an error.
+        # The Funding wallet, fixed-term savings, margin, and futures may not be in use;
+        # that is not an error.
         try:
-            margin = self._get(MARGIN_BALANCES, signed=True, clock=clock)
+            for balance in self._read(FUNDING_BALANCES, signed=True, clock=clock):
+                add(
+                    str(balance["asset"]),
+                    float(balance["free"])
+                    + float(balance.get("locked") or 0)
+                    + float(balance.get("freeze") or 0),
+                )
+        except BinanceError as error:
+            log.info("binance_funding_skipped", reason=str(error))
+        try:
+            savings = self._read(LOCKED_SAVINGS, signed=True, clock=clock)
+            for row in savings.get("rows", []):
+                add(str(row["asset"]), float(row["amount"]))
+        except BinanceError as error:
+            log.info("binance_savings_skipped", reason=str(error))
+        try:
+            margin = self._read(MARGIN_BALANCES, signed=True, clock=clock)
             for balance in margin.get("userAssets", []):
                 add(str(balance["asset"]), float(balance["netAsset"]))
         except BinanceError as error:
@@ -164,7 +196,7 @@ class BinanceSource:
 
         leveraged: list[Leveraged] = []
         try:
-            for row in self._get(FUTURES_EXPOSURE, signed=True, clock=clock):
+            for row in self._read(FUTURES_EXPOSURE, signed=True, clock=clock):
                 quantity = float(row["positionAmt"])
                 if abs(quantity) < DUST:
                     continue
@@ -209,10 +241,6 @@ class BinanceSource:
                         reason="Net short or flat after futures. Only long exposure is analysed.",
                     )
                 )
-        unsupported.extend(
-            Unsupported(symbol=asset, reason="A cash balance. It is left out of the risk figures.")
-            for asset in sorted(cash)
-        )
         log.info(
             "binance_read",
             holdings=len(holdings),
