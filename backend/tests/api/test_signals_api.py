@@ -143,6 +143,8 @@ def test_a_track_record_shows_what_followed_against_all_days(client: TestClient)
     assert body["type"] == "abnormal_move"
     # Two horizons of the one record with enough occurrences were tested together.
     assert body["tested"] == 2
+    assert body["in_feed"] is True
+    assert body["trust"]["grade"] == "fair"  # one kind, 39 cases
     (record,) = body["records"]
     assert (record["symbol"], record["name"], record["variant"], record["n"]) == (
         "BTC/USD",
@@ -160,5 +162,6 @@ def test_a_track_record_shows_what_followed_against_all_days(client: TestClient)
     assert set(day["signal"]["quantiles"]) == {"0.05", "0.25", "0.5", "0.75", "0.95"}
     assert record["first_day"] == "2022-01-01"
 
-    assert client.get("/api/v1/signals/track-records/sentiment_shock").json()["records"] == []
+    news = client.get("/api/v1/signals/track-records/sentiment_shock").json()
+    assert (news["records"], news["in_feed"]) == ([], False)
     assert client.get("/api/v1/signals/track-records/hot_tip").status_code == 404

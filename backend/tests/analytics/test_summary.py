@@ -160,3 +160,14 @@ def test_the_range_ahead_is_graded_on_how_often_past_ranges_held() -> None:
     assert few.grade == "fair"
     assert "few cases" in few.reason
     assert summary.grade_simulation(0, 0, 0.8, 30).grade == "rough"
+
+
+def test_a_signal_record_is_graded_on_its_thinnest_kind() -> None:
+    assert summary.grade_signals([140, 210]).grade == "solid"
+    fair = summary.grade_signals([44, 140])
+    assert fair.grade == "fair"
+    assert "44 to 140 past cases" in fair.reason
+    rough = summary.grade_signals([3, 20, 48])
+    assert rough.grade == "rough"
+    assert "not judged" in rough.reason
+    assert summary.grade_signals([]).grade == "rough"

@@ -2160,10 +2160,13 @@ export interface components {
         };
         /** SignalRecordsOut */
         SignalRecordsOut: {
+            /** In Feed */
+            in_feed: boolean;
             /** Records */
             records: components["schemas"]["SignalRecordOut"][];
             /** Tested */
             tested: number;
+            trust: components["schemas"]["Trust"];
             /**
              * Type
              * @enum {string}

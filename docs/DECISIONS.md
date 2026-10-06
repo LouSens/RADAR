@@ -1667,3 +1667,62 @@ spec; both extend F6.
 
 **Notebook.** `notebooks/09_regular_buying.ipynb`, on a made-up plan.
 
+## 054. Phase 6 parts 2 and 3: the daily brief, and the Signals and Overview screens (2026-10-06)
+
+**The brief** (`brief/`, `pipelines/brief.py`, table `briefs`, migration 0018).
+
+- **Payload first.** `brief/payload.py` defines every fact the brief may state, for each
+  primary market and for the portfolio. Numbers are stored already rounded to what the
+  text shows. It is built only from stored results: a market's facts come from the same
+  summary the market page uses, so the two cannot disagree; nothing is computed for it.
+- **The grounding check** (`brief/grounding.py`). Every number in the text is read back
+  and must be in the payload. Tests cover the template on a full payload and prove the
+  check catches an invented figure.
+- **The template writer** is the default and needs no key and no outside service. Each
+  sentence carries the page that holds its evidence, and the Overview links it there.
+  It describes what is and what has happened; a test asserts it never says "buy",
+  "sell", or "you should".
+- **Signals in the brief** are those of the feed in the last 7 days (decision 052), each
+  with its record in words, including "too few to say what tends to follow". News tone
+  is not mentioned.
+- **A probability is never written as 100%.** It is capped at 99 and worded "more than
+  99%", since a model is never certain.
+- **The language-model writer is an interface, not a connection.** `LlmWriter` takes any
+  function from prompt to text. Its output is used only if it has the right number of
+  sentences, no number outside the payload, and no banned word; otherwise the
+  template's text stands. `write` applies the same check to any writer. **No provider
+  is wired in and nothing is sent anywhere**: connecting one would send the user's
+  portfolio figures to an outside service and may need a dependency, so it waits for
+  the user to ask.
+- **Stored** one row per day and subject (each market, and `PORTFOLIO`), with the
+  payload, the sentences, and which writer's text was used. Run again on the same day,
+  it replaces that day's rows. `uv run radar brief`; the worker rewrites it hourly at
+  :58, after the signals, so the day's brief follows the day. `GET /briefs/latest`.
+
+**The Signals screen** (`/signals`, `/signals/{type}`).
+
+- "Latest": the feed, newest first, filtered by market and kind. Each row shows the
+  signal's size in one figure, what has followed its kind (direction, size, and the
+  count of past cases), and links to the track record. The portfolio's standing against
+  the user's target sits above it, apart, with no record (decision 051).
+- One tab per signal type with its track record: for each market and direction, how
+  often the market ended higher after the signal with its plausible range, against any
+  day, and the typical size of the move against any day, over a day and a week.
+- "Unusual news tone" has a tab although it is not in the feed: the tab says why it is
+  not shown and keeps the evidence in view.
+- **Grade** (`grade_signals`): on the fewest past cases behind any kind of the signal:
+  100 for solid, 30 for fair.
+- The caption states the walk-forward rule, the correction for the number of
+  comparisons with its count, and that the size findings are provisional.
+
+**The Overview** now shows "Today in brief" and the five newest signals under the
+market chart. It still renders entirely from stored results.
+
+**Navigation.** Signals is in the sidebar. On a phone the bottom bar already holds six
+tabs, so Signals is reached from the Overview ("See all") and from the brief's
+sentences; a seventh tab would not fit.
+
+**Phase 6 done-when.** Each signal shown links to its track record; the grounding test
+passes; the template writer works with no key set; the Overview renders from stored
+results.
+

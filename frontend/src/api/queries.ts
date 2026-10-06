@@ -25,7 +25,10 @@ import {
   type Timeframe,
   type TrackRecord,
   type Volatility,
+  type Brief,
   type RegularBuying,
+  type SignalRecords,
+  type Signals,
   type SupportedAsset,
   type WhatIf,
 } from "./client";
@@ -216,6 +219,37 @@ export function useSavePortfolio() {
       client.setQueryData(["portfolio"], saved);
       void client.invalidateQueries({ queryKey: ["portfolio", "analysis"] });
     },
+  });
+}
+
+/** Today's brief, or null before one has been written. */
+export function useBrief() {
+  return useQuery({
+    queryKey: ["brief"],
+    queryFn: () => orNull(() => getJson<Brief>("/briefs/latest")),
+    refetchInterval: 10 * 60_000,
+  });
+}
+
+/** Recent signals, newest first, each with a summary of its track record. */
+export function useSignals(filter: { symbol?: string; type?: string; limit?: number } = {}) {
+  return useQuery({
+    queryKey: ["signals", filter.symbol ?? "", filter.type ?? "", filter.limit ?? 50],
+    queryFn: () =>
+      getJson<Signals>("/signals", {
+        symbol: filter.symbol,
+        type: filter.type,
+        limit: filter.limit ?? 50,
+      }),
+    refetchInterval: 10 * 60_000,
+  });
+}
+
+/** What followed one kind of signal in the past, on each market. */
+export function useSignalRecords(type: string) {
+  return useQuery({
+    queryKey: ["signals", "records", type],
+    queryFn: () => orNull(() => getJson<SignalRecords>(`/signals/track-records/${type}`)),
   });
 }
 

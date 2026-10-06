@@ -4123,6 +4123,10 @@
       },
       "SignalRecordsOut": {
         "properties": {
+          "in_feed": {
+            "title": "In Feed",
+            "type": "boolean"
+          },
           "records": {
             "items": {
               "$ref": "#/components/schemas/SignalRecordOut"
@@ -4133,6 +4137,9 @@
           "tested": {
             "title": "Tested",
             "type": "integer"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
           },
           "type": {
             "enum": [
@@ -4147,7 +4154,9 @@
         "required": [
           "type",
           "records",
-          "tested"
+          "tested",
+          "in_feed",
+          "trust"
         ],
         "title": "SignalRecordsOut",
         "type": "object"
