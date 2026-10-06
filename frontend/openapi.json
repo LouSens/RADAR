@@ -1821,6 +1821,30 @@
         "title": "LiveNews",
         "type": "object"
       },
+      "LookupIn": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "stock",
+              "crypto"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ticker": {
+            "maxLength": 12,
+            "minLength": 1,
+            "title": "Ticker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker",
+          "kind"
+        ],
+        "title": "LookupIn",
+        "type": "object"
+      },
       "Move": {
         "description": "How far one holding sits from its target share of the whole.",
         "properties": {
@@ -3010,6 +3034,87 @@
         "title": "RegimeStateOut",
         "type": "object"
       },
+      "RegularBuying": {
+        "description": "A plan of regular purchases run through simulated futures. Nothing is saved.",
+        "properties": {
+          "first_day": {
+            "title": "First Day",
+            "type": "string"
+          },
+          "last_day": {
+            "title": "Last Day",
+            "type": "string"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "result": {
+            "$ref": "#/components/schemas/Result"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "weights",
+          "names",
+          "first_day",
+          "last_day",
+          "result",
+          "trust"
+        ],
+        "title": "RegularBuying",
+        "type": "object"
+      },
+      "RegularBuyingIn": {
+        "properties": {
+          "amount": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1000000000.0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "every": {
+            "maximum": 63.0,
+            "minimum": 1.0,
+            "title": "Every",
+            "type": "integer"
+          },
+          "purchases": {
+            "maximum": 504.0,
+            "minimum": 2.0,
+            "title": "Purchases",
+            "type": "integer"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "maxProperties": 20,
+            "title": "Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "weights",
+          "amount",
+          "every",
+          "purchases"
+        ],
+        "title": "RegularBuyingIn",
+        "type": "object"
+      },
       "Relationships": {
         "properties": {
           "as_of": {
@@ -3133,6 +3238,104 @@
           "short"
         ],
         "title": "Report",
+        "type": "object"
+      },
+      "Result": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "at_once": {
+            "$ref": "#/components/schemas/Spread"
+          },
+          "block": {
+            "title": "Block",
+            "type": "integer"
+          },
+          "coverage": {
+            "items": {
+              "$ref": "#/components/schemas/Coverage"
+            },
+            "title": "Coverage",
+            "type": "array"
+          },
+          "every": {
+            "title": "Every",
+            "type": "integer"
+          },
+          "fan": {
+            "additionalProperties": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Fan",
+            "type": "object"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "n_paths": {
+            "title": "N Paths",
+            "type": "integer"
+          },
+          "paid_in": {
+            "title": "Paid In",
+            "type": "number"
+          },
+          "paid_in_path": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Paid In Path",
+            "type": "array"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/Spread"
+          },
+          "plan_ahead": {
+            "title": "Plan Ahead",
+            "type": "number"
+          },
+          "purchases": {
+            "title": "Purchases",
+            "type": "integer"
+          },
+          "separate_periods": {
+            "title": "Separate Periods",
+            "type": "integer"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_version",
+          "n_paths",
+          "block",
+          "n_days",
+          "separate_periods",
+          "amount",
+          "every",
+          "purchases",
+          "sessions",
+          "paid_in",
+          "plan",
+          "at_once",
+          "plan_ahead",
+          "fan",
+          "paid_in_path",
+          "coverage"
+        ],
+        "title": "Result",
         "type": "object"
       },
       "RiskHorizonOut": {
@@ -4162,6 +4365,28 @@
           "episodes"
         ],
         "title": "Spillover",
+        "type": "object"
+      },
+      "Spread": {
+        "description": "Where one way of investing ended up, in money.",
+        "properties": {
+          "below_paid_in": {
+            "title": "Below Paid In",
+            "type": "number"
+          },
+          "quantiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Quantiles",
+            "type": "object"
+          }
+        },
+        "required": [
+          "quantiles",
+          "below_paid_in"
+        ],
+        "title": "Spread",
         "type": "object"
       },
       "StressPart": {
@@ -6691,6 +6916,84 @@
           }
         },
         "summary": "Import Portfolio"
+      }
+    },
+    "/api/v1/portfolio/lookup": {
+      "post": {
+        "description": "Find an asset by its ticker so it can be tried in a mix. One RADAR has not seen\nbefore is looked up in the market data and its price history fetched, which can\ntake up to a minute. This only reads prices.",
+        "operationId": "post_lookup_api_v1_portfolio_lookup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LookupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportedAsset"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Lookup"
+      }
+    },
+    "/api/v1/portfolio/regular-buying": {
+      "post": {
+        "description": "Where a plan of regular purchases might end up, against putting the same total in\nat once. A simulation only: nothing is saved and nothing is bought.",
+        "operationId": "post_regular_buying_api_v1_portfolio_regular_buying_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegularBuyingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegularBuying"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Regular Buying"
       }
     },
     "/api/v1/portfolio/tags": {

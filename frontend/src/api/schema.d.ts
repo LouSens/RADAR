@@ -391,6 +391,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Lookup
+         * @description Find an asset by its ticker so it can be tried in a mix. One RADAR has not seen
+         *     before is looked up in the market data and its price history fetched, which can
+         *     take up to a minute. This only reads prices.
+         */
+        post: operations["post_lookup_api_v1_portfolio_lookup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio/regular-buying": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Regular Buying
+         * @description Where a plan of regular purchases might end up, against putting the same total in
+         *     at once. A simulation only: nothing is saved and nothing is bought.
+         */
+        post: operations["post_regular_buying_api_v1_portfolio_regular_buying_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/tags": {
         parameters: {
             query?: never;
@@ -1242,6 +1285,16 @@ export interface components {
              */
             type: "news";
         };
+        /** LookupIn */
+        LookupIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "stock" | "crypto";
+            /** Ticker */
+            ticker: string;
+        };
         /**
          * Move
          * @description How far one holding sits from its target share of the whole.
@@ -1673,6 +1726,39 @@ export interface components {
             /** Typical Duration Days */
             typical_duration_days: number;
         };
+        /**
+         * RegularBuying
+         * @description A plan of regular purchases run through simulated futures. Nothing is saved.
+         */
+        RegularBuying: {
+            /** First Day */
+            first_day: string;
+            /** Last Day */
+            last_day: string;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            result: components["schemas"]["Result"];
+            trust: components["schemas"]["Trust"];
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+        };
+        /** RegularBuyingIn */
+        RegularBuyingIn: {
+            /** Amount */
+            amount: number;
+            /** Every */
+            every: number;
+            /** Purchases */
+            purchases: number;
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+        };
         /** Relationships */
         Relationships: {
             /**
@@ -1712,6 +1798,41 @@ export interface components {
             sleeves: components["schemas"]["Sleeve"][];
             /** Total Return */
             total_return: number;
+        };
+        /** Result */
+        Result: {
+            /** Amount */
+            amount: number;
+            at_once: components["schemas"]["Spread"];
+            /** Block */
+            block: number;
+            /** Coverage */
+            coverage: components["schemas"]["Coverage"][];
+            /** Every */
+            every: number;
+            /** Fan */
+            fan: {
+                [key: string]: number[];
+            };
+            /** Model Version */
+            model_version: string;
+            /** N Days */
+            n_days: number;
+            /** N Paths */
+            n_paths: number;
+            /** Paid In */
+            paid_in: number;
+            /** Paid In Path */
+            paid_in_path: number[];
+            plan: components["schemas"]["Spread"];
+            /** Plan Ahead */
+            plan_ahead: number;
+            /** Purchases */
+            purchases: number;
+            /** Separate Periods */
+            separate_periods: number;
+            /** Sessions */
+            sessions: number;
         };
         /** RiskHorizonOut */
         RiskHorizonOut: {
@@ -2092,6 +2213,18 @@ export interface components {
              * @enum {string}
              */
             verdict: "spills over" | "no measurable spillover" | "not enough episodes";
+        };
+        /**
+         * Spread
+         * @description Where one way of investing ended up, in money.
+         */
+        Spread: {
+            /** Below Paid In */
+            below_paid_in: number;
+            /** Quantiles */
+            quantiles: {
+                [key: string]: number;
+            };
         };
         /** StressPart */
         StressPart: {
@@ -3292,6 +3425,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_lookup_api_v1_portfolio_lookup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportedAsset"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_regular_buying_api_v1_portfolio_regular_buying_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegularBuyingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegularBuying"];
                 };
             };
             /** @description Validation Error */

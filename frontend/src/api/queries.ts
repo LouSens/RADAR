@@ -25,6 +25,8 @@ import {
   type Timeframe,
   type TrackRecord,
   type Volatility,
+  type RegularBuying,
+  type SupportedAsset,
   type WhatIf,
 } from "./client";
 
@@ -274,6 +276,30 @@ export function useSetTags() {
   });
 }
 
+/** A plan of regular purchases run through simulated futures. Saves nothing. */
+export function useRegularBuying() {
+  return useMutation({
+    mutationFn: (input: {
+      weights: Record<string, number>;
+      amount: number;
+      every: number;
+      purchases: number;
+    }) => postJson<RegularBuying>("/portfolio/regular-buying", input),
+  });
+}
+
+/** Find an asset by its ticker; a new one has its price history fetched first. */
+export function useLookup() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { ticker: string; kind: "stock" | "crypto" }) =>
+      postJson<SupportedAsset>("/portfolio/lookup", input),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["portfolio"], exact: true });
+    },
+  });
+}
+
 /** The risk figures for a mix being tried. Saves nothing. */
 export function useWhatIf() {
   return useMutation({
@@ -281,4 +307,3 @@ export function useWhatIf() {
       postJson<WhatIf>("/portfolio/what-if", input),
   });
 }
-

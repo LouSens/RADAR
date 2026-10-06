@@ -5,6 +5,7 @@ export const PORTFOLIO_SECTIONS = [
   { path: "holdings", label: "Holdings" },
   { path: "try", label: "Try a mix" },
   { path: "mixes", label: "Compare mixes" },
+  { path: "buying", label: "Regular buying" },
   { path: "sources", label: "Risk by holding" },
   { path: "limits", label: "Possible loss" },
   { path: "ahead", label: "Value range ahead" },

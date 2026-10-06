@@ -496,6 +496,8 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `POST /portfolio/binance` | replace the holdings with what the Binance account holds; reads only |
 | `PUT /portfolio/target` | choose, change, or clear the target the portfolio is compared with: a risk level and split, or a mix of the user's own (`docs/DECISIONS.md` 048, 049) |
 | `POST /portfolio/what-if` | the risk figures for a mix the user is trying; saves nothing |
+| `POST /portfolio/regular-buying` | where a plan of regular purchases might end up, against putting the same total in at once; saves nothing (`docs/DECISIONS.md` 053) |
+| `POST /portfolio/lookup` | find an asset by ticker so it can be tried; one not seen before has its price history fetched |
 | `PUT /portfolio/tags` | tag holdings as core or satellite, or clear a tag; kept by symbol (`docs/DECISIONS.md` 050) |
 | `GET /relationships` | correlations, risk transmission, and weekend gaps (`docs/DECISIONS.md` 039) |
 | `GET /assets/{symbol}/drivers` | F8 macro drivers for one market |

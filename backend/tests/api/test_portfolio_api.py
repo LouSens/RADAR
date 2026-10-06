@@ -573,3 +573,78 @@ def test_tags_are_kept_by_symbol_through_a_new_read_of_holdings(
         "USD": None,
     }
     assert client.put("/api/v1/portfolio/tags", json={"tags": {"GLD": "main"}}).status_code == 422
+
+
+def test_a_plan_of_regular_purchases_is_simulated_without_saving_anything(
+    client: TestClient, session: Session
+) -> None:
+    body = {"weights": {"BTC/USD": 1, "GLD": 3}, "amount": 100, "every": 21, "purchases": 6}
+    response = client.post("/api/v1/portfolio/regular-buying", json=body)
+    assert response.status_code == 200
+    found = response.json()
+    # Shares are scaled to add up to the whole.
+    assert found["weights"] == {"BTC/USD": 0.25, "GLD": 0.75}
+    assert found["names"]["GLD"] == "Gold"
+    result = found["result"]
+    assert (result["paid_in"], result["sessions"], result["purchases"]) == (600, 126, 6)
+    low, middle, high = (result["plan"]["quantiles"][q] for q in ("0.05", "0.5", "0.95"))
+    assert 0 < low < middle < high
+    assert 0 <= result["plan_ahead"] <= 1
+    assert result["separate_periods"] == result["n_days"] // 126
+    eighty = next(c for c in result["coverage"] if c["level"] == 0.8)
+    assert (
+        f"{eighty['inside']} of {eighty['n']} past 126-session forecasts"
+        in found["trust"]["reason"]
+    )
+    # Nothing was stored: there is still no portfolio.
+    assert job.stored_holdings(session) == (None, [])
+
+    def refused(change: dict[str, object]) -> str:
+        answer = client.post("/api/v1/portfolio/regular-buying", json={**body, **change})
+        assert answer.status_code == 422
+        return str(answer.json()["detail"])
+
+    assert "no price history for DOGE" in refused({"weights": {"DOGE": 1}})
+    assert "at least one asset" in refused({"weights": {"GLD": 0}})
+    assert "negative" in refused({"weights": {"GLD": -1}})
+    # Solana has sixty sessions: too few to draw futures from.
+    too_new = refused({"weights": {"SOL/USD": 1, "GLD": 1}})
+    assert "Too new to simulate: Solana (59 days of prices). 250 days are needed" in too_new
+    assert "longer than 504" in refused({"every": 63, "purchases": 9})
+    refused({"amount": 0})
+
+
+def test_a_ticker_is_looked_up_so_it_can_be_tried(client: TestClient) -> None:
+    # One RADAR already stores needs no lookup, with or without the pair's suffix.
+    known = client.post("/api/v1/portfolio/lookup", json={"ticker": "btc", "kind": "crypto"})
+    assert known.json() == {"symbol": "BTC/USD", "name": "Bitcoin", "asset_class": "crypto"}
+    assert (
+        client.post(
+            "/api/v1/portfolio/lookup", json={"ticker": "BTC/USD", "kind": "crypto"}
+        ).json()["symbol"]
+        == "BTC/USD"
+    )
+    # The same letters as a stock are a different thing, and without a key cannot be found.
+    missing = client.post("/api/v1/portfolio/lookup", json={"ticker": "BTC", "kind": "stock"})
+    assert missing.status_code == 409
+
+    asked: list[list[str]] = []
+
+    def finder(universe: Universe, names: list[str]) -> list[Any]:
+        asked.append(names)
+        if names == ["EQ_NVDA"]:
+            return [UNIVERSE.get("GLD").model_copy(update={"symbol": "NVDA", "name": "NVDA"})]
+        return []
+
+    client.app.dependency_overrides[get_asset_finder] = lambda: finder  # type: ignore[attr-defined]
+    found = client.post("/api/v1/portfolio/lookup", json={"ticker": " nvda ", "kind": "stock"})
+    assert found.json() == {"symbol": "NVDA", "name": "NVDA", "asset_class": "stock"}
+    nothing = client.post("/api/v1/portfolio/lookup", json={"ticker": "ZZZZ", "kind": "crypto"})
+    assert nothing.status_code == 404
+    assert "No crypto prices were found for ZZZZ" in nothing.json()["detail"]
+    # A stock is asked for by its prefixed name, a coin by its bare one.
+    assert asked == [["EQ_NVDA"], ["ZZZZ"]]
+    assert (
+        client.post("/api/v1/portfolio/lookup", json={"ticker": "X", "kind": "bond"}).status_code
+        == 422
+    )
