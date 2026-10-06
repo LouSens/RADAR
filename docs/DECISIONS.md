@@ -1196,3 +1196,37 @@ holding as missing for any episode before it existed.
 **On the real account:** `PURR` (208 sessions) is 1.1% of the money and about 11% of the
 risk; the one-day 95% limit rose from 0.50% to 0.55%.
 
+
+## 044. Phase 5C: does news predict swings? The rule, written before the test (2026-10-07)
+
+Third part of decision 035, and the item owed since decision 028. The earlier study
+(decision 030) found news tone does not lead price direction. The open question is
+whether the amount and tone of news says anything about the size of the swings that
+follow, beyond what recent swings already say.
+
+**What is compared.** For each primary market and each forecast horizon, walk-forward
+from the first day news is used for that market:
+
+| Model | Inputs |
+|---|---|
+| HAR (the one shown today) | swings of the last day, week, and month |
+| HAR with news | the same, plus the four news inputs below |
+| Trees | the HAR inputs |
+| Trees with news | the HAR inputs plus the four news inputs |
+
+News inputs for day `t`, all from articles published by the end of day `t`: the log of
+one plus the article count; that figure minus its own average over the previous 22
+days (a surprise in volume); the day's average tone; and the size of that tone
+regardless of sign. A day with no articles has a count of zero and a neutral tone.
+
+**Rule, fixed now.** News is said to improve the forecast for a market and horizon only
+if a model with news has a lower QLIKE than the same model without news, and the
+Diebold-Mariano p-value for that difference is below 0.05 after Benjamini-Hochberg
+correction across every market, horizon, and model pair tested. This is stricter than
+the spec's F9 line, which has no correction, because twelve comparisons are made at
+once. If the rule is met anywhere, wiring news into the forecast that is shown is a
+separate step for the user to approve. If it is met nowhere, the screen says news added
+nothing measurable, and no further variants are tried on this data.
+
+**Not tuned.** The inputs, the 22-day window, the refit interval, and the tree settings
+are set before the run and are not changed after seeing results.
