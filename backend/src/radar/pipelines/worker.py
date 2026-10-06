@@ -17,6 +17,7 @@ from radar.db.session import make_engine
 from radar.ingest.live import BarHandler, LiveConsumer, NewsHandler, StreamSpec, Syncer, notify
 from radar.ingest.raw_store import RawStore
 from radar.logging import get_logger
+from radar.pipelines import brief as brief_job
 from radar.pipelines import discover
 from radar.pipelines import event_study as event_study_job
 from radar.pipelines import portfolio as portfolio_job
@@ -216,6 +217,16 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=55,
             id="signals",
+            max_instances=1,
+            coalesce=True,
+        )
+        # The brief: rewritten each hour from whatever is stored, so the day's brief
+        # follows the day. It only reads results, so it is cheap.
+        scheduler.add_job(
+            partial(brief_job.run, engine, universe),
+            "cron",
+            minute=58,
+            id="brief",
             max_instances=1,
             coalesce=True,
         )

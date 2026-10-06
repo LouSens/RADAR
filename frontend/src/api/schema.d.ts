@@ -284,6 +284,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/briefs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Brief
+         * @description The most recent brief: a short paragraph per market and one for the portfolio,
+         *     each sentence naming the page that holds its evidence.
+         */
+        get: operations["get_latest_brief_api_v1_briefs_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -696,6 +717,30 @@ export interface components {
             symbol: string;
             /** Timeframe */
             timeframe: string;
+        };
+        /** BriefItem */
+        BriefItem: {
+            /** Name */
+            name: string;
+            /** Sentences */
+            sentences: components["schemas"]["Sentence"][];
+            /** Symbol */
+            symbol: string;
+        };
+        /** BriefOut */
+        BriefOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Items */
+            items: components["schemas"]["BriefItem"][];
         };
         /** CalibrationOut */
         CalibrationOut: {
@@ -1923,6 +1968,16 @@ export interface components {
             model_version: string;
             /** Symbol */
             symbol: string;
+        };
+        /** Sentence */
+        Sentence: {
+            /**
+             * Section
+             * @enum {string}
+             */
+            section: "state" | "outlook" | "swings" | "risk" | "signals" | "portfolio" | "target";
+            /** Text */
+            text: string;
         };
         /**
          * SentimentAccuracyOut
@@ -3288,6 +3343,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_brief_api_v1_briefs_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BriefOut"];
                 };
             };
         };
