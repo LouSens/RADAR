@@ -20,7 +20,8 @@ export const MIX_NAMES: Record<MixName, string> = {
 };
 
 /** The level the mix's movement falls in right now, using current conditions when known. */
-export function levelNow(plan: PortfolioPlan): string {
+export function levelNow(plan: PortfolioPlan | null | undefined): string {
+  if (!plan) return "unplaced";
   const ratio = plan.now_ratio ?? plan.ratio;
   return ratio < 0.5 ? "low" : ratio < 1 ? "moderate" : ratio < 2 ? "high" : "very high";
 }
@@ -75,4 +76,55 @@ export function signalText(signal: Signal, name: (symbol: string) => string): st
     default:
       return `${(signal.value * 100).toFixed(0)}% of your money is in a market that is turbulent right now (${names}).`;
   }
+}
+
+export interface Preset {
+  key: string;
+  label: string;
+  /** Each holding's share of the whole; cash is what is left. */
+  shares: Record<string, number>;
+}
+
+/**
+ * Starting points for trying a mix: the portfolio as it is, each risk level applied to
+ * today's proportions, and each other way of splitting the holdings at today's cash share.
+ */
+export function presets(analysis: PortfolioAnalysis): Preset[] {
+  const risky = analysis.positions.filter((p) => p.symbol !== "USD");
+  const invested = risky.reduce((sum, p) => sum + p.weight, 0);
+  const out: Preset[] = [
+    {
+      key: "now",
+      label: "My mix now",
+      shares: Object.fromEntries(risky.map((p) => [p.symbol, p.weight])),
+    },
+  ];
+  const plan = analysis.plan;
+  if (!plan || invested <= 0) return out;
+  for (const level of plan.levels) {
+    if (!level.reachable) continue;
+    out.push({
+      key: level.level,
+      label: `${level.level.charAt(0).toUpperCase()}${level.level.slice(1)} risk`,
+      shares: Object.fromEntries(
+        risky.map((p) => [p.symbol, (p.weight / invested) * (1 - level.cash_share)]),
+      ),
+    });
+  }
+  for (const mix of plan.mixes) {
+    if (mix.method === "current") continue;
+    const weights = mix.weights_now as Record<string, number>;
+    // Holdings outside the comparison (a short price record) keep their share.
+    const kept = risky.filter((p) => !(p.symbol in weights));
+    const room = invested - kept.reduce((sum, p) => sum + p.weight, 0);
+    out.push({
+      key: mix.method,
+      label: MIX_NAMES[mix.method as MixName],
+      shares: Object.fromEntries([
+        ...kept.map((p) => [p.symbol, p.weight] as const),
+        ...Object.entries(weights).map(([symbol, w]) => [symbol, w * room] as const),
+      ]),
+    });
+  }
+  return out;
 }

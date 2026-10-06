@@ -1403,3 +1403,34 @@ fall of 9.4%; the smallest-movement split moved 0.19% with a deepest fall of 4.5
 **Not built yet (part 2).** Portfolio simulation by block bootstrap; the core and
 satellite report. The detail tabs elsewhere still need the visual pass.
 
+## 049. Try a mix: the user sets the shares, the app shows the risk (2026-10-07)
+
+The first version of decision 048 opened with three cards, low, moderate, and high,
+each with its cash share already worked out. The user asked for the opposite: let them
+pick the share of each asset themselves and then show the typical day, the possible
+loss, and the movement against US stocks. That is the better design, because the levels
+were the app's choice and the mix is the user's.
+
+**What replaced the cards.** The tab is now "Try a mix" (`/portfolio/try`):
+
+- One row per holding with a slider and a number box for its share of the whole; cash
+  is whatever is left. Any asset RADAR stores prices for can be added, held or not.
+- "Work out the risk" runs the mix through the same analysis as the saved holdings, at
+  the portfolio's current value, and shows it beside the portfolio as it is: movement
+  against US stocks with its level, a typical day in money, the loss on about 1 day in
+  20 and 1 day in 100, the deepest fall on record, and each holding's share of the risk.
+- The levels and the other splits are kept only as starting points: one click fills the
+  rows, and every number can then be changed.
+- A tried mix can be set as the target. A target is now either a level with a split, or
+  a mix of the user's own with a share for every holding. A mix has no band, so only
+  drift and turbulent markets are flagged against it.
+
+**How it is computed.** `POST /portfolio/what-if` turns the shares into quantities at
+the latest stored prices and calls the same `analyse` function, without the driver
+regression. Nothing is saved. It is the second place a calculation runs inside a
+request (the first is saving holdings, decision 037); it takes about a second. Shares
+must be between 0 and 100%, add up to at most 100%, and name assets with stored prices.
+
+**Kept from decision 048.** The Compare mixes tab, the backtest, the signals, and the
+distance from the target are unchanged.
+

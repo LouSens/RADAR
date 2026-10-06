@@ -4,16 +4,15 @@ import { formatChange, formatCount, formatMoney, formatShare } from "../lib/form
 import {
   LEVEL_WORDS,
   MIX_NAMES,
-  dayLimit,
-  levelMix,
   levelNow,
   signalText,
   type LevelName,
   type MixName,
 } from "../lib/plan";
 import { formatDate } from "../lib/time";
+import { MixBuilder } from "./MixBuilder";
 import { Caption, Message, Panel } from "./ui";
-import { Bars, Legend, Spark, StackBar, holdingColour, levelColour, type Part } from "./viz";
+import { Bars, Legend, Spark, StackBar, holdingColour, type Part } from "./viz";
 
 const CASH = "USD";
 
@@ -40,109 +39,32 @@ function parts(
     }));
 }
 
-/** What a low, moderate, and high level would each look like with these holdings. */
+/** Try any mix of your own, then see how far the portfolio is from the one you chose. */
 export function LevelsPanel({ analysis }: { analysis: PortfolioAnalysis }) {
   const plan = analysis.plan;
-  const setTarget = useSetTarget();
-  if (!plan)
-    return <Message>There is not enough history to place this mix on the scale yet.</Message>;
   const name = nameOf(analysis);
-  const order = [...analysis.xray.symbols, CASH];
+  const target = plan?.target;
   const here = levelNow(plan);
-  const target = plan.target;
-  const split = target?.split ?? "current";
-  const limit = dayLimit(analysis);
+  const chosen = target
+    ? target.weights
+      ? "a mix of your own"
+      : `${target.level ? LEVEL_WORDS[target.level] : ""} risk`
+    : undefined;
 
   return (
     <Panel
-      id="levels"
-      title="Risk levels"
+      id="try"
+      title="Try a mix"
       trust={analysis.trust.xray}
       headline={
-        target
-          ? `Your target is ${LEVEL_WORDS[target.level]}; today the mix reads ${here}`
-          : `Today the mix reads ${here}. No target chosen`
+        chosen
+          ? `Your target is ${chosen}; today your mix reads ${here}`
+          : `Today your mix reads ${here}. Try another to compare`
       }
     >
-      <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-3">
-        {plan.levels.map((level) => {
-          const mix = levelMix(analysis, plan, level);
-          const chosen = target?.level === level.level;
-          const scale = plan.ratio > 0 ? level.ratio / plan.ratio : 0;
-          return (
-            <section
-              key={level.level}
-              aria-label={`${LEVEL_WORDS[level.level]} risk`}
-              className="well flex flex-col gap-3 p-4"
-              style={chosen ? { borderColor: levelColour(level.level) } : undefined}
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <h3
-                  className="text-lg font-semibold capitalize tracking-tight"
-                  style={{ color: levelColour(level.level) }}
-                >
-                  {LEVEL_WORDS[level.level]}
-                </h3>
-                <span className="text-xs text-muted">
-                  {chosen ? "Your target" : here === level.level ? "You are here" : ""}
-                </span>
-              </div>
-              <p className="num text-sm text-muted">
-                {level.ratio.toFixed(2)}× the daily movement of US stocks
-              </p>
-              <StackBar
-                parts={parts(mix, order, name)}
-                label={`${LEVEL_WORDS[level.level]} risk mix`}
-              />
-              <dl className="num grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <dt className="text-muted">Cash</dt>
-                <dd className="text-right font-medium">
-                  {formatShare(level.cash_share, 0)} ·{" "}
-                  {formatMoney(level.cash_share * analysis.covered_value)}
-                </dd>
-                <dt className="text-muted">Typical day</dt>
-                <dd className="text-right font-medium">
-                  ±{formatMoney(analysis.covered_value * analysis.xray.daily_volatility * scale)}
-                </dd>
-                {limit !== undefined && (
-                  <>
-                    <dt className="text-muted">Loss on 1 day in 20</dt>
-                    <dd className="text-right font-medium">
-                      {formatMoney(analysis.covered_value * limit * scale)}
-                    </dd>
-                  </>
-                )}
-              </dl>
-              {!level.reachable && (
-                <p className="text-xs leading-relaxed text-alert">
-                  These holdings swing {plan.invested_ratio.toFixed(2)}× even with no cash, so this
-                  level is out of reach without borrowing.
-                </p>
-              )}
-              <button
-                type="button"
-                className={`btn mt-auto ${chosen ? "btn-ghost" : "btn-primary"} disabled:opacity-50`}
-                disabled={setTarget.isPending}
-                onClick={() => setTarget.mutate({ level: chosen ? null : level.level, split })}
-              >
-                {chosen ? "Clear target" : "Set as my target"}
-              </button>
-            </section>
-          );
-        })}
-      </div>
-      <Legend parts={parts(Object.fromEntries(order.map((s) => [s, 1])), order, name)} />
-      {setTarget.isError && <p className="text-sm text-alert">{setTarget.error.message}</p>}
-      <Caption>
-        Each card keeps your holdings in the proportions of the split in use (
-        {MIX_NAMES[split].toLowerCase()}) and changes only the share kept in cash, which is what
-        sets how much the whole mix moves. The levels are this app&apos;s own convention: low is
-        under half the daily movement of US stocks, moderate up to the same, high up to double.
-        Money figures scale today&apos;s typical day and loss limit to each level. Setting a target
-        changes nothing at Binance; it only sets what your portfolio is compared with.
-      </Caption>
+      <MixBuilder analysis={analysis} />
 
-      {target && plan.target_plan && (
+      {plan && target && plan.moves.length > 0 && (
         <div className="border-t border-line pt-5">
           <h3 className="text-sm font-semibold tracking-tight">Distance from your target</h3>
           {plan.signals.length === 0 ? (
@@ -212,6 +134,8 @@ export function MixesPanel({ analysis }: { analysis: PortfolioAnalysis }) {
     return <Message>Comparing mixes needs at least two holdings with a long price record.</Message>;
   }
   const name = nameOf(analysis);
+  // A split is applied to a risk level; a mix of the user's own already fixes every share.
+  const level = plan.target?.weights ? undefined : (plan.target?.level ?? undefined);
   const steadiest = plan.mixes.reduce((a, b) => (b.daily_volatility < a.daily_volatility ? b : a));
   const sample = plan.mixes[0];
   const order = Object.keys(sample?.weights_now ?? {});
@@ -295,11 +219,8 @@ export function MixesPanel({ analysis }: { analysis: PortfolioAnalysis }) {
               <button
                 type="button"
                 className="btn btn-ghost disabled:opacity-50"
-                disabled={!plan.target || inUse || setTarget.isPending}
-                onClick={() =>
-                  plan.target &&
-                  setTarget.mutate({ level: plan.target.level, split: mix.method as MixName })
-                }
+                disabled={!level || inUse || setTarget.isPending}
+                onClick={() => level && setTarget.mutate({ level, split: mix.method as MixName })}
               >
                 {inUse ? "In use" : "Use for my target"}
               </button>
@@ -308,8 +229,11 @@ export function MixesPanel({ analysis }: { analysis: PortfolioAnalysis }) {
         })}
       </ul>
       <Legend parts={parts(Object.fromEntries(order.map((s) => [s, 1])), order, name)} />
-      {!plan.target && (
-        <p className="text-sm text-muted">Choose a risk level first to use one of these splits.</p>
+      {!level && (
+        <p className="text-sm text-muted">
+          These splits apply to a risk-level target. To try one with your own numbers, start from it
+          on the Try a mix tab.
+        </p>
       )}
       <Caption>
         Each mix splits the same holdings a different way and keeps today&apos;s share in cash.
@@ -337,7 +261,7 @@ export function targetSummary(plan: PortfolioPlan | null | undefined): {
   if (!plan?.target) {
     return {
       figure: "No target yet",
-      note: "Choose a risk level to compare against",
+      note: "Try a mix and set it as your target",
       level: undefined,
     };
   }
@@ -345,7 +269,10 @@ export function targetSummary(plan: PortfolioPlan | null | undefined): {
   return {
     figure:
       flags === 0 ? "On target" : flags === 1 ? "1 thing has moved" : `${flags} things have moved`,
-    note: `Target: ${LEVEL_WORDS[plan.target.level]} risk`,
-    level: plan.target.level,
+    note:
+      plan.target.weights || !plan.target.level
+        ? "Target: a mix of your own"
+        : `Target: ${LEVEL_WORDS[plan.target.level]} risk`,
+    level: plan.target.level ?? undefined,
   };
 }

@@ -43,6 +43,7 @@ export type Drivers = components["schemas"]["Drivers"];
 export type DriverWindow = components["schemas"]["WindowResult"];
 export type NewsTest = components["schemas"]["NewsTest"];
 export type PortfolioPlan = components["schemas"]["Plan"];
+export type WhatIf = components["schemas"]["WhatIf"];
 export type Timeframe = "1Hour" | "1Day";
 
 const BASE = "/api/v1";

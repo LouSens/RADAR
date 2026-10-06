@@ -3793,16 +3793,23 @@
         "type": "object"
       },
       "Target": {
-        "description": "What the user chose to hold the portfolio against.",
+        "description": "What the user chose to hold the portfolio against: either a risk level with a way\nof splitting the holdings, or a mix of their own with a share for every holding.",
         "properties": {
           "level": {
-            "enum": [
-              "low",
-              "moderate",
-              "high"
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Level",
-            "type": "string"
+            "title": "Level"
           },
           "set_at": {
             "anyOf": [
@@ -3827,11 +3834,22 @@
             ],
             "title": "Split",
             "type": "string"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights"
           }
         },
-        "required": [
-          "level"
-        ],
         "title": "Target",
         "type": "object"
       },
@@ -3864,11 +3882,23 @@
             ],
             "title": "Split",
             "type": "string"
+          },
+          "weights": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "maxProperties": 50,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weights"
           }
         },
-        "required": [
-          "level"
-        ],
         "title": "TargetIn",
         "type": "object"
       },
@@ -4588,6 +4618,140 @@
           "bitcoin_move"
         ],
         "title": "WeekendNow",
+        "type": "object"
+      },
+      "WhatIf": {
+        "description": "The risk of a mix the user is trying out, at the portfolio's current value.",
+        "properties": {
+          "daily_volatility": {
+            "title": "Daily Volatility",
+            "type": "number"
+          },
+          "deepest_fall": {
+            "title": "Deepest Fall",
+            "type": "number"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "limit_95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit 95"
+          },
+          "limit_99": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit 99"
+          },
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          },
+          "risk_shares": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Risk Shares",
+            "type": "object"
+          },
+          "unmeasured": {
+            "items": {
+              "$ref": "#/components/schemas/Unmeasured"
+            },
+            "title": "Unmeasured",
+            "type": "array"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Weights",
+            "type": "object"
+          },
+          "young": {
+            "items": {
+              "$ref": "#/components/schemas/Unmeasured"
+            },
+            "title": "Young",
+            "type": "array"
+          }
+        },
+        "required": [
+          "value",
+          "weights",
+          "names",
+          "daily_volatility",
+          "ratio",
+          "level",
+          "limit_95",
+          "limit_99",
+          "deepest_fall",
+          "risk_shares",
+          "n_days",
+          "young",
+          "unmeasured"
+        ],
+        "title": "WhatIf",
+        "type": "object"
+      },
+      "WhatIfIn": {
+        "properties": {
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "maxProperties": 50,
+            "title": "Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "weights"
+        ],
+        "title": "WhatIfIn",
         "type": "object"
       },
       "WindowResult": {
@@ -5754,6 +5918,45 @@
           }
         },
         "summary": "Put Target"
+      }
+    },
+    "/api/v1/portfolio/what-if": {
+      "post": {
+        "description": "The risk figures for a mix the user is trying out. Nothing is saved or traded.",
+        "operationId": "post_what_if_api_v1_portfolio_what_if_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatIfIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatIf"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post What If"
       }
     },
     "/api/v1/relationships": {

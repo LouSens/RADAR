@@ -3,7 +3,7 @@ import type { Position, StressResult, Xray } from "../api/client";
 export const PORTFOLIO_SECTIONS = [
   { path: "", label: "Summary" },
   { path: "holdings", label: "Holdings" },
-  { path: "levels", label: "Risk levels" },
+  { path: "try", label: "Try a mix" },
   { path: "mixes", label: "Compare mixes" },
   { path: "sources", label: "Risk by holding" },
   { path: "limits", label: "Possible loss" },

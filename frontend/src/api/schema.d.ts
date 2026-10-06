@@ -414,6 +414,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/what-if": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post What If
+         * @description The risk figures for a mix the user is trying out. Nothing is saved or traded.
+         */
+        post: operations["post_what_if_api_v1_portfolio_what_if_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/relationships": {
         parameters: {
             query?: never;
@@ -1868,14 +1888,12 @@ export interface components {
         };
         /**
          * Target
-         * @description What the user chose to hold the portfolio against.
+         * @description What the user chose to hold the portfolio against: either a risk level with a way
+         *     of splitting the holdings, or a mix of their own with a share for every holding.
          */
         Target: {
-            /**
-             * Level
-             * @enum {string}
-             */
-            level: "low" | "moderate" | "high";
+            /** Level */
+            level?: ("low" | "moderate" | "high") | null;
             /** Set At */
             set_at?: string | null;
             /**
@@ -1884,17 +1902,25 @@ export interface components {
              * @enum {string}
              */
             split: "current" | "equal" | "min_variance" | "equal_risk" | "hierarchical";
+            /** Weights */
+            weights?: {
+                [key: string]: number;
+            } | null;
         };
         /** TargetIn */
         TargetIn: {
             /** Level */
-            level: ("low" | "moderate" | "high") | null;
+            level?: ("low" | "moderate" | "high") | null;
             /**
              * Split
              * @default current
              * @enum {string}
              */
             split: "current" | "equal" | "min_variance" | "equal_risk" | "hierarchical";
+            /** Weights */
+            weights?: {
+                [key: string]: number;
+            } | null;
         };
         /** TopicSummary */
         TopicSummary: {
@@ -2157,6 +2183,51 @@ export interface components {
              * Format: date-time
              */
             since: string;
+        };
+        /**
+         * WhatIf
+         * @description The risk of a mix the user is trying out, at the portfolio's current value.
+         */
+        WhatIf: {
+            /** Daily Volatility */
+            daily_volatility: number;
+            /** Deepest Fall */
+            deepest_fall: number;
+            /** Level */
+            level: string | null;
+            /** Limit 95 */
+            limit_95: number | null;
+            /** Limit 99 */
+            limit_99: number | null;
+            /** N Days */
+            n_days: number;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            /** Ratio */
+            ratio: number | null;
+            /** Risk Shares */
+            risk_shares: {
+                [key: string]: number;
+            };
+            /** Unmeasured */
+            unmeasured: components["schemas"]["Unmeasured"][];
+            /** Value */
+            value: number;
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+            /** Young */
+            young: components["schemas"]["Unmeasured"][];
+        };
+        /** WhatIfIn */
+        WhatIfIn: {
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
         };
         /** WindowResult */
         WindowResult: {
@@ -2905,6 +2976,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Analysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_what_if_api_v1_portfolio_what_if_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatIfIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatIf"];
                 };
             };
             /** @description Validation Error */

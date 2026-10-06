@@ -10,9 +10,34 @@ function must<T>(value: T | null | undefined): T {
   return value;
 }
 
-const state = vi.hoisted(() => ({ mutate: undefined as unknown }));
+const state = vi.hoisted(() => ({
+  mutate: undefined as unknown,
+  tryMix: undefined as unknown,
+  tried: undefined as unknown,
+}));
 vi.mock("../api/queries", () => ({
-  useSetTarget: () => ({ mutate: state.mutate, isPending: false, isError: false }),
+  useSetTarget: () => ({
+    mutate: state.mutate,
+    isPending: false,
+    isError: false,
+    isSuccess: false,
+  }),
+  useWhatIf: () => ({
+    mutate: state.tryMix,
+    data: state.tried,
+    isPending: false,
+    isError: false,
+  }),
+  usePortfolio: () => ({
+    data: {
+      supported: [
+        { symbol: "BTC/USD", name: "Bitcoin", asset_class: "crypto" },
+        { symbol: "SPY", name: "US stocks (S&P 500)", asset_class: "stock" },
+        { symbol: "GLD", name: "Gold", asset_class: "stock" },
+        { symbol: "USD", name: "Cash (US dollars)", asset_class: "cash" },
+      ],
+    },
+  }),
 }));
 
 const level = (
@@ -70,6 +95,7 @@ const PLAN: PortfolioPlan = {
 
 const ANALYSIS = {
   covered_value: 400,
+  risk_level: { label: "low", ratio: 0.4, references: { SPY: 1 } },
   value: 400,
   positions: [
     { symbol: "BTC/USD", name: "Bitcoin", weight: 0.1 },
@@ -79,6 +105,7 @@ const ANALYSIS = {
   xray: {
     symbols: ["BTC/USD", "SPY"],
     daily_volatility: 0.004,
+    deepest_fall: { depth: -0.11, peak_day: "2021-11-09", trough_day: "2022-11-09" },
     holdings: [
       { symbol: "BTC/USD", weight: 0.1, daily_volatility: 0.036, risk_share: 0.7 },
       { symbol: "SPY", weight: 0.15, daily_volatility: 0.011, risk_share: 0.3 },
@@ -135,44 +162,104 @@ const withTarget = (extra: Partial<PortfolioPlan>): PortfolioAnalysis =>
     },
   }) as unknown as PortfolioAnalysis;
 
+const TRIED = {
+  value: 400,
+  weights: { "BTC/USD": 0.2, SPY: 0.3, USD: 0.5 },
+  names: { "BTC/USD": "Bitcoin", SPY: "US stocks (S&P 500)", USD: "Cash (US dollars)" },
+  daily_volatility: 0.008,
+  ratio: 0.8,
+  level: "moderate",
+  limit_95: 0.012,
+  limit_99: 0.02,
+  deepest_fall: -0.22,
+  risk_shares: { "BTC/USD": 0.7, SPY: 0.3, USD: 0 },
+  n_days: 1443,
+  young: [],
+  unmeasured: [],
+};
+
 describe("LevelsPanel", () => {
   beforeEach(() => {
     state.mutate = vi.fn();
+    state.tryMix = vi.fn();
+    state.tried = undefined;
   });
   afterEach(cleanup);
 
-  it("shows what each level would look like with these holdings, in money", () => {
+  it("starts from the portfolio as it is and lets every share be changed", () => {
     render(<LevelsPanel analysis={ANALYSIS} />);
-    expect(screen.getByText("Today the mix reads low. No target chosen")).toBeVisible();
-    for (const name of ["low risk", "moderate risk", "high risk"]) {
-      expect(screen.getByRole("region", { name })).toBeVisible();
-    }
-    expect(screen.getByText("You are here")).toBeVisible();
-    // Moderate: 53% in cash of $400; today's ±$1.60 day scaled by 0.75 / 0.4.
-    expect(screen.getByText("53% · $212.00")).toBeVisible();
-    expect(screen.getByText("±$3.00")).toBeVisible();
-    expect(screen.getByText("$4.50")).toBeVisible(); // the 1-in-20 loss, scaled the same way
-    expect(
-      screen.getByRole("img", {
-        name: /^moderate risk mix: Bitcoin 19%, US stocks 28%, Cash 53%$/,
-      }),
-    ).toBeVisible();
+    expect(screen.getByText("Today your mix reads low. Try another to compare")).toBeVisible();
+    expect(screen.getByLabelText("Bitcoin share, percent")).toHaveValue(10);
+    expect(screen.getByLabelText("US stocks share, percent")).toHaveValue(15);
+    expect(screen.getByText("75% · $300.00")).toBeVisible(); // cash is what is left
+
+    fireEvent.change(screen.getByLabelText("Bitcoin share, percent"), { target: { value: "30" } });
+    expect(screen.getByText("55% · $220.00")).toBeVisible();
+    expect(screen.getByLabelText("Bitcoin share, slider")).toHaveValue("30");
+
+    fireEvent.click(screen.getByRole("button", { name: "Work out the risk" }));
+    expect(state.tryMix).toHaveBeenCalledWith({ weights: { "BTC/USD": 0.3, SPY: 0.15 } });
   });
 
-  it("sets a level as the target, and clears it from the chosen card", () => {
-    const { rerender } = render(<LevelsPanel analysis={ANALYSIS} />);
-    fireEvent.click(must(screen.getAllByRole("button", { name: "Set as my target" })[1]));
-    expect(state.mutate).toHaveBeenCalledWith({ level: "moderate", split: "current" });
+  it("refuses shares that add up to more than everything", () => {
+    render(<LevelsPanel analysis={ANALYSIS} />);
+    fireEvent.change(screen.getByLabelText("Bitcoin share, percent"), { target: { value: "95" } });
+    expect(screen.getByText("10% too much")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Work out the risk" })).toBeDisabled();
+  });
 
-    rerender(<LevelsPanel analysis={withTarget({})} />);
-    expect(screen.getByText("Your target is moderate; today the mix reads low")).toBeVisible();
-    expect(screen.getByText("Your target")).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Clear target" }));
-    expect(state.mutate).toHaveBeenLastCalledWith({ level: null, split: "current" });
+  it("offers the levels and the other splits as starting points, not as decisions", () => {
+    render(<LevelsPanel analysis={ANALYSIS} />);
+    fireEvent.click(screen.getByRole("button", { name: "Moderate risk" }));
+    // 47% invested, in today's proportions of 10 to 15.
+    expect(screen.getByLabelText("Bitcoin share, percent")).toHaveValue(18.8);
+    expect(screen.getByLabelText("US stocks share, percent")).toHaveValue(28.2);
+    expect(state.tryMix).toHaveBeenCalledWith({ weights: { "BTC/USD": 0.188, SPY: 0.282 } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Smallest movement" }));
+    // Today's 25% invested, split 10 to 90.
+    expect(screen.getByLabelText("Bitcoin share, percent")).toHaveValue(2.5);
+    expect(screen.getByLabelText("US stocks share, percent")).toHaveValue(22.5);
+  });
+
+  it("lets an asset not held yet be added, and one be removed", () => {
+    render(<LevelsPanel analysis={ANALYSIS} />);
+    fireEvent.change(screen.getByLabelText("Add another asset"), { target: { value: "GLD" } });
+    expect(screen.getByLabelText("Gold share, percent")).toHaveValue(0);
+    fireEvent.click(screen.getByRole("button", { name: "Remove Bitcoin" }));
+    expect(screen.queryByLabelText("Bitcoin share, percent")).toBeNull();
+    expect(screen.getByText("85% · $340.00")).toBeVisible();
+  });
+
+  it("sets the tried mix beside the portfolio as it is, in money", () => {
+    state.tried = TRIED;
+    const { container } = render(<LevelsPanel analysis={ANALYSIS} />);
+    expect(screen.getByText("moderate")).toBeVisible();
+    expect(screen.getByText(/0.80× the daily movement of US stocks/)).toBeVisible();
+    expect(screen.getByText("0.40×")).toBeVisible(); // now
+    expect(screen.getByText("0.80×")).toBeVisible(); // this mix
+    expect(screen.getByText("±$1.60")).toBeVisible();
+    expect(screen.getByText("±$3.20")).toBeVisible();
+    expect(screen.getByText("$2.40")).toBeVisible(); // today's loss on 1 day in 20
+    expect(screen.getByText("$4.80")).toBeVisible();
+    expect(screen.getByText("$8.00")).toBeVisible(); // 1 day in 100
+    expect(screen.getByText("-22.0%")).toBeVisible();
+    expect(
+      screen.getByRole("img", {
+        name: /^Share of the risk in this mix: Bitcoin 70%, US stocks 30%$/,
+      }),
+    ).toBeVisible();
+    expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
+
+    fireEvent.click(screen.getByRole("button", { name: "Set this mix as my target" }));
+    expect(state.mutate).toHaveBeenCalledWith({ weights: TRIED.weights });
   });
 
   it("states the distance from the target without saying what to do about it", () => {
     const { container } = render(<LevelsPanel analysis={withTarget({})} />);
+    expect(
+      screen.getByText("Your target is moderate risk; today your mix reads low"),
+    ).toBeVisible();
     expect(screen.getByText("Distance from your target")).toBeVisible();
     expect(
       screen.getByText(
@@ -188,25 +275,33 @@ describe("LevelsPanel", () => {
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 
-  it("says so when nothing has moved, and when a level is out of reach", () => {
-    const calm = withTarget({ signals: [], moves: [], in_band: true });
-    const { rerender } = render(<LevelsPanel analysis={calm} />);
-    expect(screen.getByText("Within your target on every measure.")).toBeVisible();
-
-    const stuck = {
-      ...ANALYSIS,
-      plan: {
-        ...PLAN,
-        invested_ratio: 0.9,
-        levels: [
-          PLAN.levels[0],
-          PLAN.levels[1],
-          { ...PLAN.levels[2], reachable: false, cash_share: 0, ratio: 0.9 },
-        ],
+  it("names a mix of the user's own as the target, and says when nothing has moved", () => {
+    const own = withTarget({
+      target: {
+        level: null,
+        split: "current",
+        weights: { "BTC/USD": 0.1, SPY: 0.15 },
+        set_at: null,
       },
-    } as unknown as PortfolioAnalysis;
-    rerender(<LevelsPanel analysis={stuck} />);
-    expect(screen.getByText(/out of reach without borrowing/)).toBeVisible();
+      target_plan: null,
+      signals: [],
+      moves: [
+        {
+          symbol: "BTC/USD",
+          current_weight: 0.1,
+          target_weight: 0.1,
+          change_value: 0,
+          drifted: false,
+        },
+      ],
+      in_band: null,
+    });
+    render(<LevelsPanel analysis={own} />);
+    expect(
+      screen.getByText("Your target is a mix of your own; today your mix reads low"),
+    ).toBeVisible();
+    expect(screen.getByText("Within your target on every measure.")).toBeVisible();
+    expect(targetSummary(own.plan).note).toBe("Target: a mix of your own");
   });
 });
 
@@ -226,7 +321,7 @@ describe("MixesPanel", () => {
     ).toBeVisible();
     expect(screen.getByText("Bitcoin 10% · US stocks 90%")).toBeVisible();
     // Without a target there is nothing to apply a split to.
-    expect(screen.getByText("Choose a risk level first to use one of these splits.")).toBeVisible();
+    expect(screen.getByText(/These splits apply to a risk-level target/)).toBeVisible();
     for (const button of screen.getAllByRole("button", { name: /Use for my target|In use/ })) {
       expect(button).toBeDisabled();
     }

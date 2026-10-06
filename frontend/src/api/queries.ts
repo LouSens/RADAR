@@ -25,6 +25,7 @@ import {
   type Timeframe,
   type TrackRecord,
   type Volatility,
+  type WhatIf,
 } from "./client";
 
 export function useAssets() {
@@ -249,10 +250,22 @@ export function useNewsTest(slug: string | undefined) {
 export function useSetTarget() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { level: "low" | "moderate" | "high" | null; split?: string }) =>
-      putJson<PortfolioAnalysis>("/portfolio/target", input),
+    mutationFn: (
+      input:
+        | { level: "low" | "moderate" | "high" | null; split?: string }
+        | { weights: Record<string, number> },
+    ) => putJson<PortfolioAnalysis>("/portfolio/target", input),
     onSuccess: (analysis) => {
       client.setQueryData(["portfolio", "analysis"], analysis);
     },
   });
 }
+
+/** The risk figures for a mix being tried. Saves nothing. */
+export function useWhatIf() {
+  return useMutation({
+    mutationFn: (input: { weights: Record<string, number> }) =>
+      postJson<WhatIf>("/portfolio/what-if", input),
+  });
+}
+

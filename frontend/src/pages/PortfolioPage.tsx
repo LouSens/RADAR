@@ -186,7 +186,7 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
         {analysis.plan && (
           <Tile
             label="Against your target"
-            to={`${BASE}/levels`}
+            to={`${BASE}/try`}
             figure={targetSummary(analysis.plan).figure}
             note={targetSummary(analysis.plan).note}
           >
@@ -822,7 +822,7 @@ export function PortfolioPage() {
       )}
 
       {portfolio.data &&
-        section === "levels" &&
+        section === "try" &&
         (analysis ? <LevelsPanel analysis={analysis} /> : needsHoldings)}
       {portfolio.data &&
         section === "mixes" &&
