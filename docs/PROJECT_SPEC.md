@@ -428,7 +428,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 - **X-ray:** weights, volatility per asset, each asset's percentage contribution to portfolio variance, correlation matrix, and historical maximum drawdown of the current mix.
 - **Allocations compared:** current, equal weight, minimum variance, equal risk contribution, and hierarchical risk parity. Long-only, with a configurable maximum weight per asset.
 - **Evaluation:** walk-forward backtest with monthly rebalancing and a configurable cost per trade (start at 10 basis points). Report volatility, maximum drawdown, and turnover for each allocation. Returns are shown but labelled as history, not expectation.
-- **Portfolio simulation:** block bootstrap of joint daily returns to preserve cross-asset dependence; same outputs as F2 at 30 and 90 days.
+- **Portfolio simulation:** block bootstrap of joint daily returns to preserve cross-asset dependence; same outputs as F2 at 30 and 90 days. Past ranges are checked walk-forward against what followed, beside a constant-volatility baseline (`docs/DECISIONS.md` 050).
 - **Core and satellite report:** the user tags holdings as core or satellite. Show the satellite sleeve's share of weight against its share of risk, and its historical contribution to return.
 - **Rebalancing signal:** when any weight drifts more than a configurable threshold (start at 5 percentage points) from the user's chosen target, list the trades that would restore it.
 - **Stress scenarios:** the current holdings are replayed through named historical episodes (the list is configuration; start with the February to March 2020 crash, May 2021, May to June 2022, November 2022, and the 2022 rise in interest rates). Shows the portfolio's loss, the worst day, and each holding's contribution. An asset with no data for an episode is named as missing and the result is marked partial; nothing is substituted.
@@ -495,6 +495,7 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `POST /portfolio/binance` | replace the holdings with what the Binance account holds; reads only |
 | `PUT /portfolio/target` | choose, change, or clear the target the portfolio is compared with: a risk level and split, or a mix of the user's own (`docs/DECISIONS.md` 048, 049) |
 | `POST /portfolio/what-if` | the risk figures for a mix the user is trying; saves nothing |
+| `PUT /portfolio/tags` | tag holdings as core or satellite, or clear a tag; kept by symbol (`docs/DECISIONS.md` 050) |
 | `GET /relationships` | correlations, risk transmission, and weekend gaps (`docs/DECISIONS.md` 039) |
 | `GET /assets/{symbol}/drivers` | F8 macro drivers for one market |
 | `GET /assets/{symbol}/news-and-swings` | whether news improved the F9 forecast (`docs/DECISIONS.md` 044, 045) |

@@ -948,6 +948,11 @@ export interface components {
         };
         /** Horizon */
         Horizon: {
+            /**
+             * Baseline Coverage
+             * @default []
+             */
+            baseline_coverage: components["schemas"]["Coverage"][];
             /** Chances */
             chances: components["schemas"]["Chance"][];
             /** Coverage */

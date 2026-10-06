@@ -1434,3 +1434,60 @@ must be between 0 and 100%, add up to at most 100%, and name assets with stored 
 **Kept from decision 048.** The Compare mixes tab, the backtest, the signals, and the
 distance from the target are unchanged.
 
+## 050. Phase 5D part 2: the value range ahead, and core and satellite (2026-10-06)
+
+**The value range ahead** (`models/portfolio_simulation.py`, tab `/portfolio/ahead`).
+
+- A block bootstrap of the holdings' joint daily returns, as the spec asks: each of
+  10,000 paths joins runs of 10 consecutive real sessions, taken for every holding at
+  once. The run length is a judgement; the notebook shows the result barely moves from
+  1 to 20.
+- Holdings are left alone along a path (nothing is rebalanced) and cash does not move.
+  The range is for the covered value, 30 and 90 sessions ahead, with the same outputs
+  as a single market's range: quantiles, intervals, a fan, and the average deepest dip.
+- Instead of one fixed question, the chance of ending past, and of touching, every
+  change from -50% to +50% is stored, so the user picks the size on a slider
+  (decision 049).
+- Newer holdings (30 to 249 sessions) are not in the joint record. As with the loss
+  limits (decision 043), the paths are drawn from the established holdings and widened
+  by the same factor. The screen says so.
+- **Checked walk-forward.** A range is drawn at past dates from earlier sessions only
+  and compared with what followed; dates are a full horizon apart so no two outcomes
+  share a day. A test proves that rewriting later days changes no earlier range.
+- **Grade** (`grade_simulation`): on the 80% range at 30 sessions. Solid when the count
+  that held lies in the middle 95% of what a true 80% range would give, on at least 30
+  cases; fair when in line on fewer; rough when off.
+
+**What the check found, and what was done about it.** On the example mix in the
+notebook the 80% range held in 35 of 39 past 30-session cases. A constant-volatility
+bell curve checked on the same dates held equally often with the same width, and so did
+drawing single days. So the bootstrap is calibrated but **not measurably more accurate
+than the baseline**. It is kept because the spec asks for it, it does not assume a bell
+curve, and it gives path figures a formula for the end point does not. The baseline's
+record is stored (`baseline_coverage`) and stated on the screen beside the
+simulation's, with the words "not because its range has proved more accurate".
+
+**Core and satellite** (`models/sleeves.py`, tab `/portfolio/sleeves`).
+
+- Tags are now kept by symbol on the portfolio (`portfolios.tags`, migration 0016), so
+  a new read from an exchange keeps them. `PUT /portfolio/tags` sets or clears tags
+  and recomputes the analysis. Tags from a CSV are merged in.
+- The report shows, for core, satellite, untagged, and cash: share of the money, share
+  of the risk (from the X-ray, so they sum to 100%), and what the group added to return
+  over the last 250 sessions.
+- "Added to return" is each holding's weight today times the sum of its daily simple
+  returns, so the parts add up to the mix's return at fixed weights. It describes
+  today's mix in past markets, not what the user earned: RADAR does not know purchase
+  dates, and the screen says that. A holding with fewer sessions is added up over what
+  it has and is named.
+- There is no report until something is tagged; the tab then shows only the tag
+  controls. It takes the X-ray's grade.
+
+**Notebook.** `notebooks/07_portfolio.ipynb` documents the whole portfolio layer (risk
+model, risk by holding, the splits and their backtest, the range and its check, core
+and satellite) on a made-up example portfolio, so that no real holdings are committed.
+New model work is documented in a notebook from here on, at the user's request.
+
+**Not done.** The simulation is not run for a mix being tried (`what-if`), to keep that
+request quick.
+

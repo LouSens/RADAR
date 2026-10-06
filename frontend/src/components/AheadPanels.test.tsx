@@ -33,6 +33,7 @@ const horizon = (steps: number, low: number, high: number) => ({
     { level: 0.8, n: 39, inside: 35 },
     { level: 0.95, n: 39, inside: 38 },
   ],
+  baseline_coverage: [{ level: 0.8, n: 39, inside: 34 }],
 });
 const days = (n: number, end: number) => Array.from({ length: n }, (_, i) => 400 + (end * i) / n);
 
@@ -100,6 +101,10 @@ describe("RangeAheadPanel", () => {
     // A newer holding is not drawn from, and the screen says what was done about it.
     expect(container.textContent).toMatch(/Purr has too short a record.*widened by 11%/);
     expect(container.textContent).toMatch(/not what will happen/);
+    // The simpler method's record is stated beside the simulation's, with no claim to beat it.
+    expect(container.textContent).toMatch(
+      /its 80% range held 34 of 39, against 35 of 39 for the simulation.*not because its range has proved more accurate/,
+    );
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 

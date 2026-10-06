@@ -236,6 +236,7 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/portfolio/import",
         "/api/v1/portfolio/binance",
         "/api/v1/portfolio/target",
+        "/api/v1/portfolio/tags",
         "/api/v1/portfolio/what-if",
         "/api/v1/portfolio/analysis",
         "/api/v1/health",
@@ -262,10 +263,12 @@ def test_api_has_no_trading_routes(client: TestClient) -> None:
         "/api/v1/portfolio/binance",
         "/api/v1/portfolio/what-if",
     ]
-    # The second PUT sets the risk level the portfolio is compared with. It trades nothing.
+    # The second PUT sets what the portfolio is compared with and the third tags holdings
+    # as core or satellite. Neither trades anything.
     assert [p for p, item in routes.items() if "put" in item] == [
         "/api/v1/portfolio",
         "/api/v1/portfolio/target",
+        "/api/v1/portfolio/tags",
     ]
     assert not [p for p, item in routes.items() if "delete" in item or "patch" in item]
 

@@ -111,6 +111,28 @@ def test_a_past_range_uses_only_the_days_before_it() -> None:
     assert first.realised == pytest.approx(sim.realised_change(returns[250:280], weights))
 
 
+def test_the_baseline_is_checked_on_the_same_dates_from_earlier_days_only() -> None:
+    returns, weights = joint(), np.array([0.6, 0.2])
+    ours = sim.backtest(returns, weights, 30, n_paths=300)
+    plain = sim.normal_backtest(returns, weights, 30)
+    assert [r.origin for r in plain] == [r.origin for r in ours]
+    assert [r.realised for r in plain] == [r.realised for r in ours]
+    changed = returns.copy()
+    changed[400:] = 0.5
+    again = sim.normal_backtest(changed, weights, 30)
+    assert all(a.bounds == b.bounds for a, b in zip(plain, again, strict=True) if a.origin <= 400)
+    # On days that really are independent draws from one bell curve, its ranges hold
+    # about as often as stated.
+    rng = np.random.default_rng(11)
+    steady = rng.normal(0.0003, 0.01, (3000, 2))
+    eighty = next(
+        c
+        for c in sim.coverage(sim.normal_backtest(steady, np.array([0.5, 0.5]), 30))
+        if c.level == 0.8
+    )
+    assert 0.68 <= eighty.inside / eighty.n <= 0.92
+
+
 def test_coverage_counts_ranges_that_held() -> None:
     def record(realised: float) -> sim.PastRange:
         return sim.PastRange(
@@ -146,6 +168,9 @@ def test_the_stored_result_is_in_money_and_needs_enough_history() -> None:
         assert quantiles == sorted(quantiles)
         assert horizon.summary.expected_worst_drawdown < 0
         assert [c.level for c in horizon.coverage] == list(simulator.INTERVALS)
+        assert [(c.level, c.n) for c in horizon.baseline_coverage] == [
+            (c.level, c.n) for c in horizon.coverage
+        ]
     # Further ahead, a wider range.
     assert width(quarter) > width(month)
     # The fan starts at today's value and runs to the longest horizon.

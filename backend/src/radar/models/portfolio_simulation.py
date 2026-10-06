@@ -149,6 +149,31 @@ def backtest(
     return records
 
 
+def normal_backtest(
+    returns: np.ndarray, weights: np.ndarray, horizon: int, *, min_days: int = MIN_DAYS
+) -> list[PastRange]:
+    """The baseline, checked at the same origins: a random walk whose steady drift and
+    spread are those of the mix's daily returns on the days before each origin."""
+    daily = np.log1p(np.expm1(returns) @ weights)
+    records = []
+    for origin in range(min_days, len(returns) - horizon + 1, horizon):
+        bounds = {}
+        for level in simulator.INTERVALS:
+            tail = (1.0 - level) / 2.0
+            low, high = simulator.gbm_quantiles(
+                daily[:origin], horizon, np.array([tail, 1.0 - tail])
+            )
+            bounds[f"{level:g}"] = (float(low), float(high))
+        records.append(
+            PastRange(
+                origin=origin,
+                realised=realised_change(returns[origin : origin + horizon], weights),
+                bounds=bounds,
+            )
+        )
+    return records
+
+
 def coverage(records: list[PastRange]) -> list[Coverage]:
     result = []
     for level in simulator.INTERVALS:
@@ -163,6 +188,8 @@ class Horizon(BaseModel):
     summary: simulator.HorizonSummary
     chances: list[Chance]
     coverage: list[Coverage]
+    # The same check for a plain constant-volatility random walk, to compare with.
+    baseline_coverage: list[Coverage] = []
 
 
 class Simulation(BaseModel):
@@ -206,6 +233,7 @@ def run(
                 summary=simulator.summarise(cumulative, steps, value),
                 chances=chances(cumulative, steps),
                 coverage=coverage(backtest(returns, weights, steps, block=block, seed=seed)),
+                baseline_coverage=coverage(normal_backtest(returns, weights, steps)),
             )
             for steps in HORIZONS
         ],

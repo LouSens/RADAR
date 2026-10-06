@@ -209,6 +209,8 @@ export function RangeAheadPanel({ analysis }: { analysis: PortfolioAnalysis }) {
   const summary = horizon.summary;
   const eighty = summary.intervals.find((i) => i.level === 0.8);
   const middle = (summary.quantiles as Record<string, number>)["0.5"] ?? simulation.start_value;
+  const plain = horizon.baseline_coverage?.find((c) => c.level === 0.8);
+  const ours = horizon.coverage.find((c) => c.level === 0.8);
   const young = analysis.young.map((item) => item.name.split(" (")[0]).join(", ");
   return (
     <Panel
@@ -258,6 +260,8 @@ export function RangeAheadPanel({ analysis }: { analysis: PortfolioAnalysis }) {
         To check the method, a range was drawn at past dates from earlier days only and compared
         with what followed; the dates are a full {summary.steps} days apart so that no two share a
         day.
+        {plain &&
+          ` A much simpler method, a bell curve with the average and spread of the earlier days, was checked on the same dates: its 80% range held ${plain.inside} of ${plain.n}, against ${ours?.inside ?? 0} of ${ours?.n ?? 0} for the simulation. The simulation is shown because it does not assume a bell curve and also gives the dips on the way, not because its range has proved more accurate.`}
       </Caption>
     </Panel>
   );

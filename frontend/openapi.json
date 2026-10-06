@@ -1214,6 +1214,14 @@
       },
       "Horizon": {
         "properties": {
+          "baseline_coverage": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Coverage"
+            },
+            "title": "Baseline Coverage",
+            "type": "array"
+          },
           "chances": {
             "items": {
               "$ref": "#/components/schemas/Chance"
