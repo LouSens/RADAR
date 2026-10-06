@@ -1894,3 +1894,43 @@ detail (limits scaled for newer holdings) moved to the Possible loss page.
 **Not changed.** Section names (decision 042), what each page contains, and every
 figure. The detail pages still have the density they had; only their frame changed.
 
+## 058. First use, loading, and motion, by how people actually decide (2026-10-06)
+
+The user asked for careful wording, natural motion, skeleton loading in place of
+waiting, nothing on screen that is not meant for the person using it, and five
+principles applied: smart defaults, the goal-gradient effect, reciprocity, the
+endowment effect, and attention to conversion and retention. Each is used only where it
+is true to the product; none is used to push.
+
+| Principle | What it became |
+|---|---|
+| Smart defaults, no blank forms | A newcomer is offered "Try an example" (four made-up holdings, saved in one tap) beside "Add my own". Regular buying opens on a result for a starting plan, not on an empty form. Try a mix already starts from the holdings |
+| Fewer choices at once | One next step is offered at a time (below); Home has four shortcuts and five places (decision 057) |
+| Goal gradient | "Make RADAR yours": five steps as a segmented bar with the count done and one "Continue" button to the next. It disappears when all are done and has a "Not now" |
+| Endowed progress | The first step, "3 markets tracked for you", is true for everyone, so nobody starts at zero |
+| Reciprocity | Markets, the brief, the calendar, signals, and a full example portfolio are given before anything is asked for. There is no sign-up and no gate |
+| Endowment | It is "your portfolio", "your risk", "your target"; an example is labelled "Example portfolio" with "Use my own" beside it, so what is theirs is never confused with what is not |
+| Retention | Reasons to come back are real ones: what is coming up, the day's brief, new signals |
+
+**Honesty kept.** A step counts as done only when it is: holdings saved, the risk page
+opened while something is held, a target stored. The example is offered only when
+nothing is held, so it can never replace real holdings, and it is marked as made up.
+No urgency, no countdowns, no advice.
+
+**Loading.** Tapping always goes somewhere at once. While figures load, the page shows
+its own shape in soft moving grey (`components/Skeleton.tsx`) where it used to say
+"Loading…" or show a dash; assistive technology is told it is loading.
+
+**Motion.** A page's parts arrive one after another over about a third of a second;
+buttons and cards give under a tap. All of it is off under reduced motion.
+
+**Removed from view.** The System link and "All systems normal" are shown only when
+something needs attention; the page stays reachable at its address.
+
+**Wording.** Buttons say what the person gets: "See where it could end up", "Show the
+risk", "Continue", "Try an example", "Add my own". Home's shortcuts are "Your risk",
+"What's ahead", "Try a mix", "Buy regularly".
+
+**Not measured.** Conversion and retention are named as aims, but RADAR records nothing
+about what people do, so none of this has been tested on real use.
+

@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { Signal, SignalRecord } from "../api/client";
 import { useAssets, useSignalRecords, useSignals } from "../api/queries";
+import { PageSkeleton, Skeleton } from "../components/Skeleton";
 import { SectionMenu, Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented, assetColorVar, shortName } from "../components/ui";
 import { formatCount, formatShare } from "../lib/format";
@@ -138,7 +139,13 @@ function Feed() {
           <Segmented options={markets} value={market} onChange={setMarket} label="Market" />
           <Segmented options={KINDS} value={kind} onChange={setKind} label="Kind of signal" />
         </div>
-        {signals.isPending && <Message>Loading…</Message>}
+        {signals.isPending && (
+          <div role="status" aria-label="Loading" className="flex flex-col gap-4">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        )}
         {signals.isError && <Message>Signals are unavailable right now.</Message>}
         {data && data.signals.length > 0 && (
           <ul className="-my-2 flex flex-col">
@@ -287,7 +294,7 @@ function RecordCard({ record, type }: { record: SignalRecord; type: SignalType }
 function Records({ type }: { type: SignalType }) {
   const query = useSignalRecords(type);
   const data = query.data;
-  if (query.isPending) return <Message>Loading…</Message>;
+  if (query.isPending) return <PageSkeleton />;
   if (!data) return <Message>This track record is unavailable right now.</Message>;
   const findings = data.records.filter(
     (r) => isFinding(r.verdict) || isFinding(r.size_verdict),

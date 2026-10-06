@@ -2,6 +2,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { Calendar } from "../api/client";
 import { useAssets, useCalendar } from "../api/queries";
+import { PageSkeleton } from "../components/Skeleton";
 import { Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, assetColorVar } from "../components/ui";
 import { formatCount, formatShare } from "../lib/format";
@@ -302,7 +303,7 @@ export function CalendarPage() {
         <h1 className="title">Calendar</h1>
       </header>
       <Tabs base={BASE} items={CALENDAR_PAGES} label="Calendar pages" />
-      {query.isPending && <Message>Loading…</Message>}
+      {query.isPending && <PageSkeleton />}
       {query.data === null && <Message>The calendar has not been worked out yet.</Message>}
       {query.isError && <Message>The calendar is unavailable right now.</Message>}
       {query.data &&

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Portfolio, PortfolioAnalysis, RegularBuying } from "../api/client";
 import { useRegularBuying } from "../api/queries";
@@ -240,6 +240,16 @@ export function RegularBuyingPanel({
     });
   }
 
+  // Open on an answer, not on an empty form: run the starting plan once.
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current || !valid) return;
+    started.current = true;
+    run();
+    // Only on arrival: later runs are the user's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <Panel
       id="buying"
@@ -354,7 +364,7 @@ export function RegularBuyingPanel({
             disabled={!valid || simulate.isPending}
             onClick={run}
           >
-            {simulate.isPending ? "Working it out…" : "Run the simulation"}
+            {simulate.isPending ? "Working it out…" : "See where it could end up"}
           </button>
           {valid && (
             <span className="num text-sm text-muted">

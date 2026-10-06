@@ -223,7 +223,7 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
           disabled={over || empty || tryMix.isPending}
           onClick={() => tryMix.mutate({ weights })}
         >
-          {tryMix.isPending ? "Working it out…" : "Work out the risk"}
+          {tryMix.isPending ? "Working it out…" : "Show the risk"}
         </button>
       </div>
       {tryMix.isError && <p className="text-sm text-alert">{tryMix.error.message}</p>}

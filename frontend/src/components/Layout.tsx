@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useStreamStatus } from "../api/live";
 import { useAssets, useHealth } from "../api/queries";
+import { markSeen } from "./GettingStarted";
 import { assetColorVar } from "./ui";
 
 function RadarMark() {
@@ -197,13 +198,13 @@ function Sidebar({
       </nav>
 
       <div className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
-        <NavLink to="/system" className={sideLink} title="System">
-          <SystemIcon good={good} />
-          <span className={hidden}>System</span>
-          <span className="sr-only">
-            : {good ? "all systems normal" : "something needs attention"}
-          </span>
-        </NavLink>
+        {/* Only when something is wrong: otherwise it is of no use to the person using it. */}
+        {!good && (
+          <NavLink to="/system" className={sideLink} title="Something needs attention">
+            <SystemIcon good={good} />
+            <span className={hidden}>Needs attention</span>
+          </NavLink>
+        )}
         {collapsed && canToggle && <CollapseButton collapsed={collapsed} onToggle={onToggle} />}
       </div>
     </aside>
@@ -246,6 +247,7 @@ export function Layout() {
 
   // A new page starts at its top, like any other.
   useEffect(() => {
+    markSeen(pathname);
     if (typeof window.scrollTo === "function") window.scrollTo(0, 0);
   }, [pathname]);
 
@@ -280,17 +282,15 @@ export function Layout() {
           <div key={pathname} className="page-in">
             <Outlet />
           </div>
-          {/* On a phone the tabs hold the markets and the portfolio; the status lives here. */}
-          <Link
-            to="/system"
-            className="mt-12 inline-flex items-center gap-2 text-xs text-muted hover:text-ink md:hidden"
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${good ? "bg-calm" : "bg-alert"}`}
-              aria-hidden="true"
-            />
-            {good ? "All systems normal" : "Something needs attention"}
-          </Link>
+          {!good && (
+            <Link
+              to="/system"
+              className="mt-12 inline-flex items-center gap-2 text-xs text-muted hover:text-ink md:hidden"
+            >
+              <span className="h-2 w-2 rounded-full bg-alert" aria-hidden="true" />
+              Something needs attention
+            </Link>
+          )}
           <p className="mt-4 max-w-[78ch] text-xs leading-relaxed text-faint md:mt-12">
             For information only. Not financial advice; RADAR places no trades.
           </p>

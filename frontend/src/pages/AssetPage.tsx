@@ -10,6 +10,7 @@ import { OutlookPanel } from "../components/OutlookPanel";
 import { RegimePanel } from "../components/RegimePanel";
 import { RiskPanel } from "../components/RiskPanel";
 import { SummaryCard } from "../components/SummaryCard";
+import { PageSkeleton } from "../components/Skeleton";
 import { SectionMenu, Tabs } from "../components/Tabs";
 import { TrackRecordPanel } from "../components/TrackRecordPanel";
 import { VolatilityPanel } from "../components/VolatilityPanel";
@@ -26,7 +27,7 @@ export function AssetPage() {
   const summary = useSummary(asset?.slug).data ?? undefined;
   const trust = summary?.trust;
 
-  if (assets.isPending) return <Message>Loading…</Message>;
+  if (assets.isPending) return <PageSkeleton cards={3} />;
   if (!asset) return <Message>That market could not be found.</Message>;
 
   const price = (value: number | undefined) => (value === undefined ? "–" : formatPrice(value));

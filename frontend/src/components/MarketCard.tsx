@@ -5,6 +5,7 @@ import type { Asset } from "../api/client";
 import { useMarket } from "../api/market";
 import { useSummary } from "../api/queries";
 import { formatPrice } from "../lib/format";
+import { Skeleton } from "./Skeleton";
 import { Change, Sparkline, assetColorVar, shortName } from "./ui";
 import { stateColour } from "./viz";
 
@@ -31,7 +32,11 @@ export function MarketCard({ asset }: { asset: Asset }) {
         <span className="truncate text-[13px] font-medium @2xl:text-sm">{shortName(asset)}</span>
       </span>
       <span className="num mt-2 block truncate text-[1.02rem] font-semibold leading-tight tracking-tight @2xl:text-[1.4rem]">
-        {market.price === undefined ? "–" : formatPrice(market.price)}
+        {market.price === undefined ? (
+          <Skeleton className="h-[1.2em] w-4/5" />
+        ) : (
+          formatPrice(market.price)
+        )}
       </span>
       <Change value={market.sinceClose} className="mt-0.5 block text-xs @2xl:text-sm" />
       <span className="mt-2 block h-8 w-full @2xl:h-11">

@@ -21,6 +21,7 @@ Update this block at the end of every work session.
 - Visual first (decision 040): a first view is tiles and charts built from `components/viz.tsx`, not sentences; long explanations go in `Caption`, which is collapsed. Detail tabs still need this pass
 - Navigation (decision 057): five places only; no tab strips and nothing that scrolls sideways on a phone; a subject's page ends with `SectionMenu`, where every page has a hint of at most 48 characters saying what it answers; every inner page has a way back (`Tabs`); a new section still gets its own address (decision 036). Do not add a sixth place or a new choice on Home without removing one
 - Look (decision 057): one window-wide light in the page's colour (`body::before`, never inside the content column), translucent cards lit from above, colour only for meaning. The user rejected both the heavy floating glass and a flat solid version as bland: minimal, but with character
+- First use and loading (decision 058): never a blank form or a bare "Loading…"; start from a sensible default or an example, show skeletons (`components/Skeleton.tsx`), offer one next step at a time, and keep operator-only things (system status) out of view unless something is wrong. Nudges must stay true: a step is done only when it is
 - On a phone keep cards compact: check every new screen at 375 px wide before calling it done
 - Layout rules (decision 034): inside the page use container variants (`@xl:`, `@4xl:`), not `sm:` or `lg:`; phones have bottom tabs only, no top bar; charts must not pan or zoom into empty time
 - Every new section must use the shared `Panel` and take a trust grade from `analytics/summary.py`
@@ -28,7 +29,7 @@ Update this block at the end of every work session.
 - The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
 - Carried forward: shading the price chart by regime is not built (decision 028)
 - Interface direction is decision 023 as revised by 057: Inter, no developer wording, only show what exists. The user reviews the interface closely and will revisit it
-- Key decisions (`docs/DECISIONS.md` 010 to 057): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 058): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 

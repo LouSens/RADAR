@@ -9,6 +9,7 @@ import { HoldingsEditor } from "../components/HoldingsEditor";
 import { LevelsPanel, MixesPanel, targetSummary } from "../components/PlanPanels";
 import { oddsLabel } from "../components/RiskPanel";
 import { RegularBuyingPanel } from "../components/RegularBuyingPanel";
+import { PageSkeleton } from "../components/Skeleton";
 import { SectionMenu, Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented } from "../components/ui";
 import {
@@ -799,7 +800,7 @@ export function PortfolioPage() {
       </header>
       <Tabs base={BASE} items={PORTFOLIO_SECTIONS} label="Portfolio pages" />
 
-      {portfolio.isPending && <Message>Loading…</Message>}
+      {portfolio.isPending && <PageSkeleton cards={3} />}
       {portfolio.isError && <Message>The portfolio is unavailable right now.</Message>}
 
       {portfolio.data && (section === undefined || section === "") && (

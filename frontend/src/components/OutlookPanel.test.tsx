@@ -132,7 +132,9 @@ describe("OutlookPanel", () => {
 
   it("shows the adjusted 80% range for a week, counted in market sessions", () => {
     render(<OutlookPanel asset={GOLD} />);
-    expect(screen.getByText("80% of simulated outcomes after 5 market sessions")).toBeInTheDocument();
+    expect(
+      screen.getByText("80% of simulated outcomes after 5 market sessions"),
+    ).toBeInTheDocument();
     expect(screen.getByText("$344.00 to $372.00")).toBeInTheDocument();
     expect(screen.getByText(/Ranges shown are adjusted/)).toBeInTheDocument();
     expect(screen.getByText(/not a prediction/)).toBeInTheDocument();
@@ -153,8 +155,12 @@ describe("OutlookPanel", () => {
     render(<OutlookPanel asset={GOLD} />);
     expect(screen.queryByText(/widened as far as it can go/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "1 month" }));
-    expect(screen.getByText("80% of simulated outcomes after 21 market sessions")).toBeInTheDocument();
-    expect(screen.getByText(/The 95% range has been widened as far as it can go/)).toBeInTheDocument();
+    expect(
+      screen.getByText("80% of simulated outcomes after 21 market sessions"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/The 95% range has been widened as far as it can go/),
+    ).toBeInTheDocument();
     // No track record is stored for this period in the fixture, so none is shown.
     expect(screen.queryByText("How past ranges held")).toBeNull();
   });

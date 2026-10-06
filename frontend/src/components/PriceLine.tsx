@@ -5,7 +5,10 @@ export function Freshness({ live, asOf }: { live: boolean; asOf: number | undefi
   if (live) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-calm">
-        <span className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-calm" aria-hidden="true" />
+        <span
+          className="live-dot inline-block h-1.5 w-1.5 rounded-full bg-calm"
+          aria-hidden="true"
+        />
         Live
       </span>
     );

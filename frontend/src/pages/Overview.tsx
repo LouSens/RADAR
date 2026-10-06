@@ -2,11 +2,14 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { useNow } from "../api/market";
-import { useAssets, usePortfolio, usePortfolioAnalysis } from "../api/queries";
+import type { Holding } from "../api/client";
+import { useAssets, usePortfolio, usePortfolioAnalysis, useSavePortfolio } from "../api/queries";
 import { BriefCard } from "../components/BriefCard";
 import { ComingUp } from "../components/ComingUp";
+import { GettingStarted } from "../components/GettingStarted";
 import { LatestSignals } from "../components/LatestSignals";
 import { MarketCard } from "../components/MarketCard";
+import { Skeleton } from "../components/Skeleton";
 import { Message } from "../components/ui";
 import { levelColour } from "../components/viz";
 import { formatMoney } from "../lib/format";
@@ -43,7 +46,7 @@ const ACTIONS = [
   },
   {
     to: "/portfolio/ahead",
-    label: "Range ahead",
+    label: "What's ahead",
     icon: (
       <>
         <path d="M3.5 12h5" />
@@ -64,7 +67,7 @@ const ACTIONS = [
   },
   {
     to: "/portfolio/buying",
-    label: "Regular buying",
+    label: "Buy regularly",
     icon: (
       <>
         <path d="M4.5 19.5V15M9.5 19.5v-7.5M14.5 19.5V9M19.5 19.5v-15" />
@@ -72,6 +75,32 @@ const ACTIONS = [
     ),
   },
 ] as const;
+
+/** A made-up starting portfolio, so a newcomer can try everything before typing anything. */
+const EXAMPLE: Holding[] = [
+  { symbol: "SPY", quantity: 4 },
+  { symbol: "GLD", quantity: 3 },
+  { symbol: "BTC/USD", quantity: 0.02 },
+  { symbol: "USD", quantity: 1500 },
+];
+const EXAMPLE_KEY = "radar.example";
+
+function isExample(): boolean {
+  try {
+    return window.localStorage.getItem(EXAMPLE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markExample(on: boolean) {
+  try {
+    if (on) window.localStorage.setItem(EXAMPLE_KEY, "1");
+    else window.localStorage.removeItem(EXAMPLE_KEY);
+  } catch {
+    // It just will not be remembered.
+  }
+}
 
 /** The first thing on Home: what you have, how risky it is, and what to do with it. */
 function Hero() {
@@ -82,20 +111,53 @@ function Hero() {
   const value = analysis ? formatMoney(analysis.value) : undefined;
   const [whole, cents] = value?.includes(".") ? value.split(".") : [value, undefined];
   const typical = analysis ? analysis.xray.daily_volatility * analysis.covered_value : undefined;
+  const save = useSavePortfolio();
+  const example = isExample() && portfolio?.source === "manual";
 
+  // While the portfolio is on its way, hold its place.
+  if (portfolio === undefined) {
+    return (
+      <section aria-label="Your portfolio" className="flex flex-col gap-3" aria-busy="true">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-12 w-56" />
+        <Skeleton className="h-4 w-44" />
+      </section>
+    );
+  }
+
+  // Nothing held yet: show what RADAR does with one tap, before asking for anything.
   if (empty) {
     return (
       <section aria-label="Your portfolio" className="flex flex-col gap-4">
         <div>
           <p className="label">Your portfolio</p>
-          <p className="display mt-1 text-[2rem] @xl:text-[2.6rem]">Start with what you hold</p>
-          <p className="mt-2 max-w-[46ch] text-sm text-muted">
-            Add your holdings to see where your risk sits and what could happen to it.
+          <p className="display mt-1 text-[2rem] @xl:text-[2.6rem]">See your risk in one tap</p>
+          <p className="mt-2 max-w-[44ch] text-sm text-muted">
+            Start with an example portfolio and explore everything. Swap in your own holdings
+            whenever you like.
           </p>
         </div>
-        <Link to="/portfolio/holdings" className="btn btn-primary press self-start">
-          Add holdings
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="btn btn-primary press disabled:opacity-60"
+            disabled={save.isPending}
+            onClick={() => {
+              markExample(true);
+              save.mutate({ holdings: EXAMPLE });
+            }}
+          >
+            {save.isPending ? "Setting it up…" : "Try an example"}
+          </button>
+          <Link to="/portfolio/holdings" className="btn btn-ghost press">
+            Add my own
+          </Link>
+        </div>
+        {save.isError && (
+          <p className="text-sm text-[var(--alert)]" role="alert">
+            That did not work. Please try again.
+          </p>
+        )}
       </section>
     );
   }
@@ -103,9 +165,9 @@ function Hero() {
   return (
     <section aria-label="Your portfolio" className="flex flex-col gap-5">
       <Link to="/portfolio" className="press block self-start" aria-label="Open your portfolio">
-        <span className="label block">Your portfolio</span>
+        <span className="label block">{example ? "Example portfolio" : "Your portfolio"}</span>
         <span className="num price-xl mt-1.5 block">
-          {whole ?? "–"}
+          {whole ?? <Skeleton className="h-[1em] w-48" />}
           {cents && <span className="text-faint">.{cents}</span>}
         </span>
         <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
@@ -125,6 +187,18 @@ function Hero() {
           )}
         </span>
       </Link>
+      {example && (
+        <p className="-mt-2 text-sm text-muted">
+          These are made-up holdings.{" "}
+          <Link
+            to="/portfolio/holdings"
+            className="font-medium text-ink underline underline-offset-4"
+            onClick={() => markExample(false)}
+          >
+            Use my own
+          </Link>
+        </p>
+      )}
       <nav aria-label="Portfolio shortcuts" className="grid grid-cols-4 gap-2 @xl:max-w-xl">
         {ACTIONS.map((action) => (
           <Link key={action.to} to={action.to} className="action press">
@@ -146,6 +220,8 @@ export function Overview() {
   const assets = useAssets();
   const now = useNow(60_000);
   const primary = assets.data?.filter((a) => a.is_primary) ?? [];
+  const portfolio = usePortfolio();
+  const analysis = usePortfolioAnalysis();
   const today = new Intl.DateTimeFormat("en-GB", {
     weekday: "long",
     day: "numeric",
@@ -161,6 +237,11 @@ export function Overview() {
       </header>
 
       <Hero />
+      <GettingStarted
+        portfolio={portfolio.data}
+        analysis={analysis.data}
+        markets={primary.length}
+      />
 
       {assets.isError && <Message>Markets are unavailable right now.</Message>}
 
