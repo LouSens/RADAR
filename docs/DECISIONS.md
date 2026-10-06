@@ -1325,3 +1325,19 @@ user's agreement like the others. If it is added, flexible savings would be take
 it and the `LD` balances ignored, so that nothing is counted twice. Until then the
 Holdings tab shows the $37 as not found, and it is in none of the risk figures.
 
+## 047. Binance: flexible savings read directly; the gap is closed (2026-10-07)
+
+The user agreed on 2026-10-07 to one more reading endpoint,
+`GET api.binance.com/sapi/v1/simple-earn/flexible/position`. The client's list is now
+eight GET endpoints and the one POST of decision 038.
+
+**Counted once.** Flexible savings are taken from this read. The copies Binance shows in
+the spot wallet under `LD` names are then skipped. If the direct read is refused, the
+`LD` copies are used instead, as before. A test covers both paths and checks that the
+same holding is never counted twice.
+
+**Result on the real account.** Cash went from $269.04 to $306.24, which is Binance's
+Earn wallet total to the cent. The earlier shortfall of about $37 was flexible savings
+that Binance does not mirror into the spot wallet. RADAR's total now matches Binance's
+within the small difference that comes from valuing at the last market close.
+

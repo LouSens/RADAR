@@ -52,7 +52,11 @@ FUTURES = [
 
 
 def account(
-    requests: list[httpx.Request], *, margin_status: int = 200, spot_status: int = 200
+    requests: list[httpx.Request],
+    *,
+    margin_status: int = 200,
+    spot_status: int = 200,
+    flexible_status: int = 200,
 ) -> httpx.MockTransport:
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
@@ -66,6 +70,19 @@ def account(
         if path == "/sapi/v1/asset/get-funding-asset":
             return httpx.Response(
                 200, json=[{"asset": "SPYB", "free": "3", "locked": "0", "freeze": "1"}]
+            )
+        if path == "/sapi/v1/simple-earn/flexible/position":
+            if flexible_status != 200:
+                return httpx.Response(flexible_status, json={})
+            return httpx.Response(
+                200,
+                json={
+                    "rows": [
+                        {"asset": "ETH", "totalAmount": "2.00000000"},
+                        {"asset": "USDT", "totalAmount": "80"},
+                    ],
+                    "total": 2,
+                },
             )
         if path == "/sapi/v1/simple-earn/locked/position":
             return httpx.Response(200, json={"rows": [{"asset": "USDC", "amount": "1000"}]})
@@ -97,9 +114,10 @@ def test_it_reads_balances_and_nets_them_with_futures() -> None:
     assert reading.holdings.source == "binance"
     assert [(h.symbol, round(h.quantity, 8)) for h in reading.holdings.holdings] == [
         ("BTC/USD", 0.3),  # 0.5 held, 0.2 sold short in futures
-        ("ETH/USD", 2.5),  # 2 lent out through savings, 0.5 in margin
+        ("ETH/USD", 2.5),  # 2 in flexible savings (its spot copy is skipped), 0.5 in margin
         ("SPY", 4.0),  # a tokenised US stock in the Funding wallet
-        ("USD", 1287.5),  # 250 spot, 1,000 in fixed-term savings, 37.5 idle in futures
+        # 250 spot, 80 in flexible savings, 1,000 fixed-term, 37.5 idle in futures.
+        ("USD", 1367.5),
     ]
     left_out = {u.symbol: u.reason for u in reading.holdings.unsupported}
     assert left_out == {
@@ -122,6 +140,7 @@ def test_every_request_is_a_get_to_a_reading_endpoint_and_is_signed() -> None:
 
     assert [(r.method, r.url.host, r.url.path) for r in requests] == [
         ("GET", "api.binance.com", "/api/v3/time"),
+        ("GET", "api.binance.com", "/sapi/v1/simple-earn/flexible/position"),
         ("GET", "api.binance.com", "/api/v3/account"),
         ("POST", "api.binance.com", "/sapi/v1/asset/get-funding-asset"),
         ("GET", "api.binance.com", "/sapi/v1/simple-earn/locked/position"),
@@ -199,7 +218,7 @@ def test_the_source_has_no_way_to_trade_or_move_funds() -> None:
     assert not re.search(r"\.(get|post|put|delete|patch|request)\(f?[\"']http", source)
     assert source.count("self._client.send(") == 1
     assert not re.search(r"/(order|openOrders|withdraw|transfer|leverage|loan|repay)\b", source)
-    assert len(binance.ALLOWED) == 7
+    assert len(binance.ALLOWED) == 8
     assert frozenset({("api.binance.com", "/sapi/v1/asset/get-funding-asset")}) == (
         binance.READ_BY_POST
     )
@@ -210,6 +229,22 @@ def test_margin_or_futures_being_switched_off_is_not_an_error() -> None:
     source = BinanceSource(KEY, SECRET, KNOWN, transport=account(requests, margin_status=400))
     symbols = [h.symbol for h in source.read().holdings]
     assert symbols == ["BTC/USD", "ETH/USD", "SPY", "USD"]
+
+
+def test_flexible_savings_are_counted_once_whichever_way_they_are_read() -> None:
+    """Read directly, the spot copy (LDETH) is skipped; if the direct read is refused,
+    the spot copy is used instead. Either way the two ETH are counted once."""
+    direct = BinanceSource(KEY, SECRET, KNOWN, transport=account([])).read()
+    fallback = BinanceSource(KEY, SECRET, KNOWN, transport=account([], flexible_status=400)).read()
+    for reading in (direct, fallback):
+        held = {h.symbol: h.quantity for h in reading.holdings}
+        assert held["ETH/USD"] == pytest.approx(2.5)
+    # The fallback cannot see the 80 dollars that were only in flexible savings.
+    cash = [
+        next(h.quantity for h in reading.holdings if h.symbol == "USD")
+        for reading in (direct, fallback)
+    ]
+    assert cash[0] - cash[1] == pytest.approx(80)
 
 
 def test_a_refused_key_gives_a_plain_error_without_credentials(

@@ -15,7 +15,6 @@ Update this block at the end of every work session.
 - Held assets are discovered, never added by hand (decision 041): `EQ_` names are stocks only, every other name is a crypto pair only. A holding with 30 to 249 sessions is estimated on its own record and the loss limits are scaled for it; under 30 it is counted in the money only (decision 043). The screen says which
 - Section names are plain and fixed in decision 042; tab label and section title must match
 - The Binance client may only call the endpoints listed in `providers/binance.py`; adding one needs the user's agreement and a test
-- Open with the user: about $37 of the Binance Earn wallet is not found by the current reads; the fix needs their agreement to one more read endpoint, `GET /sapi/v1/simple-earn/flexible/position` (decision 046)
 - Visual first (decision 040): a first view is tiles and charts built from `components/viz.tsx`, not sentences; long explanations go in `Caption`, which is collapsed. Detail tabs still need this pass
 - Sections are pages behind tabs (`components/Tabs.tsx`), never folding panels; a new section gets its own address (decision 036)
 - Layout rules (decision 034): inside the page use container variants (`@xl:`, `@4xl:`), not `sm:` or `lg:`; phones have bottom tabs only, no top bar; charts must not pan or zoom into empty time
@@ -24,7 +23,7 @@ Update this block at the end of every work session.
 - The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
 - Carried forward: shading the price chart by regime is not built (decision 028)
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 046): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 047): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 
@@ -40,7 +39,7 @@ Update this block at the end of every work session.
 
 These apply to every change.
 
-- **No trading.** Do not import, call, or wrap any order, position, or transfer endpoint from Alpaca or any other provider. Market data and news endpoints only. One exception, approved by the user on 2026-10-05: a read-only Binance `HoldingsSource` may call Binance endpoints that **read** account balances and open positions, with an API key that has no trading and no withdrawal permission. It must never call an endpoint that places, changes, or cancels an order, moves funds, or changes account settings, and a test must assert that. The endpoints it may call are listed in `providers/binance.py`; one of them, the Funding wallet read, is a POST because Binance serves it no other way (`docs/DECISIONS.md` 038); two more reads were approved on 2026-10-07 (046).
+- **No trading.** Do not import, call, or wrap any order, position, or transfer endpoint from Alpaca or any other provider. Market data and news endpoints only. One exception, approved by the user on 2026-10-05: a read-only Binance `HoldingsSource` may call Binance endpoints that **read** account balances and open positions, with an API key that has no trading and no withdrawal permission. It must never call an endpoint that places, changes, or cancels an order, moves funds, or changes account settings, and a test must assert that. The endpoints it may call are listed in `providers/binance.py`; one of them, the Funding wallet read, is a POST because Binance serves it no other way (`docs/DECISIONS.md` 038); three more reads were approved on 2026-10-07 (046, 047).
 - **Paper keys only.** The Alpaca keys in `.env` must be paper account keys, never live keys. The only Alpaca host this app calls is `data.alpaca.markets` (and its `stream.data.alpaca.markets` WebSocket). Never call `api.alpaca.markets` or `paper-api.alpaca.markets`. A test asserts that the provider clients reject any other base URL.
 - **No secrets in the repo.** Keys live in `.env`, which is gitignored. `.env.example` holds names only. Never print keys in logs, tests, or error messages.
 - **No lookahead.** A value shown for time `t` may only use data with timestamp `<= t`. This covers features, labels, regime probabilities (use filtered, never smoothed, for anything displayed as "current" or used in a backtest), scalers, and train/test splits. Every model module needs a test that proves it.
