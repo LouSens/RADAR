@@ -1,13 +1,13 @@
 """Read-only Binance holdings source (spec F6; the exception in CLAUDE.md "No trading").
 
 This client can do exactly one thing: read what the account holds. Every request goes to
-one of the six endpoints listed below, each of which only returns balances or open
+one of the nine endpoints listed below, each of which only returns balances or open
 exposure; anything else is refused before it leaves the process. There is no method here
 that places, changes, or cancels an order, moves funds, or changes a setting, and there
 must never be one. The API key should be created with reading permission only, so that
 the exchange would refuse those too.
 
-Five endpoints are read with GET. The sixth, the Funding wallet, is one Binance only
+Eight endpoints are read with GET. The ninth, the Funding wallet, is one Binance only
 answers by POST even though it changes nothing; it is the single POST this client may
 send, it carries no body, and it is named in `READ_BY_POST`.
 
@@ -44,7 +44,26 @@ FUTURES_EXPOSURE = (FUTURES_HOST, "/fapi/v2/positionRisk")
 # Money placed in fixed-term savings. Flexible savings already show in the spot wallet.
 LOCKED_SAVINGS = (SPOT_HOST, "/sapi/v1/simple-earn/locked/position")
 # Every (host, path) this client may call. All are read with GET.
-ALLOWED = frozenset({CLOCK, SPOT_BALANCES, MARGIN_BALANCES, FUTURES_EXPOSURE, LOCKED_SAVINGS})
+# Money in flexible savings, read directly. Binance also mirrors part of it into the
+# spot wallet under `LD` names, which is used only if this read is refused.
+FLEXIBLE_SAVINGS = (SPOT_HOST, "/sapi/v1/simple-earn/flexible/position")
+# Cash sitting in the futures wallet, apart from any open exposure.
+FUTURES_BALANCES = (FUTURES_HOST, "/fapi/v2/balance")
+# Binance's own total for each wallet, valued in dollars: used to check that
+# nothing held was missed.
+WALLET_TOTALS = (SPOT_HOST, "/sapi/v1/asset/wallet/balance")
+ALLOWED = frozenset(
+    {
+        CLOCK,
+        SPOT_BALANCES,
+        MARGIN_BALANCES,
+        FUTURES_EXPOSURE,
+        LOCKED_SAVINGS,
+        FUTURES_BALANCES,
+        WALLET_TOTALS,
+        FLEXIBLE_SAVINGS,
+    }
+)
 # The Funding wallet, where Binance also keeps tokenised US stocks. A read that
 # Binance only serves by POST.
 FUNDING_BALANCES = (SPOT_HOST, "/sapi/v1/asset/get-funding-asset")
@@ -77,9 +96,19 @@ class Leveraged(BaseModel):
     distance_to_liquidation: float | None
 
 
+class Wallet(BaseModel):
+    """One of the account's wallets and what Binance says it is worth, in dollars."""
+
+    name: str
+    value: float
+
+
 class BinanceReading(BaseModel):
     holdings: Holdings
     leveraged: list[Leveraged]
+    # Binance's own figure for each wallet with anything in it. Empty when Binance
+    # would not give it; used only to check the holdings against.
+    wallets: list[Wallet] = []
 
 
 def check(method: str, host: str, path: str) -> None:
@@ -96,9 +125,14 @@ def sign(secret: SecretStr, query: str) -> str:
     return hmac.new(secret.get_secret_value().encode(), query.encode(), hashlib.sha256).hexdigest()
 
 
+def is_mirrored(asset: str) -> bool:
+    """True for a spot-wallet name that mirrors flexible savings: `LD` plus the asset."""
+    return asset.startswith("LD") and len(asset) > 4
+
+
 def underlying(asset: str) -> str:
-    """Binance shows a balance lent out through flexible savings as `LD` plus the asset."""
-    return asset[2:] if asset.startswith("LD") and len(asset) > 4 else asset
+    """The asset behind a mirrored flexible-savings name; any other name unchanged."""
+    return asset[2:] if is_mirrored(asset) else asset
 
 
 class BinanceSource:
@@ -125,14 +159,21 @@ class BinanceSource:
     def close(self) -> None:
         self._client.close()
 
-    def _read(self, endpoint: tuple[str, str], *, signed: bool, clock: int | None = None) -> Any:
+    def _read(
+        self,
+        endpoint: tuple[str, str],
+        *,
+        signed: bool,
+        clock: int | None = None,
+        extra: dict[str, str] | None = None,
+    ) -> Any:
         host, path = endpoint
         method = "POST" if endpoint in READ_BY_POST else "GET"
         check(method, host, path)
         params: dict[str, str | int] = {}
         headers: dict[str, str] = {}
         if signed:
-            params = {"timestamp": clock or 0, "recvWindow": 10_000}
+            params = {**(extra or {}), "timestamp": clock or 0, "recvWindow": 10_000}
             params["signature"] = sign(self._secret, urlencode(params))
             headers["X-MBX-APIKEY"] = self._key.get_secret_value()
         try:
@@ -158,8 +199,11 @@ class BinanceSource:
         return response.json()
 
     def read_account(self) -> BinanceReading:
-        """Read spot, funding, savings, and margin balances and open futures exposure, netted per
-        asset. Dollar stablecoins are counted together as cash."""
+        """Read every wallet's balances and open futures exposure, netted per asset.
+
+        Dollar stablecoins are counted together as cash. Binance's own total per wallet is
+        read too, so that what was found can be checked against it.
+        """
         clock = int(self._read(CLOCK, signed=False)["serverTime"])
         totals: dict[str, float] = {}
         unsupported: list[Unsupported] = []
@@ -169,12 +213,23 @@ class BinanceSource:
                 return
             totals[asset] = totals.get(asset, 0.0) + quantity
 
+        # Flexible savings, read directly. When that works, the copies of it in the
+        # spot wallet are skipped so that nothing is counted twice.
+        direct = False
+        try:
+            flexible = self._read(FLEXIBLE_SAVINGS, signed=True, clock=clock, extra={"size": "100"})
+            for row in flexible.get("rows", []):
+                add(str(row["asset"]), float(row["totalAmount"]))
+            direct = True
+        except BinanceError as error:
+            log.info("binance_flexible_savings_skipped", reason=str(error))
+
         spot = self._read(SPOT_BALANCES, signed=True, clock=clock)
         for balance in spot.get("balances", []):
-            add(
-                underlying(str(balance["asset"])),
-                float(balance["free"]) + float(balance["locked"]),
-            )
+            name = str(balance["asset"])
+            if direct and is_mirrored(name):
+                continue
+            add(underlying(name), float(balance["free"]) + float(balance["locked"]))
 
         # The Funding wallet, fixed-term savings, margin, and futures may not be in use;
         # that is not an error.
@@ -227,6 +282,23 @@ class BinanceSource:
         except BinanceError as error:
             log.info("binance_futures_skipped", reason=str(error))
 
+        try:
+            for balance in self._read(FUTURES_BALANCES, signed=True, clock=clock):
+                add(str(balance["asset"]), float(balance["balance"]))
+        except BinanceError as error:
+            log.info("binance_futures_cash_skipped", reason=str(error))
+
+        wallets: list[Wallet] = []
+        try:
+            rows = self._read(WALLET_TOTALS, signed=True, clock=clock, extra={"quoteAsset": "USDT"})
+            wallets = [
+                Wallet(name=str(row["walletName"]), value=float(row["balance"]))
+                for row in rows
+                if abs(float(row["balance"])) > 0.005
+            ]
+        except BinanceError as error:
+            log.info("binance_wallet_totals_skipped", reason=str(error))
+
         # Different names for one asset (a coin and its futures contract) net together.
         net: dict[str, float] = {}
         for asset, quantity in totals.items():
@@ -256,6 +328,7 @@ class BinanceSource:
         return BinanceReading(
             holdings=Holdings(source=self.name, holdings=holdings, unsupported=unsupported),
             leveraged=leveraged,
+            wallets=wallets,
         )
 
     def read(self) -> Holdings:

@@ -21,7 +21,7 @@ from radar.models import portfolio as portfolio_model
 from radar.models.holdings import Holding, Holdings, Unsupported
 from radar.pipelines import portfolio as job
 from radar.providers import schemas
-from radar.providers.binance import BinanceError, BinanceReading, Leveraged
+from radar.providers.binance import BinanceError, BinanceReading, Leveraged, Wallet
 from radar.universe import Universe
 
 UNIVERSE = Universe.model_validate(
@@ -287,6 +287,7 @@ def reading(*holdings: tuple[str, float]) -> BinanceReading:
                 distance_to_liquidation=0.25,
             )
         ],
+        wallets=[Wallet(name="Spot", value=90.42), Wallet(name="Earn", value=306.24)],
     )
 
 
@@ -304,6 +305,11 @@ def test_binance_holdings_replace_the_portfolio_when_a_key_is_configured(
     assert [(h["symbol"], h["quantity"]) for h in body["holdings"]] == [("BTC/USD", 0.4)]
     assert [u["symbol"] for u in body["unsupported"]] == ["USDT"]
     assert body["leveraged"][0]["distance_to_liquidation"] == 0.25
+    assert body["wallets"] == [
+        {"name": "Spot", "value": 90.42},
+        {"name": "Earn", "value": 306.24},
+    ]
+    assert client.get("/api/v1/portfolio").json()["wallets"] == body["wallets"]
     assert client.get("/api/v1/portfolio").json()["leveraged"] == body["leveraged"]
     assert client.get("/api/v1/portfolio/analysis").json()["positions"][0]["quantity"] == 0.4
 
@@ -326,6 +332,7 @@ def test_binance_holdings_replace_the_portfolio_when_a_key_is_configured(
     # Typing holdings in afterwards clears the leveraged exposure that came from Binance.
     saved = client.put("/api/v1/portfolio", json={"holdings": [{"symbol": "GLD", "quantity": 1}]})
     assert saved.json()["leveraged"] == []
+    assert saved.json()["wallets"] == []
 
 
 def test_the_analysis_ties_holdings_to_their_market_state_and_drivers(

@@ -360,6 +360,9 @@ class Portfolio(Base):
     # US dollars held as cash, dollar stablecoins included. Not a row in `holdings`,
     # because cash is not an asset with a price history.
     cash: Mapped[float] = mapped_column(Double, server_default="0")
+    # The exchange's own dollar total per wallet at the last read; empty for manual
+    # and CSV. Shown beside what RADAR found, so a gap is never silent.
+    wallets: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")
     # Open leveraged exposure as the source reported it; empty for manual and CSV.
     leveraged: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")
     updated_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())

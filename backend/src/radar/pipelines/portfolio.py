@@ -147,7 +147,10 @@ def save(
 
 
 def store(
-    session: Session, read: Holdings, leveraged: list[dict[str, Any]] | None = None
+    session: Session,
+    read: Holdings,
+    leveraged: list[dict[str, Any]] | None = None,
+    wallets: list[dict[str, Any]] | None = None,
 ) -> Holdings:
     """Replace the stored holdings with ones already read. Does not commit."""
     now = datetime.now(UTC)
@@ -161,6 +164,7 @@ def store(
             source=read.source,
             updated_at=now,
             leveraged=leveraged or [],
+            wallets=wallets or [],
             cash=cash,
         )
         .on_conflict_do_update(
@@ -169,6 +173,7 @@ def store(
                 "source": read.source,
                 "updated_at": now,
                 "leveraged": leveraged or [],
+                "wallets": wallets or [],
                 "cash": cash,
             },
         )
@@ -430,6 +435,11 @@ def holding_states(
     return states
 
 
+def stored_wallets(session: Session) -> list[dict[str, Any]]:
+    portfolio = session.get(Portfolio, PORTFOLIO_ID)
+    return list(portfolio.wallets) if portfolio is not None else []
+
+
 def stored_leveraged(session: Session) -> list[dict[str, Any]]:
     portfolio = session.get(Portfolio, PORTFOLIO_ID)
     return list(portfolio.leveraged) if portfolio is not None else []
@@ -475,7 +485,12 @@ def run(
             # Holdings on an exchange change; read them again before analysing.
             try:
                 reading, universe = read_exchange(session, universe, reader, finder)
-                store(session, reading.holdings, [p.model_dump() for p in reading.leveraged])
+                store(
+                    session,
+                    reading.holdings,
+                    [p.model_dump() for p in reading.leveraged],
+                    [w.model_dump() for w in reading.wallets],
+                )
             except BinanceError as error:
                 log.warning("portfolio_binance_read_failed", reason=str(error))
         problem = refresh(session, universe)
