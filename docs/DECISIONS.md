@@ -1726,3 +1726,64 @@ sentences; a seventh tab would not fit.
 passes; the template writer works with no key set; the Overview renders from stored
 results.
 
+## 055. Scheduled economic events: the data, and the tests written down before running (2026-10-06)
+
+The user asked for forecasts around the regular US announcements (Fed decisions, the
+jobs report, inflation). This entry fixes the data and the rules **before any result
+has been computed**; it is committed on its own first so the order can be checked.
+
+**The data.** `backend/src/radar/events.toml`, taken once from the official pages (the
+user approved this source on 2026-10-06):
+
+- Fed: the last day of each scheduled FOMC meeting, 2016 to 2027 (95 dates). Unscheduled
+  meetings and votes between meetings are left out: they could not be known in advance,
+  and the product is about events the user can see coming.
+- Jobs report (Employment Situation) and inflation report (CPI): the day each came out,
+  2016 to 2026 (131 dates each), from the Bureau of Labor Statistics' yearly schedule
+  pages. Two late-2025 reports were delayed and one month was not published separately;
+  the file holds what happened.
+- The BLS site refuses scripted downloads, so its pages were read in a browser and the
+  dates were checked against a fingerprint computed there. Nothing was done to get
+  around the refusal.
+- Alpaca has no economic calendar and expected ("consensus") figures are sold, not
+  free. So RADAR cannot know the surprise in a number. Everything below uses dates and
+  prices only.
+
+**What is measured**, for each event type and each primary market. An event's day is
+the trading day of its date (the session for gold and stocks, the UTC day for Bitcoin,
+which contains both announcement times).
+
+| # | Question | Statistic | Against |
+|---|---|---|---|
+| 1 | Does the market move more on the day? | size of the event day's return | all other days (Mann-Whitney) |
+| 2 | Does it lean one way the day before? | share of days-before that ended higher | the share for all days (binomial) |
+| 3 | Does it lean one way on the day? | share of event days that ended higher | the share for all days |
+| 4 | Does the day's move carry on next day? | share of events where the next day went the same way as the event day | the same share for any two consecutive days |
+| 5 | Does it carry on over the next week? | the same, for the following 5 sessions (7 days for Bitcoin) | the same share for any day |
+
+**Departure from what was first described to the user.** The reaction is the event
+day's close-to-close return, not the first hour after the release. Two of the three
+events come out at 08:30 Eastern, before the US stock market opens, and the stored
+hourly bars do not cover that hour reliably for stocks. One rule for all three markets
+was preferred to a different one each.
+
+**Verdicts.**
+
+- Under 30 past events: "not enough events", no judgement.
+- Tests 2 to 5 (direction) form one family of 36 comparisons; test 1 (size) another of
+  9. Within each, a result counts only if it survives a Benjamini-Hochberg correction
+  at 5%, as for signals (decision 051), and for direction the 95% Wilson range of the
+  share must also exclude the baseline.
+- Words: for size, "moves more on these days", "moves less", or "no measurable
+  difference"; for direction, "leans up", "leans down", "tends to carry on", "tends to
+  reverse", or "no measurable pattern".
+
+**What will not be done whatever the result.** No rule, window, or threshold above will
+be changed after seeing the results. If nothing passes, the screen says so and the
+calendar is shown as dates with the measured size of moves only. No sentence will say
+what to do before an event.
+
+**Expected, for the record.** Before running: test 1 will probably pass for stocks on
+Fed days and possibly on inflation days; tests 2 to 5 will probably find nothing. This
+is written down so the result can be compared with the guess.
+
