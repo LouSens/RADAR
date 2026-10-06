@@ -24,6 +24,7 @@ from radar.pipelines import regime as regime_job
 from radar.pipelines import relationships as relationships_job
 from radar.pipelines import risk as risk_job
 from radar.pipelines import sentiment as sentiment_job
+from radar.pipelines import signals as signals_job
 from radar.pipelines import simulation as simulation_job
 from radar.pipelines import track as track_job
 from radar.pipelines import volatility as volatility_job
@@ -206,6 +207,15 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=50,
             id="relationships",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Signals and their track records: hourly, after the states are scored.
+        scheduler.add_job(
+            partial(signals_job.run, engine, universe),
+            "cron",
+            minute=55,
+            id="signals",
             max_instances=1,
             coalesce=True,
         )

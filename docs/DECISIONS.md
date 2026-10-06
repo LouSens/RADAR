@@ -1491,3 +1491,134 @@ New model work is documented in a notebook from here on, at the user's request.
 **Not done.** The simulation is not run for a mix being tried (`what-if`), to keep that
 request quick.
 
+## 051. Phase 6 part 1: signal rules and their track records (2026-10-06)
+
+Phase 6 is split in three, each its own pull request: (1) the signal rules and track
+records, (2) the daily brief, (3) the Signals and Overview screens. This is part 1.
+
+**The rules** (`signals/detect.py`), as the spec gives them, per primary market:
+
+| Signal | Rule | Split by |
+|---|---|---|
+| `regime_change` | the most probable state changes and the new one is above 0.7; the state it changed from is the last one that itself passed 0.7, so a day of doubt is not two changes | the state changed to |
+| `abnormal_move` | an hourly return beyond 3 times the usual hourly size for the state the market was in going into the day; one per day | up, down |
+| `sentiment_shock` | the day's tone beyond 2 standard deviations of the year before; days within three of a shock belong to it (the event study's rule) | positive, negative |
+
+**Only what was known that day.** Past states come from a walk-forward replay
+(`walk_forward_states`): the regime model is refitted every 63 sessions on earlier days
+only, after 500 sessions of history. For days after the app's current model was fitted,
+that model's stored readings are used, so new signals agree with the Current state
+page. The usual hourly size is an expanding figure over earlier days in the same state
+(at least 200 hours). Tests rewrite later days and check that earlier states, sizes,
+shocks, and outcomes do not change.
+
+**The track record** (`signals/track.py`). For each type, market, and split: the return
+over the next day and the next week (7 days for crypto, 5 sessions for stocks) from the
+close of the signal's day, against the same for all days. Stored: the count, quantiles,
+the share that ended higher with a 95% Wilson range, and the typical size of the move.
+
+**Verdicts, stricter than the spec.** The spec says "no measurable edge when the
+interval overlaps the baseline". With about twenty records and two horizons each, luck
+alone would pass one or two at that bar, so a verdict must also survive a
+Benjamini-Hochberg correction across every record and horizon with at least 30
+occurrences (the rule already used for the event study, decision 030). Under 30 the
+verdict is "not enough occurrences".
+
+**Added: a verdict on the size of the move.** The spec's verdict is about direction
+only. A second one asks whether the move that followed was larger or smaller than on
+other days, whichever way it went (Mann-Whitney test, the same correction).
+This was added **after** the direction results were seen and the size table showed a
+gap, so it was not planned in advance; the notebook and this entry say so, and it is to
+be treated as provisional until it holds on new data.
+
+**What the real data showed** (1,664 signals; 21 records; 24 comparisons with enough
+cases):
+
+- Direction: no signal on any market has an edge. One comparison passed 5% before
+  correction, none after.
+- Size: abnormal moves in US stocks were followed by larger moves over the next day and
+  week (about 1.1 to 1.3% against 0.7% on all days). Nothing else separated.
+- Changes of state are rare: most splits have under 30 cases and are not judged.
+- News tone shocks have no edge in direction or size, in line with decisions 030 and
+  045.
+
+**Two questions for the user, recorded and not decided here.**
+
+1. *The abnormal-move rule fires on about one day in five* (Bitcoin 22%, gold 21%, US
+   stocks 17%), because there are many hours in a day and hourly moves have fat tails.
+   Options: (a) keep the spec's 3 times; (b) raise the multiple (5 times would fire far
+   less often); (c) keep 3 times but require it of the day's move, not one hour's.
+   Kept as (a) until the user chooses. Changing it changes the track record, so it must
+   be chosen once and not tuned to a result.
+2. *`sentiment_shock` against "signals are never driven by news"* (CLAUDE.md, from
+   decision 045). Decision 045 was about not using news to drive forecasts or
+   rebalancing. The spec lists this signal, so it is built, and its record says "no
+   measurable edge". Options: (a) keep it in the feed as a description of the news with
+   that record beside it; (b) leave it out of the feed and the brief and keep only its
+   record as evidence. Kept as (a) until the user chooses.
+
+**Portfolio signals.** The signals of decision 048 (movement outside the band, drift,
+turbulent market) describe where the portfolio stands against the user's target. They
+are returned beside the market signals by `GET /signals` and have no track record:
+there is no history of past holdings to replay, and they are not forecasts.
+
+**Storage and running.** Tables `signal_track_records` (one row per type, market, and
+split) and `signals` (one row per market, day, and type), migration 0017. `uv run radar
+signals` replays everything and upserts; the worker runs it hourly at :55. It takes
+about a minute. Running it twice stores the same rows.
+
+**Routes.** `GET /signals` (newest first, filters for market and type, each with a
+summary of its record) and `GET /signals/track-records/{type}`.
+
+**Notebook.** `notebooks/08_signals.ipynb`.
+
+**Not tested end to end.** The job's loading step (`pipelines/signals.build`) is covered
+by the pure tests of what it calls and by the run on real data, not by a database test
+of its own; `store` and the routes are tested against the database.
+
+## 052. The two signal questions, decided (2026-10-06)
+
+The user asked for both questions of decision 051 to be decided on product and
+research grounds.
+
+**1. An abnormal move is 5 times the usual hourly size, not 3.**
+
+- At the spec's 3 the rule fired on about one day in five. Counted at each bar:
+
+  | Bar | Bitcoin | Gold | US stocks |
+  |---|---|---|---|
+  | 3 times | 21.5% | 21.4% | 17.3% |
+  | 4 times | 9.9% | 11.0% | 7.5% |
+  | 5 times | 5.4% | 6.0% | 4.0% |
+  | 6 times | 2.5% | 3.1% | 2.3% |
+
+- The criterion, fixed before choosing: fire on about one day in twenty (roughly once a
+  month per market), and leave at least 30 past cases in each direction on each market
+  so the record can be judged. 5 is the only whole number that meets both; at 6, US
+  stocks would have under 30 upward cases.
+- **It was chosen on how often it fires, not on what followed.** The outcomes at 4, 6,
+  and 7 were never computed. The constant carries a comment saying not to tune it to a
+  track record.
+- Applying the rule to the day's move was the other option. It was not taken because a
+  signal of that kind already exists in effect (the state model reacts to the day's
+  swings), while a single violent hour is something nothing else in the app flags.
+- Result at 5: 536 signals in the feed. Direction: still no edge anywhere. Size:
+  followed by larger moves in US stocks (both directions) and after falls in gold;
+  no difference for Bitcoin. This is still the provisional finding of decision 051.
+
+**2. News-tone shocks are scored but not shown.**
+
+- Three tests now agree that news tone carries no usable information here: it does not
+  lead price (030), it does not improve the swings forecast (045), and tone shocks are
+  followed by nothing distinguishable in direction or size (051).
+- An alert with a record of meaning nothing is noise, and it lowers trust in the alerts
+  beside it. So `sentiment_shock` is left out of the feed (`detect.FEED_TYPES`) and will
+  be left out of the daily brief. Its track record is still computed, stored, and served
+  by `GET /signals/track-records/sentiment_shock`, as the evidence for leaving it out,
+  and it would show if that ever changed.
+- This settles the wording in CLAUDE.md: news drives no forecast, no rebalancing signal,
+  and no item in the feed or brief.
+
+**Housekeeping.** Storing the replay now removes signal rows it no longer produces, so
+changing a rule cannot leave old rows in the feed.
+

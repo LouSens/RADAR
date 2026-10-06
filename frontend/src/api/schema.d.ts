@@ -475,6 +475,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Signals
+         * @description Recent signals, newest first, each with what followed its kind in the past.
+         */
+        get: operations["get_signals_api_v1_signals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signals/track-records/{type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Track Records
+         * @description What followed one kind of signal in the past, on each market, against all days.
+         */
+        get: operations["get_track_records_api_v1_signals_track_records__type__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -959,6 +999,30 @@ export interface components {
             coverage: components["schemas"]["Coverage"][];
             summary: components["schemas"]["HorizonSummary"];
         };
+        /** HorizonRecord */
+        HorizonRecord: {
+            baseline: components["schemas"]["Outcome"];
+            /** Label */
+            label: string;
+            /** P Value */
+            p_value: number | null;
+            signal: components["schemas"]["Outcome"];
+            /** Size P Value */
+            size_p_value?: number | null;
+            /**
+             * Size Verdict
+             * @default not enough occurrences
+             * @enum {string}
+             */
+            size_verdict: "followed by larger moves" | "followed by smaller moves" | "no measurable difference" | "not enough occurrences";
+            /** Steps */
+            steps: number;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "followed by rises more often" | "followed by falls more often" | "no measurable edge" | "not enough occurrences";
+        };
         /** HorizonResult */
         HorizonResult: {
             /**
@@ -1234,6 +1298,28 @@ export interface components {
             /** R Squared */
             r_squared: number;
         };
+        /**
+         * Outcome
+         * @description Forward returns over one horizon, for the signal days or for all days.
+         */
+        Outcome: {
+            /** Mean */
+            mean: number | null;
+            /** Mean Size */
+            mean_size: number | null;
+            /** N */
+            n: number;
+            /** Quantiles */
+            quantiles: {
+                [key: string]: number;
+            };
+            /** Share High */
+            share_high: number | null;
+            /** Share Low */
+            share_low: number | null;
+            /** Share Positive */
+            share_positive: number | null;
+        };
         /** OutlookHorizon */
         OutlookHorizon: {
             /** Expected Worst Drawdown */
@@ -1440,6 +1526,32 @@ export interface components {
             last_run: string | null;
             /** Warnings */
             warnings: number;
+        };
+        /**
+         * RecordSummary
+         * @description Enough of a track record to quote beside a signal.
+         */
+        RecordSummary: {
+            /** Baseline Mean Size */
+            baseline_mean_size: number | null;
+            /** Baseline Share Positive */
+            baseline_share_positive: number | null;
+            /** Mean Size */
+            mean_size: number | null;
+            /** N */
+            n: number;
+            /** Share Positive */
+            share_positive: number | null;
+            /**
+             * Size Verdict
+             * @enum {string}
+             */
+            size_verdict: "followed by larger moves" | "followed by smaller moves" | "no measurable difference" | "not enough occurrences";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "followed by rises more often" | "followed by falls more often" | "no measurable edge" | "not enough occurrences";
         };
         /** RegimeCorrelation */
         RegimeCorrelation: {
@@ -1808,6 +1920,86 @@ export interface components {
             symbols: string[];
             /** Value */
             value: number;
+        };
+        /** SignalOut */
+        SignalOut: {
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            record: components["schemas"]["RecordSummary"] | null;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Ts
+             * Format: date-time
+             */
+            ts: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "regime_change" | "abnormal_move" | "sentiment_shock";
+            /** Variant */
+            variant: string;
+        };
+        /** SignalRecordOut */
+        SignalRecordOut: {
+            /**
+             * Computed At
+             * Format: date-time
+             */
+            computed_at: string;
+            /** First Day */
+            first_day: string | null;
+            /** Horizons */
+            horizons: components["schemas"]["HorizonRecord"][];
+            /** Last Day */
+            last_day: string | null;
+            /** N */
+            n: number;
+            /** Name */
+            name: string;
+            /**
+             * Size Verdict
+             * @default not enough occurrences
+             * @enum {string}
+             */
+            size_verdict: "followed by larger moves" | "followed by smaller moves" | "no measurable difference" | "not enough occurrences";
+            /** Symbol */
+            symbol: string;
+            /** Type */
+            type: string;
+            /** Variant */
+            variant: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "followed by rises more often" | "followed by falls more often" | "no measurable edge" | "not enough occurrences";
+        };
+        /** SignalRecordsOut */
+        SignalRecordsOut: {
+            /** Records */
+            records: components["schemas"]["SignalRecordOut"][];
+            /** Tested */
+            tested: number;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "regime_change" | "abnormal_move" | "sentiment_shock";
+        };
+        /** SignalsOut */
+        SignalsOut: {
+            /** Portfolio */
+            portfolio: components["schemas"]["Signal"][];
+            /** Signals */
+            signals: components["schemas"]["SignalOut"][];
         };
         /** Simulation */
         Simulation: {
@@ -3228,6 +3420,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Relationships"];
+                };
+            };
+        };
+    };
+    get_signals_api_v1_signals_get: {
+        parameters: {
+            query?: {
+                symbol?: string | null;
+                type?: ("regime_change" | "abnormal_move" | "sentiment_shock") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_track_records_api_v1_signals_track_records__type__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignalRecordsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

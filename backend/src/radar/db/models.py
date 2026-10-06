@@ -399,3 +399,40 @@ class PortfolioAnalysis(Base):
     computed_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
     model_version: Mapped[str] = mapped_column(Text)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+
+class SignalTrackRecord(Base):
+    """What followed one kind of signal on one market in the past, against all days."""
+
+    __tablename__ = "signal_track_records"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    # "regime_change", "abnormal_move", or "sentiment_shock".
+    type: Mapped[str] = mapped_column(Text)
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"))
+    # The direction within the type: "to turbulent", "up", "negative", and so on.
+    variant: Mapped[str] = mapped_column(Text)
+    computed_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+    n: Mapped[int] = mapped_column(Integer)
+    verdict: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+    __table_args__ = (UniqueConstraint("type", "symbol", "variant"),)
+
+
+class Signal(Base):
+    """One day a signal's rule fired. `ts` is when that day had ended."""
+
+    __tablename__ = "signals"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"))
+    ts: Mapped[datetime] = mapped_column(TZDateTime, index=True)
+    type: Mapped[str] = mapped_column(Text)
+    variant: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    track_record_id: Mapped[int | None] = mapped_column(
+        ForeignKey("signal_track_records.id", ondelete="SET NULL")
+    )
+
+    __table_args__ = (UniqueConstraint("symbol", "ts", "type"),)

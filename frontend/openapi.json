@@ -1248,6 +1248,77 @@
         "title": "Horizon",
         "type": "object"
       },
+      "HorizonRecord": {
+        "properties": {
+          "baseline": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "size_p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size P Value"
+          },
+          "size_verdict": {
+            "default": "not enough occurrences",
+            "enum": [
+              "followed by larger moves",
+              "followed by smaller moves",
+              "no measurable difference",
+              "not enough occurrences"
+            ],
+            "title": "Size Verdict",
+            "type": "string"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          },
+          "verdict": {
+            "enum": [
+              "followed by rises more often",
+              "followed by falls more often",
+              "no measurable edge",
+              "not enough occurrences"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "steps",
+          "label",
+          "signal",
+          "baseline",
+          "p_value",
+          "verdict"
+        ],
+        "title": "HorizonRecord",
+        "type": "object"
+      },
       "HorizonResult": {
         "properties": {
           "first_day": {
@@ -1867,6 +1938,88 @@
           "last_day"
         ],
         "title": "OutOfSample",
+        "type": "object"
+      },
+      "Outcome": {
+        "description": "Forward returns over one horizon, for the signal days or for all days.",
+        "properties": {
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "mean_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Size"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "quantiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Quantiles",
+            "type": "object"
+          },
+          "share_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share High"
+          },
+          "share_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Low"
+          },
+          "share_positive": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Positive"
+          }
+        },
+        "required": [
+          "n",
+          "share_positive",
+          "share_low",
+          "share_high",
+          "mean",
+          "mean_size",
+          "quantiles"
+        ],
+        "title": "Outcome",
         "type": "object"
       },
       "OutlookHorizon": {
@@ -2491,6 +2644,90 @@
           "failures"
         ],
         "title": "QualitySummary",
+        "type": "object"
+      },
+      "RecordSummary": {
+        "description": "Enough of a track record to quote beside a signal.",
+        "properties": {
+          "baseline_mean_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Mean Size"
+          },
+          "baseline_share_positive": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Share Positive"
+          },
+          "mean_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Size"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "share_positive": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Positive"
+          },
+          "size_verdict": {
+            "enum": [
+              "followed by larger moves",
+              "followed by smaller moves",
+              "no measurable difference",
+              "not enough occurrences"
+            ],
+            "title": "Size Verdict",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "followed by rises more often",
+              "followed by falls more often",
+              "no measurable edge",
+              "not enough occurrences"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "n",
+          "verdict",
+          "size_verdict",
+          "mean_size",
+          "baseline_mean_size",
+          "share_positive",
+          "baseline_share_positive"
+        ],
+        "title": "RecordSummary",
         "type": "object"
       },
       "RegimeCorrelation": {
@@ -3444,6 +3681,215 @@
           "against"
         ],
         "title": "Signal",
+        "type": "object"
+      },
+      "SignalOut": {
+        "properties": {
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "record": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "ts": {
+            "format": "date-time",
+            "title": "Ts",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "regime_change",
+              "abnormal_move",
+              "sentiment_shock"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "variant": {
+            "title": "Variant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "symbol",
+          "name",
+          "ts",
+          "type",
+          "variant",
+          "detail",
+          "record"
+        ],
+        "title": "SignalOut",
+        "type": "object"
+      },
+      "SignalRecordOut": {
+        "properties": {
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "first_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Day"
+          },
+          "horizons": {
+            "items": {
+              "$ref": "#/components/schemas/HorizonRecord"
+            },
+            "title": "Horizons",
+            "type": "array"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Day"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_verdict": {
+            "default": "not enough occurrences",
+            "enum": [
+              "followed by larger moves",
+              "followed by smaller moves",
+              "no measurable difference",
+              "not enough occurrences"
+            ],
+            "title": "Size Verdict",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "variant": {
+            "title": "Variant",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "followed by rises more often",
+              "followed by falls more often",
+              "no measurable edge",
+              "not enough occurrences"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "symbol",
+          "variant",
+          "n",
+          "first_day",
+          "last_day",
+          "horizons",
+          "verdict",
+          "name",
+          "computed_at"
+        ],
+        "title": "SignalRecordOut",
+        "type": "object"
+      },
+      "SignalRecordsOut": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/SignalRecordOut"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "tested": {
+            "title": "Tested",
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "regime_change",
+              "abnormal_move",
+              "sentiment_shock"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "records",
+          "tested"
+        ],
+        "title": "SignalRecordsOut",
+        "type": "object"
+      },
+      "SignalsOut": {
+        "properties": {
+          "portfolio": {
+            "items": {
+              "$ref": "#/components/schemas/Signal"
+            },
+            "title": "Portfolio",
+            "type": "array"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/SignalOut"
+            },
+            "title": "Signals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "signals",
+          "portfolio"
+        ],
+        "title": "SignalsOut",
         "type": "object"
       },
       "Simulation": {
@@ -6381,6 +6827,126 @@
           }
         },
         "summary": "Get Relationships"
+      }
+    },
+    "/api/v1/signals": {
+      "get": {
+        "description": "Recent signals, newest first, each with what followed its kind in the past.",
+        "operationId": "get_signals_api_v1_signals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "regime_change",
+                    "abnormal_move",
+                    "sentiment_shock"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Signals"
+      }
+    },
+    "/api/v1/signals/track-records/{type}": {
+      "get": {
+        "description": "What followed one kind of signal in the past, on each market, against all days.",
+        "operationId": "get_track_records_api_v1_signals_track_records__type__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "title": "Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalRecordsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Track Records"
       }
     }
   }
