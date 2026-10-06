@@ -26,6 +26,7 @@ from radar.models.holdings import (
 )
 from radar.pipelines import portfolio as job
 from radar.pipelines import rebalance
+from radar.pipelines.datasets import build_mixed_panel
 from radar.providers.binance import BinanceError, Leveraged, Wallet
 from radar.universe import Universe
 
@@ -63,10 +64,18 @@ class HoldingsIn(BaseModel):
 
 
 class TargetIn(BaseModel):
-    # The risk level to hold the portfolio against; null clears the target.
-    level: allocation.Level | None
-    # How the holdings are split among themselves under the target.
+    # A risk level to hold the portfolio against, or null.
+    level: allocation.Level | None = None
+    # How the holdings are split among themselves under a level.
     split: allocation.Method = "current"
+    # Or a mix of the user's own: each holding's share of the whole, cash being the
+    # rest. With neither a level nor a mix, the target is cleared.
+    weights: dict[str, float] | None = Field(default=None, max_length=50)
+
+
+class WhatIfIn(BaseModel):
+    # Each holding's share of the whole, from 0 to 1. Cash is whatever is left over.
+    weights: dict[str, float] = Field(max_length=50)
 
 
 class CsvIn(BaseModel):
@@ -182,6 +191,37 @@ def read_binance(
     return _finish(session, universe, reading.holdings, binance=True)
 
 
+def _checked(weights: dict[str, float], universe: Universe) -> dict[str, float]:
+    """Shares that are sensible: known holdings, nothing negative, at most 100% in all."""
+    known = {a.symbol for a in universe.assets} | {CASH}
+    unknown = sorted(set(weights) - known)
+    if unknown:
+        raise HTTPException(
+            status_code=422, detail=f"RADAR has no price history for {', '.join(unknown)}."
+        )
+    if any(not (0.0 <= w <= 1.0) for w in weights.values()):
+        raise HTTPException(status_code=422, detail="Each share must be between 0% and 100%.")
+    shares = {s: w for s, w in weights.items() if s != CASH and w > 0}
+    if sum(shares.values()) > 1.0 + 1e-6:
+        raise HTTPException(status_code=422, detail="The shares add up to more than 100%.")
+    if not shares:
+        raise HTTPException(status_code=422, detail="Give at least one holding a share.")
+    return shares
+
+
+@router.post("/what-if", response_model=job.WhatIf)
+def post_what_if(body: WhatIfIn, universe: UniverseDep, session: SessionDep) -> job.WhatIf:
+    """The risk figures for a mix the user is trying out. Nothing is saved or traded."""
+    shares = _checked(body.weights, universe)
+    analysis = job.stored_analysis(session)
+    if analysis is None:
+        raise HTTPException(status_code=409, detail="Save your holdings first.")
+    try:
+        return job.what_if(shares, analysis.value, build_mixed_panel(session, universe), universe)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
 @router.put("/target", response_model=job.Analysis)
 def put_target(body: TargetIn, universe: UniverseDep, session: SessionDep) -> job.Analysis:
     """Choose, change, or clear the risk level and split the portfolio is held against.
@@ -189,8 +229,13 @@ def put_target(body: TargetIn, universe: UniverseDep, session: SessionDep) -> jo
     Nothing is traded and nothing changes at the exchange: this only sets what the
     portfolio is compared with.
     """
+    weights = _checked(body.weights, universe) if body.weights is not None else None
     target = (
-        None if body.level is None else rebalance.stamped(body.level, body.split, datetime.now(UTC))
+        None
+        if body.level is None and weights is None
+        else rebalance.stamped(
+            None if weights is not None else body.level, body.split, weights, datetime.now(UTC)
+        )
     )
     if not job.set_target(session, target):
         raise HTTPException(status_code=409, detail="There are no holdings yet.")

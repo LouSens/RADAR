@@ -26,10 +26,14 @@ SignalKind = Literal["risk_above_target", "risk_below_target", "drift", "turbule
 
 
 class Target(BaseModel):
-    """What the user chose to hold the portfolio against."""
+    """What the user chose to hold the portfolio against: either a risk level with a way
+    of splitting the holdings, or a mix of their own with a share for every holding."""
 
-    level: allocation.Level
+    level: allocation.Level | None = None
     split: allocation.Method = "current"
+    # A mix built by the user: each holding's share of the whole. Cash is whatever
+    # the shares leave over. When set, `level` and `split` are not used.
+    weights: dict[str, float] | None = None
     set_at: AwareDatetime | None = None
 
 
@@ -124,7 +128,7 @@ def build(
         except ValueError:
             mixes = []
 
-    method: allocation.Method = target.split if target else "current"
+    method: allocation.Method = target.split if target and target.weights is None else "current"
     proportions = _proportions(method, symbols, current, set(young), mixes)
     full = invested_ratio(proportions)
     levels = [allocation.level_plan(name, full) for name in LEVELS]
@@ -152,17 +156,29 @@ def build(
     if target is None:
         return plan
 
-    chosen = next(p for p in levels if p.level == target.level)
-    wanted = {s: float(proportions[i]) * (1.0 - chosen.cash_share) for i, s in enumerate(symbols)}
-    wanted[CASH] = chosen.cash_share
+    chosen = next((p for p in levels if p.level == target.level), None)
+    if target.weights is not None:
+        # The user's own mix. Cash is what its shares leave over.
+        chosen = None
+        wanted = {s: float(w) for s, w in target.weights.items() if s != CASH}
+        wanted[CASH] = max(0.0, 1.0 - sum(wanted.values()))
+    elif chosen is not None:
+        wanted = {
+            s: float(proportions[i]) * (1.0 - chosen.cash_share) for i, s in enumerate(symbols)
+        }
+        wanted[CASH] = chosen.cash_share
+    else:
+        return plan
     held = {s: float(by_symbol[s].weight) for s in symbols}
     held[CASH] = cash
     gaps = allocation.moves(held, wanted, covered_value)
     seen = now_ratio if now_ratio is not None else level.ratio
     signals: list[Signal] = []
-    if seen >= chosen.band_high:
+    # A level has a band the mix's movement should stay inside. A mix of the user's own
+    # has no band: it is compared holding by holding.
+    if chosen is not None and seen >= chosen.band_high:
         signals.append(Signal(kind="risk_above_target", value=seen, against=chosen.band_high))
-    elif seen < chosen.band_low:
+    elif chosen is not None and seen < chosen.band_low:
         signals.append(Signal(kind="risk_below_target", value=seen, against=chosen.band_low))
     drifted = [g.symbol for g in gaps if g.drifted]
     if drifted:
@@ -190,11 +206,16 @@ def build(
             "target": target,
             "target_plan": chosen,
             "moves": gaps,
-            "in_band": chosen.band_low <= seen < chosen.band_high,
+            "in_band": None if chosen is None else chosen.band_low <= seen < chosen.band_high,
             "signals": signals,
         }
     )
 
 
-def stamped(level: allocation.Level, split: allocation.Method, now: datetime) -> Target:
-    return Target(level=level, split=split, set_at=now)
+def stamped(
+    level: allocation.Level | None,
+    split: allocation.Method,
+    weights: dict[str, float] | None,
+    now: datetime,
+) -> Target:
+    return Target(level=level, split=split, weights=weights, set_at=now)

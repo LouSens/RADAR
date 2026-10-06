@@ -423,3 +423,75 @@ def test_a_target_is_set_kept_across_new_holdings_and_cleared(
     session.expire_all()
     assert job.stored_target(session) is None
     assert client.put("/api/v1/portfolio/target", json={"level": "extreme"}).status_code == 422
+
+
+def test_a_mix_can_be_tried_without_saving_anything(client: TestClient, session: Session) -> None:
+    assert (
+        client.post("/api/v1/portfolio/what-if", json={"weights": {"GLD": 1.0}}).status_code == 409
+    )  # nothing is held yet, so there is no value to apply the shares to
+    client.put(
+        "/api/v1/portfolio",
+        json={"holdings": [{"symbol": "BTC", "quantity": 0.05}, {"symbol": "GLD", "quantity": 40}]},
+    )
+    before = client.get("/api/v1/portfolio/analysis").json()
+
+    def tried(weights: dict[str, float]) -> Any:
+        response = client.post("/api/v1/portfolio/what-if", json={"weights": weights})
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    wild = tried({"BTC/USD": 1.0})
+    half = tried({"BTC/USD": 0.5})
+    mixed = tried({"BTC/USD": 0.2, "GLD": 0.5})
+
+    # The value is the portfolio's own, so the money figures are comparable with it.
+    assert wild["value"] == pytest.approx(before["value"])
+    assert half["weights"] == {"BTC/USD": pytest.approx(0.5), "USD": pytest.approx(0.5)}
+    assert mixed["weights"]["USD"] == pytest.approx(0.3)  # what the shares leave over
+    assert mixed["names"]["USD"] == "Cash (US dollars)"
+    # Half in cash: half the movement and about half the loss limit.
+    assert half["daily_volatility"] == pytest.approx(wild["daily_volatility"] / 2, rel=1e-6)
+    assert half["limit_95"] == pytest.approx(wild["limit_95"] / 2, rel=0.02)
+    assert wild["limit_99"] > wild["limit_95"] > 0
+    assert mixed["daily_volatility"] < wild["daily_volatility"]
+    assert sum(mixed["risk_shares"].values()) == pytest.approx(1.0)
+    assert mixed["risk_shares"]["USD"] == 0.0
+    assert wild["deepest_fall"] < 0
+    assert wild["n_days"] > 600
+    # A newer holding is included and named, as on the other tabs.
+    with_new = tried({"GLD": 0.6, "SOL/USD": 0.2})
+    assert [y["symbol"] for y in with_new["young"]] == ["SOL/USD"]
+
+    # Nothing was saved by trying.
+    assert client.get("/api/v1/portfolio/analysis").json() == before
+
+    for bad, words in [
+        ({"BTC/USD": 0.7, "GLD": 0.6}, "more than 100%"),
+        ({"DOGE": 0.5}, "no price history for DOGE"),
+        ({"BTC/USD": -0.1}, "between 0% and 100%"),
+        ({"USD": 1.0}, "at least one holding"),
+    ]:
+        refused = client.post("/api/v1/portfolio/what-if", json={"weights": bad})
+        assert refused.status_code == 422
+        assert words in refused.json()["detail"]
+
+
+def test_a_mix_of_the_users_own_can_be_the_target(client: TestClient, session: Session) -> None:
+    client.put(
+        "/api/v1/portfolio",
+        json={"holdings": [{"symbol": "BTC", "quantity": 0.05}, {"symbol": "GLD", "quantity": 40}]},
+    )
+    chosen = client.put(
+        "/api/v1/portfolio/target", json={"weights": {"BTC/USD": 0.1, "GLD": 0.6, "USD": 0.3}}
+    )
+    assert chosen.status_code == 200
+    stored = job.stored_target(session)
+    assert stored is not None
+    assert stored.level is None
+    assert stored.weights == {"BTC/USD": 0.1, "GLD": 0.6}  # cash is whatever is left over
+
+    refused = client.put("/api/v1/portfolio/target", json={"weights": {"BTC/USD": 0.9, "GLD": 0.9}})
+    assert refused.status_code == 422
+    assert client.put("/api/v1/portfolio/target", json={}).status_code == 200
+    session.expire_all()
+    assert job.stored_target(session) is None

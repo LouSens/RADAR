@@ -205,6 +205,7 @@ def analyse(
     universe: Universe,
     *,
     min_window: int = MIN_WINDOW,
+    with_drivers: bool = True,
 ) -> Analysis:
     """The full analysis of a set of holdings on a price panel. Pure given its inputs."""
     cash = sum(h.quantity for h in holdings if h.symbol == CASH)
@@ -307,7 +308,7 @@ def analyse(
     # The same driver regression as for a single market, with the mix as the target.
     chosen = [s for s in DRIVER_SYMBOLS if s in panel.returns.columns]
     drivers = None
-    if len(chosen) >= 2:
+    if with_drivers and len(chosen) >= 2:
         frame = panel.returns[chosen].copy()
         frame[MIX] = mix
         baseline = "SPY" if "SPY" in chosen else chosen[0]
@@ -448,6 +449,79 @@ def holding_states(
                 )
             )
     return states
+
+
+class WhatIf(BaseModel):
+    """The risk of a mix the user is trying out, at the portfolio's current value."""
+
+    value: float
+    # Each holding's share of the whole, cash included, as understood.
+    weights: dict[str, float]
+    names: dict[str, str]
+    # The mix's daily movement, and that as a multiple of US stocks' with its level.
+    daily_volatility: float
+    ratio: float | None
+    level: str | None
+    # Loss limits over one day as shares of the value: passed about 1 day in 20, and 1 in 100.
+    limit_95: float | None
+    limit_99: float | None
+    deepest_fall: float
+    risk_shares: dict[str, float]
+    n_days: int
+    # Newer holdings estimated on a short record, and any left out of the risk figures.
+    young: list[Unmeasured]
+    unmeasured: list[Unmeasured]
+
+
+def what_if(
+    weights: dict[str, float], value: float, panel: MixedPanel, universe: Universe
+) -> WhatIf:
+    """The risk figures for a mix given as shares of the whole.
+
+    The shares are turned into quantities at the latest prices and analysed exactly as
+    saved holdings are, so the figures are comparable with the other tabs. Whatever the
+    shares leave over is held as cash.
+    """
+    known = {a.symbol for a in universe.assets}
+    shares = {s: float(w) for s, w in weights.items() if s != CASH and w > 0}
+    unknown = sorted(set(shares) - known)
+    if unknown:
+        raise ValueError(f"RADAR has no price history for {', '.join(unknown)}.")
+    total = sum(shares.values())
+    if total > 1.0 + 1e-6:
+        raise ValueError("The shares add up to more than 100%.")
+    latest = panel.prices[list(shares)].ffill().iloc[-1] if shares else pd.Series(dtype=float)
+    if latest.isna().any():
+        raise ValueError("One of these has no stored price yet.")
+    holdings = [Holding(symbol=s, quantity=w * value / float(latest[s])) for s, w in shares.items()]
+    cash = max(0.0, 1.0 - total) * value
+    if cash > 0:
+        holdings.append(Holding(symbol=CASH, quantity=cash))
+    result = analyse(holdings, panel, universe, with_drivers=False)
+    day = next((h for h in result.limits if h.horizon_days == 1), None)
+
+    def limit(level: float) -> float | None:
+        if day is None:
+            return None
+        row = next((x for x in day.levels if x.level == level), None)
+        found = next((m for m in row.methods if m.method == day.shown), None) if row else None
+        return None if found is None else found.var * result.covered_value / result.value
+
+    return WhatIf(
+        value=result.value,
+        weights={p.symbol: p.weight for p in result.positions},
+        names={p.symbol: p.name for p in result.positions},
+        daily_volatility=result.xray.daily_volatility * result.covered_value / result.value,
+        ratio=None if result.risk_level is None else result.risk_level.ratio,
+        level=None if result.risk_level is None else result.risk_level.label,
+        limit_95=limit(0.95),
+        limit_99=limit(0.99),
+        deepest_fall=result.xray.deepest_fall.depth,
+        risk_shares={h.symbol: h.risk_share for h in result.xray.holdings},
+        n_days=result.xray.n_days,
+        young=result.young,
+        unmeasured=result.unmeasured,
+    )
 
 
 def stored_target(session: Session) -> rebalance.Target | None:

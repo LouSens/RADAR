@@ -203,3 +203,27 @@ def test_another_split_moves_established_holdings_and_leaves_a_newer_one_alone()
     assert share(steadier, "WILD") < share(kept, "WILD")
     # The steadier split swings less when fully invested, so it needs less cash.
     assert steadier.levels[0].cash_share < kept.levels[0].cash_share
+
+
+def test_a_mix_of_the_users_own_is_compared_holding_by_holding() -> None:
+    analysis, plan = plan_for(
+        held(cash=100.0), rebalance.Target(weights={"WILD": 0.1, "CALM": 0.5, "NEW": 0.1})
+    )
+    gaps = {m.symbol: m for m in plan.moves}
+    assert set(gaps) == {"WILD", "CALM", "NEW", "USD"}
+    assert gaps["USD"].target_weight == pytest.approx(0.3)  # what the shares leave over
+    assert gaps["NEW"].current_weight == 0.0  # in the target, not held yet
+    assert gaps["NEW"].change_value == pytest.approx(0.1 * analysis.covered_value)
+    assert sum(m.change_value for m in plan.moves) == pytest.approx(0.0, abs=1e-6)
+    assert sum(m.target_weight for m in plan.moves) == pytest.approx(1.0)
+    # A mix has no band to be inside or outside of: only drift is judged.
+    assert plan.target_plan is None
+    assert plan.in_band is None
+    assert {s.kind for s in plan.signals} <= {"drift", "turbulent"}
+    assert any(s.kind == "drift" for s in plan.signals)
+
+    # Holding exactly the target raises nothing.
+    weights = {p.symbol: p.weight for p in analysis.positions if p.symbol != "USD"}
+    _, same = plan_for(held(cash=100.0), rebalance.Target(weights=weights))
+    assert same.signals == []
+    assert all(not m.drifted for m in same.moves)
