@@ -1984,3 +1984,96 @@ load, when there is genuinely nothing to show.
 utility class. The shared material rule sets no `position` and no `border-radius` for
 that reason: a first version did, and took `fixed` and `rounded-3xl` off the desktop
 sidebar.
+
+## 060. Technical indicators, levels, sizing rules and machine learning: the tests, written before running (2026-10-06)
+
+The user's view: the app is weak where it matters to them. They want it to help with
+when to resize, and around which prices to add or reduce, using what traders use:
+volatility, volume, moving averages, RSI, support and resistance, order blocks, fair
+value gaps, upcoming news, and machine learning. They asked for one notebook that tests
+whether these work on our data before anything is built, with the research behind them.
+
+Nothing below has been run. The rules, parameters and pass marks are fixed here first so
+they cannot be tuned to the result. Parameters are the textbook ones, not chosen by us.
+
+**What the research says (read before testing).**
+- Sizing down when swings are high: Moreira and Muir (2017) found it raised return per
+  unit of risk; Cederburg and others (2020) found that versions usable in real time
+  generally did not beat leaving the portfolio alone.
+- Trend: Moskowitz, Ooi and Pedersen (2012) found the past 12 months' direction tends to
+  continue across many futures markets; Huang and others (2020) found little evidence
+  market by market. Brock, Lakonishok and LeBaron (1992) found moving-average and
+  range-break rules worked on 90 years of the Dow; Sullivan, Timmermann and White (1999)
+  found the best rules did not hold up out of sample once the number of rules tried was
+  allowed for. Park and Irwin (2007): 56 of 95 studies positive, most open to that same
+  problem.
+- Support and resistance: Osler (2000) found published levels did mark where intraday
+  currency trends paused more often than chance.
+- Events: Lucca and Moench (2015) found US stocks rose in the day before Fed decisions;
+  Kurov and others found this had gone after 2015.
+- Machine learning: Gu, Kelly and Xiu (2020), with 900 inputs and 30,000 stocks, found a
+  predictable part of about 0.3% to 0.4% of monthly movement. Real, and very small.
+- Order blocks and fair value gaps: no peer-reviewed test found.
+- Bailey and Lopez de Prado (2014): try enough rules and one looks good by luck; allow
+  for how many were tried.
+
+**Data.** Daily bars for Bitcoin (from 2021), gold (GLD) and US stocks (SPY) (from 2016).
+A position decided from data up to a day's close is held over the next day. Changing a
+position costs 0.1% of the amount traded. Cash earns nothing. The first 252 days are
+warm-up. A week is 7 days for Bitcoin and 5 for the others.
+
+**Family S: rules that set how much to hold (between nothing and everything).**
+1. Swings: hold min(1, usual swing / current swing), current = last 20 days, usual = the
+   median of that up to the day.
+2. 200-day average: hold when the close is above it.
+3. 50 over 200: hold when the 50-day average is above the 200-day.
+4. 12-month direction: hold when the close is above the close 252 days earlier.
+5. Event caution: hold half on the day before and the day of a Fed decision, jobs
+   report, or inflation report.
+6. Gradient-boosted trees and 7. a small neural network: hold when the model's chance of
+   a rise over the next week is above half. Inputs known at the close: returns over 1,
+   5, 20, 60, 252 days; RSI; distance from the 50 and 200-day averages; swing over 20
+   days and against 60; volume against its 20-day average; distance from the 252-day
+   high and low; days to the next scheduled event. Refit every 63 days on all earlier
+   days whose outcome was already known; first forecast after 750 days. Both come from
+   scikit-learn, already a dependency.
+8. Rules 1 and 2 together.
+
+Judged against holding throughout, on return per unit of risk (Sharpe ratio) after
+costs. A rule "does better" only if the difference is above zero with a two-sided
+p-value, from 5,000 resamples of 20-day blocks of both return series together, that
+survives Benjamini-Hochberg at 5% across all 24 comparisons (8 rules, 3 markets). The
+deepest fall, return, and share of time held are reported beside it but not judged. For
+6 and 7, accuracy against always saying "up" is reported on weeks that do not overlap.
+
+**Family P: patterns and levels, judged on what followed.**
+1. RSI(14) under 30. 2. RSI(14) over 70.
+3. Fair value gap, up: a day's low above the high two days before. The gap is between
+   them. The case is the first day in the next 20 whose low reaches into the gap.
+4. Fair value gap, down: the mirror.
+5. Order block, up: a close above the highest high of the 20 days before. The block is
+   the last falling day among the 5 days before it, low to high. The case is the first
+   day in the next 60 whose low reaches the block. 6. Order block, down: the mirror.
+7. Support: the low comes within 0.5% of the lowest low of the 60 days before, or under.
+8. Resistance: the high comes within 0.5% of the highest high of the 60 days before, or
+   over.
+9. A close at a new 252-day high.
+10. Volume over twice its 20-day average on a rising day. 11. The same on a falling day.
+
+For each, the share of cases followed by a rise over the next week is set against the
+same share for all days, by the method of decision 051 (`signals/track.py`): at least 30
+cases, a range for the share that excludes the all-days share, and a p-value that
+survives Benjamini-Hochberg at 5% across all 33 comparisons. Whether the move that
+followed was larger than usual is reported the same way, as a second question.
+
+**Known weakness, stated now.** Six to eleven years of one market is little data. A rule
+that fails here is "not detectable on this data", not "proved useless". A rule that
+passes has passed once and is provisional.
+
+**My guess, to be checked against the result.** Sizing by swings and the trend rules
+will cut the deepest fall without a Sharpe gain that survives. No pattern in family P
+will survive on direction; high volume may be followed by larger moves. Both models
+will be right about as often as "always up".
+
+**After the result.** What is built is decided with the user. Whatever it is, the app
+never says "buy" or "sell"; a level or a size is shown with its record.
