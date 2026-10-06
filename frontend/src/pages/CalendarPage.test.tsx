@@ -96,7 +96,7 @@ describe("CalendarPage", () => {
     expect(screen.getByText("US inflation report: in 8 days")).toBeVisible();
     const fed = screen.getByRole("link", { name: /^Fed interest rate decision/ });
     expect(fed).toHaveAttribute("href", "/calendar/fed");
-    expect(within(fed).getByText("Gold has moved more than usual on these days")).toBeVisible();
+    expect(within(fed).getByText("Gold moved more than usual on these days")).toBeVisible();
     expect(within(fed).getByText("In 22 days")).toBeVisible();
     const inflation = screen.getByRole("link", { name: /^US inflation report/ });
     expect(
@@ -107,7 +107,7 @@ describe("CalendarPage", () => {
 
   it("shows how each market behaved around one kind of event, against any day", () => {
     const { container } = page("/calendar/fed");
-    expect(screen.getByText("Gold has moved more than usual on these days")).toBeVisible();
+    expect(screen.getByText("Gold moved more than usual on these days")).toBeVisible();
     expect(screen.getByText(/No pattern in direction was found/)).toBeVisible();
     expect(screen.getAllByText(/85 past events, 27 Jan 2016 to 16 Sept? 2026/)).toHaveLength(2);
     expect(screen.getByText("±0.92%")).toBeVisible();
@@ -166,7 +166,7 @@ describe("calendar helpers", () => {
       ],
     } as unknown as Calendar["results"][number];
     expect(sizeLine(both, { GLD: "Gold", SPY: "US stocks (S&P 500)" })).toBe(
-      "Gold and US stocks have moved more than usual on these days",
+      "Gold and US stocks moved more than usual on these days",
     );
   });
 });

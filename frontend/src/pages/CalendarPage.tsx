@@ -55,7 +55,7 @@ export function sizeLine(result: EventResult, names: Record<string, string>): st
     .filter((m) => m.size.verdict === "moves more on these days")
     .map((m) => (names[m.symbol] ?? m.symbol).split(" (")[0]);
   return more.length > 0
-    ? `${more.join(" and ")} ${more.length === 1 ? "has" : "have"} moved more than usual on these days`
+    ? `${more.join(" and ")} moved more than usual on these days`
     : "No market has moved measurably more on these days";
 }
 
