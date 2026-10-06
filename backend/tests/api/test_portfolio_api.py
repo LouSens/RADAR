@@ -495,3 +495,81 @@ def test_a_mix_of_the_users_own_can_be_the_target(client: TestClient, session: S
     assert client.put("/api/v1/portfolio/target", json={}).status_code == 200
     session.expire_all()
     assert job.stored_target(session) is None
+
+
+def test_the_range_ahead_is_stored_with_how_often_past_ranges_held(client: TestClient) -> None:
+    client.put(
+        "/api/v1/portfolio",
+        json={
+            "holdings": [
+                {"symbol": "BTC", "quantity": 0.01},
+                {"symbol": "GLD", "quantity": 10},
+                {"symbol": "USD", "quantity": 1000},
+            ]
+        },
+    )
+    analysis = client.get("/api/v1/portfolio/analysis").json()
+    simulation = analysis["simulation"]
+    assert simulation["start_value"] == pytest.approx(analysis["covered_value"])
+    assert simulation["n_days"] == analysis["xray"]["n_days"]
+    month, quarter = simulation["horizons"]
+    assert (month["summary"]["steps"], quarter["summary"]["steps"]) == (30, 90)
+    low, middle, high = (month["summary"]["quantiles"][q] for q in ("0.05", "0.5", "0.95"))
+    assert low < middle < high
+    # Cash never moves, so the value cannot fall below the cash held.
+    assert low > 1000
+    eighty = next(c for c in month["coverage"] if c["level"] == 0.8)
+    assert eighty["n"] == (simulation["n_days"] - 250) // 30
+    assert 0 <= eighty["inside"] <= eighty["n"]
+    trust = analysis["trust"]["simulation"]
+    assert trust["grade"] in ("solid", "fair", "rough")
+    assert f"{eighty['inside']} of {eighty['n']} past 30-session forecasts" in trust["reason"]
+
+
+def test_tags_are_kept_by_symbol_through_a_new_read_of_holdings(
+    client: TestClient, session: Session
+) -> None:
+    assert client.put("/api/v1/portfolio/tags", json={"tags": {"GLD": "core"}}).status_code == 409
+    holdings = {
+        "holdings": [
+            {"symbol": "BTC", "quantity": 0.01},
+            {"symbol": "GLD", "quantity": 10},
+            {"symbol": "USD", "quantity": 500},
+        ]
+    }
+    client.put("/api/v1/portfolio", json=holdings)
+    assert client.get("/api/v1/portfolio/analysis").json()["sleeves"] is None
+
+    tagged = client.put(
+        "/api/v1/portfolio/tags", json={"tags": {"GLD": "core", "BTC/USD": "satellite"}}
+    )
+    assert tagged.status_code == 200
+    report = tagged.json()["sleeves"]
+    found = {s["group"]: s for s in report["sleeves"]}
+    assert list(found) == ["core", "satellite", "cash"]
+    assert found["core"]["symbols"] == ["GLD"]
+    # Bitcoin swings eight times as much as gold: more of the risk than of the money.
+    assert found["satellite"]["risk_share"] > found["satellite"]["weight"]
+    assert sum(s["weight"] for s in report["sleeves"]) == pytest.approx(1.0)
+    assert sum(s["risk_share"] for s in report["sleeves"]) == pytest.approx(1.0)
+    assert report["n_days"] == 250
+
+    # The same holdings arrive again with no tags, as they do from an exchange.
+    again = client.put("/api/v1/portfolio", json=holdings).json()
+    assert {h["symbol"]: h["tag"] for h in again["holdings"]} == {
+        "BTC/USD": "satellite",
+        "GLD": "core",
+        "USD": None,
+    }
+    assert client.get("/api/v1/portfolio/analysis").json()["sleeves"] is not None
+
+    # One tag is cleared; the other is left as it was.
+    cleared = client.put("/api/v1/portfolio/tags", json={"tags": {"BTC/USD": None}}).json()
+    assert [s["group"] for s in cleared["sleeves"]["sleeves"]] == ["core", "untagged", "cash"]
+    session.expire_all()
+    assert {h.symbol: h.tag for h in job.stored_holdings(session)[1]} == {
+        "BTC/USD": None,
+        "GLD": "core",
+        "USD": None,
+    }
+    assert client.put("/api/v1/portfolio/tags", json={"tags": {"GLD": "main"}}).status_code == 422

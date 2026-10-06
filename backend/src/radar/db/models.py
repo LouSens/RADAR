@@ -363,6 +363,9 @@ class Portfolio(Base):
     # The risk level and split the user chose as a target, or null when none is set.
     # It belongs to the user, not to the holdings: a new read of holdings keeps it.
     target: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Core or satellite, by symbol. Kept here and not only on the holdings, so a
+    # new read of holdings keeps the tags the user gave.
+    tags: Mapped[dict[str, str]] = mapped_column(JSONB, server_default="{}")
     # The exchange's own dollar total per wallet at the last read; empty for manual
     # and CSV. Shown beside what RADAR found, so a gap is never silent.
     wallets: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")

@@ -23,6 +23,8 @@ from radar.db.models import Portfolio, PortfolioAnalysis, PortfolioHolding
 from radar.features.panels import MixedPanel
 from radar.models import drivers as driver_model
 from radar.models import portfolio as model
+from radar.models import portfolio_simulation as simulation_model
+from radar.models import sleeves as sleeve_model
 from radar.models.holdings import (
     CASH,
     CASH_NAME,
@@ -86,6 +88,7 @@ class Trusts(BaseModel):
     risk: summary.Trust
     stress: summary.Trust
     drivers: summary.Trust | None = None
+    simulation: summary.Trust | None = None
 
 
 class Analysis(BaseModel):
@@ -115,6 +118,11 @@ class Analysis(BaseModel):
     # Risk levels, other mixes, and the gap to the user's target. Null when the
     # stock market yardstick is not available.
     plan: rebalance.Plan | None = None
+    # The range of the portfolio's value 30 and 90 sessions ahead, when there is
+    # enough joint history to draw one.
+    simulation: simulation_model.Simulation | None = None
+    # What the core and the satellite holdings carry; null until one is tagged.
+    sleeves: sleeve_model.Report | None = None
     trust: Trusts
 
 
@@ -159,6 +167,10 @@ def store(
     now = datetime.now(UTC)
     cash = sum(h.quantity for h in read.holdings if h.symbol == CASH)
     assets = [h for h in read.holdings if h.symbol != CASH]
+    # Tags belong to the user: a source that carries none leaves them as they were.
+    before = session.get(Portfolio, PORTFOLIO_ID)
+    tags = dict(before.tags) if before is not None else {}
+    tags |= {h.symbol: h.tag for h in assets if h.tag}
     session.execute(
         insert(Portfolio)
         .values(
@@ -169,6 +181,7 @@ def store(
             leveraged=leveraged or [],
             wallets=wallets or [],
             cash=cash,
+            tags=tags,
         )
         .on_conflict_do_update(
             index_elements=[Portfolio.id],
@@ -178,6 +191,7 @@ def store(
                 "leveraged": leveraged or [],
                 "wallets": wallets or [],
                 "cash": cash,
+                "tags": tags,
             },
         )
     )
@@ -191,7 +205,7 @@ def store(
                     "portfolio_id": PORTFOLIO_ID,
                     "symbol": h.symbol,
                     "quantity": h.quantity,
-                    "tag": h.tag,
+                    "tag": tags.get(h.symbol),
                 }
                 for h in assets
             ],
@@ -206,6 +220,7 @@ def analyse(
     *,
     min_window: int = MIN_WINDOW,
     with_drivers: bool = True,
+    with_simulation: bool = True,
 ) -> Analysis:
     """The full analysis of a set of holdings on a price panel. Pure given its inputs."""
     cash = sum(h.quantity for h in holdings if h.symbol == CASH)
@@ -286,6 +301,20 @@ def analyse(
         )
     else:
         stress = model.stress(prices, weights_all, episodes)
+
+    # Holdings left alone for 30 and 90 sessions, drawn from their joint record.
+    # Newer holdings are not in that record: every path is widened for them.
+    simulation = (
+        simulation_model.run(returns.dropna().to_numpy(dtype=float), weights, total, scale=lift)
+        if with_simulation
+        else None
+    )
+    sleeves = sleeve_model.report(
+        xray.holdings,
+        {h.symbol: h.tag for h in everything if h.tag},
+        panel.returns[symbols + young_symbols],
+        CASH,
+    )
 
     day = next((h for h in limits if h.horizon_days == 1), None)
     shown = (
@@ -370,7 +399,10 @@ def analyse(
         stress=stress,
         drivers=drivers,
         driver_names={s: universe.get(s).name for s in chosen} if drivers else {},
+        simulation=simulation,
+        sleeves=sleeves,
         trust=Trusts(
+            simulation=_grade_simulation(simulation),
             drivers=summary.grade_drivers(
                 {
                     "n_days": score.n_days,
@@ -387,6 +419,15 @@ def analyse(
             ),
         ),
     )
+
+
+def _grade_simulation(simulation: simulation_model.Simulation | None) -> summary.Trust | None:
+    """Graded on the shortest horizon, which has the most past ranges to judge by."""
+    if simulation is None:
+        return None
+    horizon = simulation.horizons[0]
+    checked = next(c for c in horizon.coverage if c.level == summary.SIMULATION_LEVEL)
+    return summary.grade_simulation(checked.n, checked.inside, checked.level, horizon.summary.steps)
 
 
 def refresh(session: Session, universe: Universe, panel: MixedPanel | None = None) -> str | None:
@@ -497,7 +538,7 @@ def what_if(
     cash = max(0.0, 1.0 - total) * value
     if cash > 0:
         holdings.append(Holding(symbol=CASH, quantity=cash))
-    result = analyse(holdings, panel, universe, with_drivers=False)
+    result = analyse(holdings, panel, universe, with_drivers=False, with_simulation=False)
     day = next((h for h in result.limits if h.horizon_days == 1), None)
 
     def limit(level: float) -> float | None:
@@ -537,6 +578,22 @@ def set_target(session: Session, target: rebalance.Target | None) -> bool:
     if portfolio is None:
         return False
     portfolio.target = None if target is None else target.model_dump(mode="json")
+    return True
+
+
+def set_tags(session: Session, tags: dict[str, str | None]) -> bool:
+    """Tag holdings as core or satellite, or clear a tag with None. Symbols not
+    named keep the tag they have. Returns False when there is no portfolio yet."""
+    portfolio = session.get(Portfolio, PORTFOLIO_ID)
+    if portfolio is None:
+        return False
+    merged = {**portfolio.tags, **tags}
+    kept = {symbol: tag for symbol, tag in merged.items() if tag}
+    portfolio.tags = kept
+    for row in session.scalars(
+        select(PortfolioHolding).where(PortfolioHolding.portfolio_id == PORTFOLIO_ID)
+    ):
+        row.tag = kept.get(row.symbol)
     return True
 
 

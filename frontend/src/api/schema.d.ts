@@ -391,6 +391,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Tags
+         * @description Tag holdings as core or satellite. The tags are kept by symbol, so reading the
+         *     holdings again does not lose them. Nothing is traded.
+         */
+        put: operations["put_tags_api_v1_portfolio_tags_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/target": {
         parameters: {
             query?: never;
@@ -489,6 +510,8 @@ export interface components {
             /** Positions */
             positions: components["schemas"]["Position"][];
             risk_level?: components["schemas"]["RiskLevel"] | null;
+            simulation?: components["schemas"]["Simulation"] | null;
+            sleeves?: components["schemas"]["Report"] | null;
             /**
              * States
              * @default []
@@ -642,6 +665,18 @@ export interface components {
             /** Steps */
             steps: number;
         };
+        /**
+         * Chance
+         * @description How often the simulated value was at or past one change from today.
+         */
+        Chance: {
+            /** Change */
+            change: number;
+            /** Ends Beyond */
+            ends_beyond: number;
+            /** Touches */
+            touches: number;
+        };
         /** ChangeOut */
         ChangeOut: {
             /** Text */
@@ -662,6 +697,18 @@ export interface components {
             accuracy_low?: number | null;
             /** Macro F1 */
             macro_f1: number;
+            /** N */
+            n: number;
+        };
+        /**
+         * Coverage
+         * @description How often past ranges of one stated level held what happened.
+         */
+        Coverage: {
+            /** Inside */
+            inside: number;
+            /** Level */
+            level: number;
             /** N */
             n: number;
         };
@@ -899,6 +946,14 @@ export interface components {
             /** Holdings */
             holdings: components["schemas"]["Holding"][];
         };
+        /** Horizon */
+        Horizon: {
+            /** Chances */
+            chances: components["schemas"]["Chance"][];
+            /** Coverage */
+            coverage: components["schemas"]["Coverage"][];
+            summary: components["schemas"]["HorizonSummary"];
+        };
         /** HorizonResult */
         HorizonResult: {
             /**
@@ -919,6 +974,37 @@ export interface components {
             pairs: components["schemas"]["PairResult"][];
             /** Steps */
             steps: number;
+        };
+        /**
+         * HorizonSummary
+         * @description The outcome distribution at one horizon, as prices.
+         */
+        HorizonSummary: {
+            /** Expected Worst Drawdown */
+            expected_worst_drawdown: number;
+            /** Histogram Counts */
+            histogram_counts: number[];
+            /** Histogram Edges */
+            histogram_edges: number[];
+            /** Intervals */
+            intervals: components["schemas"]["Interval"][];
+            /** Mean Return */
+            mean_return: number;
+            /** Quantiles */
+            quantiles: {
+                [key: string]: number;
+            };
+            /** Steps */
+            steps: number;
+        };
+        /** Interval */
+        Interval: {
+            /** High */
+            high: number;
+            /** Level */
+            level: number;
+            /** Low */
+            low: number;
         };
         /** LagOut */
         LagOut: {
@@ -1489,6 +1575,27 @@ export interface components {
             /** Weekends */
             weekends: components["schemas"]["WeekendGap"][];
         };
+        /** Report */
+        Report: {
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** N Days */
+            n_days: number;
+            /** Short */
+            short: string[];
+            /** Sleeves */
+            sleeves: components["schemas"]["Sleeve"][];
+            /** Total Return */
+            total_return: number;
+        };
         /** RiskHorizonOut */
         RiskHorizonOut: {
             /**
@@ -1697,6 +1804,27 @@ export interface components {
             /** Value */
             value: number;
         };
+        /** Simulation */
+        Simulation: {
+            /** Block */
+            block: number;
+            /** Fan */
+            fan: {
+                [key: string]: number[];
+            };
+            /** Horizons */
+            horizons: components["schemas"]["Horizon"][];
+            /** Model Version */
+            model_version: string;
+            /** N Days */
+            n_days: number;
+            /** N Paths */
+            n_paths: number;
+            /** Scale */
+            scale: number;
+            /** Start Value */
+            start_value: number;
+        };
         /** SimulationOut */
         SimulationOut: {
             /**
@@ -1720,6 +1848,22 @@ export interface components {
             start_price: number;
             /** Symbol */
             symbol: string;
+        };
+        /** Sleeve */
+        Sleeve: {
+            /** Contribution */
+            contribution: number;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "core" | "satellite" | "untagged" | "cash";
+            /** Risk Share */
+            risk_share: number;
+            /** Symbols */
+            symbols: string[];
+            /** Weight */
+            weight: number;
         };
         /** Spillover */
         Spillover: {
@@ -1886,6 +2030,13 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /** TagsIn */
+        TagsIn: {
+            /** Tags */
+            tags: {
+                [key: string]: ("core" | "satellite") | null;
+            };
+        };
         /**
          * Target
          * @description What the user chose to hold the portfolio against: either a risk level with a way
@@ -2017,6 +2168,7 @@ export interface components {
         Trusts: {
             drivers?: components["schemas"]["Trust"] | null;
             risk: components["schemas"]["Trust"];
+            simulation?: components["schemas"]["Trust"] | null;
             stress: components["schemas"]["Trust"];
             xray: components["schemas"]["Trust"];
         };
@@ -2943,6 +3095,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_tags_api_v1_portfolio_tags_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Analysis"];
                 };
             };
             /** @description Validation Error */
