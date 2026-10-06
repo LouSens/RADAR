@@ -1068,3 +1068,23 @@ and on the Portfolio. The phone tab bar now has six entries.
 **Not built.** The by-regime split uses only the first market's regime. The driver
 history over time is stored but not charted yet.
 
+
+## 040. Visual first: dashboards of tiles, explanations one tap away (2026-10-06)
+
+Reported by the user: every tab opened on too much text and too few pictures. "It's an
+app, not a book."
+
+- **Summary pages are dashboards.** The market, Portfolio, and Markets together
+  summaries replace their sentences with tiles: a label, one large figure, and a small
+  picture of it (a range track, comparison bars, a tone meter, twenty dots for "1 day in
+  20", money against risk as two stacked bars, past episodes as bars, a grid for
+  spillovers). Each tile carries its trust mark and is a link to the evidence.
+- **Explanations are one tap away.** Every caption is now behind "About this", and a
+  section's trust reason behind "Why solid" (or fair, or rough). Nothing was removed:
+  sample sizes, windows, and caveats are all still on the page, as the honest-output rule
+  requires. They are no longer the first thing read.
+- Shared pieces are in `components/viz.tsx`. New first views should be built from them.
+
+**Not done yet.** The detail tabs still state several results as sentences inside cards
+(for example the loss limits and the spillover list). Turning those into charts is the
+next visual pass.

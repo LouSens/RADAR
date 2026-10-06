@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Fragment, useState } from "react";
+import { Navigate, useParams } from "react-router-dom";
 
-import type { CorrelationGrid, Pair, Relationships, Trust } from "../api/client";
+import type { CorrelationGrid, Pair, Relationships } from "../api/client";
 import { useAssets, useRelationships } from "../api/queries";
 import { Tabs } from "../components/Tabs";
-import { Caption, Message, Panel, Segmented, TrustBadge, shortName } from "../components/ui";
+import { Meter, Spark, Tile, TileGrid } from "../components/viz";
+import { Caption, Message, Panel, Segmented, shortName } from "../components/ui";
 import { formatChange, formatCount, formatShare } from "../lib/format";
 import { formatDate, formatDateTime } from "../lib/time";
 import {
@@ -21,72 +22,142 @@ import {
 const BASE = "/together";
 type Namer = (symbol: string) => string;
 
-const Figure = ({ children }: { children: ReactNode }) => (
-  <span className="num font-semibold text-ink">{children}</span>
-);
-
-function Line({ trust, to, children }: { trust?: Trust; to: string; children: ReactNode }) {
-  return (
-    <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 border-t border-line py-3 first:border-t-0 first:pt-0">
-      <p className="min-w-0 flex-1 basis-72 text-[15px] leading-relaxed">{children}</p>
-      <span className="flex shrink-0 items-center gap-3">
-        <TrustBadge trust={trust} />
-        <Link
-          to={to}
-          className="text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
-        >
-          Evidence
-        </Link>
-      </span>
-    </li>
-  );
-}
-
 function Brief({ data, name }: { data: Relationships; name: Namer }) {
   const now = data.weekend_now;
+  const markets = [...new Set(data.spillovers.flatMap((row) => [row.source, row.target]))];
+  const cell = (source: string, target: string) =>
+    headlineSpillovers(data.spillovers).find((r) => r.source === source && r.target === target);
   return (
-    <section className="glass p-5 @xl:p-7" aria-labelledby="in-brief">
-      <h2 id="in-brief" className="text-base font-semibold tracking-tight">
-        In brief
-      </h2>
-      <ul className="mt-4">
+    <section aria-label="In brief">
+      <TileGrid>
         {data.pairs.map(
           (pair) =>
             pair.current_90 != null && (
-              <Line key={pairKey(pair)} trust={pair.trust} to={`${BASE}/pairs`}>
-                Over the last 90 trading days, {name(pair.a)} and {name(pair.b)}{" "}
-                {linkWords(pair.current_90)} (<Figure>{pair.current_90.toFixed(2)}</Figure>, against{" "}
-                <Figure>{pair.full.toFixed(2)}</Figure> over the whole record).
-              </Line>
+              <Tile
+                key={pairKey(pair)}
+                label={`${name(pair.a)} and ${name(pair.b)}`}
+                to={`${BASE}/pairs`}
+                trust={pair.trust}
+                figure={pair.current_90.toFixed(2)}
+                note={`last 90 days · ${pair.full.toFixed(2)} over the whole record`}
+              >
+                <span className="flex flex-col gap-3">
+                  <Spark
+                    values={pair.series.map((point) => point.rolling_90)}
+                    min={-1}
+                    max={1}
+                    label={`How closely ${name(pair.a)} and ${name(pair.b)} have moved together over time`}
+                  />
+                  <Meter
+                    value={pair.current_90}
+                    min={-1}
+                    max={1}
+                    tick={pair.full}
+                    left="Opposite"
+                    right="Together"
+                    label={`Correlation ${pair.current_90.toFixed(2)}`}
+                  />
+                </span>
+              </Tile>
             ),
         )}
-        {headlineSpillovers(data.spillovers)
-          .filter((row) => row.verdict === "spills over")
-          .map((row) => (
-            <Line
-              key={`${row.source}-${row.target}`}
-              trust={data.spillover_trust}
-              to={`${BASE}/spillovers`}
+
+        {markets.length > 0 && (
+          <Tile
+            label="When one turns rough, the others' swings"
+            to={`${BASE}/spillovers`}
+            trust={data.spillover_trust}
+            wide
+          >
+            <span
+              className="grid gap-1 text-xs"
+              style={{
+                gridTemplateColumns: `minmax(0,1.2fr) repeat(${markets.length}, minmax(0,1fr))`,
+              }}
             >
-              {spillSentence(row, name)}
-            </Line>
-          ))}
-        {data.weekends.map((row) => (
-          <Line key={row.symbol} trust={data.weekend_trust} to={`${BASE}/weekends`}>
-            {weekendSentence(row, name)}
-          </Line>
-        ))}
-        {now && (
-          <Line to={`${BASE}/weekends`}>
-            Bitcoin has moved <Figure>{formatChange(Math.expm1(now.bitcoin_move))}</Figure> since
-            stock markets closed on {formatDate(now.since)}.
-          </Line>
+              <span className="text-faint">After ↓ · In →</span>
+              {markets.map((target) => (
+                <span key={target} className="truncate text-center text-muted">
+                  {name(target)}
+                </span>
+              ))}
+              {markets.map((source) => (
+                <Fragment key={source}>
+                  <span className="truncate py-2 text-muted">{name(source)}</span>
+                  {markets.map((target) => {
+                    const row = cell(source, target);
+                    const found = row?.verdict === "spills over";
+                    return (
+                      <span
+                        key={target}
+                        className={`num rounded-lg py-2 text-center ${found ? "font-semibold text-ink" : "text-faint"}`}
+                        style={{
+                          background: found
+                            ? "color-mix(in srgb, var(--alert) 30%, transparent)"
+                            : "rgba(255,255,255,0.04)",
+                        }}
+                        title={row ? spillSentence(row, name) : undefined}
+                      >
+                        {source === target
+                          ? ""
+                          : row?.ratio != null
+                            ? `${row.ratio.toFixed(1)}×`
+                            : "?"}
+                      </span>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </span>
+            <span className="mt-2 block text-xs text-faint">
+              Size of daily swings over the next 5 sessions against usual. Lit cells are larger than
+              chance; "?" has too few past cases.
+            </span>
+          </Tile>
         )}
-      </ul>
-      <p className="mt-4 text-xs leading-relaxed text-faint">
-        These describe what has happened together in the past. They do not say one market causes
-        another to move, and relationships between markets change.
-      </p>
+
+        {data.weekends.map((row) => (
+          <Tile
+            key={row.symbol}
+            label={`${name(row.symbol)} after Bitcoin's weekend`}
+            to={`${BASE}/weekends`}
+            trust={data.weekend_trust}
+            figure={
+              row.verdict === "moves with"
+                ? "Opens with it"
+                : row.verdict === "moves against"
+                  ? "Opens against it"
+                  : row.verdict === "no measurable link"
+                    ? "No measurable link"
+                    : "Too few weekends"
+            }
+            note={`${formatCount(row.weekends)} weekends`}
+          >
+            {row.correlation != null && row.low != null && row.high != null && (
+              <Meter
+                value={row.correlation}
+                min={-1}
+                max={1}
+                band={[row.low, row.high]}
+                tick={0}
+                colour={row.verdict === "no measurable link" ? "var(--muted)" : "var(--accent)"}
+                left="Opposite"
+                right="Together"
+                label={`Correlation ${row.correlation.toFixed(2)}`}
+              />
+            )}
+          </Tile>
+        ))}
+
+        {now && (
+          <Tile
+            label="While stocks are shut"
+            to={`${BASE}/weekends`}
+            figure={formatChange(Math.expm1(now.bitcoin_move))}
+            note={`Bitcoin since the close on ${formatDate(now.since)}`}
+          />
+        )}
+      </TileGrid>
     </section>
   );
 }

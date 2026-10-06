@@ -13,6 +13,7 @@ Update this block at the end of every work session.
 - Next step: Phase 5C, news into the swings forecast (settles decision 028), then 5D allocations, which must treat cash as a holding (decision 035). Still owed: stability and sensitivity checks; labels from a person
 - Before merging, run exactly what CI runs: `uv run radar lint` covers the tests directory too; a pull request was once merged with a red type check in a test file
 - The Binance client may only call the endpoints listed in `providers/binance.py`; adding one needs the user's agreement and a test
+- Visual first (decision 040): a first view is tiles and charts built from `components/viz.tsx`, not sentences; long explanations go in `Caption`, which is collapsed. Detail tabs still need this pass
 - Sections are pages behind tabs (`components/Tabs.tsx`), never folding panels; a new section gets its own address (decision 036)
 - Layout rules (decision 034): inside the page use container variants (`@xl:`, `@4xl:`), not `sm:` or `lg:`; phones have bottom tabs only, no top bar; charts must not pan or zoom into empty time
 - Every new section must use the shared `Panel` and take a trust grade from `analytics/summary.py`
@@ -20,7 +21,7 @@ Update this block at the end of every work session.
 - The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
 - Carried forward: shading the price chart by regime is not built (decision 028)
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 039): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 040): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 

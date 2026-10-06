@@ -125,52 +125,58 @@ function show(path: string) {
 describe("TogetherPage", () => {
   afterEach(cleanup);
 
-  it("opens with what was found, and only claims the spillovers that were measured", () => {
+  it("opens with figures and pictures, and lights only the spillovers that were measured", () => {
     const { container } = show("/together");
-    expect(screen.getByText(/Bitcoin and Gold have moved fairly closely together/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Bitcoin and Gold" })).toHaveAttribute(
+      "href",
+      "/together/pairs",
+    );
     expect(screen.getByText("0.53")).toBeVisible();
-    expect(
-      screen.getByText(/After Gold turned turbulent, US stocks' daily swings were 1.6 times/),
-    ).toBeVisible();
-    expect(screen.queryByText(/After Bitcoin turned turbulent/)).toBeNull();
-    expect(screen.getByText(/US stocks has tended to open in the same direction/)).toBeVisible();
-    expect(screen.getByText(/Gold's Monday open has had no measurable link/)).toBeVisible();
+    expect(screen.getByText("last 90 days · 0.11 over the whole record")).toBeVisible();
+    expect(screen.getByRole("img", { name: "Correlation 0.53" })).toBeVisible();
+    // The grid: one lit cell, one unlit, one with too few cases.
+    const lit = screen.getByText("1.6×");
+    expect(lit).toHaveClass("font-semibold");
+    expect(screen.getByText("1.1×")).not.toHaveClass("font-semibold");
+    expect(screen.getAllByText("?").length).toBeGreaterThan(0);
+    expect(screen.getByText("Opens with it")).toBeVisible();
+    expect(screen.getByText("No measurable link")).toBeVisible();
     expect(screen.getByText("+2.00%")).toBeVisible();
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 
   it("gives sample sizes by state and withholds a reading with too few days", () => {
     show("/together/pairs");
-    expect(screen.getByText(/512 days/)).toBeVisible();
-    expect(screen.getByText(/too few days to say/)).toBeVisible();
-    expect(screen.getByText(/has a 95% range of\s+0.36 to 0.67/)).toBeVisible();
+    expect(screen.getByText(/512 days/)).toBeInTheDocument();
+    expect(screen.getByText(/too few days to say/)).toBeInTheDocument();
+    expect(screen.getByText(/has a 95% range of\s+0.36 to 0.67/)).toBeInTheDocument();
     expect(
       screen.getByText(/Bitcoin's move from Friday's close to Monday's\s+close/),
-    ).toBeVisible();
+    ).toBeInTheDocument();
   });
 
   it("says when a pair has too few episodes, and that this is not cause", () => {
     show("/together/spillovers");
     expect(
       screen.getByText(/Gold has turned turbulent only 9 times, too few to say/),
-    ).toBeVisible();
-    expect(screen.getByText("1 of 3 pairs show larger swings afterwards")).toBeVisible();
-    expect(screen.getByText(/does not show that one causes the other/)).toBeVisible();
-    expect(screen.getByText(/Why rough:/)).toBeVisible();
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 of 3 pairs show larger swings afterwards")).toBeInTheDocument();
+    expect(screen.getByText(/does not show that one causes the other/)).toBeInTheDocument();
+    expect(screen.getByText("Why rough")).toBeInTheDocument();
   });
 
   it("shows the current weekend move and what has followed moves like it", () => {
     show("/together/weekends");
-    expect(screen.getByText("+2.00%")).toBeVisible();
-    expect(screen.getByText("+0.16%")).toBeVisible(); // 8% of a 2% move
-    expect(screen.getByText(/Single weekends vary widely/)).toBeVisible();
+    expect(screen.getByText("+2.00%")).toBeInTheDocument();
+    expect(screen.getByText("+0.16%")).toBeInTheDocument(); // 8% of a 2% move
+    expect(screen.getByText(/Single weekends vary widely/)).toBeInTheDocument();
     expect(screen.getAllByText(/299 weekends/)).toHaveLength(2);
   });
 
   it("colours the grid and states its sample", () => {
     show("/together/grid");
     expect(screen.getAllByText("0.53")).toHaveLength(2);
-    expect(screen.getByText(/on the 90 trading\s+days/)).toBeVisible();
+    expect(screen.getByText(/on the 90 trading\s+days/)).toBeInTheDocument();
   });
 });
 

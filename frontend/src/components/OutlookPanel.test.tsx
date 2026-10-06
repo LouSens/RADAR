@@ -132,29 +132,29 @@ describe("OutlookPanel", () => {
 
   it("shows the adjusted 80% range for a week, counted in market sessions", () => {
     render(<OutlookPanel asset={GOLD} />);
-    expect(screen.getByText("80% of simulated outcomes after 5 market sessions")).toBeVisible();
-    expect(screen.getByText("$344.00 to $372.00")).toBeVisible();
-    expect(screen.getByText(/Ranges shown are adjusted/)).toBeVisible();
-    expect(screen.getByText(/not a prediction/)).toBeVisible();
+    expect(screen.getByText("80% of simulated outcomes after 5 market sessions")).toBeInTheDocument();
+    expect(screen.getByText("$344.00 to $372.00")).toBeInTheDocument();
+    expect(screen.getByText(/Ranges shown are adjusted/)).toBeInTheDocument();
+    expect(screen.getByText(/not a prediction/)).toBeInTheDocument();
   });
 
   it("shows how past ranges held, with the sample size and the baseline comparison", () => {
     render(<OutlookPanel asset={GOLD} />);
-    expect(screen.getByText("How past ranges held")).toBeVisible();
+    expect(screen.getByText("How past ranges held")).toBeInTheDocument();
     expect(screen.getAllByText("2,197")).toHaveLength(3);
-    expect(screen.getByText("79.0%")).toBeVisible();
-    expect(screen.getByText("80.1%")).toBeVisible();
+    expect(screen.getByText("79.0%")).toBeInTheDocument();
+    expect(screen.getByText("80.1%")).toBeInTheDocument();
     // 0.00489 against 0.00486 is 0.6% higher: the panel says so plainly.
-    expect(screen.getByText(/0\.6% higher than a simple forecast/)).toBeVisible();
-    expect(screen.getByText(/adds nothing over that simple forecast/)).toBeVisible();
+    expect(screen.getByText(/0\.6% higher than a simple forecast/)).toBeInTheDocument();
+    expect(screen.getByText(/adds nothing over that simple forecast/)).toBeInTheDocument();
   });
 
   it("says when a range has been widened as far as it can go", () => {
     render(<OutlookPanel asset={GOLD} />);
     expect(screen.queryByText(/widened as far as it can go/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "1 month" }));
-    expect(screen.getByText("80% of simulated outcomes after 21 market sessions")).toBeVisible();
-    expect(screen.getByText(/The 95% range has been widened as far as it can go/)).toBeVisible();
+    expect(screen.getByText("80% of simulated outcomes after 21 market sessions")).toBeInTheDocument();
+    expect(screen.getByText(/The 95% range has been widened as far as it can go/)).toBeInTheDocument();
     // No track record is stored for this period in the fixture, so none is shown.
     expect(screen.queryByText("How past ranges held")).toBeNull();
   });
@@ -183,10 +183,10 @@ describe("OutlookPanel", () => {
     };
     state.level = { ...state.level, data: answer };
     rerender(<OutlookPanel asset={GOLD} />);
-    expect(screen.getByText("Ends at or above $370.00")).toBeVisible();
-    expect(screen.getByText("11.2%")).toBeVisible();
-    expect(screen.getByText("Reaches $370.00 at any daily close")).toBeVisible();
-    expect(screen.getByText("18.7%")).toBeVisible();
+    expect(screen.getByText("Ends at or above $370.00")).toBeInTheDocument();
+    expect(screen.getByText("11.2%")).toBeInTheDocument();
+    expect(screen.getByText("Reaches $370.00 at any daily close")).toBeInTheDocument();
+    expect(screen.getByText("18.7%")).toBeInTheDocument();
 
     // An answer for another level is not shown against a new entry.
     fireEvent.change(input, { target: { value: "340" } });

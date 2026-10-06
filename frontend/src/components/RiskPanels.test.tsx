@@ -123,27 +123,27 @@ describe("VolatilityPanel", () => {
     render(<VolatilityPanel asset={GOLD} />);
     expect(
       screen.getByText("Typical daily move expected over the next 1 market session"),
-    ).toBeVisible();
-    expect(screen.getByText("±1.24%")).toBeVisible();
-    expect(screen.getByText("±1.00%")).toBeVisible();
-    expect(screen.getByText("+24.00%")).toBeVisible();
-    expect(screen.getByText(/says nothing about which direction/)).toBeVisible();
+    ).toBeInTheDocument();
+    expect(screen.getByText("±1.24%")).toBeInTheDocument();
+    expect(screen.getByText("±1.00%")).toBeInTheDocument();
+    expect(screen.getByText("+24.00%")).toBeInTheDocument();
+    expect(screen.getByText(/says nothing about which direction/)).toBeInTheDocument();
   });
 
   it("states which method is shown and how the others compare", () => {
     render(<VolatilityPanel asset={GOLD} />);
-    expect(screen.getByText("Shown")).toBeVisible();
+    expect(screen.getByText("Shown")).toBeInTheDocument();
     expect(screen.getAllByText("Measurably worse")).toHaveLength(2);
     // The state average scored slightly lower, but not by a measurable margin.
-    expect(screen.getByText("No measurable difference")).toBeVisible();
-    expect(screen.getByText(/Scored on 2,201 days/)).toBeVisible();
-    expect(screen.getByText(/so the simpler one is shown/)).toBeVisible();
+    expect(screen.getByText("No measurable difference")).toBeInTheDocument();
+    expect(screen.getByText(/Scored on 2,201 days/)).toBeInTheDocument();
+    expect(screen.getByText(/so the simpler one is shown/)).toBeInTheDocument();
   });
 
   it("falls back to the first period when the chosen one is not stored", () => {
     render(<VolatilityPanel asset={GOLD} />);
     fireEvent.click(screen.getByRole("button", { name: "1 week" }));
-    expect(screen.getByText("±1.24%")).toBeVisible();
+    expect(screen.getByText("±1.24%")).toBeInTheDocument();
   });
 
   it("draws the outcome line only where the outcome is known", () => {
@@ -168,26 +168,26 @@ describe("RiskPanel", () => {
 
   it("shows each limit from the best method, with breaches against expected", () => {
     render(<RiskPanel asset={GOLD} />);
-    expect(screen.getByText("Loss limit for 19 in 20 periods of 1 market session")).toBeVisible();
-    expect(screen.getByText("Loss limit for 99 in 100 periods of 1 market session")).toBeVisible();
+    expect(screen.getByText("Loss limit for 19 in 20 periods of 1 market session")).toBeInTheDocument();
+    expect(screen.getByText("Loss limit for 99 in 100 periods of 1 market session")).toBeInTheDocument();
     expect(screen.getAllByText("2.0%").length).toBeGreaterThan(0);
-    expect(screen.getByText("98")).toBeVisible(); // 97.55 expected breaches at 95%
-    expect(screen.getByText("Past losses scaled to expected swings")).toBeVisible();
-    expect(screen.getByText("(shown)")).toBeVisible();
+    expect(screen.getByText("98")).toBeInTheDocument(); // 97.55 expected breaches at 95%
+    expect(screen.getByText("Past losses scaled to expected swings")).toBeInTheDocument();
+    expect(screen.getByText("(shown)")).toBeInTheDocument();
   });
 
   it("marks a limit that failed its coverage test as unreliable", () => {
     render(<RiskPanel asset={GOLD} />);
     // Only the 99% limit of the shown method failed; the 95% one held.
     expect(screen.getAllByText(/Treat it as unreliable/)).toHaveLength(1);
-    expect(screen.getByText(/130 of 1,951, unreliable/)).toBeVisible();
+    expect(screen.getByText(/130 of 1,951, unreliable/)).toBeInTheDocument();
   });
 
   it("lists the deepest falls with their dates", () => {
     render(<RiskPanel asset={GOLD} />);
-    expect(screen.getByText("-26.4%")).toBeVisible();
-    expect(screen.getByText(/not yet recovered/)).toBeVisible();
-    expect(screen.getByText(/recovered by/)).toBeVisible();
+    expect(screen.getByText("-26.4%")).toBeInTheDocument();
+    expect(screen.getByText(/not yet recovered/)).toBeInTheDocument();
+    expect(screen.getByText(/recovered by/)).toBeInTheDocument();
   });
 
   it("names odds in plain terms", () => {

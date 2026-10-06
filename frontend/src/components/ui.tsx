@@ -27,7 +27,12 @@ export function CardHeader({ title, children }: { title: ReactNode; children?: R
 
 /** Every chart carries one: what it shows, the window, and the sample size. */
 export function Caption({ children }: { children: ReactNode }) {
-  return <p className="mt-3 text-xs leading-relaxed text-faint">{children}</p>;
+  return (
+    <details className="about mt-3">
+      <summary>About this</summary>
+      <p className="mt-2 max-w-[80ch] text-xs leading-relaxed text-muted">{children}</p>
+    </details>
+  );
 }
 
 export function Message({ children }: { children: ReactNode }) {
@@ -246,12 +251,10 @@ export function Panel({
           <p className="num mt-1.5 text-xl font-semibold leading-snug tracking-tight">{headline}</p>
         )}
         {trust && (
-          <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-muted">
-            <span className="font-medium text-ink">
-              Why {GRADE[trust.grade].word.toLowerCase()}:
-            </span>{" "}
-            {trust.reason}
-          </p>
+          <details className="about mt-2">
+            <summary>Why {GRADE[trust.grade].word.toLowerCase()}</summary>
+            <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-muted">{trust.reason}</p>
+          </details>
         )}
       </header>
       <div className="flex flex-col gap-6 border-t border-line p-5 @xl:p-7">{children}</div>

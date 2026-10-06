@@ -203,22 +203,30 @@ describe("PortfolioPage", () => {
   state.analysis = ANALYSIS;
   state.mutate = vi.fn();
 
-  it("opens with the answers in sentences, in percent and in money", () => {
+  it("opens with figures and pictures, in percent and in money", () => {
     show("/portfolio");
-    expect(screen.getAllByText("$10,000")).toHaveLength(2); // the header and the sentence
-    expect(screen.getByText("±1.60%")).toBeVisible();
-    expect(screen.getByText("$160.00")).toBeVisible();
-    expect(screen.getAllByText("40%")).toHaveLength(3); // the sentence, the state line, the list
-    expect(screen.getByText("82%")).toBeVisible(); // of the risk
-    expect(screen.getByText("2.5%")).toBeVisible();
-    expect(screen.getByText("$250.00")).toBeVisible();
-    // The episode quoted is the worst one replayed with every holding, not the partial one.
-    expect(screen.getByText(/Replayed through Rate rises, this mix/)).toBeVisible();
-    expect(screen.getByText("−29.00%")).toBeVisible();
+    expect(screen.getAllByText("$10,000")).toHaveLength(2); // the header and the first tile
+    expect(screen.getByText("±$160.00")).toBeVisible();
+    expect(screen.getByText("±1.60% of the whole")).toBeVisible();
+    // Money against risk: the same holdings, two bars.
     expect(
-      screen.getAllByRole("link", { name: "Evidence" }).map((a) => a.getAttribute("href")),
+      screen.getByRole("img", { name: "Share of the money: Bitcoin 40%, US stocks 60%" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("img", { name: "Share of the risk: Bitcoin 82%, US stocks 18%" }),
+    ).toBeVisible();
+    expect(screen.getByText("$250.00")).toBeVisible();
+    expect(screen.getByText("2.5%, passed on about 1 day in 20")).toBeVisible();
+    // Every replayed episode is a bar; a partial one is marked.
+    expect(screen.getByText("Old crash (partial)")).toBeVisible();
+    expect(screen.getByText("−29.00%")).toBeVisible();
+    expect(screen.queryByText("Long ago")).toBeNull(); // not replayed, so not drawn
+    expect(
+      screen
+        .getAllByRole("link")
+        .filter((a) => a.classList.contains("tile"))
+        .map((a) => a.getAttribute("href")),
     ).toEqual([
-      "/portfolio/holdings",
       "/portfolio/sources",
       "/portfolio/sources",
       "/portfolio/limits",
@@ -239,12 +247,12 @@ describe("PortfolioPage", () => {
       ],
     };
     show("/portfolio");
-    expect(screen.getByText(/of your money is in a turbulent market/)).toBeVisible();
+    expect(screen.getByText("60% in turbulence")).toBeVisible();
     expect(screen.getByText("turbulent")).toBeVisible();
-    expect(screen.getByText(/Bitcoin has moved/)).toBeVisible();
-    expect(screen.getByText("+5.00%")).toBeVisible();
+    expect(screen.getByText("Bitcoin since the last close")).toBeVisible();
+    expect(screen.getByText("+5.00%")).toBeInTheDocument();
     // 8% of a 5% move on a $6,000 holding.
-    expect(screen.getByText("$24.00")).toBeVisible();
+    expect(screen.getByText(/\$24\.00\s+up/)).toBeVisible();
     state.together = undefined;
   });
 
@@ -270,8 +278,8 @@ describe("PortfolioPage", () => {
     show("/portfolio/holdings");
     fireEvent.click(screen.getByRole("button", { name: "Read from Binance" }));
     expect(state.mutate).toHaveBeenCalledWith({ binance: true }, expect.anything());
-    expect(screen.getByText("25.0% from liquidation")).toBeVisible();
-    expect(screen.getByText(/short 0.2 at\s+5× leverage/)).toBeVisible();
+    expect(screen.getByText("25.0% from liquidation")).toBeInTheDocument();
+    expect(screen.getByText(/short 0.2 at\s+5× leverage/)).toBeInTheDocument();
   });
 
   it("never tells the reader what to do", () => {
@@ -290,33 +298,35 @@ describe("PortfolioPage", () => {
 
   it("shows each holding's share of the money beside its share of the risk", () => {
     show("/portfolio/sources");
-    expect(screen.getByText("Bitcoin: 40% of the money, 82% of the risk")).toBeVisible();
-    expect(screen.getByText(/Why solid:/)).toBeVisible();
+    expect(screen.getByText("Bitcoin: 40% of the money, 82% of the risk")).toBeInTheDocument();
+    expect(screen.getByText("Why solid")).toBeInTheDocument();
     expect(screen.getAllByText("0.31", { selector: "td" })).toHaveLength(2);
-    expect(screen.getByText("-42.0%")).toBeVisible();
-    expect(screen.getByText(/Measured on 1,443 trading days/)).toBeVisible();
+    expect(screen.getByText("-42.0%")).toBeInTheDocument();
+    expect(screen.getByText(/Measured on 1,443 trading days/)).toBeInTheDocument();
   });
 
   it("marks a loss limit that did not hold as unreliable", () => {
     show("/portfolio/limits");
-    expect(screen.getByText("Loss limit for 19 in 20 periods of 1 market session")).toBeVisible();
-    expect(screen.getByText("4.5%")).toBeVisible();
+    expect(
+      screen.getByText("Loss limit for 19 in 20 periods of 1 market session"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("4.5%")).toBeInTheDocument();
     expect(screen.getAllByText(/Treat it as unreliable/)).toHaveLength(1);
-    expect(screen.getByText(/over 1,172 periods of 1 market session/)).toBeVisible();
+    expect(screen.getByText(/over 1,172 periods of 1 market session/)).toBeInTheDocument();
   });
 
   it("names missing holdings in a partial episode and says when one could not be replayed", () => {
     show("/portfolio/episodes");
-    expect(screen.getByText(/Partial: no prices for Bitcoin in this period/)).toBeVisible();
-    expect(screen.getByText(/cover the other 60% of the\s+portfolio/)).toBeVisible();
-    expect(screen.getByText(/Not replayed: none of the holdings has prices/)).toBeVisible();
+    expect(screen.getByText(/Partial: no prices for Bitcoin in this period/)).toBeInTheDocument();
+    expect(screen.getByText(/cover the other 60% of the\s+portfolio/)).toBeInTheDocument();
+    expect(screen.getByText(/Not replayed: none of the holdings has prices/)).toBeInTheDocument();
   });
 
   it("asks for holdings when there are none", () => {
     state.portfolio = { ...PORTFOLIO, holdings: [] };
     state.analysis = null;
     show("/portfolio/limits");
-    expect(screen.getByText(/Add your holdings to see this/)).toBeVisible();
+    expect(screen.getByText(/Add your holdings to see this/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go to holdings" })).toHaveAttribute(
       "href",
       "/portfolio/holdings",
@@ -328,7 +338,9 @@ describe("PortfolioPage", () => {
     const save = screen.getByRole("button", { name: "Save holdings" });
     fireEvent.change(screen.getByLabelText("Quantity of holding 2"), { target: { value: "" } });
     expect(save).toBeDisabled();
-    expect(screen.getByText(/Each row needs an asset and a quantity above zero/)).toBeVisible();
+    expect(
+      screen.getByText(/Each row needs an asset and a quantity above zero/),
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Quantity of holding 2"), { target: { value: "7.5" } });
     fireEvent.click(save);
     expect(state.mutate).toHaveBeenCalledWith(
@@ -344,7 +356,7 @@ describe("PortfolioPage", () => {
 
   it("sends an unknown page back to the summary", () => {
     show("/portfolio/nonsense");
-    expect(screen.getByText("In brief")).toBeVisible();
+    expect(screen.getByRole("region", { name: "In brief" })).toBeInTheDocument();
   });
 });
 

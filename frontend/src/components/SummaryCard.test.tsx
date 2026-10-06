@@ -44,29 +44,34 @@ const routed = (ui: ReactElement) => <MemoryRouter>{ui}</MemoryRouter>;
 describe("SummaryCard", () => {
   afterEach(cleanup);
 
-  it("states each answer in a sentence, counting market sessions for a stock", () => {
+  it("shows each answer as a figure with a picture of it", () => {
     render(routed(<SummaryCard asset={GOLD} summary={SUMMARY} />));
-    expect(screen.getByText("turbulent")).toBeVisible();
-    expect(screen.getByText("3 days")).toBeVisible();
-    expect(screen.getByText(/Over the next 5 market sessions, 8 in 10 simulated/)).toBeVisible();
-    expect(screen.getByText("$344.00 and $372.00")).toBeVisible();
-    expect(screen.getByText("±1.33%")).toBeVisible();
+    expect(screen.getByText("Turbulent")).toBeVisible();
+    expect(screen.getByText("for 3 days")).toBeVisible();
+    expect(screen.getByRole("img", { name: "93% sure" })).toBeVisible();
+    // A stock's week is five market sessions.
+    expect(screen.getByText("Likely range, next 5 market sessions")).toBeVisible();
+    expect(screen.getByText("$344.00 – $372.00")).toBeVisible();
+    expect(
+      screen.getByRole("img", { name: "Now $357.00, between $344.00 and $372.00" }),
+    ).toBeVisible();
+    expect(screen.getAllByText("±1.33%")).toHaveLength(2); // the figure and its bar
+    expect(screen.getByText("±1.25%")).toBeVisible(); // the last day, for comparison
     expect(screen.getByText("2.7%")).toBeVisible();
-    expect(screen.getByText("mixed")).toBeVisible();
-    expect(screen.getByText(/no measurable link to later price moves/)).toBeVisible();
+    expect(screen.getByRole("img", { name: "About 1 day in 20" }).children).toHaveLength(20);
+    expect(screen.getByText("Mixed")).toBeVisible();
+    expect(screen.getByText("No measurable link to price")).toBeVisible();
   });
 
-  it("puts a trust grade and a link to the evidence beside every statement", () => {
+  it("puts a trust grade on every tile and links each to its evidence", () => {
     render(routed(<SummaryCard asset={GOLD} summary={SUMMARY} />));
     expect(screen.getAllByText("Solid")).toHaveLength(3);
     expect(screen.getByText("Fair")).toBeVisible();
-    expect(screen.getByText("Rough")).toBeVisible();
     expect(screen.getByText("Rough")).toHaveAttribute(
       "title",
       "It agreed with labels on 61% of 700 headlines.",
     );
-    const links = screen.getAllByRole("link", { name: "Evidence" });
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+    expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
       "/asset/gld/state",
       "/asset/gld/outlook",
       "/asset/gld/swings",
@@ -75,19 +80,19 @@ describe("SummaryCard", () => {
     ]);
   });
 
-  it("lists what changed this week, or says nothing did", () => {
+  it("lists what changed this week, and nothing when nothing did", () => {
     const { rerender } = render(routed(<SummaryCard asset={GOLD} summary={SUMMARY} />));
     expect(screen.getByText("Expected daily swings are 22% larger than a week ago.")).toBeVisible();
     rerender(routed(<SummaryCard asset={GOLD} summary={{ ...SUMMARY, changes: [] }} />));
-    expect(screen.getByText("Nothing notable has changed in the past week.")).toBeVisible();
+    expect(screen.queryByRole("list", { name: "What changed this week" })).toBeNull();
   });
 
   it("leaves out what is not stored and shows nothing when there is nothing at all", () => {
     const { container, rerender } = render(
       routed(<SummaryCard asset={GOLD} summary={{ ...SUMMARY, news: null, risk: null }} />),
     );
-    expect(screen.queryByText(/Recent news is/)).toBeNull();
-    expect(screen.getAllByRole("link", { name: "Evidence" })).toHaveLength(3);
+    expect(screen.queryByText("News tone")).toBeNull();
+    expect(screen.getAllByRole("link")).toHaveLength(3);
     rerender(
       routed(
         <SummaryCard

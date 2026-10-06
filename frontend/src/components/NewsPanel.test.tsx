@@ -107,10 +107,10 @@ describe("NewsPanel", () => {
 
   it("shows the current tone in words, with how much news there is", () => {
     render(<NewsPanel asset={BITCOIN} />);
-    expect(screen.getByText("Mostly negative")).toBeVisible();
-    expect(screen.getByText("−0.31")).toBeVisible();
-    expect(screen.getByText("88")).toBeVisible();
-    expect(screen.getByText(/1,040 articles on 89 of the last 3 days/)).toBeVisible();
+    expect(screen.getByText("Mostly negative")).toBeInTheDocument();
+    expect(screen.getByText("−0.31")).toBeInTheDocument();
+    expect(screen.getByText("88")).toBeInTheDocument();
+    expect(screen.getByText(/1,040 articles on 89 of the last 3 days/)).toBeInTheDocument();
   });
 
   it("lists recent headlines with links, without ranking or showing a tone score", () => {
@@ -118,9 +118,9 @@ describe("NewsPanel", () => {
     const link = screen.getByRole("link", { name: "Invented headline" });
     expect(link).toHaveAttribute("href", "https://example.test/1");
     expect(link).toHaveAttribute("rel", "noreferrer noopener");
-    expect(screen.getByText("Recent headlines")).toBeVisible();
+    expect(screen.getByText("Recent headlines")).toBeInTheDocument();
     expect(screen.queryByText(/0\.93/)).toBeNull(); // the single-article score is not shown
-    expect(screen.getByText(/not ranked or coloured by tone/)).toBeVisible();
+    expect(screen.getByText(/not ranked or coloured by tone/)).toBeInTheDocument();
   });
 
   it("folds the subject breakdown away and marks it rough", () => {
@@ -138,20 +138,20 @@ describe("NewsPanel", () => {
         trust={{ grade: "rough", reason: "It agreed with labels on 61% of 700 headlines." }}
       />,
     );
-    expect(screen.getByRole("heading", { name: "News" })).toBeVisible();
-    expect(screen.getByText("Rough")).toBeVisible();
-    expect(screen.getByText("Mostly negative · Price moved first")).toBeVisible();
-    expect(screen.getByText(/Why rough:/)).toBeVisible();
-    expect(screen.getByText("Tone of recent news")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "News" })).toBeInTheDocument();
+    expect(screen.getByText("Rough")).toBeInTheDocument();
+    expect(screen.getByText("Mostly negative · Price moved first")).toBeInTheDocument();
+    expect(screen.getByText("Why rough")).toBeInTheDocument();
+    expect(screen.getByText("Tone of recent news")).toBeInTheDocument();
   });
 
   it("states the verdict with its event count", () => {
     render(<NewsPanel asset={BITCOIN} />);
     expect(
       screen.getByText("Price has tended to move first, with news tone following it."),
-    ).toBeVisible();
-    expect(screen.getByText("96")).toBeVisible();
-    expect(screen.getByText(/41 days of unusually positive news/)).toBeVisible();
+    ).toBeInTheDocument();
+    expect(screen.getByText("96")).toBeInTheDocument();
+    expect(screen.getByText(/41 days of unusually positive news/)).toBeInTheDocument();
   });
 
   it("says so when there is too little news to judge, and draws no charts for it", () => {
@@ -159,19 +159,19 @@ describe("NewsPanel", () => {
     render(<NewsPanel asset={BITCOIN} />);
     expect(
       screen.getByText("There is too little news coverage of this asset to measure an effect."),
-    ).toBeVisible();
+    ).toBeInTheDocument();
     expect(screen.queryByText(/unusually positive news \(green\)/)).toBeNull();
   });
 
   it("shows how the tone model was checked, with ranges and who labelled the sample", () => {
     render(<NewsPanel asset={BITCOIN} />);
-    expect(screen.getByText("How the tone model was checked")).toBeVisible();
-    expect(screen.getByText("Agreed with the label, on 200 headlines")).toBeVisible();
-    expect(screen.getByText("(64% to 77%)")).toBeVisible();
-    expect(screen.getByText("Counting positive and negative words")).toBeVisible();
-    expect(screen.getByText("52%")).toBeVisible();
-    expect(screen.getByText(/written by an AI model \(Claude\), not a person/)).toBeVisible();
-    expect(screen.getByText(/A single article's tone is often wrong/)).toBeVisible();
+    expect(screen.getByText("How the tone model was checked")).toBeInTheDocument();
+    expect(screen.getByText("Agreed with the label, on 200 headlines")).toBeInTheDocument();
+    expect(screen.getByText("(64% to 77%)")).toBeInTheDocument();
+    expect(screen.getByText("Counting positive and negative words")).toBeInTheDocument();
+    expect(screen.getByText("52%")).toBeInTheDocument();
+    expect(screen.getByText(/written by an AI model \(Claude\), not a person/)).toBeInTheDocument();
+    expect(screen.getByText(/A single article's tone is often wrong/)).toBeInTheDocument();
   });
 
   it("gives each subject its own verdict", () => {
@@ -183,8 +183,8 @@ describe("NewsPanel", () => {
       ],
     };
     render(<NewsPanel asset={BITCOIN} />);
-    expect(screen.getByText(/Price moved first ·/)).toBeVisible();
-    expect(screen.getByText(/Too little news ·/)).toBeVisible();
+    expect(screen.getByText(/Price moved first ·/)).toBeInTheDocument();
+    expect(screen.getByText(/Too little news ·/)).toBeInTheDocument();
   });
 
   it("puts tone into plain words", () => {

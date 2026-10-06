@@ -1,116 +1,152 @@
-import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
-
-import type { Asset, Summary, Trust } from "../api/client";
+import type { Asset, Summary } from "../api/client";
 import { formatPrice, formatShare } from "../lib/format";
 import { stepsLabel } from "../lib/outlook";
-import { TrustBadge } from "./ui";
+import { assetColorVar } from "./ui";
+import { Bars, Meter, OneIn, Tile, TileGrid, stateColour } from "./viz";
 
 const TONE_WORD = (score: number | null | undefined) =>
   score == null
-    ? "quiet"
+    ? "Quiet"
     : score > 0.15
-      ? "mostly positive"
+      ? "Mostly positive"
       : score < -0.15
-        ? "mostly negative"
-        : "mixed";
+        ? "Mostly negative"
+        : "Mixed";
 
 const VERDICT: Record<string, string> = {
-  "sentiment leads price": "Historically, news tone has tended to move before price.",
-  "price leads sentiment": "Historically, price has moved first and the news has followed.",
-  "no measurable relationship":
-    "Historically, news tone has had no measurable link to later price moves.",
-  "not enough events": "There is too little news to say whether it moves the price.",
+  "sentiment leads price": "News has moved first",
+  "price leads sentiment": "Price has moved first",
+  "no measurable relationship": "No measurable link to price",
+  "not enough events": "Too little news to say",
 };
 
 const days = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
+const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
-function Line({ trust, to, children }: { trust: Trust; to: string; children: ReactNode }) {
-  return (
-    <li className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 border-t border-line py-3 first:border-t-0 first:pt-0">
-      <p className="min-w-0 flex-1 basis-72 text-[15px] leading-relaxed">{children}</p>
-      <span className="flex shrink-0 items-center gap-3">
-        <TrustBadge trust={trust} />
-        <Link
-          to={to}
-          className="text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
-        >
-          Evidence
-        </Link>
-      </span>
-    </li>
-  );
-}
-
-const Figure = ({ children }: { children: ReactNode }) => (
-  <span className="num font-semibold text-ink">{children}</span>
-);
-
-/** The top of a market page: the answers in a few sentences, and what changed this week. */
+/** The top of a market page: each answer as a figure with a small picture of it. */
 export function SummaryCard({ asset, summary }: { asset: Asset; summary: Summary }) {
   const { state, outlook, swings, risk, news, trust } = summary;
   if (!state && !outlook && !swings && !news) return null;
   const base = `/asset/${asset.slug}`;
+  const colour = `var(${assetColorVar(asset)})`;
 
   return (
-    <section className="glass p-5 @xl:p-7" aria-labelledby="in-brief">
-      <h2 id="in-brief" className="text-base font-semibold tracking-tight">
-        In brief
-      </h2>
-      <ul className="mt-4">
+    <section aria-label="In brief" className="flex flex-col gap-3 @xl:gap-4">
+      <TileGrid>
         {state && (
-          <Line trust={trust.state} to={`${base}/state`}>
-            The market is <Figure>{state.label}</Figure>, and has been for{" "}
-            <Figure>{days(state.days_in_state)}</Figure>.
-          </Line>
+          <Tile
+            label="Market state"
+            to={`${base}/state`}
+            trust={trust.state}
+            figure={<span style={{ color: stateColour(state.label) }}>{capital(state.label)}</span>}
+            note={`for ${days(state.days_in_state)}`}
+          >
+            <Meter
+              value={state.probability}
+              min={0}
+              max={1}
+              band={[0, state.probability]}
+              colour={stateColour(state.label)}
+              left="How sure"
+              right={formatShare(state.probability, 0)}
+              label={`${formatShare(state.probability, 0)} sure`}
+            />
+          </Tile>
         )}
         {outlook && (
-          <Line trust={trust.outlook} to={`${base}/outlook`}>
-            Over the next {stepsLabel(outlook.steps, asset.trades_continuously)}, 8 in 10 simulated
-            outcomes fall between{" "}
-            <Figure>
-              {formatPrice(outlook.low)} and {formatPrice(outlook.high)}
-            </Figure>
-            .
-          </Line>
+          <Tile
+            label={`Likely range, next ${stepsLabel(outlook.steps, asset.trades_continuously)}`}
+            to={`${base}/outlook`}
+            trust={trust.outlook}
+            figure={`${formatPrice(outlook.low)} – ${formatPrice(outlook.high)}`}
+            note="8 in 10 simulated outcomes"
+          >
+            <Meter
+              value={outlook.start_price}
+              min={outlook.low - (outlook.high - outlook.low) * 0.25}
+              max={outlook.high + (outlook.high - outlook.low) * 0.25}
+              band={[outlook.low, outlook.high]}
+              colour={colour}
+              left={formatPrice(outlook.low)}
+              right={formatPrice(outlook.high)}
+              label={`Now ${formatPrice(outlook.start_price)}, between ${formatPrice(outlook.low)} and ${formatPrice(outlook.high)}`}
+            />
+          </Tile>
         )}
         {swings && (
-          <Line trust={trust.swings} to={`${base}/swings`}>
-            A typical day&apos;s move is expected to be about{" "}
-            <Figure>±{formatShare(swings.forecast)}</Figure>, in either direction.
-          </Line>
+          <Tile
+            label="Typical day ahead"
+            to={`${base}/swings`}
+            trust={trust.swings}
+            figure={`±${formatShare(swings.forecast)}`}
+            note="in either direction"
+          >
+            <Bars
+              format={(v) => `±${formatShare(v)}`}
+              rows={[
+                { key: "next", name: "Expected next", value: swings.forecast, colour },
+                ...(swings.last_realised != null
+                  ? [
+                      {
+                        key: "last",
+                        name: "Last day was",
+                        value: swings.last_realised,
+                        colour: "var(--muted)",
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </Tile>
         )}
         {risk && (
-          <Line trust={trust.risk} to={`${base}/risk`}>
-            A one-day loss beyond <Figure>{formatShare(risk.limit, 1)}</Figure> should happen on
-            about 1 day in 20.
-          </Line>
+          <Tile
+            label="One-day loss limit"
+            to={`${base}/risk`}
+            trust={trust.risk}
+            figure={formatShare(risk.limit, 1)}
+            note="passed on about 1 day in 20"
+          >
+            <OneIn lit={1} of={20} label="About 1 day in 20" />
+          </Tile>
         )}
         {news && (
-          <Line trust={trust.news} to={`${base}/news`}>
-            Recent news is <Figure>{TONE_WORD(news.current)}</Figure>.{" "}
-            {news.verdict ? (VERDICT[news.verdict] ?? "") : ""}
-          </Line>
+          <Tile
+            label="News tone"
+            to={`${base}/news`}
+            trust={trust.news}
+            figure={TONE_WORD(news.current)}
+            note={news.verdict ? (VERDICT[news.verdict] ?? "") : ""}
+          >
+            <Meter
+              value={news.current ?? 0}
+              min={-1}
+              max={1}
+              tick={0}
+              colour={
+                (news.current ?? 0) > 0.15
+                  ? "var(--calm)"
+                  : (news.current ?? 0) < -0.15
+                    ? "var(--alert)"
+                    : "var(--muted)"
+              }
+              left="Negative"
+              right="Positive"
+              label={`News tone ${TONE_WORD(news.current).toLowerCase()}`}
+            />
+          </Tile>
         )}
-      </ul>
+      </TileGrid>
 
-      <div className="mt-5 border-t border-line pt-4">
-        <h3 className="label">What changed this week</h3>
-        {summary.changes.length === 0 ? (
-          <p className="mt-1.5 text-sm text-muted">Nothing notable has changed in the past week.</p>
-        ) : (
-          <ul className="mt-1.5 space-y-1 text-sm">
-            {summary.changes.map((change) => (
-              <li key={change.topic}>{change.text}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <p className="mt-4 text-xs leading-relaxed text-faint">
-        Solid, Fair, and Rough say how well each statement has held up when tested on data the
-        models had not seen. These describe the market; they do not predict its direction.
-      </p>
+      {summary.changes.length > 0 && (
+        <ul className="flex flex-wrap gap-2" aria-label="What changed this week">
+          {summary.changes.map((change) => (
+            <li key={change.topic} className="well px-3 py-2 text-sm">
+              {change.text}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
