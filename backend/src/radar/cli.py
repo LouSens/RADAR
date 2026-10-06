@@ -265,7 +265,8 @@ def portfolio() -> int:
     from radar.universe import get_universe
 
     universe = get_universe()
-    stored = job.run(make_engine(), universe, job.binance_reader(universe))
+    engine = make_engine()
+    stored = job.run(engine, universe, job.binance_reader(), job.asset_finder(engine))
     log.info("portfolio_done", analyses_stored=stored)
     return 0
 

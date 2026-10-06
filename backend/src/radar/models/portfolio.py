@@ -142,6 +142,49 @@ def xray(returns: pd.DataFrame, weights: np.ndarray) -> Xray:
     )
 
 
+# --- risk level ------------------------------------------------------------------------
+
+# The mix's daily swings as a multiple of the US stock market's, and the word for it.
+RISK_BANDS: tuple[tuple[float, str], ...] = (
+    (0.5, "low"),
+    (1.0, "moderate"),
+    (2.0, "high"),
+)
+
+
+class RiskLevel(BaseModel):
+    """How much the mix swings, set against things an investor already knows."""
+
+    # "low", "moderate", "high", or "very high".
+    label: str
+    # Daily swings of the mix divided by those of US stocks over the same sessions.
+    ratio: float
+    # The same multiple for other reference points, lowest first. Cash is zero.
+    references: dict[str, float]
+
+
+def risk_level(mix: pd.Series, references: pd.DataFrame, stocks: str) -> RiskLevel | None:
+    """Where the mix sits between cash and the riskiest reference.
+
+    `references` holds daily returns of reference markets, one of which is `stocks`.
+    Everything is measured on the sessions the mix has.
+    """
+    both = pd.concat([mix.rename("mix"), references], axis=1).dropna()
+    if len(both) < MIN_HISTORY or stocks not in both:
+        return None
+    spread = both.std()
+    base = float(spread[stocks])
+    if base <= 0:
+        return None
+    ratio = float(spread["mix"]) / base
+    label = next((name for limit, name in RISK_BANDS if ratio < limit), "very high")
+    return RiskLevel(
+        label=label,
+        ratio=ratio,
+        references={str(c): float(spread[c]) / base for c in references.columns},
+    )
+
+
 # --- loss limits -----------------------------------------------------------------------
 
 

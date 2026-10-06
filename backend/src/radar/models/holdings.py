@@ -26,6 +26,7 @@ QUOTES = ("USDT", "USDC", "USD")
 # Cash is a holding like any other: it is part of the money and carries no price risk.
 # Dollar stablecoins are counted as dollars, one for one.
 CASH = "USD"
+NO_HISTORY = "RADAR has no price history for this."
 CASH_NAME = "Cash (US dollars)"
 CASH_NAMES = frozenset({"USD", "CASH", "USDT", "USDC", "FDUSD", "BUSD", "TUSD", "DAI"})
 SYMBOL_COLUMNS = ("symbol", "asset", "ticker", "coin")
@@ -68,6 +69,10 @@ def resolve(raw: str, known: Iterable[str]) -> str | None:
     """
     symbols = set(known)
     name = raw.strip().upper().replace("-", "/").replace("_", "/")
+    # Binance names a tokenised US stock `EQ_` plus its ticker. Such a name can only be
+    # that stock: it is never matched to a crypto pair that happens to share the letters.
+    if name.startswith("EQ/"):
+        return name[3:] if name[3:] in symbols else None
     if name in CASH_NAMES:
         return CASH
     if name in ALIASES:
@@ -112,9 +117,7 @@ def _collect(
             continue
         symbol = resolve(label, symbols)
         if symbol is None:
-            unsupported.append(
-                Unsupported(symbol=label, reason="RADAR has no price history for this.")
-            )
+            unsupported.append(Unsupported(symbol=label, reason=NO_HISTORY))
             continue
         tag = str(raw_tag).strip().lower() if raw_tag is not None else ""
         chosen: Tag | None = (

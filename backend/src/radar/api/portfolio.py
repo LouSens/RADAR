@@ -5,7 +5,6 @@ runs inside a request: the analysis is recomputed and stored there, so that ever
 read is only a read.
 """
 
-from collections.abc import Callable
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -24,7 +23,7 @@ from radar.models.holdings import (
     Unsupported,
 )
 from radar.pipelines import portfolio as job
-from radar.providers.binance import BinanceError, BinanceReading, Leveraged
+from radar.providers.binance import BinanceError, Leveraged
 from radar.universe import Universe
 
 router = APIRouter(prefix="/api/v1/portfolio")
@@ -70,11 +69,16 @@ def _supported(universe: Universe) -> list[SupportedAsset]:
     ] + [SupportedAsset(symbol=CASH, name=CASH_NAME, asset_class="cash")]
 
 
-def get_binance_reader(request: Request) -> Callable[[], BinanceReading] | None:
-    return job.binance_reader(request.app.state.universe)
+def get_binance_reader() -> job.Reader | None:
+    return job.binance_reader()
 
 
-BinanceDep = Annotated[Callable[[], BinanceReading] | None, Depends(get_binance_reader)]
+def get_asset_finder(request: Request) -> job.Finder | None:
+    return job.asset_finder(request.app.state.engine)
+
+
+BinanceDep = Annotated[job.Reader | None, Depends(get_binance_reader)]
+FinderDep = Annotated[job.Finder | None, Depends(get_asset_finder)]
 
 
 def _store(
@@ -141,12 +145,18 @@ def import_portfolio(
 
 
 @router.post("/binance", response_model=PortfolioOut)
-def read_binance(universe: UniverseDep, session: SessionDep, binance: BinanceDep) -> PortfolioOut:
-    """Replace the holdings with what the Binance account holds. This only reads."""
+def read_binance(
+    universe: UniverseDep, session: SessionDep, binance: BinanceDep, finder: FinderDep
+) -> PortfolioOut:
+    """Replace the holdings with what the Binance account holds. This only reads.
+
+    A holding RADAR does not know yet is looked up in the market data and its history
+    fetched, which can take up to a minute the first time it is seen.
+    """
     if binance is None:
         raise HTTPException(status_code=409, detail="No Binance key is configured.")
     try:
-        reading = binance()
+        reading, universe = job.read_exchange(session, universe, binance, finder)
     except BinanceError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
     job.store(session, reading.holdings, [p.model_dump() for p in reading.leveraged])

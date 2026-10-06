@@ -133,12 +133,12 @@ class Syncer:
     def __init__(self, client: AlpacaDataClient, engine: Engine, universe: Universe) -> None:
         self._client = client
         self._engine = engine
-        self._universe = universe
+        self.universe = universe
         self._lock = threading.Lock()
 
     def sync(self, *, bars: bool = True, news: bool = True) -> BackfillResult:
         with self._lock:
-            result = Backfill(self._client, self._engine, self._universe).run(bars=bars, news=news)
+            result = Backfill(self._client, self._engine, self.universe).run(bars=bars, news=news)
         log.info(
             "sync_done",
             rows_changed=result.rows_changed,
