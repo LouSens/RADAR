@@ -118,7 +118,7 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
               inner={parts((h) => h.weight)}
               outer={parts((h) => h.risk_share)}
               centre={formatMoney(value)}
-              caption="inner: money · outer: risk"
+              caption="Inner ring: money · Outer ring: risk"
               label={`Money: ${parts((h) => h.weight)
                 .map((p) => `${p.name} ${(p.share * 100).toFixed(0)}%`)
                 .join(", ")}. Risk: ${parts((h) => h.risk_share)

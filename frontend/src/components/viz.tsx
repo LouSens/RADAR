@@ -341,40 +341,42 @@ export function Donut({
     });
   };
   return (
-    <span className="relative block aspect-square w-full max-w-[13rem]">
-      <svg
-        viewBox="0 0 120 120"
-        className="block h-full w-full -rotate-90"
-        role="img"
-        aria-label={label}
-      >
-        <circle
-          cx="60"
-          cy="60"
-          r="38"
-          fill="none"
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth="9"
-        />
-        <circle
-          cx="60"
-          cy="60"
-          r="52"
-          fill="none"
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth="9"
-        />
-        {ring(inner, 38, 9)}
-        {ring(outer, 52, 9)}
-      </svg>
-      <span className="absolute inset-0 grid place-items-center text-center">
-        <span>
-          <span className="num block text-lg font-semibold leading-tight tracking-tight">
-            {centre}
+    <span className="mx-auto block w-full max-w-[13rem] shrink-0">
+      <span className="relative block aspect-square">
+        <svg
+          viewBox="0 0 120 120"
+          className="block h-full w-full -rotate-90"
+          role="img"
+          aria-label={label}
+        >
+          <circle
+            cx="60"
+            cy="60"
+            r="38"
+            fill="none"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="9"
+          />
+          <circle
+            cx="60"
+            cy="60"
+            r="52"
+            fill="none"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="9"
+          />
+          {ring(inner, 38, 9)}
+          {ring(outer, 52, 9)}
+        </svg>
+        <span className="absolute inset-0 grid place-items-center text-center">
+          <span>
+            <span className="num block max-w-[5.5rem] text-base font-semibold leading-tight tracking-tight">
+              {centre}
+            </span>
           </span>
-          <span className="block text-[11px] text-muted">{caption}</span>
         </span>
       </span>
+      <span className="mt-2 block text-center text-[11px] text-faint">{caption}</span>
     </span>
   );
 }
@@ -444,15 +446,21 @@ export function RiskScale({
         <span className="absolute left-0">Cash</span>
         {references
           .filter((r) => r.ratio === 1 || r.ratio === top)
-          .map((reference) => (
-            <span
-              key={reference.name}
-              className="absolute -translate-x-1/2 whitespace-nowrap"
-              style={{ left: at(reference.ratio) }}
-            >
-              {reference.name}
-            </span>
-          ))}
+          .map((reference) =>
+            reference.ratio === top && reference.ratio / reach > 0.8 ? (
+              <span key={reference.name} className="absolute right-0 whitespace-nowrap">
+                {reference.name}
+              </span>
+            ) : (
+              <span
+                key={reference.name}
+                className="absolute -translate-x-1/2 whitespace-nowrap"
+                style={{ left: at(reference.ratio) }}
+              >
+                {reference.name}
+              </span>
+            ),
+          )}
       </span>
     </span>
   );
