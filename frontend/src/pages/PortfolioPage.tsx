@@ -5,6 +5,7 @@ import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from 
 import { usePortfolio, usePortfolioAnalysis, useRelationships } from "../api/queries";
 import { DriverEvidence, driverHeadline } from "../components/DriversPanel";
 import { HoldingsEditor } from "../components/HoldingsEditor";
+import { LevelsPanel, MixesPanel, targetSummary } from "../components/PlanPanels";
 import { oddsLabel } from "../components/RiskPanel";
 import { Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented } from "../components/ui";
@@ -179,6 +180,34 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
                 ([symbol, ratio]) => ({ name: REFERENCE_NAME[symbol] ?? symbol, ratio }),
               )}
             />
+          </Tile>
+        )}
+
+        {analysis.plan && (
+          <Tile
+            label="Against your target"
+            to={`${BASE}/levels`}
+            figure={targetSummary(analysis.plan).figure}
+            note={targetSummary(analysis.plan).note}
+          >
+            <span className="flex flex-col gap-1.5 text-xs text-muted">
+              {analysis.plan.levels.map((item) => (
+                <span key={item.level} className="flex items-center justify-between gap-3">
+                  <span
+                    className="capitalize"
+                    style={{
+                      color:
+                        analysis.plan?.target?.level === item.level
+                          ? levelColour(item.level)
+                          : undefined,
+                    }}
+                  >
+                    {item.level}
+                  </span>
+                  <span className="num">{formatShare(item.cash_share, 0)} in cash</span>
+                </span>
+              ))}
+            </span>
           </Tile>
         )}
 
@@ -792,6 +821,12 @@ export function PortfolioPage() {
         </section>
       )}
 
+      {portfolio.data &&
+        section === "levels" &&
+        (analysis ? <LevelsPanel analysis={analysis} /> : needsHoldings)}
+      {portfolio.data &&
+        section === "mixes" &&
+        (analysis ? <MixesPanel analysis={analysis} /> : needsHoldings)}
       {portfolio.data &&
         section === "sources" &&
         (analysis ? <Sources analysis={analysis} /> : needsHoldings)}

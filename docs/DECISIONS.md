@@ -1341,3 +1341,65 @@ Earn wallet total to the cent. The earlier shortfall of about $37 was flexible s
 that Binance does not mirror into the spot wallet. RADAR's total now matches Binance's
 within the small difference that comes from valuing at the last market close.
 
+## 048. Phase 5D, part 1: risk levels, other mixes, a target, and signals (2026-10-07)
+
+Fourth part of decision 035. Split in two; this is the part the user asked about (what
+low, moderate, and high risk look like, and how rebalancing reacts). Part 2 is the
+portfolio simulation and the core and satellite report.
+
+**Two questions kept apart.**
+
+- *How the holdings are split among themselves.* Five rules (spec F6): as it is now,
+  equal shares, smallest movement (minimum variance), equal risk each, and grouped by
+  behaviour (hierarchical risk parity). Long-only, no holding above 60% of the invested
+  part, or above an equal share when there are too few holdings for that.
+- *How much is kept in cash.* Cash does not move, so it scales the mix's movement down
+  in proportion. A level fixes the movement aimed for against US stocks, which fixes the
+  cash share: one minus the aim over the movement of the holdings with no cash at all.
+
+| Level | Band (multiple of US stocks' daily movement) | Aim |
+|---|---|---|
+| Low | under 0.5 | 0.25 |
+| Moderate | 0.5 to 1 | 0.75 |
+| High | 1 to 2 | 1.5 |
+
+The bands are those of the risk scale (decision 041); the aims are their midpoints. A
+level the holdings cannot reach without borrowing is shown as out of reach with no cash,
+not forced.
+
+**Backtest of the mixes.** Walk-forward: rebalanced every 21 sessions, each split worked
+out from the 250 sessions before it and nothing later (a test changes later returns and
+checks earlier splits do not move). Trading costs 0.1% of what is traded. Today's cash
+share is kept in every mix. Holdings with a short record are left out of the backtest
+and keep their share when a split is applied. Reported: daily movement, deepest fall,
+share traded per month, and growth over the period, which is labelled as what happened.
+
+**The target and the signals.** The user chooses a level and, optionally, a split.
+It is stored with the portfolio and kept when holdings are read again. Against it:
+
+| Signal | Rule |
+|---|---|
+| Movement above or below target | the mix's movement in current conditions is outside the level's band |
+| Drift | any holding, or cash, is more than 5 percentage points of the whole from its target share |
+| Turbulent market | a holding's market reads turbulent now (information, not counted as a move) |
+
+"Current conditions" is the long-run figure scaled by how much the mix has been moving
+lately (the same exponentially weighted measure the loss limits use) against its own
+long-run movement. This is how the app reacts to volatility: when markets get rougher
+the same holdings read higher on the scale, and the screen shows the gap. It does not
+react to headlines, because the tests in decisions 030 and 045 found news leads neither
+direction nor the size of moves.
+
+**Wording.** Each holding's gap to target is given as shares and as an amount of money,
+with a sign. Nothing says buy, sell, or what to do; setting a target changes nothing at
+Binance. Route `PUT /portfolio/target`; the plan is part of `GET /portfolio/analysis`.
+
+**On the real account (2026-10-07).** With no cash these holdings move 1.59 times as
+much as US stocks; with 76% in cash the mix reads low, 0.37 over the long run and 0.27
+in current conditions. Low would mean 84% in cash, moderate 53%, high 6%. Over 1,194
+trading days from 31 December 2021, the split as it is moved 0.34% a day with a deepest
+fall of 9.4%; the smallest-movement split moved 0.19% with a deepest fall of 4.5%.
+
+**Not built yet (part 2).** Portfolio simulation by block bootstrap; the core and
+satellite report. The detail tabs elsewhere still need the visual pass.
+

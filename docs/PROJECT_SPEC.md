@@ -493,6 +493,7 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `POST /portfolio/import` | holdings from the text of a CSV file |
 | `GET /portfolio/analysis` | risk breakdown, loss limits, stress episodes, market states, and drivers (`docs/DECISIONS.md` 037, 038) |
 | `POST /portfolio/binance` | replace the holdings with what the Binance account holds; reads only |
+| `PUT /portfolio/target` | choose, change, or clear the risk level and split the portfolio is compared with (`docs/DECISIONS.md` 048) |
 | `GET /relationships` | correlations, risk transmission, and weekend gaps (`docs/DECISIONS.md` 039) |
 | `GET /assets/{symbol}/drivers` | F8 macro drivers for one market |
 | `GET /assets/{symbol}/news-and-swings` | whether news improved the F9 forecast (`docs/DECISIONS.md` 044, 045) |

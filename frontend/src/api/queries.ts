@@ -244,3 +244,15 @@ export function useNewsTest(slug: string | undefined) {
     staleTime: 60 * 60_000,
   });
 }
+
+/** Choose, change, or clear the risk level and split the portfolio is compared with. */
+export function useSetTarget() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { level: "low" | "moderate" | "high" | null; split?: string }) =>
+      putJson<PortfolioAnalysis>("/portfolio/target", input),
+    onSuccess: (analysis) => {
+      client.setQueryData(["portfolio", "analysis"], analysis);
+    },
+  });
+}

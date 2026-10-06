@@ -43,6 +43,16 @@
             "title": "Model Version",
             "type": "string"
           },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Plan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "positions": {
             "items": {
               "$ref": "#/components/schemas/Position"
@@ -232,97 +242,6 @@
           "trades_continuously"
         ],
         "title": "AssetOut",
-        "type": "object"
-      },
-      "Backtest": {
-        "description": "How one method's limit held at one level. Every period is out of sample.",
-        "properties": {
-          "breach_rate": {
-            "title": "Breach Rate",
-            "type": "number"
-          },
-          "breaches": {
-            "title": "Breaches",
-            "type": "integer"
-          },
-          "clustering_p_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clustering P Value"
-          },
-          "expected_breaches": {
-            "title": "Expected Breaches",
-            "type": "number"
-          },
-          "first_day": {
-            "format": "date",
-            "title": "First Day",
-            "type": "string"
-          },
-          "kupiec_p_adjusted": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kupiec P Adjusted"
-          },
-          "kupiec_p_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kupiec P Value"
-          },
-          "last_day": {
-            "format": "date",
-            "title": "Last Day",
-            "type": "string"
-          },
-          "level": {
-            "title": "Level",
-            "type": "number"
-          },
-          "method": {
-            "title": "Method",
-            "type": "string"
-          },
-          "n": {
-            "title": "N",
-            "type": "integer"
-          },
-          "reliable": {
-            "title": "Reliable",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "method",
-          "level",
-          "n",
-          "breaches",
-          "expected_breaches",
-          "breach_rate",
-          "kupiec_p_value",
-          "clustering_p_value",
-          "reliable",
-          "first_day",
-          "last_day"
-        ],
-        "title": "Backtest",
         "type": "object"
       },
       "BarOut": {
@@ -1375,6 +1294,55 @@
         "title": "LevelOut",
         "type": "object"
       },
+      "LevelPlan": {
+        "description": "What one risk level would ask of these holdings.",
+        "properties": {
+          "aim": {
+            "title": "Aim",
+            "type": "number"
+          },
+          "band_high": {
+            "title": "Band High",
+            "type": "number"
+          },
+          "band_low": {
+            "title": "Band Low",
+            "type": "number"
+          },
+          "cash_share": {
+            "title": "Cash Share",
+            "type": "number"
+          },
+          "level": {
+            "enum": [
+              "low",
+              "moderate",
+              "high"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "level",
+          "aim",
+          "band_low",
+          "band_high",
+          "cash_share",
+          "ratio",
+          "reachable"
+        ],
+        "title": "LevelPlan",
+        "type": "object"
+      },
       "Leveraged": {
         "description": "An open futures exposure, as Binance reports it.",
         "properties": {
@@ -1437,7 +1405,7 @@
         "description": "One method's current limit at one level, and how its past limits held.",
         "properties": {
           "backtest": {
-            "$ref": "#/components/schemas/Backtest"
+            "$ref": "#/components/schemas/radar__models__tail_risk__Backtest"
           },
           "expected_shortfall": {
             "title": "Expected Shortfall",
@@ -1597,6 +1565,40 @@
           "symbols"
         ],
         "title": "LiveNews",
+        "type": "object"
+      },
+      "Move": {
+        "description": "How far one holding sits from its target share of the whole.",
+        "properties": {
+          "change_value": {
+            "title": "Change Value",
+            "type": "number"
+          },
+          "current_weight": {
+            "title": "Current Weight",
+            "type": "number"
+          },
+          "drifted": {
+            "title": "Drifted",
+            "type": "boolean"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "target_weight": {
+            "title": "Target Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "symbol",
+          "current_weight",
+          "target_weight",
+          "change_value",
+          "drifted"
+        ],
+        "title": "Move",
         "type": "object"
       },
       "NewsTest": {
@@ -2047,6 +2049,103 @@
           "dm_p_value"
         ],
         "title": "PairResult",
+        "type": "object"
+      },
+      "Plan": {
+        "properties": {
+          "in_band": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Band"
+          },
+          "invested_ratio": {
+            "title": "Invested Ratio",
+            "type": "number"
+          },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/LevelPlan"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "mixes": {
+            "items": {
+              "$ref": "#/components/schemas/radar__models__allocation__Backtest"
+            },
+            "title": "Mixes",
+            "type": "array"
+          },
+          "moves": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Move"
+            },
+            "title": "Moves",
+            "type": "array"
+          },
+          "now_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Now Ratio"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          },
+          "signals": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Signal"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Target"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LevelPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
+          }
+        },
+        "required": [
+          "invested_ratio",
+          "ratio",
+          "now_ratio",
+          "levels",
+          "mixes",
+          "trust"
+        ],
+        "title": "Plan",
         "type": "object"
       },
       "PortfolioOut": {
@@ -3080,6 +3179,44 @@
         "title": "SeriesStatus",
         "type": "object"
       },
+      "Signal": {
+        "description": "Something that has moved the portfolio away from its target, with its size.",
+        "properties": {
+          "against": {
+            "title": "Against",
+            "type": "number"
+          },
+          "kind": {
+            "enum": [
+              "risk_above_target",
+              "risk_below_target",
+              "drift",
+              "turbulent"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "symbols": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "value",
+          "against"
+        ],
+        "title": "Signal",
+        "type": "object"
+      },
       "SimulationOut": {
         "properties": {
           "as_of": {
@@ -3653,6 +3790,86 @@
           "asset_class"
         ],
         "title": "SupportedAsset",
+        "type": "object"
+      },
+      "Target": {
+        "description": "What the user chose to hold the portfolio against.",
+        "properties": {
+          "level": {
+            "enum": [
+              "low",
+              "moderate",
+              "high"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "set_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set At"
+          },
+          "split": {
+            "default": "current",
+            "enum": [
+              "current",
+              "equal",
+              "min_variance",
+              "equal_risk",
+              "hierarchical"
+            ],
+            "title": "Split",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "title": "Target",
+        "type": "object"
+      },
+      "TargetIn": {
+        "properties": {
+          "level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "split": {
+            "default": "current",
+            "enum": [
+              "current",
+              "equal",
+              "min_variance",
+              "equal_risk",
+              "hierarchical"
+            ],
+            "title": "Split",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "title": "TargetIn",
         "type": "object"
       },
       "TopicSummary": {
@@ -4517,6 +4734,181 @@
         ],
         "title": "Xray",
         "type": "object"
+      },
+      "radar__models__allocation__Backtest": {
+        "description": "How one way of splitting the holdings behaved, rebalanced monthly. History only.",
+        "properties": {
+          "cost_paid": {
+            "title": "Cost Paid",
+            "type": "number"
+          },
+          "daily_volatility": {
+            "title": "Daily Volatility",
+            "type": "number"
+          },
+          "deepest_fall": {
+            "title": "Deepest Fall",
+            "type": "number"
+          },
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "current",
+              "equal",
+              "min_variance",
+              "equal_risk",
+              "hierarchical"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "path": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Path",
+            "type": "array"
+          },
+          "rebalances": {
+            "title": "Rebalances",
+            "type": "integer"
+          },
+          "total_return": {
+            "title": "Total Return",
+            "type": "number"
+          },
+          "turnover": {
+            "title": "Turnover",
+            "type": "number"
+          },
+          "weights_now": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Weights Now",
+            "type": "object"
+          }
+        },
+        "required": [
+          "method",
+          "n_days",
+          "first_day",
+          "last_day",
+          "rebalances",
+          "daily_volatility",
+          "deepest_fall",
+          "turnover",
+          "total_return",
+          "cost_paid",
+          "weights_now",
+          "path"
+        ],
+        "title": "Backtest",
+        "type": "object"
+      },
+      "radar__models__tail_risk__Backtest": {
+        "description": "How one method's limit held at one level. Every period is out of sample.",
+        "properties": {
+          "breach_rate": {
+            "title": "Breach Rate",
+            "type": "number"
+          },
+          "breaches": {
+            "title": "Breaches",
+            "type": "integer"
+          },
+          "clustering_p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clustering P Value"
+          },
+          "expected_breaches": {
+            "title": "Expected Breaches",
+            "type": "number"
+          },
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "kupiec_p_adjusted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kupiec P Adjusted"
+          },
+          "kupiec_p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kupiec P Value"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "number"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "reliable": {
+            "title": "Reliable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "method",
+          "level",
+          "n",
+          "breaches",
+          "expected_breaches",
+          "breach_rate",
+          "kupiec_p_value",
+          "clustering_p_value",
+          "reliable",
+          "first_day",
+          "last_day"
+        ],
+        "title": "Backtest",
+        "type": "object"
       }
     }
   },
@@ -5323,6 +5715,45 @@
           }
         },
         "summary": "Import Portfolio"
+      }
+    },
+    "/api/v1/portfolio/target": {
+      "put": {
+        "description": "Choose, change, or clear the risk level and split the portfolio is held against.\n\nNothing is traded and nothing changes at the exchange: this only sets what the\nportfolio is compared with.",
+        "operationId": "put_target_api_v1_portfolio_target_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Analysis"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Target"
       }
     },
     "/api/v1/relationships": {
