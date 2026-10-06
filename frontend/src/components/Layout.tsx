@@ -149,11 +149,6 @@ const sideLink = ({ isActive }: { isActive: boolean }) =>
     isActive ? "lens text-ink" : "text-muted hover:bg-white/5 hover:text-ink"
   }`;
 
-const tab = ({ isActive }: { isActive: boolean }) =>
-  `press flex h-11 items-center justify-center gap-2 rounded-full transition-all duration-300 ${
-    isActive ? "lens flex-[2.2] px-4 text-ink" : "flex-1 text-muted"
-  }`;
-
 function Sidebar({
   collapsed,
   canToggle,
@@ -310,10 +305,14 @@ export function Layout() {
                 to={place.to}
                 aria-label={place.label}
                 aria-current={here ? "page" : undefined}
-                className={tab({ isActive: here })}
+                className="bar-tab"
               >
                 <Icon>{icon[place.icon]}</Icon>
-                {here && <span className="text-[13px] font-semibold">{place.label}</span>}
+                {/* Always there, so it can open and close smoothly; hidden from
+                    assistive technology, which reads the link's own name. */}
+                <span className="bar-tab-label" aria-hidden="true">
+                  {place.label}
+                </span>
               </Link>
             );
           })}
