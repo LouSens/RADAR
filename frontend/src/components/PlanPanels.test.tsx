@@ -224,11 +224,16 @@ describe("LevelsPanel", () => {
 
   it("lets an asset not held yet be added, and one be removed", () => {
     render(<LevelsPanel analysis={ANALYSIS} />);
-    fireEvent.change(screen.getByLabelText("Add another asset"), { target: { value: "GLD" } });
+    // Assets not in the mix are offered as buttons; one already in it is not offered.
+    expect(screen.queryByRole("button", { name: "Add Bitcoin" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add Gold" }));
+    expect(screen.queryByRole("button", { name: "Add Gold" })).toBeNull();
     expect(screen.getByLabelText("Gold share, percent")).toHaveValue(0);
     fireEvent.click(screen.getByRole("button", { name: "Remove Bitcoin" }));
     expect(screen.queryByLabelText("Bitcoin share, percent")).toBeNull();
     expect(screen.getByText("85% · $340.00")).toBeVisible();
+    // Once removed, it can be added back.
+    expect(screen.getByRole("button", { name: "Add Bitcoin" })).toBeVisible();
   });
 
   it("sets the tried mix beside the portfolio as it is, in money", () => {

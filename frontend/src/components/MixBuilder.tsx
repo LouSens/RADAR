@@ -37,7 +37,6 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
   const order = analysis.positions.map((p) => p.symbol);
   const current = Object.fromEntries(analysis.positions.map((p) => [p.symbol, p.weight]));
   const [rows, setRows] = useState<Row[]>(() => rowsFrom(current, order));
-  const [adding, setAdding] = useState("");
 
   const name = (symbol: string) =>
     symbol === CASH
@@ -178,26 +177,31 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
         </li>
       </ul>
 
-      <div className="flex flex-wrap items-center gap-2.5">
-        {options.length > 0 && (
-          <select
-            aria-label="Add another asset"
-            value={adding}
-            onChange={(event) => {
-              const symbol = event.target.value;
-              setAdding("");
-              if (symbol) setRows((before) => [...before, { symbol, percent: 0 }]);
-            }}
-            className={field}
-          >
-            <option value="">Add another asset…</option>
+      {options.length > 0 && (
+        <div>
+          <p className="label mb-2">Add another asset</p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Add another asset">
             {options.map((asset) => (
-              <option key={asset.symbol} value={asset.symbol}>
-                {asset.name}
-              </option>
+              <button
+                key={asset.symbol}
+                type="button"
+                aria-label={`Add ${name(asset.symbol)}`}
+                onClick={() =>
+                  setRows((before) => [...before, { symbol: asset.symbol, percent: 0 }])
+                }
+                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-line-strong px-3 py-1.5 text-[13px] font-medium text-muted transition-colors hover:border-solid hover:bg-white/5 hover:text-ink"
+              >
+                <span aria-hidden="true" className="text-base leading-none">
+                  +
+                </span>
+                {name(asset.symbol)}
+              </button>
             ))}
-          </select>
-        )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2.5">
         <button
           type="button"
           className="btn btn-primary ml-auto disabled:opacity-50"
