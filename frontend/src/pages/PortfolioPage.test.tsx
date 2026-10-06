@@ -60,6 +60,9 @@ const PORTFOLIO: Portfolio = {
 const ANALYSIS: PortfolioAnalysis = {
   as_of: "2026-10-02T20:00:00Z",
   model_version: "portfolio-risk-1",
+  covered_value: 10000,
+  unmeasured: [],
+  risk_level: { label: "high", ratio: 1.6, references: { SPY: 1, "BTC/USD": 3.4 } },
   drivers: null,
   driver_names: {},
   states: [
@@ -208,12 +211,18 @@ describe("PortfolioPage", () => {
     expect(screen.getAllByText("$10,000")).toHaveLength(2); // the header and the first tile
     expect(screen.getByText("±$160.00")).toBeVisible();
     expect(screen.getByText("±1.60% of the whole")).toBeVisible();
-    // Money against risk: the same holdings, two bars.
+    // Money and risk as two rings of one donut, with the same split as a table beside it.
     expect(
-      screen.getByRole("img", { name: "Share of the money: Bitcoin 40%, US stocks 60%" }),
+      screen.getByRole("img", {
+        name: "Money: Bitcoin 40%, US stocks 60%. Risk: Bitcoin 82%, US stocks 18%.",
+      }),
     ).toBeVisible();
+    expect(screen.getByText("82%")).toBeVisible();
+    // The risk level, on a scale an investor can place.
+    expect(screen.getByText("high")).toBeVisible();
+    expect(screen.getByText("1.6× the daily movement of US stocks")).toBeVisible();
     expect(
-      screen.getByRole("img", { name: "Share of the risk: Bitcoin 82%, US stocks 18%" }),
+      screen.getByRole("img", { name: "Your mix swings 1.60 times as much as US stocks" }),
     ).toBeVisible();
     expect(screen.getByText("$250.00")).toBeVisible();
     expect(screen.getByText("2.5%, passed on about 1 day in 20")).toBeVisible();
@@ -229,10 +238,27 @@ describe("PortfolioPage", () => {
     ).toEqual([
       "/portfolio/sources",
       "/portfolio/sources",
+      "/portfolio/sources",
       "/portfolio/limits",
       "/together",
       "/portfolio/episodes",
     ]);
+  });
+
+  it("says which holdings the risk figures leave out, and prices risk on the rest", () => {
+    state.analysis = {
+      ...ANALYSIS,
+      value: 12500,
+      covered_value: 10000,
+      unmeasured: [{ symbol: "PURR", name: "PURR", weight: 0.2, days: 210 }],
+    };
+    show("/portfolio");
+    expect(screen.getByText(/is not in the risk figures yet/)).toBeVisible();
+    expect(screen.getByText(/210 of the 250 days of prices needed/)).toBeVisible();
+    expect(screen.getByText(/describe the other 80%/)).toBeVisible();
+    // The loss in money is a share of the part that is measured, not of everything.
+    expect(screen.getByText("$250.00")).toBeVisible();
+    expect(screen.getAllByText("$12,500")).toHaveLength(2);
   });
 
   it("ties the holdings to the state of their markets and to the weekend", () => {

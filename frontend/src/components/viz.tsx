@@ -296,3 +296,164 @@ export function holdingColour(symbol: string, index: number): string {
   if (symbol === "SPY") return "var(--stock)";
   return `var(${PALETTE[(index + 3) % PALETTE.length]})`;
 }
+
+/**
+ * Two rings round one total: the inner ring is how the money is split, the outer ring
+ * how the risk is split. A holding with a thin inner arc and a thick outer one carries
+ * more risk than its size suggests.
+ */
+export function Donut({
+  inner,
+  outer,
+  centre,
+  caption,
+  label,
+}: {
+  inner: Part[];
+  outer: Part[];
+  centre: ReactNode;
+  caption: ReactNode;
+  label: string;
+}) {
+  const ring = (parts: Part[], radius: number, width: number) => {
+    const round = 2 * Math.PI * radius;
+    const total = parts.reduce((sum, part) => sum + Math.max(part.share, 0), 0) || 1;
+    let used = 0;
+    return parts.map((part) => {
+      const length = (Math.max(part.share, 0) / total) * round;
+      const arc = (
+        <circle
+          key={part.key}
+          cx="60"
+          cy="60"
+          r={radius}
+          fill="none"
+          stroke={part.colour}
+          strokeWidth={width}
+          strokeDasharray={`${Math.max(length - 1.2, 0)} ${round}`}
+          strokeDashoffset={-used}
+        >
+          <title>{`${part.name} ${(part.share * 100).toFixed(0)}%`}</title>
+        </circle>
+      );
+      used += length;
+      return arc;
+    });
+  };
+  return (
+    <span className="relative block aspect-square w-full max-w-[13rem]">
+      <svg
+        viewBox="0 0 120 120"
+        className="block h-full w-full -rotate-90"
+        role="img"
+        aria-label={label}
+      >
+        <circle
+          cx="60"
+          cy="60"
+          r="38"
+          fill="none"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth="9"
+        />
+        <circle
+          cx="60"
+          cy="60"
+          r="52"
+          fill="none"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth="9"
+        />
+        {ring(inner, 38, 9)}
+        {ring(outer, 52, 9)}
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-center">
+        <span>
+          <span className="num block text-lg font-semibold leading-tight tracking-tight">
+            {centre}
+          </span>
+          <span className="block text-[11px] text-muted">{caption}</span>
+        </span>
+      </span>
+    </span>
+  );
+}
+
+const LEVEL_COLOUR: Record<string, string> = {
+  low: "var(--calm)",
+  moderate: "var(--accent)",
+  high: "var(--gold)",
+  "very high": "var(--alert)",
+};
+
+export const levelColour = (label: string) => LEVEL_COLOUR[label] ?? "var(--accent)";
+
+/**
+ * Where a mix sits between cash and the riskiest reference market. The track is cut
+ * into the four levels; the ticks are markets an investor already knows.
+ */
+export function RiskScale({
+  ratio,
+  references,
+  bands,
+}: {
+  ratio: number;
+  references: { name: string; ratio: number }[];
+  bands: { upTo: number; label: string }[];
+}) {
+  const top = Math.max(...references.map((r) => r.ratio), 0);
+  const reach = Math.max(ratio, top, 2.2) * 1.05;
+  const at = (x: number) => `${Math.min(x / reach, 1) * 100}%`;
+  const edges = bands.map((band, i) => ({
+    label: band.label,
+    from: i === 0 ? 0 : Math.min(bands[i - 1]?.upTo ?? 0, reach),
+    to: Math.min(band.upTo, reach),
+  }));
+  return (
+    <span className="block">
+      <span
+        className="relative block h-2.5"
+        role="img"
+        aria-label={`Your mix swings ${ratio.toFixed(2)} times as much as US stocks`}
+      >
+        {edges.map((edge, i) => (
+          <span
+            key={edge.label}
+            className={`absolute inset-y-0 ${i === 0 ? "rounded-l-full" : ""} ${i === edges.length - 1 ? "rounded-r-full" : ""}`}
+            style={{
+              left: at(edge.from),
+              width: `calc(${at(edge.to)} - ${at(edge.from)})`,
+              background: `color-mix(in srgb, ${levelColour(edge.label)} 36%, transparent)`,
+            }}
+          />
+        ))}
+        {references.map((reference) => (
+          <span
+            key={reference.name}
+            className="absolute -inset-y-1 w-px bg-white/45"
+            style={{ left: at(reference.ratio) }}
+            title={`${reference.name}: ${reference.ratio.toFixed(1)}×`}
+          />
+        ))}
+        <span
+          className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg bg-ink"
+          style={{ left: at(ratio) }}
+        />
+      </span>
+      <span className="relative mt-2 block h-4 text-[11px] text-faint">
+        <span className="absolute left-0">Cash</span>
+        {references
+          .filter((r) => r.ratio === 1 || r.ratio === top)
+          .map((reference) => (
+            <span
+              key={reference.name}
+              className="absolute -translate-x-1/2 whitespace-nowrap"
+              style={{ left: at(reference.ratio) }}
+            >
+              {reference.name}
+            </span>
+          ))}
+      </span>
+    </span>
+  );
+}

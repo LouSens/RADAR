@@ -189,11 +189,11 @@ function Sidebar({
             </div>
           );
         })}
-        <NavLink to="/together" className={sideLink} title="Markets together">
+        <NavLink to="/together" className={sideLink} title="Market connections">
           <span className="grid w-[22px] shrink-0 place-items-center">
             <Icon>{icon.together}</Icon>
           </span>
-          <span className={hidden}>Markets together</span>
+          <span className={hidden}>Market connections</span>
         </NavLink>
 
         <p className={`label mt-5 px-2.5 pb-1 text-xs ${collapsed ? "sr-only" : ""}`}>Yours</p>
@@ -309,7 +309,7 @@ export function Layout() {
           ))}
           <NavLink to="/together" className={tab}>
             <Icon>{icon.together}</Icon>
-            <span className="max-w-full truncate px-0.5">Together</span>
+            <span className="max-w-full truncate px-0.5">Links</span>
           </NavLink>
           <NavLink to="/portfolio" className={tab}>
             <Icon>{icon.portfolio}</Icon>

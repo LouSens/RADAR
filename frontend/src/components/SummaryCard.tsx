@@ -35,7 +35,7 @@ export function SummaryCard({ asset, summary }: { asset: Asset; summary: Summary
       <TileGrid>
         {state && (
           <Tile
-            label="Market state"
+            label="Current state"
             to={`${base}/state`}
             trust={trust.state}
             figure={<span style={{ color: stateColour(state.label) }}>{capital(state.label)}</span>}
@@ -75,7 +75,7 @@ export function SummaryCard({ asset, summary }: { asset: Asset; summary: Summary
         )}
         {swings && (
           <Tile
-            label="Typical day ahead"
+            label="Daily movement"
             to={`${base}/swings`}
             trust={trust.swings}
             figure={`±${formatShare(swings.forecast)}`}
@@ -101,7 +101,7 @@ export function SummaryCard({ asset, summary }: { asset: Asset; summary: Summary
         )}
         {risk && (
           <Tile
-            label="One-day loss limit"
+            label="Possible loss in a day"
             to={`${base}/risk`}
             trust={trust.risk}
             figure={formatShare(risk.limit, 1)}

@@ -64,7 +64,7 @@ function Brief({ data, name }: { data: Relationships; name: Namer }) {
 
         {markets.length > 0 && (
           <Tile
-            label="When one turns rough, the others' swings"
+            label="Knock-on effects: swings after one turns turbulent"
             to={`${BASE}/spillovers`}
             trust={data.spillover_trust}
             wide
@@ -243,7 +243,7 @@ function Pairs({ data, name }: { data: Relationships; name: Namer }) {
   return (
     <Panel
       id="pairs"
-      title="Pair by pair"
+      title="Two markets compared"
       trust={pair.trust}
       headline={
         pair.current_90 != null
@@ -371,7 +371,7 @@ function AllMarkets({ data, name }: { data: Relationships; name: Namer }) {
   const grid = span === "recent" ? data.grid_recent : data.grid_full;
   if (!grid) return <Message>There is not enough shared history yet.</Message>;
   return (
-    <Panel id="grid" title="All markets" headline="Which markets behave alike">
+    <Panel id="grid" title="All markets compared" headline="Which markets behave alike">
       <div className="flex justify-end">
         <Segmented options={SPANS} value={span} onChange={setSpan} label="Period" />
       </div>
@@ -391,7 +391,7 @@ function Spillovers({ data, name }: { data: Relationships; name: Namer }) {
   return (
     <Panel
       id="spillovers"
-      title="When one turns rough"
+      title="Knock-on effects"
       trust={data.spillover_trust}
       headline={
         found.length > 0
@@ -454,7 +454,7 @@ function Weekends({ data, name }: { data: Relationships; name: Namer }) {
   return (
     <Panel
       id="weekends"
-      title="Weekend gaps"
+      title="Weekend effect"
       trust={data.weekend_trust}
       headline={
         linked.length > 0
@@ -543,9 +543,9 @@ export function TogetherPage() {
     <div className="flex flex-col gap-4 @xl:gap-6">
       <div className="aurora" aria-hidden="true" />
       <header className="flex items-baseline gap-3">
-        <h1 className="title">Markets together</h1>
+        <h1 className="title">Market connections</h1>
       </header>
-      <Tabs base={BASE} items={TOGETHER_SECTIONS} label="Markets together pages" />
+      <Tabs base={BASE} items={TOGETHER_SECTIONS} label="Market connections pages" />
       {query.isPending && <Message>Loading…</Message>}
       {!query.isPending && !data && <Message>Nothing is stored for this yet.</Message>}
       {data && (section === undefined || section === "") && <Brief data={data} name={name} />}

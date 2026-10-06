@@ -69,7 +69,7 @@ export function RegimePanel({ asset, trust }: PanelProps) {
   return (
     <Panel
       id="market-state"
-      title="Market state"
+      title="Current state"
       trust={trust}
       headline={`${title(regime.label)}, ${days(regime.days_in_state)} so far`}
     >

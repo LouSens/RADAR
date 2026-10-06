@@ -340,6 +340,9 @@ export interface paths {
         /**
          * Read Binance
          * @description Replace the holdings with what the Binance account holds. This only reads.
+         *
+         *     A holding RADAR does not know yet is looked up in the market data and its history
+         *     fetched, which can take up to a minute the first time it is seen.
          */
         post: operations["read_binance_api_v1_portfolio_binance_post"];
         delete?: never;
@@ -403,6 +406,11 @@ export interface components {
              */
             as_of: string;
             /**
+             * Covered Value
+             * @default 0
+             */
+            covered_value: number;
+            /**
              * Driver Names
              * @default {}
              */
@@ -416,6 +424,7 @@ export interface components {
             model_version: string;
             /** Positions */
             positions: components["schemas"]["Position"][];
+            risk_level?: components["schemas"]["RiskLevel"] | null;
             /**
              * States
              * @default []
@@ -424,6 +433,11 @@ export interface components {
             /** Stress */
             stress: components["schemas"]["StressResult"][];
             trust: components["schemas"]["Trusts"];
+            /**
+             * Unmeasured
+             * @default []
+             */
+            unmeasured: components["schemas"]["Unmeasured"][];
             /** Value */
             value: number;
             xray: components["schemas"]["Xray"];
@@ -1323,6 +1337,20 @@ export interface components {
             /** Steps */
             steps: number;
         };
+        /**
+         * RiskLevel
+         * @description How much the mix swings, set against things an investor already knows.
+         */
+        RiskLevel: {
+            /** Label */
+            label: string;
+            /** Ratio */
+            ratio: number;
+            /** References */
+            references: {
+                [key: string]: number;
+            };
+        };
         /** RiskLevelOut */
         RiskLevelOut: {
             /** Level */
@@ -1762,6 +1790,17 @@ export interface components {
             risk: components["schemas"]["Trust"];
             stress: components["schemas"]["Trust"];
             xray: components["schemas"]["Trust"];
+        };
+        /** Unmeasured */
+        Unmeasured: {
+            /** Days */
+            days: number;
+            /** Name */
+            name: string;
+            /** Symbol */
+            symbol: string;
+            /** Weight */
+            weight: number;
         };
         /**
          * Unsupported

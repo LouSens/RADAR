@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { LimitHorizon, PortfolioAnalysis, PortfolioLimit } from "../api/client";
@@ -10,13 +10,14 @@ import { Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented } from "../components/ui";
 import {
   Bars,
-  Legend,
+  Donut,
   OneIn,
-  StackBar,
+  RiskScale,
   StateChip,
   Tile,
   TileGrid,
   holdingColour,
+  levelColour,
   type Part,
 } from "../components/viz";
 import { formatChange, formatCount, formatMoney, formatPrice, formatShare } from "../lib/format";
@@ -29,6 +30,20 @@ import {
 import { formatDate } from "../lib/time";
 
 const BASE = "/portfolio";
+const MIN_DAYS = 250;
+// The mix's daily movement as a multiple of US stocks': where each level ends.
+const RISK_BANDS = [
+  { upTo: 0.5, label: "low" },
+  { upTo: 1, label: "moderate" },
+  { upTo: 2, label: "high" },
+  { upTo: Infinity, label: "very high" },
+];
+const REFERENCE_NAME: Record<string, string> = {
+  TLT: "Government bonds",
+  GLD: "Gold",
+  SPY: "US stocks",
+  "BTC/USD": "Bitcoin",
+};
 const sessions = (steps: number) => (steps === 1 ? "1 market session" : `${steps} market sessions`);
 const expected = (value: number) => (value < 10 ? value.toFixed(1) : value.toFixed(0));
 const shownLimit = (horizon: LimitHorizon | undefined, level: number) =>
@@ -37,6 +52,8 @@ const shownLimit = (horizon: LimitHorizon | undefined, level: number) =>
 /** The answers as figures and small pictures; each tile leads to its evidence. */
 function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
   const { xray, trust, value } = analysis;
+  const covered = analysis.covered_value;
+  const level = analysis.risk_level;
   const day = shownLimit(
     analysis.limits.find((h) => h.horizon_days === 1),
     0.95,
@@ -76,32 +93,89 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
       : undefined;
 
   return (
-    <section aria-label="In brief">
+    <section aria-label="In brief" className="flex flex-col gap-3 @xl:gap-4">
+      {analysis.unmeasured.length > 0 && (
+        <p className="well px-4 py-3 text-sm text-muted">
+          {analysis.unmeasured.map((item) => (
+            <span key={item.symbol}>
+              <span className="font-medium text-ink">{item.name}</span> (
+              {formatShare(item.weight, 0)} of your money) is not in the risk figures yet: it has{" "}
+              {item.days} of the {MIN_DAYS} days of prices needed.{" "}
+            </span>
+          ))}
+          The figures below describe the other {formatShare(covered / value, 0)}.
+        </p>
+      )}
       <TileGrid>
         <Tile
-          label="Money against risk"
+          label="Your money, and where the risk sits"
           to={`${BASE}/sources`}
           trust={trust.xray}
-          figure={formatMoney(value)}
-          note={`at the close on ${formatDate(analysis.as_of)}`}
           wide
         >
-          <span className="flex flex-col gap-2.5">
-            <span className="grid grid-cols-[3.2rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 text-xs text-muted">
-              <span>Money</span>
-              <StackBar parts={parts((h) => h.weight)} label="Share of the money" />
-              <span>Risk</span>
-              <StackBar parts={parts((h) => h.risk_share)} label="Share of the risk" />
+          <span className="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <Donut
+              inner={parts((h) => h.weight)}
+              outer={parts((h) => h.risk_share)}
+              centre={formatMoney(value)}
+              caption="inner: money · outer: risk"
+              label={`Money: ${parts((h) => h.weight)
+                .map((p) => `${p.name} ${(p.share * 100).toFixed(0)}%`)
+                .join(", ")}. Risk: ${parts((h) => h.risk_share)
+                .map((p) => `${p.name} ${(p.share * 100).toFixed(0)}%`)
+                .join(", ")}.`}
+            />
+            <span className="grid min-w-[12rem] flex-1 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 gap-y-2 text-sm">
+              <span />
+              <span className="label text-right text-xs">Money</span>
+              <span className="label text-right text-xs">Risk</span>
+              {parts((h) => h.weight).map((part, i) => (
+                <Fragment key={part.key}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: part.colour }}
+                      aria-hidden="true"
+                    />
+                    <span className="truncate">{part.name}</span>
+                  </span>
+                  <span className="num text-right text-muted">{formatShare(part.share, 0)}</span>
+                  <span className="num text-right font-medium">
+                    {formatShare(xray.holdings[i]?.risk_share ?? 0, 0)}
+                  </span>
+                </Fragment>
+              ))}
             </span>
-            <Legend parts={parts((h) => h.weight)} />
           </span>
         </Tile>
 
+        {level && (
+          <Tile
+            label="Risk level"
+            to={`${BASE}/sources`}
+            trust={trust.xray}
+            figure={
+              <span className="capitalize" style={{ color: levelColour(level.label) }}>
+                {level.label}
+              </span>
+            }
+            note={`${level.ratio.toFixed(1)}× the daily movement of US stocks`}
+          >
+            <RiskScale
+              ratio={level.ratio}
+              bands={RISK_BANDS}
+              references={Object.entries(level.references as Record<string, number>).map(
+                ([symbol, ratio]) => ({ name: REFERENCE_NAME[symbol] ?? symbol, ratio }),
+              )}
+            />
+          </Tile>
+        )}
+
         <Tile
-          label="Typical day"
+          label="Daily movement"
           to={`${BASE}/sources`}
           trust={trust.xray}
-          figure={`±${formatMoney(value * xray.daily_volatility)}`}
+          figure={`±${formatMoney(covered * xray.daily_volatility)}`}
           note={`±${formatShare(xray.daily_volatility)} of the whole`}
         >
           <Bars
@@ -120,10 +194,10 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
 
         {day && (
           <Tile
-            label="One-day loss limit"
+            label="Possible loss in a day"
             to={`${BASE}/limits`}
             trust={trust.risk}
-            figure={formatMoney(value * day.var)}
+            figure={formatMoney(covered * day.var)}
             note={`${formatShare(day.var, 1)}, passed on about 1 day in 20`}
           >
             <OneIn lit={1} of={20} label="About 1 day in 20" />
@@ -149,7 +223,7 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
 
         {analysis.drivers && (
           <Tile
-            label="Outside forces"
+            label="What it moves with"
             to={`${BASE}/forces`}
             trust={trust.drivers ?? undefined}
             figure={formatShare(analysis.drivers.r_squared, 0)}
@@ -193,7 +267,12 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
         )}
 
         {episodes.length > 0 && (
-          <Tile label="Past episodes replayed" to={`${BASE}/episodes`} trust={trust.stress} wide>
+          <Tile
+            label="Past crashes replayed on your mix"
+            to={`${BASE}/episodes`}
+            trust={trust.stress}
+            wide
+          >
             <Bars
               format={(v) => formatChange(v)}
               rows={episodes.map((e) => ({
@@ -222,13 +301,14 @@ function Bar({ share, colour }: { share: number; colour: string }) {
 }
 
 function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
-  const { xray, positions, value } = analysis;
+  const { xray, positions } = analysis;
+  const covered = analysis.covered_value;
   const imbalance = largestImbalance(positions, xray);
   const name = (symbol: string) => positions.find((p) => p.symbol === symbol)?.name ?? symbol;
   return (
     <Panel
       id="sources"
-      title="Where risk comes from"
+      title="Risk by holding"
       trust={analysis.trust.xray}
       headline={
         imbalance && positions.length > 1
@@ -288,7 +368,7 @@ function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
             <dt className="label">Typical day for the mix</dt>
             <dd className="price-lg mt-2">±{formatShare(xray.daily_volatility)}</dd>
             <dd className="num mt-1 text-sm text-muted">
-              {formatMoney(value * xray.daily_volatility)}
+              {formatMoney(covered * xray.daily_volatility)}
             </dd>
           </div>
           <div className="well p-4">
@@ -415,11 +495,11 @@ function Limits({ analysis }: { analysis: PortfolioAnalysis }) {
   return (
     <Panel
       id="limits"
-      title="Loss limits"
+      title="Possible loss"
       trust={analysis.trust.risk}
       headline={
         day
-          ? `${formatShare(day.var, 1)}, or ${formatMoney(analysis.value * day.var)}, one-day loss limit`
+          ? `${formatShare(day.var, 1)}, or ${formatMoney(analysis.covered_value * day.var)}, one-day loss limit`
           : undefined
       }
     >
@@ -434,7 +514,7 @@ function Limits({ analysis }: { analysis: PortfolioAnalysis }) {
               key={level.level}
               level={level.level}
               limit={limit}
-              value={analysis.value}
+              value={analysis.covered_value}
               period={period}
             />
           ) : null;
@@ -461,7 +541,7 @@ function Episodes({ analysis }: { analysis: PortfolioAnalysis }) {
   return (
     <Panel
       id="episodes"
-      title="Past episodes"
+      title="Past crashes"
       trust={analysis.trust.stress}
       headline={
         worst?.change != null ? `${formatChange(worst.change)} through ${worst.name}` : undefined
@@ -491,7 +571,7 @@ function Episodes({ analysis }: { analysis: PortfolioAnalysis }) {
                   from first day to last, or{" "}
                   <span className="num text-ink">
                     {formatMoney(
-                      Math.abs(analysis.value * episode.covered_weight * episode.change),
+                      Math.abs(analysis.covered_value * episode.covered_weight * episode.change),
                     )}
                   </span>{" "}
                   on today&apos;s value.
@@ -555,7 +635,7 @@ function Forces({ analysis }: { analysis: PortfolioAnalysis }) {
   return (
     <Panel
       id="forces"
-      title="Outside forces"
+      title="What it moves with"
       trust={analysis.trust.drivers ?? undefined}
       headline={driverHeadline(analysis.drivers, names)}
     >

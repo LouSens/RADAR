@@ -303,7 +303,7 @@ export function OutlookPanel({ asset, trust }: PanelProps) {
   return (
     <Panel
       id="outlook"
-      title="Outlook"
+      title="Price range ahead"
       trust={trust}
       headline={weekRange ? `${rangeText(weekRange.low, weekRange.high)} in a week` : undefined}
     >
