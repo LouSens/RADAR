@@ -438,8 +438,8 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 
 - **Signal types:**
   - `regime_change`: the most probable state changes and its probability exceeds 0.7.
-  - `abnormal_move`: an hourly return more than 3 standard deviations from zero, using the current regime's volatility. Based on price only, because venue volume is unreliable (section 3.3).
-  - `sentiment_shock`: daily sentiment z-score beyond 2.
+  - `abnormal_move`: an hourly return more than 5 standard deviations from zero (3 fired on one day in five; `docs/DECISIONS.md` 052), using the current regime's volatility. Based on price only, because venue volume is unreliable (section 3.3).
+  - `sentiment_shock`: daily sentiment z-score beyond 2. Scored and kept as evidence, but not shown in the feed or the brief: it has no edge (`docs/DECISIONS.md` 052).
   - `rebalance_drift`: from F6.
 - **Track record:** for each signal type and symbol, find every historical occurrence using only information available at the time. Report the count, the distribution of forward returns at 1 and 7 days, the share of positive outcomes with a confidence interval, and the same statistics for all days as a baseline. The verdict is `no measurable edge` when the interval overlaps the baseline.
 - **Daily brief:** a JSON payload assembled from F1 to F6 results, rendered to a short paragraph per asset by a template. If the LLM writer is enabled, it receives only the payload and its output is rejected and replaced by the template version if it contains any number not in the payload.

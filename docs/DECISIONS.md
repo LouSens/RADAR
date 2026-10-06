@@ -1576,3 +1576,49 @@ summary of its record) and `GET /signals/track-records/{type}`.
 by the pure tests of what it calls and by the run on real data, not by a database test
 of its own; `store` and the routes are tested against the database.
 
+## 052. The two signal questions, decided (2026-10-06)
+
+The user asked for both questions of decision 051 to be decided on product and
+research grounds.
+
+**1. An abnormal move is 5 times the usual hourly size, not 3.**
+
+- At the spec's 3 the rule fired on about one day in five. Counted at each bar:
+
+  | Bar | Bitcoin | Gold | US stocks |
+  |---|---|---|---|
+  | 3 times | 21.5% | 21.4% | 17.3% |
+  | 4 times | 9.9% | 11.0% | 7.5% |
+  | 5 times | 5.4% | 6.0% | 4.0% |
+  | 6 times | 2.5% | 3.1% | 2.3% |
+
+- The criterion, fixed before choosing: fire on about one day in twenty (roughly once a
+  month per market), and leave at least 30 past cases in each direction on each market
+  so the record can be judged. 5 is the only whole number that meets both; at 6, US
+  stocks would have under 30 upward cases.
+- **It was chosen on how often it fires, not on what followed.** The outcomes at 4, 6,
+  and 7 were never computed. The constant carries a comment saying not to tune it to a
+  track record.
+- Applying the rule to the day's move was the other option. It was not taken because a
+  signal of that kind already exists in effect (the state model reacts to the day's
+  swings), while a single violent hour is something nothing else in the app flags.
+- Result at 5: 536 signals in the feed. Direction: still no edge anywhere. Size:
+  followed by larger moves in US stocks (both directions) and after falls in gold;
+  no difference for Bitcoin. This is still the provisional finding of decision 051.
+
+**2. News-tone shocks are scored but not shown.**
+
+- Three tests now agree that news tone carries no usable information here: it does not
+  lead price (030), it does not improve the swings forecast (045), and tone shocks are
+  followed by nothing distinguishable in direction or size (051).
+- An alert with a record of meaning nothing is noise, and it lowers trust in the alerts
+  beside it. So `sentiment_shock` is left out of the feed (`detect.FEED_TYPES`) and will
+  be left out of the daily brief. Its track record is still computed, stored, and served
+  by `GET /signals/track-records/sentiment_shock`, as the evidence for leaving it out,
+  and it would show if that ever changed.
+- This settles the wording in CLAUDE.md: news drives no forecast, no rebalancing signal,
+  and no item in the feed or brief.
+
+**Housekeeping.** Storing the replay now removes signal rows it no longer produces, so
+changing a rule cannot leave old rows in the feed.
+

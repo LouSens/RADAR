@@ -1,14 +1,17 @@
 # %% [markdown]
 # # Signals: what changed today, and has that kind of change meant anything?
 #
-# A **signal** is a rule that says "something unusual happened today". RADAR has three
-# for each market:
+# A **signal** is a rule that says "something unusual happened today". RADAR scores
+# three for each market:
 #
 # | signal | the rule |
 # |---|---|
 # | change of state | the market's most probable state (calm, normal, turbulent) changed, and the new one is more than 70% probable |
-# | abnormal move | one hour's move was more than 3 times the usual size for the state the market was in |
+# | abnormal move | one hour's move was more than 5 times the usual size for the state the market was in |
 # | unusual news tone | the day's news tone was more than 2 standard deviations from the average of the year before |
+#
+# The first two are shown in the app's feed. The third is scored here and kept as
+# evidence, but not shown as a signal: section 5 explains why.
 #
 # A signal on its own is just an alarm going off. The useful question is the second one:
 # **when this alarm went off in the past, what happened next?** That is the signal's
@@ -50,7 +53,8 @@ with session_scope(engine) as session:
             "found": job.occurrences(session, asset),
         }
     records, rows = job.build(session, universe)
-print(f"{len(rows):,} signals found across {len(data)} markets; {len(records)} kinds of signal scored")
+every = sum(len(o) for d in data.values() for o in d["found"].values())
+print(f"{every:,} past signals found across {len(data)} markets; {len(records)} kinds scored; {len(rows):,} shown in the feed")
 
 # %% [markdown]
 # ## 1. Finding past signals without peeking
@@ -92,24 +96,38 @@ fig, ax = plt.subplots()
 ax.plot(usual.index, usual * 100, color="tab:blue", linewidth=1)
 ax.set(title="Bitcoin: the usual size of an hourly move for the state the market was in", ylabel="% an hour");
 
+# %% [markdown]
+# ### How high should the bar be?
+#
+# The specification said 3 times the usual size. Counting how often each bar would have
+# fired settles it:
+
 # %%
 counts = {}
 for symbol, d in data.items():
-    moves = d["found"]["abnormal_move"]
-    span = d["states"].index
+    n = len(d["states"])
     counts[NAMES[symbol]] = {
-        "days checked": len(span),
-        "days with an abnormal move": len(moves),
-        "share of days": len(moves) / len(span),
+        f"{multiple} times": len(detect.abnormal_moves(d["hourly"], d["days"], d["states"]["label"], multiple=multiple)) / n
+        for multiple in (3, 4, 5, 6, 7)
     }
-pd.DataFrame(counts).T
+rates = pd.DataFrame(counts).T
+ax = (rates * 100).T.plot.bar(rot=0, color=["tab:orange", "goldenrod", "tab:blue"])
+ax.axhline(5, color="black", linestyle="--", linewidth=1)
+ax.text(4.45, 5.4, "one day in twenty", ha="right")
+ax.set(title="Share of days with an abnormal move, by how high the bar is set", ylabel="% of days")
+rates
 
 # %% [markdown]
-# **A finding worth stopping on.** The rule in the specification (3 times the usual size)
-# fires on roughly one day in five. That is not "abnormal" in the everyday sense. Two
-# reasons: there are many hours in a day, each a chance to fire, and hourly moves have
-# far more extreme values than a bell curve would predict. The rule is kept as specified
-# here, and the question of raising the bar is recorded for a decision.
+# At 3 times the rule fires on about **one day in five**. That is not "abnormal" in any
+# everyday sense. There are many hours in a day, each a chance to fire, and hourly moves
+# have far more extreme values than a bell curve would predict.
+#
+# **The bar is set at 5 times**: about one day in twenty on each market, roughly once a
+# month. Higher bars leave too few past cases in each direction to judge.
+#
+# The bar was chosen from this table alone, on **how often it fires**, before looking at
+# what followed at any bar other than the original 3. A bar picked because its track
+# record looked good would prove nothing.
 #
 # ### Unusual news tone
 #
@@ -215,18 +233,17 @@ ax.set(title="US stocks: size of the next day's move, either direction", xlabel=
 ax.legend();
 
 # %% [markdown]
-# **Read this carefully.** After an abnormal hourly move in US stocks, the next day and
-# the next week tended to move more than usual, in either direction. That is the
-# well-known habit of rough days to cluster, seen from another angle. It says "expect
-# bigger swings", not "expect a fall" or "expect a rise".
+# **Read this carefully.** After an abnormal hourly move in US stocks, and after a
+# downward one in gold, the next day and the next week tended to move more than usual,
+# in either direction. That is the well-known habit of rough days to cluster, seen from
+# another angle. It says "expect bigger swings", not "expect a fall" or "expect a rise".
 #
 # Two cautions about this finding:
 #
 # - **It was looked for after the direction test came up empty**, when the table of
 #   sizes showed a gap. It is corrected for the number of comparisons, but a result
 #   found this way deserves less trust than one planned in advance. The app says so.
-# - **It showed up for US stocks only.** The same rule on Bitcoin and gold did not
-#   separate signal days from ordinary ones.
+# - **It did not show up for Bitcoin**, where signal days and ordinary days were alike.
 #
 # ## 4. The no-lookahead checks
 #
@@ -257,19 +274,29 @@ assert track.forward_returns(changed, 1).iloc[1000:].equals(forward_1.iloc[1000:
 print("A day's outcome uses nothing from before that day's close")
 
 # %% [markdown]
+# ## 5. Why unusual news tone is not shown as a signal
+#
+# Look back at the two tables: on every market, in both directions, unusual news tone
+# was followed by nothing that can be told apart from an ordinary day, in direction or
+# in size. This is the third test in this project to say the same thing (news tone does
+# not lead price; news does not improve the swings forecast).
+#
+# An alert that has never meant anything is noise, and showing it beside alerts that do
+# carry information would make the whole feed less trustworthy. So it is **scored and
+# kept as evidence**, and **not shown in the feed or the daily brief**. If it starts to
+# mean something as more data arrives, its record will show it.
+#
 # ## What this means for the app
 #
-# - Every signal in the feed carries its track record, and for almost all of them the
-#   record says **"no measurable edge"**. That is the honest answer and the app shows
-#   it. A signal tells you something changed; it is not a prediction of direction.
-# - **Unusual news tone** has no edge in direction or in size on any market. This agrees
-#   with the two earlier tests (news tone does not lead price; news does not improve the
-#   swings forecast). It is kept in the feed as a description of the news, with that
-#   record beside it.
+# - The feed shows two kinds of signal: **changes of state** and **abnormal moves**.
+#   Each carries its track record.
+# - On direction, every record says **"no measurable edge"** or "not enough
+#   occurrences". That is the honest answer and the app shows it. A signal tells you
+#   something changed; it is not a prediction of direction.
+# - **Abnormal moves** now fire about once a month per market. In US stocks, and for
+#   falls in gold, they have been followed by larger moves than usual.
 # - **Changes of state** are rare (a few dozen in years of data per market), so most
 #   kinds cannot be judged yet. They will be as cases build up.
-# - **Abnormal moves** fire often under the specified rule. For US stocks they have been
-#   followed by larger moves than usual.
 #
 # What the track record cannot tell you: anything about a future unlike these years, and
 # anything about a single signal. It describes what happened on average after many.

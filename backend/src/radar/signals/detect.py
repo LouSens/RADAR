@@ -22,7 +22,13 @@ TYPES: tuple[SignalType, ...] = ("regime_change", "abnormal_move", "sentiment_sh
 # The new state must be at least this probable for a change of state to count.
 REGIME_PROBABILITY = 0.7
 # An hourly move this many times the usual size for the current state is abnormal.
-MOVE_MULTIPLE = 3.0
+# The spec's 3 fired on about one day in five. 5 was chosen on how often it fires
+# alone (about one day in twenty on each market), never on what followed
+# (`docs/DECISIONS.md` 052). Do not tune it to a track record.
+MOVE_MULTIPLE = 5.0
+# Types shown in the feed. News-tone shocks are scored and kept as evidence, but
+# they have shown no edge of any kind and are not shown as signals (decision 052).
+FEED_TYPES: tuple[SignalType, ...] = ("regime_change", "abnormal_move")
 # Hourly returns needed in a state before its usual size is trusted.
 MIN_HOURS = 200
 # Sessions of history before the first walk-forward state, and sessions between refits.

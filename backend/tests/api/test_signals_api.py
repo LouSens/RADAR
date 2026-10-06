@@ -95,6 +95,19 @@ def test_storing_twice_stores_the_same_rows(client: TestClient, session: Session
     assert all(row[3] is not None for row in after)
 
 
+def test_rows_the_replay_no_longer_produces_are_removed(
+    client: TestClient, session: Session
+) -> None:
+    records, rows = built()
+    # The rule changed and one day no longer qualifies.
+    assert job.store(session, records, rows[1:]) == 3
+    session.commit()
+    session.expire_all()
+    left = sorted(s.ts.day for s in session.scalars(select(Signal)) if s.symbol == "BTC/USD")
+    assert left == [2, 3]
+    assert session.scalar(select(func.count()).select_from(Signal)) == 3
+
+
 def test_signals_come_newest_first_each_with_its_track_record(client: TestClient) -> None:
     body = client.get("/api/v1/signals").json()
     assert [(s["symbol"], s["ts"][:10]) for s in body["signals"]] == [

@@ -100,15 +100,16 @@ def test_the_usual_size_of_an_hour_comes_from_earlier_days_in_the_same_state() -
 
 def test_an_abnormal_move_is_flagged_once_a_day_with_its_direction() -> None:
     returns, days, labels = hourly(dict.fromkeys(range(12), 0.01))
-    returns.iloc[10 * 24 + 5] = -0.045  # 4.5 times the usual size, at 05:00 on day 10
+    returns.iloc[10 * 24 + 5] = -0.065  # 6.5 times the usual size, at 05:00 on day 10
     returns.iloc[10 * 24 + 9] = 0.08  # a second one the same day is not another signal
-    returns.iloc[11 * 24 + 2] = 0.025  # 2.5 times: not abnormal
+    returns.iloc[11 * 24 + 2] = 0.045  # 4.5 times: large, but under the bar of 5
     found = detect.abnormal_moves(returns, days, labels, min_hours=48)
     (only,) = found
     assert (only.day, only.variant) == (pd.Timestamp("2024-01-11", tz="UTC"), "down")
     assert only.detail["hour"] == "2024-01-11T05:00:00+00:00"
     assert only.detail["usual"] == pytest.approx(0.01)
-    assert only.detail["multiple"] == pytest.approx(4.5)
+    assert only.detail["multiple"] == pytest.approx(6.5)
+    assert detect.MOVE_MULTIPLE == 5.0
 
 
 def test_unusual_news_tone_is_measured_against_the_days_before_it() -> None:

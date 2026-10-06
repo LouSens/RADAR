@@ -10,7 +10,7 @@ from typing import Any
 
 import pandas as pd
 import structlog
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -113,7 +113,7 @@ def build(
                         type_, asset.symbol, variant, days, close, HORIZONS[asset.asset_class]
                     )
                 )
-            if not found:
+            if not found or type_ not in detect.FEED_TYPES:
                 continue
             ends = day_end(asset, pd.DatetimeIndex([o.day for o in found]))
             for occurrence, end in zip(found, ends, strict=True):
@@ -177,6 +177,16 @@ def store(session: Session, records: list[track.TrackRecord], rows: list[dict[st
                 },
             )
         )
+    # A rule that has changed, or a type no longer shown, leaves rows behind that
+    # the replay no longer produces. They go, so the feed is exactly the replay.
+    wanted = {(row["symbol"], row["ts"], row["type"]) for row in rows}
+    stale = [
+        found.id
+        for found in session.scalars(select(Signal))
+        if (found.symbol, found.ts, found.type) not in wanted
+    ]
+    if stale:
+        session.execute(delete(Signal).where(Signal.id.in_(stale)))
     return len(rows)
 
 
