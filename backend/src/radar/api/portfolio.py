@@ -24,8 +24,8 @@ from radar.models.holdings import (
     ManualSource,
     Unsupported,
 )
+from radar.pipelines import discover, rebalance
 from radar.pipelines import portfolio as job
-from radar.pipelines import rebalance
 from radar.pipelines.datasets import build_mixed_panel
 from radar.providers.binance import BinanceError, Leveraged, Wallet
 from radar.universe import Universe
@@ -81,6 +81,23 @@ class WhatIfIn(BaseModel):
 class TagsIn(BaseModel):
     # Core or satellite by symbol; null clears a tag. Holdings not named keep theirs.
     tags: dict[str, Literal["core", "satellite"] | None] = Field(max_length=200)
+
+
+class RegularBuyingIn(BaseModel):
+    # How each purchase is split among assets; the shares are scaled to add up to 100%.
+    weights: dict[str, float] = Field(max_length=20)
+    # Dollars per purchase.
+    amount: float = Field(gt=0, le=1_000_000_000)
+    # Trading sessions between purchases: 5 is weekly, 21 monthly.
+    every: int = Field(ge=1, le=63)
+    purchases: int = Field(ge=2, le=504)
+
+
+class LookupIn(BaseModel):
+    # A ticker as typed: "NVDA", "ETH". Whether it is a stock or a crypto coin is said,
+    # because the same letters can be both.
+    ticker: str = Field(min_length=1, max_length=12)
+    kind: Literal["stock", "crypto"]
 
 
 class CsvIn(BaseModel):
@@ -226,6 +243,54 @@ def post_what_if(body: WhatIfIn, universe: UniverseDep, session: SessionDep) -> 
         return job.what_if(shares, analysis.value, build_mixed_panel(session, universe), universe)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.post("/regular-buying", response_model=job.RegularBuying)
+def post_regular_buying(
+    body: RegularBuyingIn, universe: UniverseDep, session: SessionDep
+) -> job.RegularBuying:
+    """Where a plan of regular purchases might end up, against putting the same total in
+    at once. A simulation only: nothing is saved and nothing is bought."""
+    if any(w < 0 for w in body.weights.values()):
+        raise HTTPException(status_code=422, detail="A share cannot be negative.")
+    try:
+        return job.regular_buying(
+            body.weights,
+            body.amount,
+            body.every,
+            body.purchases,
+            build_mixed_panel(session, universe),
+            universe,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.post("/lookup", response_model=SupportedAsset)
+def post_lookup(
+    body: LookupIn, universe: UniverseDep, session: SessionDep, finder: FinderDep
+) -> SupportedAsset:
+    """Find an asset by its ticker so it can be tried in a mix. One RADAR has not seen
+    before is looked up in the market data and its price history fetched, which can
+    take up to a minute. This only reads prices."""
+    ticker = body.ticker.strip().upper().removesuffix("/USD")
+    wanted = ticker if body.kind == "stock" else f"{ticker}/USD"
+    known = next(
+        (a for a in universe.assets if a.symbol == wanted and a.asset_class == body.kind), None
+    )
+    if known is None:
+        if finder is None:
+            raise HTTPException(status_code=409, detail="No market data key is configured.")
+        name = f"{discover.STOCK_PREFIX}{ticker}" if body.kind == "stock" else ticker
+        found = finder(universe, [name])
+        known = next((a for a in found if a.symbol == wanted), None)
+    if known is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No {body.kind} prices were found for {ticker}.",
+        )
+    session.commit()
+    return SupportedAsset(symbol=known.symbol, name=known.name, asset_class=known.asset_class)
 
 
 @router.put("/target", response_model=job.Analysis)

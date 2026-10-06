@@ -240,6 +240,8 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/portfolio/target",
         "/api/v1/portfolio/tags",
         "/api/v1/portfolio/what-if",
+        "/api/v1/portfolio/regular-buying",
+        "/api/v1/portfolio/lookup",
         "/api/v1/portfolio/analysis",
         "/api/v1/health",
     }
@@ -264,6 +266,8 @@ def test_api_has_no_trading_routes(client: TestClient) -> None:
         "/api/v1/portfolio/import",
         "/api/v1/portfolio/binance",
         "/api/v1/portfolio/what-if",
+        "/api/v1/portfolio/regular-buying",
+        "/api/v1/portfolio/lookup",
     ]
     # The second PUT sets what the portfolio is compared with and the third tags holdings
     # as core or satellite. Neither trades anything.

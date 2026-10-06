@@ -24,6 +24,7 @@ from radar.features.panels import MixedPanel
 from radar.models import drivers as driver_model
 from radar.models import portfolio as model
 from radar.models import portfolio_simulation as simulation_model
+from radar.models import regular_buying as buying_model
 from radar.models import sleeves as sleeve_model
 from radar.models.holdings import (
     CASH,
@@ -562,6 +563,52 @@ def what_if(
         n_days=result.xray.n_days,
         young=result.young,
         unmeasured=result.unmeasured,
+    )
+
+
+class RegularBuying(BaseModel):
+    """A plan of regular purchases run through simulated futures. Nothing is saved."""
+
+    # How each purchase is split, by symbol, and the names to show.
+    weights: dict[str, float]
+    names: dict[str, str]
+    first_day: str
+    last_day: str
+    result: buying_model.Result
+    trust: summary.Trust
+
+
+def regular_buying(
+    weights: dict[str, float],
+    amount: float,
+    every: int,
+    purchases: int,
+    panel: MixedPanel,
+    universe: Universe,
+) -> RegularBuying:
+    """Simulate buying `amount` every `every` sessions, `purchases` times, split by
+    `weights`. Raises ValueError with the reason when it cannot be done."""
+    known = {a.symbol for a in universe.assets}
+    shares = {s: float(w) for s, w in weights.items() if w > 0}
+    unknown = sorted(set(shares) - known)
+    if unknown:
+        raise ValueError(f"RADAR has no price history for {', '.join(unknown)}.")
+    total = sum(shares.values())
+    if not shares or total <= 0:
+        raise ValueError("Give at least one asset a share.")
+    symbols = list(shares)
+    joint = panel.returns[symbols].dropna()
+    split = np.array([shares[s] / total for s in symbols])
+    result = buying_model.run(joint.to_numpy(dtype=float), split, amount, every, purchases)
+    checked = next(c for c in result.coverage if c.level == summary.SIMULATION_LEVEL)
+    days = pd.DatetimeIndex(joint.index)
+    return RegularBuying(
+        weights={s: float(w) for s, w in zip(symbols, split, strict=True)},
+        names={s: universe.get(s).name for s in symbols},
+        first_day=days[0].date().isoformat(),
+        last_day=days[-1].date().isoformat(),
+        result=result,
+        trust=summary.grade_simulation(checked.n, checked.inside, checked.level, result.sessions),
     )
 
 
