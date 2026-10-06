@@ -457,7 +457,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
 ### F9. Volatility forecast
 
 - **Method:** a HAR model (heterogeneous autoregressive): next-period realised volatility regressed on the average realised volatility of the last day, week, and month, fitted on log volatility. Horizons of 1 and 7 days (5 sessions for gold).
-- **Second model:** gradient-boosted trees (scikit-learn) on the same inputs plus the current regime probabilities and the daily sentiment aggregate. It is shown only if it beats HAR out of sample (lower QLIKE with a Diebold-Mariano p-value below 0.05). Until Phase 4 builds sentiment the trees run without it; the comparison is repeated then (`docs/DECISIONS.md` 028).
+- **Second model:** gradient-boosted trees (scikit-learn) on the same inputs plus the current regime probabilities and the daily sentiment aggregate. It is shown only if it beats HAR out of sample (lower QLIKE with a Diebold-Mariano p-value below 0.05). The comparison with news as an input was run in Phase 5C and found no measurable gain, so the forecast shown uses past volatility only (`docs/DECISIONS.md` 044, 045).
 - **Baselines:** yesterday's volatility carried forward, and the average volatility of the current regime from F1.
 - **Evaluation:** walk-forward with an expanding window. QLIKE loss and mean squared error against both baselines, with a Diebold-Mariano test for whether the difference is real.
 - **UI output:** forecast beside the last realised value, a chart of past forecasts against what happened, and the evaluation table.
@@ -495,6 +495,7 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `POST /portfolio/binance` | replace the holdings with what the Binance account holds; reads only |
 | `GET /relationships` | correlations, risk transmission, and weekend gaps (`docs/DECISIONS.md` 039) |
 | `GET /assets/{symbol}/drivers` | F8 macro drivers for one market |
+| `GET /assets/{symbol}/news-and-swings` | whether news improved the F9 forecast (`docs/DECISIONS.md` 044, 045) |
 | `GET /portfolio/allocations` | allocation comparison and backtest summary |
 | `GET /portfolio/simulation` | portfolio outcome distribution |
 | `GET /signals` | recent signals with track record summaries |

@@ -13,6 +13,7 @@ import {
   type Health,
   type Holding,
   type LevelAnswer,
+  type NewsTest,
   type Portfolio,
   type PortfolioAnalysis,
   type Regime,
@@ -231,5 +232,15 @@ export function useDrivers(slug: string | undefined) {
     queryFn: () => orNull(() => getJson<Drivers>(`/assets/${slug}/drivers`)),
     enabled: slug !== undefined,
     refetchInterval: 10 * 60_000,
+  });
+}
+
+/** Whether adding news improved the forecast of a market's daily movement. */
+export function useNewsTest(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["news-and-swings", slug],
+    queryFn: () => orNull(() => getJson<NewsTest>(`/assets/${slug}/news-and-swings`)),
+    enabled: slug !== undefined,
+    staleTime: 60 * 60_000,
   });
 }

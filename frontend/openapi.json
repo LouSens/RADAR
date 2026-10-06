@@ -1225,6 +1225,49 @@
         "title": "HoldingsIn",
         "type": "object"
       },
+      "HorizonResult": {
+        "properties": {
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/PairResult"
+            },
+            "title": "Pairs",
+            "type": "array"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "steps",
+          "horizon_days",
+          "n",
+          "first_day",
+          "last_day",
+          "pairs"
+        ],
+        "title": "HorizonResult",
+        "type": "object"
+      },
       "LagOut": {
         "properties": {
           "correlation": {
@@ -1556,6 +1599,55 @@
         "title": "LiveNews",
         "type": "object"
       },
+      "NewsTest": {
+        "description": "Whether news improved the swings forecast for one market, as stored.",
+        "properties": {
+          "comparisons": {
+            "title": "Comparisons",
+            "type": "integer"
+          },
+          "computed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed At"
+          },
+          "horizons": {
+            "items": {
+              "$ref": "#/components/schemas/HorizonResult"
+            },
+            "title": "Horizons",
+            "type": "array"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "news_helps": {
+            "title": "News Helps",
+            "type": "boolean"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "model_version",
+          "comparisons",
+          "horizons",
+          "news_helps"
+        ],
+        "title": "NewsTest",
+        "type": "object"
+      },
       "OutOfSample": {
         "description": "Fit on a window, predict the next sessions, repeat. Scored on every prediction.",
         "properties": {
@@ -1878,6 +1970,83 @@
           "weighted"
         ],
         "title": "PairPoint",
+        "type": "object"
+      },
+      "PairResult": {
+        "description": "One model with news against the same model without it.",
+        "properties": {
+          "dm_p_adjusted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dm P Adjusted"
+          },
+          "dm_p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dm P Value"
+          },
+          "dm_statistic": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dm Statistic"
+          },
+          "family": {
+            "enum": [
+              "har",
+              "gbt"
+            ],
+            "title": "Family",
+            "type": "string"
+          },
+          "improvement": {
+            "title": "Improvement",
+            "type": "number"
+          },
+          "qlike_with": {
+            "title": "Qlike With",
+            "type": "number"
+          },
+          "qlike_without": {
+            "title": "Qlike Without",
+            "type": "number"
+          },
+          "verdict": {
+            "default": "no measurable gain",
+            "enum": [
+              "news helps",
+              "no measurable gain"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "family",
+          "qlike_without",
+          "qlike_with",
+          "improvement",
+          "dm_statistic",
+          "dm_p_value"
+        ],
+        "title": "PairResult",
         "type": "object"
       },
       "PortfolioOut": {
@@ -4569,6 +4738,46 @@
           }
         },
         "summary": "Get Event Study"
+      }
+    },
+    "/api/v1/assets/{symbol}/news-and-swings": {
+      "get": {
+        "description": "Whether adding news improved the forecast of this market's daily swings.",
+        "operationId": "get_news_test_api_v1_assets__symbol__news_and_swings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsTest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get News Test"
       }
     },
     "/api/v1/assets/{symbol}/regime": {

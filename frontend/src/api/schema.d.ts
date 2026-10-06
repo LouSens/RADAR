@@ -104,6 +104,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/news-and-swings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get News Test
+         * @description Whether adding news improved the forecast of this market's daily swings.
+         */
+        get: operations["get_news_test_api_v1_assets__symbol__news_and_swings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{symbol}/regime": {
         parameters: {
             query?: never;
@@ -871,6 +891,27 @@ export interface components {
             /** Holdings */
             holdings: components["schemas"]["Holding"][];
         };
+        /** HorizonResult */
+        HorizonResult: {
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Horizon Days */
+            horizon_days: number;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** N */
+            n: number;
+            /** Pairs */
+            pairs: components["schemas"]["PairResult"][];
+            /** Steps */
+            steps: number;
+        };
         /** LagOut */
         LagOut: {
             /** Correlation */
@@ -1016,6 +1057,24 @@ export interface components {
             type: "news";
         };
         /**
+         * NewsTest
+         * @description Whether news improved the swings forecast for one market, as stored.
+         */
+        NewsTest: {
+            /** Comparisons */
+            comparisons: number;
+            /** Computed At */
+            computed_at?: string | null;
+            /** Horizons */
+            horizons: components["schemas"]["HorizonResult"][];
+            /** Model Version */
+            model_version: string;
+            /** News Helps */
+            news_helps: boolean;
+            /** Symbol */
+            symbol: string;
+        };
+        /**
          * OutOfSample
          * @description Fit on a window, predict the next sessions, repeat. Scored on every prediction.
          */
@@ -1127,6 +1186,35 @@ export interface components {
             rolling_90: number | null;
             /** Weighted */
             weighted: number | null;
+        };
+        /**
+         * PairResult
+         * @description One model with news against the same model without it.
+         */
+        PairResult: {
+            /** Dm P Adjusted */
+            dm_p_adjusted?: number | null;
+            /** Dm P Value */
+            dm_p_value: number | null;
+            /** Dm Statistic */
+            dm_statistic: number | null;
+            /**
+             * Family
+             * @enum {string}
+             */
+            family: "har" | "gbt";
+            /** Improvement */
+            improvement: number;
+            /** Qlike With */
+            qlike_with: number;
+            /** Qlike Without */
+            qlike_without: number;
+            /**
+             * Verdict
+             * @default no measurable gain
+             * @enum {string}
+             */
+            verdict: "news helps" | "no measurable gain";
         };
         /** PortfolioOut */
         PortfolioOut: {
@@ -2152,6 +2240,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventStudyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_news_test_api_v1_assets__symbol__news_and_swings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsTest"];
                 };
             };
             /** @description Validation Error */
