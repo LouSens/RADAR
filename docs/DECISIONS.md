@@ -953,3 +953,118 @@ replaces it.
 **Navigation.** Portfolio is in the sidebar and in the phone tabs. To make room, System
 left the phone tabs; a status link sits at the foot of every page on a phone.
 
+## 038. Read-only Binance holdings, cash as a holding, and the portfolio tied to the markets (2026-10-06)
+
+The user added a Binance key and asked for the portfolio to connect to it, and for the
+other features to relate to their own holdings.
+
+**The Binance source** (`providers/binance.py`) is a `HoldingsSource`. It reads and does
+nothing else:
+
+| Read | Endpoint | Method |
+|---|---|---|
+| Server clock, for signing | `api.binance.com/api/v3/time` | GET |
+| Spot wallet (flexible savings show here) | `/api/v3/account` | GET |
+| Funding wallet (tokenised US stocks are kept here) | `/sapi/v1/asset/get-funding-asset` | POST |
+| Fixed-term savings | `/sapi/v1/simple-earn/locked/position` | GET |
+| Margin balances | `/sapi/v1/margin/account` | GET |
+| Open futures exposure | `fapi.binance.com/fapi/v2/positionRisk` | GET |
+
+- Every request passes one check against that list before it is sent; any other host,
+  path, or method is refused in the process. Tests assert the list, that requests have no
+  body, that no trading or transfer path appears in the module, and that neither the key
+  nor the secret appears in errors or logs.
+- **One POST.** Binance serves the Funding wallet read only by POST. It changes nothing
+  and needs reading permission only, so it is within the exception in `CLAUDE.md` ("may
+  call Binance endpoints that read account balances and open positions"). It is the single
+  POST the client can send, and it is named in `READ_BY_POST`.
+- Balances from all wallets are netted per asset with futures exposure. A net short or
+  flat asset is listed as left out: the risk figures cover long exposure only.
+- Open futures exposure is stored with its leverage and distance to liquidation and
+  shown on the Holdings tab.
+- While Binance is the source, the hourly job reads the account again before analysing.
+  If Binance cannot be reached, the last holdings are kept.
+- `SPYB` is valued as one share of `SPY` each, as the spec states. The user should say if
+  the token's ratio is different.
+
+**Cash is a holding.** First built as "left out"; the user pointed out that cash is part
+of the portfolio. Dollars and dollar stablecoins (USDT, USDC, FDUSD, BUSD, TUSD, DAI)
+are counted one for one as `USD`, "Cash (US dollars)". Cash is part of the money and
+none of the risk: it lowers the mix's swings and loss limits in proportion, has a risk
+share of zero, and is unchanged through every past episode. Interest earned on savings
+is not counted. It can also be typed in or put in a CSV. Stored as `portfolios.cash`,
+because cash has no price history to hang a holding row on.
+
+**The portfolio tied to the rest of the app.**
+
+- *Market states:* each holding's market state right now, and the share of the money in
+  a turbulent market. `PAXG/USD` takes gold's state from `GLD` (decision 011).
+- *Outside forces:* the F8 regression with the whole mix as the target (250 sessions),
+  with its own trust grade.
+- *Weekend:* while stock markets are shut, Bitcoin's move since the close and what a move
+  like it has historically meant for a held market's open, in money on that holding.
+  Shown only for a market whose weekend link passed its test.
+
+**Checked on the real account:** five wallets read without error; Bitcoin, PAX Gold, SPY
+(from `SPYB`), and cash were found; one token with no price history was listed as left
+out. Cash is about three quarters of the money, and Bitcoin about 9% of the money and
+74% of the risk.
+
+## 039. Phase 5B: how the markets move together (2026-10-06)
+
+Built as the second part of decision 035. One job (`radar relationships`, hourly in the
+worker) stores two results as `model_registry` rows; requests only read them.
+
+**F5, correlation.** Rolling 30 and 90 sessions and an exponentially weighted estimate
+(half-life 30) for every pair of primary markets, not only Bitcoin and gold; split by
+the first market's regime, with a 95% range and the number of days, and withheld below
+30 days; a grid across the whole universe in clustered order for the last 90 sessions and
+for the full shared history.
+
+**Risk transmission (new).** An episode starts on the first session a market's filtered
+label reads turbulent after it did not, at least 10 sessions after the last. Measured:
+the other market's average absolute daily return over the next 1, 5, and 10 sessions, as
+a multiple of the same on all other days. Range from resampling episodes; p-value from
+2,000 draws of the same number of ordinary days; Benjamini-Hochberg across all pairs and
+horizons. Fewer than 15 episodes gives `not enough episodes`.
+
+**Weekend gaps (new).** For each break of three or more days between sessions: Bitcoin's
+move from the last close to the next open (its price at the open is the last hourly
+close known before it) against each stock market's opening gap. Correlation with a 95%
+range, a slope, and the average gap after Bitcoin's worst tenth of weekends. Fewer than
+30 weekends gives `not enough weekends`.
+
+**F8, macro drivers.** Ridge regression (penalty 5 on drivers standardised within the
+window) of each primary market on SPY, UUP, TLT, TIP, and VIXY over 90 and 250 sessions;
+500 bootstrap resamples for the ranges; walk-forward out-of-sample R squared on the next
+20 sessions against the single-driver baseline. The driver list is a constant in the
+pipeline rather than configuration, which is a small departure from the spec.
+
+**Trust rules** (in `analytics/summary.py`): a pair is Solid at 750 shared sessions;
+spillovers are graded on the pair with the fewest episodes (30 Solid, 15 Fair);
+weekends on their count (100 Solid, 30 Fair); drivers are Solid when on 500 or more
+unseen days they explained some of the moves and more than the baseline did.
+
+**What the real data shows (2026-10-06).**
+
+| Finding | Evidence |
+|---|---|
+| US stocks open in line with Bitcoin's weekend move, by about 8% of its size | correlation 0.47 (0.38 to 0.56) over 299 weekends |
+| Gold's Monday open has no measurable link to Bitcoin's weekend | correlation 0.10 (-0.02 to 0.21) |
+| After gold turned turbulent, stocks swung 1.5 to 2 times their usual size | 16 episodes; adjusted p 0.03 to 0.04 |
+| After stocks turned turbulent, Bitcoin swung about 1.4 times its usual size over 5 sessions | 17 episodes; adjusted p 0.03 |
+| Bitcoin turning turbulent was not followed by measurably larger swings in gold or stocks | 16 episodes |
+| Gold to Bitcoin cannot be judged | 9 episodes |
+| Bitcoin and gold: 0.53 over the last 90 sessions against 0.11 over the whole record | 1,443 sessions |
+| Drivers explain about 60% of stock moves, 20% of gold's, 18% of Bitcoin's on unseen days | for Bitcoin, no better than stocks alone |
+
+Spillovers are graded Rough overall because one pair has only 9 episodes, and every
+figure there rests on 16 to 26 episodes. They are shown with that caveat.
+
+**Screens.** "Markets together" (`/together`) with tabs Summary, Pair by pair, All
+markets, When one turns rough, Weekend gaps; an "Outside forces" tab on each market page
+and on the Portfolio. The phone tab bar now has six entries.
+
+**Not built.** The by-regime split uses only the first market's regime. The driver
+history over time is stored but not charted yet.
+

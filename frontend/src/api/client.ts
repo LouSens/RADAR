@@ -34,6 +34,13 @@ export type Xray = components["schemas"]["Xray"];
 export type LimitHorizon = components["schemas"]["LimitHorizon"];
 export type PortfolioLimit = components["schemas"]["Limit"];
 export type StressResult = components["schemas"]["StressResult"];
+export type Relationships = components["schemas"]["Relationships"];
+export type Pair = components["schemas"]["Pair"];
+export type CorrelationGrid = components["schemas"]["Grid"];
+export type Spillover = components["schemas"]["Spillover"];
+export type WeekendGap = components["schemas"]["WeekendGap"];
+export type Drivers = components["schemas"]["Drivers"];
+export type DriverWindow = components["schemas"]["WindowResult"];
 export type Timeframe = "1Hour" | "1Day";
 
 const BASE = "/api/v1";

@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     alpaca_api_key_id: SecretStr | None = None
     alpaca_api_secret_key: SecretStr | None = None
 
+    # Optional. A Binance key with reading permission only, for the Portfolio screen.
+    binance_api_key: SecretStr | None = None
+    binance_api_secret: SecretStr | None = None
+
     postgres_user: str | None = None
     postgres_password: SecretStr | None = None
     postgres_db: str | None = None

@@ -64,6 +64,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/drivers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Drivers
+         * @description Which outside forces this market has been moving with, and how well that held.
+         */
+        get: operations["get_drivers_api_v1_assets__symbol__drivers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{symbol}/event-study": {
         parameters: {
             query?: never;
@@ -308,6 +328,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/binance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read Binance
+         * @description Replace the holdings with what the Binance account holds. This only reads.
+         */
+        post: operations["read_binance_api_v1_portfolio_binance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/import": {
         parameters: {
             query?: never;
@@ -328,6 +368,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/relationships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Relationships
+         * @description Correlations between the markets, risk transmission, and weekend gaps.
+         */
+        get: operations["get_relationships_api_v1_relationships_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -342,12 +402,25 @@ export interface components {
              * Format: date-time
              */
             as_of: string;
+            /**
+             * Driver Names
+             * @default {}
+             */
+            driver_names: {
+                [key: string]: string;
+            };
+            drivers?: components["schemas"]["WindowResult"] | null;
             /** Limits */
             limits: components["schemas"]["LimitHorizon"][];
             /** Model Version */
             model_version: string;
             /** Positions */
             positions: components["schemas"]["Position"][];
+            /**
+             * States
+             * @default []
+             */
+            states: components["schemas"]["HoldingState"][];
             /** Stress */
             stress: components["schemas"]["StressResult"][];
             trust: components["schemas"]["Trusts"];
@@ -578,6 +651,53 @@ export interface components {
              */
             trough_day: string;
         };
+        /** DriverPoint */
+        DriverPoint: {
+            /** Coefficients */
+            coefficients: number[];
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** R Squared */
+            r_squared: number;
+        };
+        /** DriverReading */
+        DriverReading: {
+            /** Coefficient */
+            coefficient: number;
+            /** High */
+            high: number;
+            /** Low */
+            low: number;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "moves with" | "moves against" | "no measurable link";
+        };
+        /** Drivers */
+        Drivers: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Model Version */
+            model_version: string;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            /** Symbol */
+            symbol: string;
+            trust: components["schemas"]["Trust"];
+            /** Windows */
+            windows: components["schemas"]["WindowResult"][];
+        };
         /** EventPathOut */
         EventPathOut: {
             /** High */
@@ -644,6 +764,28 @@ export interface components {
              */
             trough_day: string;
         };
+        /**
+         * Grid
+         * @description Correlation between every pair, ordered so that markets that behave alike sit together.
+         */
+        Grid: {
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** Matrix */
+            matrix: number[][];
+            /** N Days */
+            n_days: number;
+            /** Symbols */
+            symbols: string[];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -686,6 +828,20 @@ export interface components {
             daily_volatility: number;
             /** Risk Share */
             risk_share: number;
+            /** Symbol */
+            symbol: string;
+            /** Weight */
+            weight: number;
+        };
+        /**
+         * HoldingState
+         * @description The market state of a holding right now, from the market it belongs to.
+         */
+        HoldingState: {
+            /** Label */
+            label: string;
+            /** Market */
+            market: string;
             /** Symbol */
             symbol: string;
             /** Weight */
@@ -742,6 +898,26 @@ export interface components {
             symbol: string;
             /** Touches */
             touches: number;
+        };
+        /**
+         * Leveraged
+         * @description An open futures exposure, as Binance reports it.
+         */
+        Leveraged: {
+            /** Distance To Liquidation */
+            distance_to_liquidation: number | null;
+            /** Entry Price */
+            entry_price: number;
+            /** Leverage */
+            leverage: number;
+            /** Liquidation Price */
+            liquidation_price: number | null;
+            /** Mark Price */
+            mark_price: number;
+            /** Quantity */
+            quantity: number;
+            /** Symbol */
+            symbol: string;
         };
         /**
          * Limit
@@ -820,6 +996,28 @@ export interface components {
              */
             type: "news";
         };
+        /**
+         * OutOfSample
+         * @description Fit on a window, predict the next sessions, repeat. Scored on every prediction.
+         */
+        OutOfSample: {
+            /** Baseline R Squared */
+            baseline_r_squared: number;
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** N Days */
+            n_days: number;
+            /** R Squared */
+            r_squared: number;
+        };
         /** OutlookHorizon */
         OutlookHorizon: {
             /** Expected Worst Drawdown */
@@ -859,10 +1057,72 @@ export interface components {
             /** Low */
             low: number;
         };
+        /** Pair */
+        Pair: {
+            /** A */
+            a: string;
+            /** B */
+            b: string;
+            /** By Regime */
+            by_regime: components["schemas"]["RegimeCorrelation"][];
+            /** Current 30 */
+            current_30: number | null;
+            /** Current 90 */
+            current_90: number | null;
+            /** Current Weighted */
+            current_weighted: number | null;
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Full */
+            full: number;
+            /** High 90 */
+            high_90: number | null;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** Low 90 */
+            low_90: number | null;
+            /** N Days */
+            n_days: number;
+            /** Regime Of */
+            regime_of: string;
+            /** Series */
+            series: components["schemas"]["PairPoint"][];
+            trust: components["schemas"]["Trust"];
+        };
+        /** PairPoint */
+        PairPoint: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Rolling 30 */
+            rolling_30: number | null;
+            /** Rolling 90 */
+            rolling_90: number | null;
+            /** Weighted */
+            weighted: number | null;
+        };
         /** PortfolioOut */
         PortfolioOut: {
+            /**
+             * Binance Available
+             * @default false
+             */
+            binance_available: boolean;
             /** Holdings */
             holdings: components["schemas"]["Holding"][];
+            /**
+             * Leveraged
+             * @default []
+             */
+            leveraged: components["schemas"]["Leveraged"][];
             /** Problem */
             problem?: string | null;
             /** Source */
@@ -902,6 +1162,19 @@ export interface components {
             last_run: string | null;
             /** Warnings */
             warnings: number;
+        };
+        /** RegimeCorrelation */
+        RegimeCorrelation: {
+            /** Correlation */
+            correlation: number | null;
+            /** High */
+            high: number | null;
+            /** Label */
+            label: string;
+            /** Low */
+            low: number | null;
+            /** N */
+            n: number;
         };
         /**
          * RegimeEvaluationOut
@@ -1009,6 +1282,25 @@ export interface components {
             typical_daily_volatility: number;
             /** Typical Duration Days */
             typical_duration_days: number;
+        };
+        /** Relationships */
+        Relationships: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            grid_full: components["schemas"]["Grid"] | null;
+            grid_recent: components["schemas"]["Grid"] | null;
+            /** Pairs */
+            pairs: components["schemas"]["Pair"][];
+            spillover_trust: components["schemas"]["Trust"];
+            /** Spillovers */
+            spillovers: components["schemas"]["Spillover"][];
+            weekend_now: components["schemas"]["WeekendNow"] | null;
+            weekend_trust: components["schemas"]["Trust"];
+            /** Weekends */
+            weekends: components["schemas"]["WeekendGap"][];
         };
         /** RiskHorizonOut */
         RiskHorizonOut: {
@@ -1208,6 +1500,37 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /** Spillover */
+        Spillover: {
+            /** After */
+            after?: number | null;
+            /** Episodes */
+            episodes: number;
+            /** P Adjusted */
+            p_adjusted?: number | null;
+            /** P Value */
+            p_value?: number | null;
+            /** Ratio */
+            ratio?: number | null;
+            /** Ratio High */
+            ratio_high?: number | null;
+            /** Ratio Low */
+            ratio_low?: number | null;
+            /** Source */
+            source: string;
+            /** Steps */
+            steps: number;
+            /** Target */
+            target: string;
+            /** Usual */
+            usual?: number | null;
+            /**
+             * Verdict
+             * @default not enough episodes
+             * @enum {string}
+             */
+            verdict: "spills over" | "no measurable spillover" | "not enough episodes";
+        };
         /** StressPart */
         StressPart: {
             /** Change */
@@ -1336,7 +1659,7 @@ export interface components {
              * Asset Class
              * @enum {string}
              */
-            asset_class: "crypto" | "stock";
+            asset_class: "crypto" | "stock" | "cash";
             /** Name */
             name: string;
             /** Symbol */
@@ -1435,6 +1758,7 @@ export interface components {
         };
         /** Trusts */
         Trusts: {
+            drivers?: components["schemas"]["Trust"] | null;
             risk: components["schemas"]["Trust"];
             stress: components["schemas"]["Trust"];
             xray: components["schemas"]["Trust"];
@@ -1529,6 +1853,84 @@ export interface components {
             mse: number;
             /** Qlike */
             qlike: number;
+        };
+        /** WeekendGap */
+        WeekendGap: {
+            /** Correlation */
+            correlation?: number | null;
+            /** Gap After Worst */
+            gap_after_worst?: number | null;
+            /** Gap Usual */
+            gap_usual?: number | null;
+            /** High */
+            high?: number | null;
+            /** Low */
+            low?: number | null;
+            /** P Adjusted */
+            p_adjusted?: number | null;
+            /** P Value */
+            p_value?: number | null;
+            /** Slope */
+            slope?: number | null;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Verdict
+             * @default not enough weekends
+             * @enum {string}
+             */
+            verdict: "moves with" | "moves against" | "no measurable link" | "not enough weekends";
+            /** Weekends */
+            weekends: number;
+            /**
+             * Worst Count
+             * @default 0
+             */
+            worst_count: number;
+        };
+        /**
+         * WeekendNow
+         * @description Bitcoin's move since stock markets last closed, while they are shut.
+         */
+        WeekendNow: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Bitcoin Move */
+            bitcoin_move: number;
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+        };
+        /** WindowResult */
+        WindowResult: {
+            /** Baseline */
+            baseline: string;
+            /** Drivers */
+            drivers: components["schemas"]["DriverReading"][];
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** History */
+            history: components["schemas"]["DriverPoint"][];
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            out_of_sample: components["schemas"]["OutOfSample"] | null;
+            /** R Squared */
+            r_squared: number;
+            /** Strongest */
+            strongest: string | null;
+            /** Window */
+            window: number;
         };
         /** Xray */
         Xray: {
@@ -1639,6 +2041,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CalibrationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_drivers_api_v1_assets__symbol__drivers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Drivers"];
                 };
             };
             /** @description Validation Error */
@@ -2034,6 +2467,26 @@ export interface operations {
             };
         };
     };
+    read_binance_api_v1_portfolio_binance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+        };
+    };
     import_portfolio_api_v1_portfolio_import_post: {
         parameters: {
             query?: never;
@@ -2063,6 +2516,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_relationships_api_v1_relationships_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Relationships"];
                 };
             };
         };

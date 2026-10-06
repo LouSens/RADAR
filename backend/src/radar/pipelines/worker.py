@@ -19,6 +19,7 @@ from radar.logging import get_logger
 from radar.pipelines import event_study as event_study_job
 from radar.pipelines import portfolio as portfolio_job
 from radar.pipelines import regime as regime_job
+from radar.pipelines import relationships as relationships_job
 from radar.pipelines import risk as risk_job
 from radar.pipelines import sentiment as sentiment_job
 from radar.pipelines import simulation as simulation_job
@@ -188,9 +189,18 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             max_instances=1,
             coalesce=True,
         )
+        # How the markets move together: hourly, so the weekend reading stays current.
+        scheduler.add_job(
+            partial(relationships_job.run, engine, universe),
+            "cron",
+            minute=50,
+            id="relationships",
+            max_instances=1,
+            coalesce=True,
+        )
         # The portfolio's analysis follows the prices: refreshed once an hour.
         scheduler.add_job(
-            partial(portfolio_job.run, engine, universe),
+            partial(portfolio_job.run, engine, universe, portfolio_job.binance_reader(universe)),
             "cron",
             minute=45,
             id="portfolio",

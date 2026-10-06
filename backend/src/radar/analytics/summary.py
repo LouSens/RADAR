@@ -180,6 +180,78 @@ def grade_stress(available: int, partial: int, total: int) -> Trust:
     )
 
 
+def grade_relationship(n_days: int) -> Trust:
+    """Solid when the two markets share three years of sessions or more."""
+    if n_days >= 750:
+        return Trust(
+            grade="solid",
+            reason=f"Measured on {n_days:,} trading days both markets have prices for. "
+            "It describes the past; relationships between markets drift.",
+        )
+    return Trust(
+        grade="fair",
+        reason=f"Measured on only {n_days:,} trading days both markets have prices for.",
+    )
+
+
+def grade_spillovers(episodes: list[int]) -> Trust:
+    """Graded on the pair with the fewest episodes: 30 for solid, 15 for fair."""
+    if not episodes or min(episodes) < 15:
+        fewest = min(episodes) if episodes else 0
+        return Trust(
+            grade="rough",
+            reason=f"Some pairs have as few as {fewest} past episodes, too few to judge.",
+        )
+    fewest = min(episodes)
+    if fewest >= 30:
+        return Trust(
+            grade="solid",
+            reason=f"Every pair has {fewest} or more past episodes, each judged on what "
+            "followed it and corrected for the number of pairs tested.",
+        )
+    return Trust(
+        grade="fair",
+        reason=f"Pairs have as few as {fewest} past episodes, so the ranges are wide.",
+    )
+
+
+def grade_weekends(weekends: list[int]) -> Trust:
+    """Graded on the number of weekends measured: 100 for solid, 30 for fair."""
+    fewest = min(weekends) if weekends else 0
+    if fewest >= 100:
+        return Trust(grade="solid", reason=f"Measured on {fewest:,} or more past weekends.")
+    if fewest >= 30:
+        return Trust(grade="fair", reason=f"Measured on only {fewest} past weekends.")
+    return Trust(grade="rough", reason=f"Only {fewest} past weekends, too few to judge.")
+
+
+def grade_drivers(score: dict[str, object] | None) -> Trust:
+    """Solid when, on 500 or more unseen days, the drivers explained some of the moves and
+    explained more than the single simple driver did."""
+    if not score:
+        return Trust(grade="rough", reason="This has not been tested on unseen days yet.")
+    days = int(str(score["n_days"]))
+    own = float(str(score["r_squared"]))
+    simple = float(str(score["baseline_r_squared"]))
+    if own > 0 and own > simple and days >= 500:
+        return Trust(
+            grade="solid",
+            reason=f"On {days:,} unseen days the drivers accounted for {percent(own)} of "
+            f"the moves, against {percent(max(simple, 0))} for the simple rival.",
+        )
+    if own > 0:
+        return Trust(
+            grade="fair",
+            reason=f"On {days:,} unseen days the drivers accounted for {percent(own)} of "
+            f"the moves, no better than the simple rival's {percent(max(simple, 0))}.",
+        )
+    return Trust(
+        grade="rough",
+        reason=f"On {days:,} unseen days the drivers did not predict the moves better "
+        "than the average of the days before.",
+    )
+
+
 def grade_news(accuracy: dict[str, object] | None) -> Trust:
     """Graded on the low end of the accuracy range: 80% for solid, 65% for fair."""
     if not accuracy:

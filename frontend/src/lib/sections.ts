@@ -5,6 +5,7 @@ export const SECTIONS = [
   { path: "outlook", label: "Outlook" },
   { path: "swings", label: "Expected swings" },
   { path: "risk", label: "Downside risk" },
+  { path: "drivers", label: "Outside forces" },
   { path: "news", label: "News" },
   { path: "record", label: "Live record" },
 ] as const;

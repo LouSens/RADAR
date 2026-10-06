@@ -264,8 +264,20 @@ def portfolio() -> int:
     from radar.pipelines import portfolio as job
     from radar.universe import get_universe
 
-    stored = job.run(make_engine(), get_universe())
+    universe = get_universe()
+    stored = job.run(make_engine(), universe, job.binance_reader(universe))
     log.info("portfolio_done", analyses_stored=stored)
+    return 0
+
+
+def relationships() -> int:
+    """Recompute how the markets move together, and each market's macro drivers."""
+    from radar.db.session import make_engine
+    from radar.pipelines import relationships as job
+    from radar.universe import get_universe
+
+    stored = job.run(make_engine(), get_universe())
+    log.info("relationships_done", rows_stored=stored)
     return 0
 
 
@@ -296,6 +308,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "finetune": (finetune, "fine-tune the sentiment model and test it on held-out headlines"),
     "track": (track, "log today's forecasts and score those that have come due"),
     "portfolio": (portfolio, "recompute the portfolio analysis with the latest prices"),
+    "relationships": (relationships, "recompute how the markets move together"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

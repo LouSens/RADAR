@@ -291,7 +291,7 @@ Timestamps are `timestamptz` in UTC. Tables marked (H) are TimescaleDB hypertabl
 | `calibration_reports` | `symbol`, `model_version`, `horizon_days`, `nominal`, `empirical`, `empirical_conformal`, `n`, `conformal_miss_rate`, pinball losses | coverage of past intervals, raw and adjusted |
 | `signals` | `id`, `symbol`, `ts`, `type`, `payload`, `track_record_id` | |
 | `signal_track_records` | `type`, `symbol`, `computed_at`, `n`, forward-return statistics, `baseline`, `verdict` | |
-| `portfolios`, `holdings` | `portfolio_id`, `symbol`, `quantity`, `tag`; `source` on the portfolio | source is `manual`, `csv`, or `binance` |
+| `portfolios`, `holdings` | `portfolio_id`, `symbol`, `quantity`, `tag`; `source`, `cash`, and `leveraged` on the portfolio | source is `manual`, `csv`, or `binance`; cash is US dollars, stablecoins included |
 | `portfolio_analyses` | `portfolio_id`, `as_of`, `computed_at`, `model_version`, `payload` (JSON) | the latest analysis only; replaced when holdings or prices change (`docs/DECISIONS.md` 037) |
 | `briefs` | `date`, `symbol`, `payload` (JSON), `text` | payload is the grounded input |
 | `model_registry` | `name`, `version`, `trained_at`, `train_window`, `metrics`, `artefact_path` | |
@@ -491,7 +491,10 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `GET /relationships/btc-gold` | correlation series, by-regime table, tracking gap |
 | `GET/PUT /portfolio` | holdings and tags; saving recomputes the analysis |
 | `POST /portfolio/import` | holdings from the text of a CSV file |
-| `GET /portfolio/analysis` | risk breakdown, loss limits, and stress episodes (`docs/DECISIONS.md` 037) |
+| `GET /portfolio/analysis` | risk breakdown, loss limits, stress episodes, market states, and drivers (`docs/DECISIONS.md` 037, 038) |
+| `POST /portfolio/binance` | replace the holdings with what the Binance account holds; reads only |
+| `GET /relationships` | correlations, risk transmission, and weekend gaps (`docs/DECISIONS.md` 039) |
+| `GET /assets/{symbol}/drivers` | F8 macro drivers for one market |
 | `GET /portfolio/allocations` | allocation comparison and backtest summary |
 | `GET /portfolio/simulation` | portfolio outcome distribution |
 | `GET /signals` | recent signals with track record summaries |

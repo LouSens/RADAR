@@ -8,6 +8,7 @@ import {
   type Asset,
   type Bars,
   type Calibration,
+  type Drivers,
   type EventStudy,
   type Health,
   type Holding,
@@ -15,6 +16,7 @@ import {
   type Portfolio,
   type PortfolioAnalysis,
   type Regime,
+  type Relationships,
   type Risk,
   type Sentiment,
   type Simulation,
@@ -195,17 +197,39 @@ export function usePortfolioAnalysis() {
   });
 }
 
-/** Save typed-in holdings, or the text of a CSV file. Both replace what was saved. */
+/** Save typed-in holdings, the text of a CSV file, or what Binance holds. Each replaces
+ *  what was saved. */
 export function useSavePortfolio() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { holdings: Holding[] } | { csv: string }) =>
-      "csv" in input
-        ? postJson<Portfolio>("/portfolio/import", input)
-        : putJson<Portfolio>("/portfolio", input),
+    mutationFn: (input: { holdings: Holding[] } | { csv: string } | { binance: true }) =>
+      "binance" in input
+        ? postJson<Portfolio>("/portfolio/binance", {})
+        : "csv" in input
+          ? postJson<Portfolio>("/portfolio/import", input)
+          : putJson<Portfolio>("/portfolio", input),
     onSuccess: (saved) => {
       client.setQueryData(["portfolio"], saved);
       void client.invalidateQueries({ queryKey: ["portfolio", "analysis"] });
     },
+  });
+}
+
+/** How the markets move together: correlations, risk transmission, weekend gaps. */
+export function useRelationships() {
+  return useQuery({
+    queryKey: ["relationships"],
+    queryFn: () => orNull(() => getJson<Relationships>("/relationships")),
+    refetchInterval: 10 * 60_000,
+  });
+}
+
+/** Which outside forces a market has been moving with. */
+export function useDrivers(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["drivers", slug],
+    queryFn: () => orNull(() => getJson<Drivers>(`/assets/${slug}/drivers`)),
+    enabled: slug !== undefined,
+    refetchInterval: 10 * 60_000,
   });
 }

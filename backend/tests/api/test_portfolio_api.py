@@ -2,6 +2,7 @@
 
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -11,12 +12,15 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from radar.api.app import create_app
+from radar.api.portfolio import get_binance_reader
 from radar.db.assets import sync_assets
 from radar.db.models import PortfolioAnalysis, PortfolioHolding
 from radar.features.calendars import nyse_schedule
 from radar.ingest.upsert import bar_row, upsert_bars
+from radar.models.holdings import Holding, Holdings, Unsupported
 from radar.pipelines import portfolio as job
 from radar.providers import schemas
+from radar.providers.binance import BinanceError, BinanceReading, Leveraged
 from radar.universe import Universe
 
 UNIVERSE = Universe.model_validate(
@@ -90,7 +94,10 @@ def seed(session: Session) -> None:
 @pytest.fixture
 def client(engine: Engine, session: Session) -> Iterator[TestClient]:
     seed(session)
-    with TestClient(create_app(engine, UNIVERSE)) as test_client:
+    app = create_app(engine, UNIVERSE)
+    # Tests never read a real key from this machine's .env.
+    app.dependency_overrides[get_binance_reader] = lambda: None
+    with TestClient(app) as test_client:
         yield test_client
 
 
@@ -98,7 +105,8 @@ def test_an_empty_portfolio_lists_what_can_be_held(client: TestClient) -> None:
     body = client.get("/api/v1/portfolio").json()
     assert body["source"] is None
     assert body["holdings"] == []
-    assert [a["symbol"] for a in body["supported"]] == ["BTC/USD", "GLD", "SOL/USD"]
+    assert [a["symbol"] for a in body["supported"]] == ["BTC/USD", "GLD", "SOL/USD", "USD"]
+    assert body["supported"][-1]["name"] == "Cash (US dollars)"
     assert client.get("/api/v1/portfolio/analysis").status_code == 404
 
 
@@ -211,3 +219,118 @@ def test_the_job_refreshes_the_stored_analysis_and_is_repeatable(
     assert job.run(engine, UNIVERSE) == 1
     assert client.get("/api/v1/portfolio/analysis").json() == first
     assert session.scalar(select(func.count()).select_from(PortfolioAnalysis)) == 1
+
+
+def reading(*holdings: tuple[str, float]) -> BinanceReading:
+    return BinanceReading(
+        holdings=Holdings(
+            source="binance",
+            holdings=[Holding(symbol=s, quantity=q) for s, q in holdings],
+            unsupported=[Unsupported(symbol="USDT", reason="A cash balance.")],
+        ),
+        leveraged=[
+            Leveraged(
+                symbol="BTC/USD",
+                quantity=0.1,
+                leverage=3,
+                entry_price=50_000,
+                mark_price=60_000,
+                liquidation_price=45_000,
+                distance_to_liquidation=0.25,
+            )
+        ],
+    )
+
+
+def test_binance_holdings_replace_the_portfolio_when_a_key_is_configured(
+    client: TestClient, engine: Engine, session: Session
+) -> None:
+    assert client.get("/api/v1/portfolio").json()["binance_available"] is False
+    assert client.post("/api/v1/portfolio/binance").status_code == 409
+
+    app = client.app
+    app.dependency_overrides[get_binance_reader] = lambda: lambda: reading(("BTC/USD", 0.4))  # type: ignore[attr-defined]
+    body = client.post("/api/v1/portfolio/binance").json()
+    assert body["source"] == "binance"
+    assert body["binance_available"] is True
+    assert [(h["symbol"], h["quantity"]) for h in body["holdings"]] == [("BTC/USD", 0.4)]
+    assert [u["symbol"] for u in body["unsupported"]] == ["USDT"]
+    assert body["leveraged"][0]["distance_to_liquidation"] == 0.25
+    assert client.get("/api/v1/portfolio").json()["leveraged"] == body["leveraged"]
+    assert client.get("/api/v1/portfolio/analysis").json()["positions"][0]["quantity"] == 0.4
+
+    # The hourly job reads the exchange again, so a changed balance is picked up.
+    assert job.run(engine, UNIVERSE, lambda: reading(("BTC/USD", 0.9), ("GLD", 2))) == 1
+    positions = client.get("/api/v1/portfolio/analysis").json()["positions"]
+    assert {p["symbol"]: p["quantity"] for p in positions} == {"BTC/USD": 0.9, "GLD": 2}
+
+    # If the exchange cannot be reached, the last holdings are kept.
+    def unreachable() -> BinanceReading:
+        raise BinanceError("Could not reach Binance.")
+
+    assert job.run(engine, UNIVERSE, unreachable) == 1
+    assert len(client.get("/api/v1/portfolio").json()["holdings"]) == 2
+    app.dependency_overrides[get_binance_reader] = lambda: unreachable  # type: ignore[attr-defined]
+    refused = client.post("/api/v1/portfolio/binance")
+    assert refused.status_code == 502
+    assert refused.json()["detail"] == "Could not reach Binance."
+
+    # Typing holdings in afterwards clears the leveraged exposure that came from Binance.
+    saved = client.put("/api/v1/portfolio", json={"holdings": [{"symbol": "GLD", "quantity": 1}]})
+    assert saved.json()["leveraged"] == []
+
+
+def test_the_analysis_ties_holdings_to_their_market_state_and_drivers(
+    client: TestClient, session: Session
+) -> None:
+    body = client.put(
+        "/api/v1/portfolio",
+        json={"holdings": [{"symbol": "BTC", "quantity": 0.05}, {"symbol": "GLD", "quantity": 40}]},
+    )
+    assert body.status_code == 200
+    analysis = client.get("/api/v1/portfolio/analysis").json()
+    # This universe has too few driver funds and no regime model: nothing is made up.
+    assert analysis["drivers"] is None
+    assert analysis["states"] == []
+    assert analysis["trust"]["drivers"] is None
+
+
+def test_cash_is_part_of_the_money_and_none_of_the_risk(client: TestClient) -> None:
+    def analysed(holdings: list[dict[str, object]]) -> Any:
+        assert client.put("/api/v1/portfolio", json={"holdings": holdings}).status_code == 200
+        return client.get("/api/v1/portfolio/analysis").json()
+
+    alone = analysed([{"symbol": "BTC", "quantity": 0.05}])
+    worth = alone["value"]
+    half = analysed([{"symbol": "BTC", "quantity": 0.05}, {"symbol": "USDT", "quantity": worth}])
+
+    saved = client.get("/api/v1/portfolio").json()
+    assert [(h["symbol"], h["quantity"]) for h in saved["holdings"]] == [
+        ("BTC/USD", 0.05),
+        ("USD", pytest.approx(worth)),
+    ]
+    assert half["value"] == pytest.approx(2 * worth)
+    positions = {p["symbol"]: p for p in half["positions"]}
+    assert positions["USD"]["name"] == "Cash (US dollars)"
+    assert positions["USD"]["weight"] == pytest.approx(0.5)
+    assert positions["BTC/USD"]["weight"] == pytest.approx(0.5)
+
+    # Half in cash: half the swing and half the loss limit, and all the risk is Bitcoin's.
+    x_alone, x_half = alone["xray"], half["xray"]
+    assert x_half["daily_volatility"] == pytest.approx(x_alone["daily_volatility"] / 2)
+    shares = {h["symbol"]: h["risk_share"] for h in x_half["holdings"]}
+    assert shares == {"BTC/USD": pytest.approx(1.0), "USD": 0.0}
+    day_limit = [a["limits"][0]["levels"][0]["methods"][0]["var"] for a in (half, alone)]
+    assert day_limit[0] < day_limit[1] * 0.6
+
+    # Through a past episode cash is there and unchanged, so the fall is half as deep.
+    spring_alone, spring_half = alone["stress"][0], half["stress"][0]
+    assert spring_half["missing"] == []
+    assert spring_half["change"] == pytest.approx(spring_alone["change"] / 2)
+    parts = {p["symbol"]: p for p in spring_half["parts"]}
+    assert parts["USD"]["contribution"] == 0
+
+    only_cash = client.put(
+        "/api/v1/portfolio", json={"holdings": [{"symbol": "USD", "quantity": 500}]}
+    ).json()
+    assert "Only cash is held" in only_cash["problem"]

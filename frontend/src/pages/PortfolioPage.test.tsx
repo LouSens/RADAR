@@ -10,11 +10,13 @@ const state = vi.hoisted(() => ({
   portfolio: undefined as unknown,
   analysis: undefined as unknown,
   mutate: undefined as unknown,
+  together: undefined as unknown,
 }));
 
 vi.mock("../api/queries", () => ({
   usePortfolio: () => ({ data: state.portfolio, isPending: false, isError: false }),
   usePortfolioAnalysis: () => ({ data: state.analysis }),
+  useRelationships: () => ({ data: state.together }),
   useSavePortfolio: () => ({
     mutate: state.mutate,
     isPending: false,
@@ -51,11 +53,19 @@ const PORTFOLIO: Portfolio = {
     { symbol: "SPY", name: "US stocks (S&P 500)", asset_class: "stock" },
   ],
   problem: null,
+  binance_available: false,
+  leveraged: [],
 };
 
 const ANALYSIS: PortfolioAnalysis = {
   as_of: "2026-10-02T20:00:00Z",
   model_version: "portfolio-risk-1",
+  drivers: null,
+  driver_names: {},
+  states: [
+    { symbol: "BTC/USD", market: "BTC/USD", label: "calm", weight: 0.4 },
+    { symbol: "SPY", market: "SPY", label: "turbulent", weight: 0.6 },
+  ],
   value: 10000,
   positions: [
     {
@@ -198,7 +208,7 @@ describe("PortfolioPage", () => {
     expect(screen.getAllByText("$10,000")).toHaveLength(2); // the header and the sentence
     expect(screen.getByText("±1.60%")).toBeVisible();
     expect(screen.getByText("$160.00")).toBeVisible();
-    expect(screen.getAllByText("40%")).toHaveLength(2); // of the money, and in the list
+    expect(screen.getAllByText("40%")).toHaveLength(3); // the sentence, the state line, the list
     expect(screen.getByText("82%")).toBeVisible(); // of the risk
     expect(screen.getByText("2.5%")).toBeVisible();
     expect(screen.getByText("$250.00")).toBeVisible();
@@ -212,8 +222,56 @@ describe("PortfolioPage", () => {
       "/portfolio/sources",
       "/portfolio/sources",
       "/portfolio/limits",
+      "/together",
       "/portfolio/episodes",
     ]);
+  });
+
+  it("ties the holdings to the state of their markets and to the weekend", () => {
+    state.together = {
+      weekend_now: {
+        since: "2026-10-02T20:00:00Z",
+        as_of: "2026-10-04T10:00:00Z",
+        bitcoin_move: Math.log(1.05),
+      },
+      weekends: [
+        { symbol: "SPY", verdict: "moves with", slope: 0.08, weekends: 299, worst_count: 30 },
+      ],
+    };
+    show("/portfolio");
+    expect(screen.getByText(/of your money is in a turbulent market/)).toBeVisible();
+    expect(screen.getByText("turbulent")).toBeVisible();
+    expect(screen.getByText(/Bitcoin has moved/)).toBeVisible();
+    expect(screen.getByText("+5.00%")).toBeVisible();
+    // 8% of a 5% move on a $6,000 holding.
+    expect(screen.getByText("$24.00")).toBeVisible();
+    state.together = undefined;
+  });
+
+  it("offers Binance only when a key is configured, and shows leveraged exposure", () => {
+    show("/portfolio/holdings");
+    expect(screen.queryByRole("button", { name: "Read from Binance" })).toBeNull();
+    cleanup();
+    state.portfolio = {
+      ...PORTFOLIO,
+      binance_available: true,
+      leveraged: [
+        {
+          symbol: "BTC/USD",
+          quantity: -0.2,
+          leverage: 5,
+          entry_price: 90000,
+          mark_price: 80000,
+          liquidation_price: 100000,
+          distance_to_liquidation: 0.25,
+        },
+      ],
+    };
+    show("/portfolio/holdings");
+    fireEvent.click(screen.getByRole("button", { name: "Read from Binance" }));
+    expect(state.mutate).toHaveBeenCalledWith({ binance: true }, expect.anything());
+    expect(screen.getByText("25.0% from liquidation")).toBeVisible();
+    expect(screen.getByText(/short 0.2 at\s+5× leverage/)).toBeVisible();
   });
 
   it("never tells the reader what to do", () => {
@@ -221,6 +279,7 @@ describe("PortfolioPage", () => {
       "/portfolio",
       "/portfolio/sources",
       "/portfolio/limits",
+      "/together",
       "/portfolio/episodes",
     ]) {
       const { container } = show(path);

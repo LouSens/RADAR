@@ -7,6 +7,7 @@ import { AssetPage } from "./pages/AssetPage";
 import { Overview } from "./pages/Overview";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { SystemPage } from "./pages/SystemPage";
+import { TogetherPage } from "./pages/TogetherPage";
 
 export function App() {
   useLiveConnection();
@@ -15,6 +16,7 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<Overview />} />
         <Route path="asset/:slug/:section?" element={<AssetPage />} />
+        <Route path="together/:section?" element={<TogetherPage />} />
         <Route path="portfolio/:section?" element={<PortfolioPage />} />
         <Route path="system" element={<SystemPage />} />
         <Route path="status" element={<Navigate to="/system" replace />} />

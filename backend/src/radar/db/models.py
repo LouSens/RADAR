@@ -355,6 +355,11 @@ class Portfolio(Base):
     name: Mapped[str] = mapped_column(Text)
     # Where the holdings last came from: "manual", "csv", or "binance".
     source: Mapped[str] = mapped_column(Text)
+    # US dollars held as cash, dollar stablecoins included. Not a row in `holdings`,
+    # because cash is not an asset with a price history.
+    cash: Mapped[float] = mapped_column(Double, server_default="0")
+    # Open leveraged exposure as the source reported it; empty for manual and CSV.
+    leveraged: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")
     updated_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
 
 

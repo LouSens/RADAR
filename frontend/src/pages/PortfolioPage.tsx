@@ -2,12 +2,13 @@ import { useState, type ReactNode } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { LimitHorizon, PortfolioAnalysis, PortfolioLimit, Trust } from "../api/client";
-import { usePortfolio, usePortfolioAnalysis } from "../api/queries";
+import { usePortfolio, usePortfolioAnalysis, useRelationships } from "../api/queries";
+import { DriverEvidence, driverHeadline } from "../components/DriversPanel";
 import { HoldingsEditor } from "../components/HoldingsEditor";
 import { oddsLabel } from "../components/RiskPanel";
 import { Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented, TrustBadge } from "../components/ui";
-import { formatChange, formatCount, formatPrice, formatShare } from "../lib/format";
+import { formatChange, formatCount, formatMoney, formatPrice, formatShare } from "../lib/format";
 import {
   PORTFOLIO_SECTIONS,
   isPortfolioSection,
@@ -52,6 +53,28 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
     0.95,
   );
   const worst = worstEpisode(analysis.stress);
+  const names = analysis.driver_names as Record<string, string>;
+  const rough = analysis.states
+    .filter((state) => state.label === "turbulent")
+    .reduce((sum, state) => sum + state.weight, 0);
+  // While stock markets are shut: what Bitcoin's move has meant for a held market's open.
+  const together = useRelationships().data;
+  const linked = together?.weekends.find(
+    (row) =>
+      row.verdict === "moves with" &&
+      row.slope != null &&
+      analysis.positions.some((p) => p.symbol === row.symbol),
+  );
+  const held = analysis.positions.find((p) => p.symbol === linked?.symbol);
+  const weekend =
+    together?.weekend_now && linked?.slope != null && held
+      ? {
+          move: together.weekend_now.bitcoin_move,
+          slope: linked.slope,
+          name: held.name.split(" (")[0] ?? held.name,
+          value: held.value,
+        }
+      : undefined;
   return (
     <section className="glass p-5 @xl:p-7" aria-labelledby="in-brief">
       <h2 id="in-brief" className="text-base font-semibold tracking-tight">
@@ -59,13 +82,13 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
       </h2>
       <ul className="mt-4">
         <Line to={`${BASE}/holdings`}>
-          Your holdings were worth <Figure>{formatPrice(value)}</Figure> at the market close on{" "}
+          Your holdings were worth <Figure>{formatMoney(value)}</Figure> at the market close on{" "}
           {formatDate(analysis.as_of)}.
         </Line>
         <Line trust={trust.xray} to={`${BASE}/sources`}>
           A typical day&apos;s move for the whole mix is about{" "}
           <Figure>±{formatShare(xray.daily_volatility)}</Figure>, or{" "}
-          <Figure>{formatPrice(value * xray.daily_volatility)}</Figure>, in either direction.
+          <Figure>{formatMoney(value * xray.daily_volatility)}</Figure>, in either direction.
         </Line>
         {imbalance && analysis.positions.length > 1 && (
           <Line trust={trust.xray} to={`${BASE}/sources`}>
@@ -76,7 +99,45 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
         {day && (
           <Line trust={trust.risk} to={`${BASE}/limits`}>
             A one-day loss beyond <Figure>{formatShare(day.var, 1)}</Figure>, or{" "}
-            <Figure>{formatPrice(value * day.var)}</Figure>, should happen on about 1 day in 20.
+            <Figure>{formatMoney(value * day.var)}</Figure>, should happen on about 1 day in 20.
+          </Line>
+        )}
+        {analysis.states.length > 0 && (
+          <Line to="/together">
+            Right now{" "}
+            {analysis.states.map((state, i) => (
+              <span key={state.symbol}>
+                {i > 0 ? (i === analysis.states.length - 1 ? " and " : ", ") : ""}
+                {analysis.positions.find((p) => p.symbol === state.symbol)?.name ?? state.symbol} (
+                <Figure>{formatShare(state.weight, 0)}</Figure>) is <Figure>{state.label}</Figure>
+              </span>
+            ))}
+            {rough > 0 ? (
+              <>
+                : <Figure>{formatShare(rough, 0)}</Figure> of your money is in a turbulent market.
+              </>
+            ) : (
+              ": none of your money is in a turbulent market."
+            )}
+          </Line>
+        )}
+        {analysis.drivers && (
+          <Line trust={trust.drivers ?? undefined} to={`${BASE}/forces`}>
+            {driverHeadline(analysis.drivers, names)}: outside forces account for{" "}
+            <Figure>{formatShare(analysis.drivers.r_squared, 0)}</Figure> of this mix&apos;s daily
+            moves over the past year.
+          </Line>
+        )}
+        {weekend && (
+          <Line to="/together/weekends">
+            Bitcoin has moved <Figure>{formatChange(Math.expm1(weekend.move))}</Figure> since stock
+            markets closed. Historically your {weekend.name} opened by about{" "}
+            <Figure>{formatShare(Math.abs(weekend.slope), 0)}</Figure> of such a move, which on your
+            holding would be{" "}
+            <Figure>
+              {formatMoney(Math.abs(weekend.slope * Math.expm1(weekend.move) * weekend.value))}
+            </Figure>{" "}
+            {weekend.slope * weekend.move >= 0 ? "up" : "down"}. Single weekends vary widely.
           </Line>
         )}
         {worst?.change != null && (
@@ -132,7 +193,7 @@ function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
               <div>
                 <p className="font-medium">{name(holding.symbol)}</p>
                 <p className="num text-sm text-muted">
-                  {position ? formatPrice(position.value) : ""} · swings ±
+                  {position ? formatMoney(position.value) : ""} · swings ±
                   {formatShare(holding.daily_volatility)} a day
                 </p>
               </div>
@@ -173,7 +234,7 @@ function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
             <dt className="label">Typical day for the mix</dt>
             <dd className="price-lg mt-2">±{formatShare(xray.daily_volatility)}</dd>
             <dd className="num mt-1 text-sm text-muted">
-              {formatPrice(value * xray.daily_volatility)}
+              {formatMoney(value * xray.daily_volatility)}
             </dd>
           </div>
           <div className="well p-4">
@@ -267,11 +328,11 @@ function LimitCard({
         Loss limit for {oddsLabel(level)} periods of {period}
       </p>
       <p className="price-lg mt-2">{formatShare(limit.var, 1)}</p>
-      <p className="num mt-1 text-sm text-muted">{formatPrice(value * limit.var)}</p>
+      <p className="num mt-1 text-sm text-muted">{formatMoney(value * limit.var)}</p>
       <p className="mt-2 text-sm leading-relaxed text-muted">
         When the loss has gone past this limit, it has averaged about{" "}
         <span className="num text-ink">{formatShare(limit.expected_shortfall, 1)}</span>, or{" "}
-        <span className="num text-ink">{formatPrice(value * limit.expected_shortfall)}</span>.
+        <span className="num text-ink">{formatMoney(value * limit.expected_shortfall)}</span>.
       </p>
       <p className="mt-2 text-sm leading-relaxed text-muted">
         Broken <span className="num text-ink">{formatCount(test.breaches)}</span> times in{" "}
@@ -304,7 +365,7 @@ function Limits({ analysis }: { analysis: PortfolioAnalysis }) {
       trust={analysis.trust.risk}
       headline={
         day
-          ? `${formatShare(day.var, 1)}, or ${formatPrice(analysis.value * day.var)}, one-day loss limit`
+          ? `${formatShare(day.var, 1)}, or ${formatMoney(analysis.value * day.var)}, one-day loss limit`
           : undefined
       }
     >
@@ -375,7 +436,7 @@ function Episodes({ analysis }: { analysis: PortfolioAnalysis }) {
                   </span>{" "}
                   from first day to last, or{" "}
                   <span className="num text-ink">
-                    {formatPrice(
+                    {formatMoney(
                       Math.abs(analysis.value * episode.covered_weight * episode.change),
                     )}
                   </span>{" "}
@@ -432,6 +493,23 @@ function Episodes({ analysis }: { analysis: PortfolioAnalysis }) {
   );
 }
 
+function Forces({ analysis }: { analysis: PortfolioAnalysis }) {
+  if (!analysis.drivers) {
+    return <Message>There is not enough shared history to measure this yet.</Message>;
+  }
+  const names = analysis.driver_names as Record<string, string>;
+  return (
+    <Panel
+      id="forces"
+      title="Outside forces"
+      trust={analysis.trust.drivers ?? undefined}
+      headline={driverHeadline(analysis.drivers, names)}
+    >
+      <DriverEvidence window={analysis.drivers} names={names} subject="your mix" />
+    </Panel>
+  );
+}
+
 export function PortfolioPage() {
   const { section } = useParams();
   const portfolio = usePortfolio();
@@ -455,7 +533,7 @@ export function PortfolioPage() {
       <div className="aurora" aria-hidden="true" />
       <header className="flex items-baseline gap-3">
         <h1 className="title">Portfolio</h1>
-        {analysis && <span className="label num">{formatPrice(analysis.value)}</span>}
+        {analysis && <span className="label num">{formatMoney(analysis.value)}</span>}
       </header>
       <Tabs base={BASE} items={PORTFOLIO_SECTIONS} label="Portfolio pages" />
 
@@ -481,7 +559,7 @@ export function PortfolioPage() {
                       </span>
                     </span>
                     <span className="num font-medium">
-                      {formatPrice(position.value)}{" "}
+                      {formatMoney(position.value)}{" "}
                       <span className="text-muted">{formatShare(position.weight, 0)}</span>
                     </span>
                   </li>
@@ -509,6 +587,9 @@ export function PortfolioPage() {
       {portfolio.data &&
         section === "limits" &&
         (analysis ? <Limits analysis={analysis} /> : needsHoldings)}
+      {portfolio.data &&
+        section === "forces" &&
+        (analysis ? <Forces analysis={analysis} /> : needsHoldings)}
       {portfolio.data &&
         section === "episodes" &&
         (analysis ? <Episodes analysis={analysis} /> : needsHoldings)}

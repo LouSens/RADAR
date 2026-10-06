@@ -22,7 +22,10 @@ KNOWN = ["BTC/USD", "PAXG/USD", "GLD", "SPY"]
         ("SPYB", "SPY"),
         ("gld", "GLD"),
         ("DOGE", None),
-        ("USDT", None),
+        ("USDT", "USD"),
+        ("usdc", "USD"),
+        ("cash", "USD"),
+        ("EUR", None),
         ("", None),
     ],
 )
@@ -94,3 +97,9 @@ def test_a_source_can_only_be_read() -> None:
     source = inspect.getsource(holdings)
     for word in ("httpx", "requests", "socket", "urllib"):
         assert f"import {word}" not in source
+
+
+def test_dollars_and_dollar_stablecoins_add_up_to_one_cash_holding() -> None:
+    read = CsvSource("symbol,quantity\nBTC,1\nUSDT,400\nUSDC,100.5\ncash,50\n", KNOWN).read()
+    assert [(h.symbol, h.quantity) for h in read.holdings] == [("BTC/USD", 1), ("USD", 550.5)]
+    assert read.unsupported == []

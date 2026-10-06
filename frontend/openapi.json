@@ -9,6 +9,24 @@
             "title": "As Of",
             "type": "string"
           },
+          "driver_names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "title": "Driver Names",
+            "type": "object"
+          },
+          "drivers": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WindowResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "limits": {
             "items": {
               "$ref": "#/components/schemas/LimitHorizon"
@@ -25,6 +43,14 @@
               "$ref": "#/components/schemas/Position"
             },
             "title": "Positions",
+            "type": "array"
+          },
+          "states": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HoldingState"
+            },
+            "title": "States",
             "type": "array"
           },
           "stress": {
@@ -651,6 +677,115 @@
         "title": "DrawdownOut",
         "type": "object"
       },
+      "DriverPoint": {
+        "properties": {
+          "coefficients": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Coefficients",
+            "type": "array"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "r_squared": {
+            "title": "R Squared",
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "r_squared",
+          "coefficients"
+        ],
+        "title": "DriverPoint",
+        "type": "object"
+      },
+      "DriverReading": {
+        "properties": {
+          "coefficient": {
+            "title": "Coefficient",
+            "type": "number"
+          },
+          "high": {
+            "title": "High",
+            "type": "number"
+          },
+          "low": {
+            "title": "Low",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "moves with",
+              "moves against",
+              "no measurable link"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "coefficient",
+          "low",
+          "high",
+          "verdict"
+        ],
+        "title": "DriverReading",
+        "type": "object"
+      },
+      "Drivers": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/WindowResult"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbol",
+          "as_of",
+          "model_version",
+          "names",
+          "windows",
+          "trust"
+        ],
+        "title": "Drivers",
+        "type": "object"
+      },
       "EventPathOut": {
         "properties": {
           "high": {
@@ -835,6 +970,51 @@
         "title": "Fall",
         "type": "object"
       },
+      "Grid": {
+        "description": "Correlation between every pair, ordered so that markets that behave alike sit together.",
+        "properties": {
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "matrix": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Matrix",
+            "type": "array"
+          },
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symbols",
+            "type": "array"
+          }
+        },
+        "required": [
+          "symbols",
+          "matrix",
+          "n_days",
+          "first_day",
+          "last_day"
+        ],
+        "title": "Grid",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -968,6 +1148,35 @@
         "title": "HoldingRisk",
         "type": "object"
       },
+      "HoldingState": {
+        "description": "The market state of a holding right now, from the market it belongs to.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "market": {
+            "title": "Market",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "symbol",
+          "market",
+          "label",
+          "weight"
+        ],
+        "title": "HoldingState",
+        "type": "object"
+      },
       "HoldingsIn": {
         "properties": {
           "holdings": {
@@ -1090,6 +1299,64 @@
           "touches"
         ],
         "title": "LevelOut",
+        "type": "object"
+      },
+      "Leveraged": {
+        "description": "An open futures exposure, as Binance reports it.",
+        "properties": {
+          "distance_to_liquidation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance To Liquidation"
+          },
+          "entry_price": {
+            "title": "Entry Price",
+            "type": "number"
+          },
+          "leverage": {
+            "title": "Leverage",
+            "type": "number"
+          },
+          "liquidation_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidation Price"
+          },
+          "mark_price": {
+            "title": "Mark Price",
+            "type": "number"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "quantity",
+          "leverage",
+          "entry_price",
+          "mark_price",
+          "liquidation_price",
+          "distance_to_liquidation"
+        ],
+        "title": "Leveraged",
         "type": "object"
       },
       "Limit": {
@@ -1258,6 +1525,42 @@
         "title": "LiveNews",
         "type": "object"
       },
+      "OutOfSample": {
+        "description": "Fit on a window, predict the next sessions, repeat. Scored on every prediction.",
+        "properties": {
+          "baseline_r_squared": {
+            "title": "Baseline R Squared",
+            "type": "number"
+          },
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "r_squared": {
+            "title": "R Squared",
+            "type": "number"
+          }
+        },
+        "required": [
+          "n_days",
+          "r_squared",
+          "baseline_r_squared",
+          "first_day",
+          "last_day"
+        ],
+        "title": "OutOfSample",
+        "type": "object"
+      },
       "OutlookHorizon": {
         "properties": {
           "expected_worst_drawdown": {
@@ -1371,13 +1674,201 @@
         "title": "OutlookRange",
         "type": "object"
       },
+      "Pair": {
+        "properties": {
+          "a": {
+            "title": "A",
+            "type": "string"
+          },
+          "b": {
+            "title": "B",
+            "type": "string"
+          },
+          "by_regime": {
+            "items": {
+              "$ref": "#/components/schemas/RegimeCorrelation"
+            },
+            "title": "By Regime",
+            "type": "array"
+          },
+          "current_30": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current 30"
+          },
+          "current_90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current 90"
+          },
+          "current_weighted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Weighted"
+          },
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "full": {
+            "title": "Full",
+            "type": "number"
+          },
+          "high_90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High 90"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "low_90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low 90"
+          },
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "regime_of": {
+            "title": "Regime Of",
+            "type": "string"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/PairPoint"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "current_30",
+          "current_90",
+          "current_weighted",
+          "low_90",
+          "high_90",
+          "full",
+          "n_days",
+          "first_day",
+          "last_day",
+          "series",
+          "regime_of",
+          "by_regime",
+          "trust"
+        ],
+        "title": "Pair",
+        "type": "object"
+      },
+      "PairPoint": {
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "rolling_30": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rolling 30"
+          },
+          "rolling_90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rolling 90"
+          },
+          "weighted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weighted"
+          }
+        },
+        "required": [
+          "day",
+          "rolling_30",
+          "rolling_90",
+          "weighted"
+        ],
+        "title": "PairPoint",
+        "type": "object"
+      },
       "PortfolioOut": {
         "properties": {
+          "binance_available": {
+            "default": false,
+            "title": "Binance Available",
+            "type": "boolean"
+          },
           "holdings": {
             "items": {
               "$ref": "#/components/schemas/Holding"
             },
             "title": "Holdings",
+            "type": "array"
+          },
+          "leveraged": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Leveraged"
+            },
+            "title": "Leveraged",
             "type": "array"
           },
           "problem": {
@@ -1510,6 +2001,60 @@
           "failures"
         ],
         "title": "QualitySummary",
+        "type": "object"
+      },
+      "RegimeCorrelation": {
+        "properties": {
+          "correlation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "label",
+          "n",
+          "correlation",
+          "low",
+          "high"
+        ],
+        "title": "RegimeCorrelation",
         "type": "object"
       },
       "RegimeEvaluationOut": {
@@ -1736,6 +2281,85 @@
           "next_states"
         ],
         "title": "RegimeStateOut",
+        "type": "object"
+      },
+      "Relationships": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "grid_full": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Grid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "grid_recent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Grid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/Pair"
+            },
+            "title": "Pairs",
+            "type": "array"
+          },
+          "spillover_trust": {
+            "$ref": "#/components/schemas/Trust"
+          },
+          "spillovers": {
+            "items": {
+              "$ref": "#/components/schemas/Spillover"
+            },
+            "title": "Spillovers",
+            "type": "array"
+          },
+          "weekend_now": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeekendNow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weekend_trust": {
+            "$ref": "#/components/schemas/Trust"
+          },
+          "weekends": {
+            "items": {
+              "$ref": "#/components/schemas/WeekendGap"
+            },
+            "title": "Weekends",
+            "type": "array"
+          }
+        },
+        "required": [
+          "as_of",
+          "pairs",
+          "grid_recent",
+          "grid_full",
+          "spillovers",
+          "spillover_trust",
+          "weekends",
+          "weekend_now",
+          "weekend_trust"
+        ],
+        "title": "Relationships",
         "type": "object"
       },
       "RiskHorizonOut": {
@@ -2279,6 +2903,121 @@
         "title": "SimulationOut",
         "type": "object"
       },
+      "Spillover": {
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "episodes": {
+            "title": "Episodes",
+            "type": "integer"
+          },
+          "p_adjusted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Adjusted"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value"
+          },
+          "ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio"
+          },
+          "ratio_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio High"
+          },
+          "ratio_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ratio Low"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "usual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usual"
+          },
+          "verdict": {
+            "default": "not enough episodes",
+            "enum": [
+              "spills over",
+              "no measurable spillover",
+              "not enough episodes"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "steps",
+          "episodes"
+        ],
+        "title": "Spillover",
+        "type": "object"
+      },
       "StressPart": {
         "properties": {
           "change": {
@@ -2658,7 +3397,8 @@
           "asset_class": {
             "enum": [
               "crypto",
-              "stock"
+              "stock",
+              "cash"
             ],
             "title": "Asset Class",
             "type": "string"
@@ -2941,6 +3681,16 @@
       },
       "Trusts": {
         "properties": {
+          "drivers": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Trust"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "risk": {
             "$ref": "#/components/schemas/Trust"
           },
@@ -3193,6 +3943,228 @@
         "title": "VolatilityScoreOut",
         "type": "object"
       },
+      "WeekendGap": {
+        "properties": {
+          "correlation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation"
+          },
+          "gap_after_worst": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap After Worst"
+          },
+          "gap_usual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap Usual"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "p_adjusted": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Adjusted"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value"
+          },
+          "slope": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slope"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "verdict": {
+            "default": "not enough weekends",
+            "enum": [
+              "moves with",
+              "moves against",
+              "no measurable link",
+              "not enough weekends"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          },
+          "weekends": {
+            "title": "Weekends",
+            "type": "integer"
+          },
+          "worst_count": {
+            "default": 0,
+            "title": "Worst Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "symbol",
+          "weekends"
+        ],
+        "title": "WeekendGap",
+        "type": "object"
+      },
+      "WeekendNow": {
+        "description": "Bitcoin's move since stock markets last closed, while they are shut.",
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "bitcoin_move": {
+            "title": "Bitcoin Move",
+            "type": "number"
+          },
+          "since": {
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "as_of",
+          "bitcoin_move"
+        ],
+        "title": "WeekendNow",
+        "type": "object"
+      },
+      "WindowResult": {
+        "properties": {
+          "baseline": {
+            "title": "Baseline",
+            "type": "string"
+          },
+          "drivers": {
+            "items": {
+              "$ref": "#/components/schemas/DriverReading"
+            },
+            "title": "Drivers",
+            "type": "array"
+          },
+          "first_day": {
+            "format": "date",
+            "title": "First Day",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/DriverPoint"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "last_day": {
+            "format": "date",
+            "title": "Last Day",
+            "type": "string"
+          },
+          "out_of_sample": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutOfSample"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "r_squared": {
+            "title": "R Squared",
+            "type": "number"
+          },
+          "strongest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strongest"
+          },
+          "window": {
+            "title": "Window",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window",
+          "drivers",
+          "r_squared",
+          "first_day",
+          "last_day",
+          "history",
+          "out_of_sample",
+          "baseline",
+          "strongest"
+        ],
+        "title": "WindowResult",
+        "type": "object"
+      },
       "Xray": {
         "properties": {
           "correlation": {
@@ -3426,6 +4398,46 @@
           }
         },
         "summary": "Get Calibration"
+      }
+    },
+    "/api/v1/assets/{symbol}/drivers": {
+      "get": {
+        "description": "Which outside forces this market has been moving with, and how well that held.",
+        "operationId": "get_drivers_api_v1_assets__symbol__drivers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drivers"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Drivers"
       }
     },
     "/api/v1/assets/{symbol}/event-study": {
@@ -3928,6 +4940,25 @@
         "summary": "Get Analysis"
       }
     },
+    "/api/v1/portfolio/binance": {
+      "post": {
+        "description": "Replace the holdings with what the Binance account holds. This only reads.",
+        "operationId": "read_binance_api_v1_portfolio_binance_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Binance"
+      }
+    },
     "/api/v1/portfolio/import": {
       "post": {
         "description": "Replace the holdings with those in a CSV file's text, and analyse them.",
@@ -3965,6 +4996,25 @@
           }
         },
         "summary": "Import Portfolio"
+      }
+    },
+    "/api/v1/relationships": {
+      "get": {
+        "description": "Correlations between the markets, risk transmission, and weekend gaps.",
+        "operationId": "get_relationships_api_v1_relationships_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Relationships"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Relationships"
       }
     }
   }
