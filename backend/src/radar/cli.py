@@ -293,6 +293,17 @@ def news_swings() -> int:
     return 0
 
 
+def signals() -> int:
+    """Replay the signal rules through history and recompute their track records."""
+    from radar.db.session import make_engine
+    from radar.pipelines import signals as job
+    from radar.universe import get_universe
+
+    stored = job.run(make_engine(), get_universe())
+    log.info("signals_done", signals_stored=stored)
+    return 0
+
+
 def audit(args: argparse.Namespace) -> int:
     from radar.pipelines.audit import run_audit
 
@@ -322,6 +333,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "portfolio": (portfolio, "recompute the portfolio analysis with the latest prices"),
     "relationships": (relationships, "recompute how the markets move together"),
     "news-swings": (news_swings, "test whether news improves the swings forecast"),
+    "signals": (signals, "detect signals and recompute what followed them in the past"),
     "migrate": (migrate, "apply database migrations and sync the asset universe"),
 }
 

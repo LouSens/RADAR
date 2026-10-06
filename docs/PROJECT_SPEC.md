@@ -443,6 +443,7 @@ Each feature lists its method, baseline, evaluation, output, and what counts as 
   - `rebalance_drift`: from F6.
 - **Track record:** for each signal type and symbol, find every historical occurrence using only information available at the time. Report the count, the distribution of forward returns at 1 and 7 days, the share of positive outcomes with a confidence interval, and the same statistics for all days as a baseline. The verdict is `no measurable edge` when the interval overlaps the baseline.
 - **Daily brief:** a JSON payload assembled from F1 to F6 results, rendered to a short paragraph per asset by a template. If the LLM writer is enabled, it receives only the payload and its output is rejected and replaced by the template version if it contains any number not in the payload.
+- **As built (`docs/DECISIONS.md` 051):** past signals are found walk-forward; a verdict must also survive a correction for the number of records looked at; a second verdict covers the size of the move that followed; under 30 occurrences the verdict is `not enough occurrences`. Portfolio signals have no track record.
 - **Done when:** each signal shown in the UI links to its track record, the grounding test passes, and the template writer works with no API key set.
 
 ### F8. Macro drivers

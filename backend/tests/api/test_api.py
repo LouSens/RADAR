@@ -232,6 +232,8 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets/{symbol}/drivers",
         "/api/v1/assets/{symbol}/news-and-swings",
         "/api/v1/relationships",
+        "/api/v1/signals",
+        "/api/v1/signals/track-records/{type}",
         "/api/v1/portfolio",
         "/api/v1/portfolio/import",
         "/api/v1/portfolio/binance",

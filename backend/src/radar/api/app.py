@@ -13,6 +13,7 @@ from radar.api.portfolio import router as portfolio_router
 from radar.api.relationships import router as relationships_router
 from radar.api.routes import router
 from radar.api.schemas import LiveBar, LiveNews
+from radar.api.signals import router as signals_router
 from radar.db.session import make_engine
 from radar.universe import Universe, get_universe
 
@@ -40,6 +41,7 @@ def create_app(engine: Engine | None = None, universe: Universe | None = None) -
     app.state.universe = universe or get_universe()
     app.state.hub = LiveHub()
     app.include_router(relationships_router)
+    app.include_router(signals_router)
     app.include_router(router)
     app.include_router(portfolio_router)
 
