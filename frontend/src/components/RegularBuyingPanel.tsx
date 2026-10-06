@@ -189,7 +189,13 @@ export function RegularBuyingPanel({
 }) {
   const simulate = useRegularBuying();
   const supported = portfolio.supported.filter((a) => a.symbol !== CASH);
-  const held = (analysis?.positions ?? []).filter((p) => p.symbol !== CASH);
+  // Holdings with too short a record to simulate are left out of the starting plan.
+  const tooNew = new Set(
+    [...(analysis?.young ?? []), ...(analysis?.unmeasured ?? [])].map((item) => item.symbol),
+  );
+  const held = (analysis?.positions ?? []).filter(
+    (p) => p.symbol !== CASH && !tooNew.has(p.symbol),
+  );
   const heldTotal = held.reduce((sum, p) => sum + p.weight, 0);
   const [rows, setRows] = useState<Row[]>(() =>
     held.length > 0 && heldTotal > 0

@@ -38,8 +38,11 @@ const ANALYSIS = {
   positions: [
     { symbol: "BTC/USD", name: "Bitcoin", weight: 0.1 },
     { symbol: "SPY", name: "US stocks (S&P 500)", weight: 0.3 },
-    { symbol: "USD", name: "Cash (US dollars)", weight: 0.6 },
+    { symbol: "USD", name: "Cash (US dollars)", weight: 0.55 },
+    { symbol: "PURR", name: "PURR", weight: 0.05 },
   ],
+  // A newer holding cannot be simulated yet, so the plan does not start with it.
+  young: [{ symbol: "PURR", name: "PURR", weight: 0.05, days: 208 }],
 } as unknown as PortfolioAnalysis;
 
 const path = (end: number) => Array.from({ length: 252 }, (_, i) => (end * (i + 1)) / 252);
@@ -100,6 +103,7 @@ describe("RegularBuyingPanel", () => {
     expect(screen.getByLabelText("Bitcoin share of each purchase, percent")).toHaveValue(25);
     expect(screen.getByLabelText("US stocks share of each purchase, percent")).toHaveValue(75);
     expect(screen.getByText("12 purchases of $100.00: $1,200 in all")).toBeVisible();
+    expect(screen.queryByLabelText("PURR share of each purchase, percent")).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Dollars per purchase"), { target: { value: "50" } });
     fireEvent.click(screen.getByRole("button", { name: "Every week" }));

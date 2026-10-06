@@ -597,6 +597,17 @@ def regular_buying(
     if not shares or total <= 0:
         raise ValueError("Give at least one asset a share.")
     symbols = list(shares)
+    # Name the asset that is too new, so the user knows which one to take out.
+    history = panel.returns[symbols].notna().sum()
+    short = [s for s in symbols if int(history[s]) < buying_model.MIN_DAYS]
+    if short:
+        named = ", ".join(
+            f"{universe.get(s).name} ({int(history[s])} days of prices)" for s in short
+        )
+        raise ValueError(
+            f"Too new to simulate: {named}. {buying_model.MIN_DAYS} days are needed; "
+            "take it out to run the plan."
+        )
     joint = panel.returns[symbols].dropna()
     split = np.array([shares[s] / total for s in symbols])
     result = buying_model.run(joint.to_numpy(dtype=float), split, amount, every, purchases)

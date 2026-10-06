@@ -608,7 +608,8 @@ def test_a_plan_of_regular_purchases_is_simulated_without_saving_anything(
     assert "at least one asset" in refused({"weights": {"GLD": 0}})
     assert "negative" in refused({"weights": {"GLD": -1}})
     # Solana has sixty sessions: too few to draw futures from.
-    assert "250 are needed" in refused({"weights": {"SOL/USD": 1}})
+    too_new = refused({"weights": {"SOL/USD": 1, "GLD": 1}})
+    assert "Too new to simulate: Solana (59 days of prices). 250 days are needed" in too_new
     assert "longer than 504" in refused({"every": 63, "purchases": 9})
     refused({"amount": 0})
 
