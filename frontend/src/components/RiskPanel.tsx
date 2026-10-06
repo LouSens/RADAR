@@ -117,7 +117,7 @@ export function RiskPanel({ asset, trust }: PanelProps) {
   return (
     <Panel
       id="risk"
-      title="Downside risk"
+      title="Possible loss"
       trust={trust}
       headline={dayLimit ? `${formatShare(dayLimit.var, 1)} one-day loss limit` : undefined}
     >

@@ -81,6 +81,7 @@ from radar.db.models import (
     VolatilityForecast,
 )
 from radar.models import simulator, topics
+from radar.pipelines import discover
 from radar.pipelines import event_study as event_study_job
 from radar.pipelines import finetune as finetune_job
 from radar.pipelines import risk as risk_job
@@ -105,8 +106,10 @@ def slug_of(symbol: str) -> str:
 
 
 def get_universe(request: Request) -> Universe:
+    """The configured universe plus any asset discovered from the user's holdings."""
     universe: Universe = request.app.state.universe
-    return universe
+    with Session(request.app.state.engine) as session:
+        return discover.extend(universe, session)
 
 
 def get_session(request: Request) -> Iterator[Session]:

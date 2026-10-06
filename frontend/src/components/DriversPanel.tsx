@@ -155,7 +155,7 @@ export function DriversPanel({ asset, trust }: PanelProps & { trust?: Trust }) {
   return (
     <Panel
       id="drivers"
-      title="Outside forces"
+      title="What it moves with"
       trust={trust ?? drivers.trust}
       headline={driverHeadline(window, names)}
     >

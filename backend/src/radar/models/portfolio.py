@@ -27,6 +27,9 @@ from radar.models import tail_risk
 MODEL_VERSION = "portfolio-risk-1"
 # Fewest shared sessions before anything is estimated (spec F6).
 MIN_HISTORY = 250
+# A newer holding (a recent listing, say) is estimated on what history it has, down to
+# this many sessions. Below it there is too little to say anything.
+MIN_YOUNG = 30
 # Days of the calendar to sessions, as everywhere else on the mixed panel.
 HORIZONS: dict[int, int] = {1: 1, 7: 5}
 # Weight of yesterday's estimate in the recent-swings average (the RiskMetrics value).
@@ -50,6 +53,41 @@ def covariance(returns: pd.DataFrame) -> np.ndarray:
         )
     fitted = LedoitWolf().fit(complete.to_numpy(dtype=float))
     return np.asarray(fitted.covariance_, dtype=float)
+
+
+def covariance_with_young(established: pd.DataFrame, young: pd.DataFrame) -> np.ndarray:
+    """Covariance of established holdings and newer ones together, established first.
+
+    The established block is the shrunk estimate on their long shared history. A newer
+    holding's own swings, and how it moves with each other holding, are measured on the
+    sessions it has. The pieces are then made into one consistent matrix. Two holdings
+    with fewer than `MIN_YOUNG` sessions in common are taken as unrelated.
+    """
+    base = covariance(established)
+    k = base.shape[0]
+    frame = pd.concat([established, young], axis=1)
+    n = frame.shape[1]
+    spread = np.concatenate(
+        [np.sqrt(np.diag(base)), [float(young[c].dropna().std()) for c in young.columns]]
+    )
+    corr = np.eye(n)
+    corr[:k, :k] = base / np.outer(spread[:k], spread[:k])
+    for j in range(k, n):
+        for i in range(j):
+            pair = frame.iloc[:, [i, j]].dropna()
+            value = (
+                float(np.corrcoef(pair.iloc[:, 0], pair.iloc[:, 1])[0, 1])
+                if len(pair) >= MIN_YOUNG
+                else 0.0
+            )
+            corr[i, j] = corr[j, i] = 0.0 if np.isnan(value) else value
+    # Pieces measured on different windows need not fit together: take the nearest
+    # matrix that is a valid set of correlations.
+    values, vectors = np.linalg.eigh(corr)
+    fixed = (vectors * np.clip(values, 1e-8, None)) @ vectors.T
+    scale = np.sqrt(np.diag(fixed))
+    corr = fixed / np.outer(scale, scale)
+    return np.asarray(np.outer(spread, spread) * corr, dtype=float)
 
 
 def risk_shares(weights: np.ndarray, cov: np.ndarray) -> np.ndarray:
@@ -111,12 +149,32 @@ class Xray(BaseModel):
     first_day: date
     last_day: date
     deepest_fall: Fall
+    # Daily swings of the established holdings alone, at their weights. The loss
+    # limits are measured on these and scaled up for newer holdings.
+    established_volatility: float = 0.0
 
 
-def xray(returns: pd.DataFrame, weights: np.ndarray) -> Xray:
-    """Where the mix's swings come from. `returns` has one column per held asset."""
+def xray(
+    returns: pd.DataFrame,
+    weights: np.ndarray,
+    young: pd.DataFrame | None = None,
+    young_weights: np.ndarray | None = None,
+) -> Xray:
+    """Where the mix's swings come from. `returns` has one column per established
+    holding; `young` one per newer holding, which is estimated on the history it has.
+    The deepest fall is for the established holdings, the only ones with a long record.
+    """
     complete = returns.dropna()
-    cov = covariance(returns)
+    established_weights = weights
+    if young is not None and young_weights is not None and young.shape[1] > 0:
+        cov = covariance_with_young(returns, young)
+        base = cov[: len(weights), : len(weights)]
+        weights = np.concatenate([weights, young_weights])
+        columns = [*returns.columns, *young.columns]
+    else:
+        cov = covariance(returns)
+        base = cov
+        columns = list(returns.columns)
     spread = np.sqrt(np.diag(cov))
     shares = risk_shares(weights, cov)
     correlation = cov / np.outer(spread, spread)
@@ -129,17 +187,100 @@ def xray(returns: pd.DataFrame, weights: np.ndarray) -> Xray:
                 daily_volatility=float(spread[i]),
                 risk_share=float(shares[i]),
             )
-            for i, symbol in enumerate(returns.columns)
+            for i, symbol in enumerate(columns)
         ],
         daily_volatility=float(np.sqrt(weights @ cov @ weights)),
         undiversified_volatility=float(weights @ spread),
-        symbols=[str(c) for c in returns.columns],
+        symbols=[str(c) for c in columns],
         correlation=[[float(v) for v in row] for row in correlation],
         n_days=len(complete),
         first_day=days[0].date(),
         last_day=days[-1].date(),
-        deepest_fall=deepest_fall(mix_returns(returns, weights)),
+        deepest_fall=deepest_fall(mix_returns(returns, established_weights)),
+        established_volatility=float(np.sqrt(established_weights @ base @ established_weights)),
     )
+
+
+# --- risk level ------------------------------------------------------------------------
+
+# The mix's daily swings as a multiple of the US stock market's, and the word for it.
+RISK_BANDS: tuple[tuple[float, str], ...] = (
+    (0.5, "low"),
+    (1.0, "moderate"),
+    (2.0, "high"),
+)
+
+
+class RiskLevel(BaseModel):
+    """How much the mix swings, set against things an investor already knows."""
+
+    # "low", "moderate", "high", or "very high".
+    label: str
+    # Daily swings of the mix divided by those of US stocks over the same sessions.
+    ratio: float
+    # The same multiple for other reference points, lowest first. Cash is zero.
+    references: dict[str, float]
+
+
+def risk_level(mix: pd.Series, references: pd.DataFrame, stocks: str) -> RiskLevel | None:
+    """Where the mix sits between cash and the riskiest reference.
+
+    `references` holds daily returns of reference markets, one of which is `stocks`.
+    Everything is measured on the sessions the mix has.
+    """
+    both = pd.concat([mix.rename("mix"), references], axis=1).dropna()
+    if len(both) < MIN_HISTORY or stocks not in both:
+        return None
+    spread = both.std()
+    base = float(spread[stocks])
+    if base <= 0:
+        return None
+    ratio = float(spread["mix"]) / base
+    label = next((name for limit, name in RISK_BANDS if ratio < limit), "very high")
+    return RiskLevel(
+        label=label,
+        ratio=ratio,
+        references={str(c): float(spread[c]) / base for c in references.columns},
+    )
+
+
+def scale_level(level: RiskLevel, factor: float) -> RiskLevel:
+    """The same reading with the mix's swings multiplied by `factor`."""
+    ratio = level.ratio * factor
+    label = next((name for limit, name in RISK_BANDS if ratio < limit), "very high")
+    return level.model_copy(update={"ratio": ratio, "label": label})
+
+
+def scale_limits(limits: list["LimitHorizon"], factor: float) -> list["LimitHorizon"]:
+    """Loss limits measured on part of the mix, scaled to the swings of all of it.
+
+    The backtest stays that of the part it was measured on.
+    """
+    return [
+        horizon.model_copy(
+            update={
+                "levels": [
+                    level.model_copy(
+                        update={
+                            "methods": [
+                                m.model_copy(
+                                    update={
+                                        "var": min(m.var * factor, 0.99),
+                                        "expected_shortfall": min(
+                                            m.expected_shortfall * factor, 0.99
+                                        ),
+                                    }
+                                )
+                                for m in level.methods
+                            ]
+                        }
+                    )
+                    for level in horizon.levels
+                ]
+            }
+        )
+        for horizon in limits
+    ]
 
 
 # --- loss limits -----------------------------------------------------------------------

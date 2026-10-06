@@ -8,11 +8,14 @@ The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant 
 
 Update this block at the end of every work session.
 
-- Phase: everything up to Phase 5A is merged to `main`. Phase 5B and the Binance source are on branch `phase-5b` (pull request open or merged: check `git log main`)
+- Phase: everything up to Phase 5A is merged to `main`. Phase 5B and the Binance source are on branch `phase-5b`; the visual pass, automatic asset discovery, and the risk scale are on `visual-first`, stacked on it (pull requests open or merged: check `git log main`)
 - Last completed step: Phase 5B (decision 039): correlations, risk transmission, weekend gaps, macro drivers, the "Markets together" screen and the "Outside forces" tabs; and the read-only Binance source with cash as a holding and the portfolio tied to market states, drivers, and the weekend (decision 038). Before that, Phase 5A (decision 037): holdings by manual entry and CSV, the portfolio X-ray, loss limits, stress episodes, and the Portfolio screen; and the market page as tabs with real addresses (decision 036). Before that, fluid layout and chart fixes (decision 034) and the product pass (decision 033): an "In brief" card and `GET /assets/{symbol}/summary`; a Solid, Fair, or Rough trust mark on every claim from fixed rules in `analytics/summary.py`; sections folded behind their claims; news articles listed unranked and topics folded away
-- Next step: Phase 5C, news into the swings forecast (settles decision 028), then 5D allocations, which must treat cash as a holding (decision 035). Still owed: stability and sensitivity checks; labels from a person
+- Next step: the user asked for higher news-tone accuracy (target 85 to 90% on validation and test); a pre-registered experiment with an ensemble and with abstaining on unsure headlines was proposed and awaits the user's go-ahead. Then Phase 5C, news into the swings forecast (settles decision 028), then 5D allocations, which must treat cash as a holding and build on the risk scale (decisions 035, 041). The detail tabs still need the visual pass. Still owed: stability and sensitivity checks; labels from a person
 - Before merging, run exactly what CI runs: `uv run radar lint` covers the tests directory too; a pull request was once merged with a red type check in a test file
+- Held assets are discovered, never added by hand (decision 041): `EQ_` names are stocks only, every other name is a crypto pair only. A holding with 30 to 249 sessions is estimated on its own record and the loss limits are scaled for it; under 30 it is counted in the money only (decision 043). The screen says which
+- Section names are plain and fixed in decision 042; tab label and section title must match
 - The Binance client may only call the endpoints listed in `providers/binance.py`; adding one needs the user's agreement and a test
+- Visual first (decision 040): a first view is tiles and charts built from `components/viz.tsx`, not sentences; long explanations go in `Caption`, which is collapsed. Detail tabs still need this pass
 - Sections are pages behind tabs (`components/Tabs.tsx`), never folding panels; a new section gets its own address (decision 036)
 - Layout rules (decision 034): inside the page use container variants (`@xl:`, `@4xl:`), not `sm:` or `lg:`; phones have bottom tabs only, no top bar; charts must not pan or zoom into empty time
 - Every new section must use the shared `Panel` and take a trust grade from `analytics/summary.py`
@@ -20,7 +23,7 @@ Update this block at the end of every work session.
 - The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
 - Carried forward: shading the price chart by regime is not built (decision 028)
 - Interface direction is decision 023: follow it for every new screen (liquid glass, Inter, no developer wording, only show what exists). The user will revisit the interface in each phase
-- Key decisions (`docs/DECISIONS.md` 010 to 039): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
+- Key decisions (`docs/DECISIONS.md` 010 to 043): primary assets are `BTC/USD`, `GLD` (gold), and `SPY`; `PAXG/USD` is portfolio-only; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
 - The user is in GMT+8: give times in GMT+8 in chat
 - Open questions: none
 

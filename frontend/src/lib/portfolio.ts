@@ -3,10 +3,10 @@ import type { Position, StressResult, Xray } from "../api/client";
 export const PORTFOLIO_SECTIONS = [
   { path: "", label: "Summary" },
   { path: "holdings", label: "Holdings" },
-  { path: "sources", label: "Where risk comes from" },
-  { path: "limits", label: "Loss limits" },
-  { path: "forces", label: "Outside forces" },
-  { path: "episodes", label: "Past episodes" },
+  { path: "sources", label: "Risk by holding" },
+  { path: "limits", label: "Possible loss" },
+  { path: "forces", label: "What it moves with" },
+  { path: "episodes", label: "Past crashes" },
 ] as const;
 
 export type PortfolioSection = (typeof PORTFOLIO_SECTIONS)[number]["path"];

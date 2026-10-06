@@ -53,6 +53,8 @@ class Asset(Base):
     provider_symbols: Mapped[dict[str, Any]] = mapped_column(JSONB)
     history_start: Mapped[date] = mapped_column(Date)
     news_start: Mapped[date | None] = mapped_column(Date)
+    # True for an asset found from the user's holdings instead of the configured universe.
+    discovered: Mapped[bool] = mapped_column(Boolean, server_default="false")
 
 
 class Bar(Base):

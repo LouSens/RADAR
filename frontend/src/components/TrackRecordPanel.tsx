@@ -47,7 +47,7 @@ export function TrackRecordPanel({ asset }: PanelProps) {
   return (
     <Panel
       id="live-record"
-      title="Live record"
+      title="Forecast accuracy"
       headline={`${formatCount(record.recorded)} logged, ${formatCount(record.resolved)} scored`}
     >
       <header>

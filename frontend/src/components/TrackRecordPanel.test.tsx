@@ -69,15 +69,15 @@ suite("TrackRecordPanel", () => {
 
   it("shows what held against what should have, with the range", () => {
     render(<TrackRecordPanel asset={BITCOIN} />);
-    expect(screen.getByText("80% outlook range, 1 week")).toBeVisible();
-    expect(screen.getByText("Held 27 of 33: 82% (66% to 91%); should be about 80%")).toBeVisible();
-    expect(screen.getByText(/forecasts ran 8% above what happened/)).toBeVisible();
+    expect(screen.getByText("80% outlook range, 1 week")).toBeInTheDocument();
+    expect(screen.getByText("Held 27 of 33: 82% (66% to 91%); should be about 80%")).toBeInTheDocument();
+    expect(screen.getByText(/forecasts ran 8% above what happened/)).toBeInTheDocument();
   });
 
   it("says so when nothing has come due yet", () => {
     render(<TrackRecordPanel asset={BITCOIN} />);
-    expect(screen.getByText("No results yet")).toBeVisible();
-    expect(screen.getByText(/never edited/)).toBeVisible();
+    expect(screen.getByText("No results yet")).toBeInTheDocument();
+    expect(screen.getByText(/never edited/)).toBeInTheDocument();
   });
 
   it("names each kind of forecast plainly", () => {

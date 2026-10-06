@@ -20,6 +20,7 @@ KNOWN = ["BTC/USD", "PAXG/USD", "GLD", "SPY"]
         ("PAXG", "PAXG/USD"),
         ("spy", "SPY"),
         ("SPYB", "SPY"),
+        ("EQ_SPY", "SPY"),  # how Binance names a tokenised US stock
         ("gld", "GLD"),
         ("DOGE", None),
         ("USDT", "USD"),

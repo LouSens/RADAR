@@ -119,7 +119,7 @@ export function VolatilityPanel({ asset, trust }: PanelProps) {
   return (
     <Panel
       id="swings"
-      title="Expected swings"
+      title="Daily movement"
       trust={trust}
       headline={nextDay ? `±${formatShare(nextDay.forecast)} a day` : undefined}
     >

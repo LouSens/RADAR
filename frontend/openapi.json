@@ -9,6 +9,11 @@
             "title": "As Of",
             "type": "string"
           },
+          "covered_value": {
+            "default": 0.0,
+            "title": "Covered Value",
+            "type": "number"
+          },
           "driver_names": {
             "additionalProperties": {
               "type": "string"
@@ -45,6 +50,16 @@
             "title": "Positions",
             "type": "array"
           },
+          "risk_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "states": {
             "default": [],
             "items": {
@@ -63,12 +78,28 @@
           "trust": {
             "$ref": "#/components/schemas/Trusts"
           },
+          "unmeasured": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Unmeasured"
+            },
+            "title": "Unmeasured",
+            "type": "array"
+          },
           "value": {
             "title": "Value",
             "type": "number"
           },
           "xray": {
             "$ref": "#/components/schemas/Xray"
+          },
+          "young": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Unmeasured"
+            },
+            "title": "Young",
+            "type": "array"
           }
         },
         "required": [
@@ -2405,6 +2436,33 @@
         "title": "RiskHorizonOut",
         "type": "object"
       },
+      "RiskLevel": {
+        "description": "How much the mix swings, set against things an investor already knows.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          },
+          "references": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "References",
+            "type": "object"
+          }
+        },
+        "required": [
+          "label",
+          "ratio",
+          "references"
+        ],
+        "title": "RiskLevel",
+        "type": "object"
+      },
       "RiskLevelOut": {
         "properties": {
           "level": {
@@ -3709,6 +3767,34 @@
         "title": "Trusts",
         "type": "object"
       },
+      "Unmeasured": {
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "weight",
+          "days"
+        ],
+        "title": "Unmeasured",
+        "type": "object"
+      },
       "Unsupported": {
         "description": "Something the source held that RADAR cannot use, and why.",
         "properties": {
@@ -4183,6 +4269,11 @@
           },
           "deepest_fall": {
             "$ref": "#/components/schemas/Fall"
+          },
+          "established_volatility": {
+            "default": 0.0,
+            "title": "Established Volatility",
+            "type": "number"
           },
           "first_day": {
             "format": "date",
@@ -4942,7 +5033,7 @@
     },
     "/api/v1/portfolio/binance": {
       "post": {
-        "description": "Replace the holdings with what the Binance account holds. This only reads.",
+        "description": "Replace the holdings with what the Binance account holds. This only reads.\n\nA holding RADAR does not know yet is looked up in the market data and its history\nfetched, which can take up to a minute the first time it is seen.",
         "operationId": "read_binance_api_v1_portfolio_binance_post",
         "responses": {
           "200": {

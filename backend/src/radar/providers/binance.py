@@ -24,7 +24,14 @@ import httpx
 from pydantic import BaseModel, SecretStr
 
 from radar.logging import get_logger
-from radar.models.holdings import Holding, Holdings, SourceName, Unsupported, resolve
+from radar.models.holdings import (
+    NO_HISTORY,
+    Holding,
+    Holdings,
+    SourceName,
+    Unsupported,
+    resolve,
+)
 
 log = get_logger(__name__)
 
@@ -225,9 +232,7 @@ class BinanceSource:
         for asset, quantity in totals.items():
             symbol = resolve(asset, self._known)
             if symbol is None:
-                unsupported.append(
-                    Unsupported(symbol=asset, reason="RADAR has no price history for this.")
-                )
+                unsupported.append(Unsupported(symbol=asset, reason=NO_HISTORY))
                 continue
             net[symbol] = net.get(symbol, 0.0) + quantity
         holdings = []

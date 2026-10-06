@@ -38,6 +38,7 @@ BITCOIN = "BTC/USD"
 DRIVER_SYMBOLS = ("SPY", "UUP", "TLT", "TIP", "VIXY")
 SERIES_POINTS = 500
 RECENT = 90
+GRID_MIN_DAYS = 250
 # A regime label older than this is not carried forward to a session.
 LABEL_MAX_AGE = pd.Timedelta(days=4)
 HOUR = pd.Timedelta(hours=1)
@@ -256,7 +257,12 @@ def build(session: Session, universe: Universe, panel: MixedPanel | None = None)
             transmission.link_verdict(row, q) for row, q in zip(weekends, adjusted, strict=True)
         ]
 
-    held = [a.symbol for a in universe.assets if a.symbol in returns.columns]
+    # A market with a short history would shrink the grid to its own few sessions.
+    held = [
+        a.symbol
+        for a in universe.assets
+        if a.symbol in returns.columns and returns[a.symbol].notna().sum() >= GRID_MIN_DAYS
+    ]
     return Relationships(
         as_of=closes[-1].to_pydatetime(),
         pairs=pairs,

@@ -12,11 +12,12 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from radar.api.app import create_app
-from radar.api.portfolio import get_binance_reader
+from radar.api.portfolio import get_asset_finder, get_binance_reader
 from radar.db.assets import sync_assets
 from radar.db.models import PortfolioAnalysis, PortfolioHolding
 from radar.features.calendars import nyse_schedule
 from radar.ingest.upsert import bar_row, upsert_bars
+from radar.models import portfolio as portfolio_model
 from radar.models.holdings import Holding, Holdings, Unsupported
 from radar.pipelines import portfolio as job
 from radar.providers import schemas
@@ -97,6 +98,7 @@ def client(engine: Engine, session: Session) -> Iterator[TestClient]:
     app = create_app(engine, UNIVERSE)
     # Tests never read a real key from this machine's .env.
     app.dependency_overrides[get_binance_reader] = lambda: None
+    app.dependency_overrides[get_asset_finder] = lambda: None
     with TestClient(app) as test_client:
         yield test_client
 
@@ -189,16 +191,62 @@ def test_csv_text_replaces_the_holdings(client: TestClient) -> None:
     assert [h["symbol"] for h in client.get("/api/v1/portfolio").json()["holdings"]] == ["BTC/USD"]
 
 
-def test_too_little_shared_history_is_said_not_guessed(
+def test_a_newer_holding_is_estimated_on_its_short_history_and_said_to_be(
     client: TestClient, session: Session
 ) -> None:
+    gold_alone = client.put(
+        "/api/v1/portfolio", json={"holdings": [{"symbol": "GLD", "quantity": 1}]}
+    ).json()
+    assert gold_alone["problem"] is None
+    alone = client.get("/api/v1/portfolio/analysis").json()
+
     body = client.put(
         "/api/v1/portfolio",
         json={"holdings": [{"symbol": "SOL", "quantity": 3}, {"symbol": "GLD", "quantity": 1}]},
     ).json()
-    assert "250 are needed" in body["problem"]
+    assert body["problem"] is None
+    analysis = client.get("/api/v1/portfolio/analysis").json()
+
+    positions = {p["symbol"]: p for p in analysis["positions"]}
+    assert set(positions) == {"SOL/USD", "GLD"}
+    assert sum(p["weight"] for p in positions.values()) == pytest.approx(1.0)
+    # Solana has 59 sessions: enough to estimate, too few to treat as established.
+    assert analysis["unmeasured"] == []
+    (young,) = analysis["young"]
+    assert (young["symbol"], young["name"], young["days"]) == ("SOL/USD", "Solana", 59)
+    assert analysis["covered_value"] == pytest.approx(analysis["value"])
+    shares = {h["symbol"]: h["risk_share"] for h in analysis["xray"]["holdings"]}
+    assert set(shares) == {"GLD", "SOL/USD"}
+    assert shares["SOL/USD"] > positions["SOL/USD"]["weight"]
+    assert analysis["xray"]["n_days"] > 600
+    limit = analysis["limits"][0]["levels"][0]["methods"][0]["var"]
+    assert limit > alone["limits"][0]["levels"][0]["methods"][0]["var"]
+    assert analysis["trust"]["xray"]["grade"] == "fair"
+
+    # With nothing that has a long record, there is no analysis and the reason is given.
+    only_short = client.put(
+        "/api/v1/portfolio", json={"holdings": [{"symbol": "SOL", "quantity": 3}]}
+    ).json()
+    assert "250 sessions of price history" in only_short["problem"]
     assert client.get("/api/v1/portfolio/analysis").status_code == 404
     assert client.get("/api/v1/portfolio").json()["problem"] is not None
+
+
+def test_the_mix_is_placed_on_a_scale_from_cash_to_the_riskiest_market() -> None:
+    days = pd.bdate_range("2022-01-03", periods=600, tz="UTC")
+    rng = np.random.default_rng(8)
+    stocks = pd.Series(rng.normal(0, 0.01, 600), index=days)
+    references = pd.DataFrame({"SPY": stocks, "BTC/USD": rng.normal(0, 0.035, 600)}, index=days)
+    cases = {0.3: "low", 0.8: "moderate", 1.6: "high", 3.0: "very high"}
+    for scale, label in cases.items():
+        level = portfolio_model.risk_level(stocks * scale, references, "SPY")
+        assert level is not None
+        assert level.label == label
+        assert level.ratio == pytest.approx(scale)
+        assert level.references["SPY"] == pytest.approx(1.0)
+        assert level.references["BTC/USD"] == pytest.approx(3.5, rel=0.1)
+    assert portfolio_model.risk_level(stocks.iloc[:100], references, "SPY") is None
+    assert portfolio_model.risk_level(stocks, references[["BTC/USD"]], "SPY") is None
 
 
 def test_clearing_the_holdings_clears_the_analysis(client: TestClient, session: Session) -> None:
@@ -249,7 +297,7 @@ def test_binance_holdings_replace_the_portfolio_when_a_key_is_configured(
     assert client.post("/api/v1/portfolio/binance").status_code == 409
 
     app = client.app
-    app.dependency_overrides[get_binance_reader] = lambda: lambda: reading(("BTC/USD", 0.4))  # type: ignore[attr-defined]
+    app.dependency_overrides[get_binance_reader] = lambda: lambda _: reading(("BTC/USD", 0.4))  # type: ignore[attr-defined]
     body = client.post("/api/v1/portfolio/binance").json()
     assert body["source"] == "binance"
     assert body["binance_available"] is True
@@ -260,12 +308,12 @@ def test_binance_holdings_replace_the_portfolio_when_a_key_is_configured(
     assert client.get("/api/v1/portfolio/analysis").json()["positions"][0]["quantity"] == 0.4
 
     # The hourly job reads the exchange again, so a changed balance is picked up.
-    assert job.run(engine, UNIVERSE, lambda: reading(("BTC/USD", 0.9), ("GLD", 2))) == 1
+    assert job.run(engine, UNIVERSE, lambda _: reading(("BTC/USD", 0.9), ("GLD", 2))) == 1
     positions = client.get("/api/v1/portfolio/analysis").json()["positions"]
     assert {p["symbol"]: p["quantity"] for p in positions} == {"BTC/USD": 0.9, "GLD": 2}
 
     # If the exchange cannot be reached, the last holdings are kept.
-    def unreachable() -> BinanceReading:
+    def unreachable(universe: Universe) -> BinanceReading:
         raise BinanceError("Could not reach Binance.")
 
     assert job.run(engine, UNIVERSE, unreachable) == 1

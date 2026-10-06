@@ -10,12 +10,14 @@ from functools import partial
 from typing import Any
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+from sqlalchemy.orm import Session
 
 from radar.config import Settings, load_settings
 from radar.db.session import make_engine
 from radar.ingest.live import BarHandler, LiveConsumer, NewsHandler, StreamSpec, Syncer, notify
 from radar.ingest.raw_store import RawStore
 from radar.logging import get_logger
+from radar.pipelines import discover
 from radar.pipelines import event_study as event_study_job
 from radar.pipelines import portfolio as portfolio_job
 from radar.pipelines import regime as regime_job
@@ -96,8 +98,17 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             threads.append(thread)
 
         scheduler = BlockingScheduler(timezone="UTC")
+
         # One minute past each hour: the hour that just ended is now a finished bar.
-        scheduler.add_job(syncer.sync, "cron", minute=1, id="sync", max_instances=1, coalesce=True)
+        def sync_everything() -> None:
+            # Assets discovered from the user's holdings are kept up to date too.
+            with Session(engine) as session:
+                syncer.universe = discover.extend(universe, session)
+            syncer.sync()
+
+        scheduler.add_job(
+            sync_everything, "cron", minute=1, id="sync", max_instances=1, coalesce=True
+        )
         scheduler.add_job(
             partial(run_quality, engine, universe),
             "cron",
@@ -200,7 +211,13 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
         )
         # The portfolio's analysis follows the prices: refreshed once an hour.
         scheduler.add_job(
-            partial(portfolio_job.run, engine, universe, portfolio_job.binance_reader(universe)),
+            partial(
+                portfolio_job.run,
+                engine,
+                universe,
+                portfolio_job.binance_reader(),
+                portfolio_job.asset_finder(engine),
+            ),
             "cron",
             minute=45,
             id="portfolio",

@@ -2,10 +2,10 @@ import type { Pair, Spillover, WeekendGap } from "../api/client";
 
 export const TOGETHER_SECTIONS = [
   { path: "", label: "Summary" },
-  { path: "pairs", label: "Pair by pair" },
-  { path: "grid", label: "All markets" },
-  { path: "spillovers", label: "When one turns rough" },
-  { path: "weekends", label: "Weekend gaps" },
+  { path: "pairs", label: "Two markets compared" },
+  { path: "grid", label: "All markets compared" },
+  { path: "spillovers", label: "Knock-on effects" },
+  { path: "weekends", label: "Weekend effect" },
 ] as const;
 
 export type TogetherSection = (typeof TOGETHER_SECTIONS)[number]["path"];

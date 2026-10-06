@@ -1068,3 +1068,131 @@ and on the Portfolio. The phone tab bar now has six entries.
 **Not built.** The by-regime split uses only the first market's regime. The driver
 history over time is stored but not charted yet.
 
+
+## 040. Visual first: dashboards of tiles, explanations one tap away (2026-10-06)
+
+Reported by the user: every tab opened on too much text and too few pictures. "It's an
+app, not a book."
+
+- **Summary pages are dashboards.** The market, Portfolio, and Markets together
+  summaries replace their sentences with tiles: a label, one large figure, and a small
+  picture of it (a range track, comparison bars, a tone meter, twenty dots for "1 day in
+  20", money against risk as two stacked bars, past episodes as bars, a grid for
+  spillovers). Each tile carries its trust mark and is a link to the evidence.
+- **Explanations are one tap away.** Every caption is now behind "About this", and a
+  section's trust reason behind "Why solid" (or fair, or rough). Nothing was removed:
+  sample sizes, windows, and caveats are all still on the page, as the honest-output rule
+  requires. They are no longer the first thing read.
+- Shared pieces are in `components/viz.tsx`. New first views should be built from them.
+
+**Not done yet.** The detail tabs still state several results as sentences inside cards
+(for example the loss limits and the spillover list). Turning those into charts is the
+next visual pass.
+
+## 041. Held assets are discovered automatically; short histories; a risk scale (2026-10-06)
+
+The user holds a US stock on Binance (`PURR`) that RADAR did not know, and asked that
+assets never have to be added one by one: holdings change, and the app should follow.
+
+**Automatic discovery** (`pipelines/discover.py`). When a holdings source reports a name
+with no price history, RADAR looks for it in Alpaca's market data, records it in the
+`assets` table with `discovered = true`, fetches its bars, and reads the source again.
+It happens on "Read from Binance" (which can take up to a minute the first time a new
+holding is seen) and in the hourly job. The worker's hourly sync keeps discovered
+assets up to date. The configured universe in `universe.toml` still decides which
+markets are analysed; discovered assets are portfolio assets only.
+
+Two rules stop a name being matched to the wrong instrument:
+
+- A name Binance marks as a tokenised US stock (`EQ_` plus the ticker) is looked up as
+  a stock only.
+- Every other name is looked up as a crypto pair against the dollar only. Many crypto
+  names are also stock tickers (LINK, for one), and a wrong match would silently
+  misprice a holding.
+
+A consequence: a stock typed by hand or in a CSV must be written `EQ_TICKER` to be
+discovered. Names already known resolve as before.
+
+**A holding with too little history.** `PURR` has 210 sessions of prices (since
+3 December 2025); the risk maths needs 250 (spec F6). The spec and the data disagree
+here, so the options were:
+
+| Option | Effect |
+|---|---|
+| Refuse to analyse the portfolio | one new holding would blank the whole screen |
+| Lower the minimum for everything | weaker estimates for every portfolio |
+| **Count it in the money, leave it out of the risk figures, and say so** (chosen) | the figures describe the rest and state the share they cover |
+
+The screen names the holding, its share of the money, and how many days it has. Loss
+figures in money are shares of the covered part. Nothing stands in for the missing
+holding, so the risk shown is understated by whatever it carries. **The user should say
+if another treatment is wanted.**
+
+**A risk scale.** The user asked what low, moderate, and high risk look like, as the
+basis for rebalancing. The mix's daily movement is divided by that of US stocks (`SPY`)
+over the same sessions: below 0.5 is `low`, below 1 `moderate`, below 2 `high`, above
+that `very high`. Government bonds, gold, stocks, and Bitcoin are drawn on the same
+scale as reference points, and cash is zero. The bands are a convention of this app,
+not a standard; they are stated on the screen. This describes the mix. Suggesting
+another mix belongs to Phase 5D.
+
+**On cash and risk.** Cash is inside the risk figures: it is why the mix reads `low`.
+Its own share of the risk is 0% because it does not move, which is the correct reading
+and is what the donut shows (a wide inner arc, no outer arc).
+
+## 042. Chart choices and section names (2026-10-06)
+
+Asked for by the user: the best chart for each card, and section names that cannot be
+misread by someone who invests but is not a specialist.
+
+| What is shown | Chart | Why |
+|---|---|---|
+| How the money and the risk are split | two-ring donut with a table beside it | parts of one whole; the two rings make a mismatch visible at a glance |
+| Risk level | a scale cut into four bands with reference ticks | a position on a range |
+| Likely price range | a track with a band and a marker | a range and where the price is in it |
+| A chance such as "1 day in 20" | twenty dots, one lit | a frequency reads better counted than as a percentage |
+| Forecast against last outcome; past crashes | bars on one scale | comparing a few amounts |
+| News tone; correlations | a meter from one extreme to the other | a value between two poles |
+| Correlation over time | a line | change over time |
+| Knock-on effects between markets | a grid, lit where measured | every pair at once |
+
+Section names, old to new: Market state to Current state; Outlook to Price range ahead;
+Expected swings to Daily movement; Downside risk and Loss limits to Possible loss;
+Outside forces to What it moves with; Live record to Forecast accuracy; Where risk
+comes from to Risk by holding; Past episodes to Past crashes; Markets together to
+Market connections, with tabs Two markets compared, All markets compared, Knock-on
+effects, and Weekend effect.
+
+## 043. Newer holdings join the risk figures on the history they have (2026-10-06)
+
+The user chose this over leaving a newer holding out (decision 041), with new listings
+in mind: "what if I go with ICO and IPO".
+
+| Sessions of prices | Treatment |
+|---|---|
+| 250 or more | established, as before |
+| 30 to 249 | **newer**: in the risk figures, estimated on its own record |
+| under 30 | counted in the money only; the screen names it and the share covered |
+
+**How a newer holding is estimated.** The established holdings keep their shrunk
+covariance on the long shared history, so one newcomer does not shorten everyone's
+record. The newcomer's own swings, and its correlation with each other holding, are
+measured on the sessions it has; two holdings with under 30 sessions in common are
+taken as unrelated. The pieces are made into one valid correlation matrix (negative
+eigenvalues clipped, diagonal restored).
+
+**Loss limits** cannot be backtested on a holding with a short record. They are measured
+and backtested on the established holdings, then multiplied by how much the newer ones
+raise the mix's swings (whole-mix volatility over established-part volatility). The
+risk level is scaled the same way. The backtest counts shown are those of the
+established part.
+
+**What this cannot do.** A newly listed asset has no record of a crash, so its risk is
+likely understated, and a holding in its first 30 sessions is not in the risk figures at
+all. The X-ray's trust mark drops to Fair whenever a newer holding is present, and the
+screen says which holding and how many days it has. Past crashes still mark a newer
+holding as missing for any episode before it existed.
+
+**On the real account:** `PURR` (208 sessions) is 1.1% of the money and about 11% of the
+risk; the one-day 95% limit rose from 0.50% to 0.55%.
+
