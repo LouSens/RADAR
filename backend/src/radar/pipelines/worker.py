@@ -20,6 +20,7 @@ from radar.logging import get_logger
 from radar.pipelines import brief as brief_job
 from radar.pipelines import discover
 from radar.pipelines import event_study as event_study_job
+from radar.pipelines import events as events_job
 from radar.pipelines import portfolio as portfolio_job
 from radar.pipelines import regime as regime_job
 from radar.pipelines import relationships as relationships_job
@@ -217,6 +218,16 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=55,
             id="signals",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Scheduled events: once a day is enough, the dates and daily closes move slowly.
+        scheduler.add_job(
+            partial(events_job.run, engine, universe),
+            "cron",
+            hour=22,
+            minute=35,
+            id="events",
             max_instances=1,
             coalesce=True,
         )

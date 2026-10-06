@@ -207,7 +207,7 @@ def record(
     )
 
 
-def _survivors(tested: list[tuple[int, int, float]], level: float) -> set[tuple[int, int]]:
+def survivors(tested: list[tuple[int, int, float]], level: float) -> set[tuple[int, int]]:
     """Benjamini-Hochberg: which of these tests still count after correction."""
     ranked = sorted(tested, key=lambda item: item[2])
     passing = 0
@@ -230,10 +230,8 @@ def correct_family(records: list[TrackRecord], level: float = SIGNIFICANCE) -> l
         for j, h in enumerate(r.horizons)
         if h.signal.n >= MIN_OCCURRENCES
     ]
-    direction = _survivors(
-        [(i, j, h.p_value) for i, j, h in enough if h.p_value is not None], level
-    )
-    size = _survivors(
+    direction = survivors([(i, j, h.p_value) for i, j, h in enough if h.p_value is not None], level)
+    size = survivors(
         [(i, j, h.size_p_value) for i, j, h in enough if h.size_p_value is not None], level
     )
     corrected = []
