@@ -191,9 +191,15 @@ def test_csv_text_replaces_the_holdings(client: TestClient) -> None:
     assert [h["symbol"] for h in client.get("/api/v1/portfolio").json()["holdings"]] == ["BTC/USD"]
 
 
-def test_a_holding_with_too_little_history_is_counted_in_money_but_not_in_risk(
+def test_a_newer_holding_is_estimated_on_its_short_history_and_said_to_be(
     client: TestClient, session: Session
 ) -> None:
+    gold_alone = client.put(
+        "/api/v1/portfolio", json={"holdings": [{"symbol": "GLD", "quantity": 1}]}
+    ).json()
+    assert gold_alone["problem"] is None
+    alone = client.get("/api/v1/portfolio/analysis").json()
+
     body = client.put(
         "/api/v1/portfolio",
         json={"holdings": [{"symbol": "SOL", "quantity": 3}, {"symbol": "GLD", "quantity": 1}]},
@@ -203,20 +209,21 @@ def test_a_holding_with_too_little_history_is_counted_in_money_but_not_in_risk(
 
     positions = {p["symbol"]: p for p in analysis["positions"]}
     assert set(positions) == {"SOL/USD", "GLD"}
-    assert analysis["value"] == pytest.approx(
-        positions["SOL/USD"]["value"] + positions["GLD"]["value"]
-    )
     assert sum(p["weight"] for p in positions.values()) == pytest.approx(1.0)
-    # The risk figures describe gold alone, and say what they leave out.
-    assert analysis["covered_value"] == pytest.approx(positions["GLD"]["value"])
-    (left_out,) = analysis["unmeasured"]
-    assert (left_out["symbol"], left_out["name"], left_out["days"]) == ("SOL/USD", "Solana", 59)
-    assert left_out["weight"] == pytest.approx(positions["SOL/USD"]["weight"])
-    assert [h["symbol"] for h in analysis["xray"]["holdings"]] == ["GLD"]
-    assert analysis["xray"]["holdings"][0]["weight"] == pytest.approx(1.0)
+    # Solana has 59 sessions: enough to estimate, too few to treat as established.
+    assert analysis["unmeasured"] == []
+    (young,) = analysis["young"]
+    assert (young["symbol"], young["name"], young["days"]) == ("SOL/USD", "Solana", 59)
+    assert analysis["covered_value"] == pytest.approx(analysis["value"])
+    shares = {h["symbol"]: h["risk_share"] for h in analysis["xray"]["holdings"]}
+    assert set(shares) == {"GLD", "SOL/USD"}
+    assert shares["SOL/USD"] > positions["SOL/USD"]["weight"]
     assert analysis["xray"]["n_days"] > 600
+    limit = analysis["limits"][0]["levels"][0]["methods"][0]["var"]
+    assert limit > alone["limits"][0]["levels"][0]["methods"][0]["var"]
+    assert analysis["trust"]["xray"]["grade"] == "fair"
 
-    # With nothing that has enough history, there is no analysis and the reason is given.
+    # With nothing that has a long record, there is no analysis and the reason is given.
     only_short = client.put(
         "/api/v1/portfolio", json={"holdings": [{"symbol": "SOL", "quantity": 3}]}
     ).json()

@@ -62,6 +62,7 @@ const ANALYSIS: PortfolioAnalysis = {
   model_version: "portfolio-risk-1",
   covered_value: 10000,
   unmeasured: [],
+  young: [],
   risk_level: { label: "high", ratio: 1.6, references: { SPY: 1, "BTC/USD": 3.4 } },
   drivers: null,
   driver_names: {},
@@ -97,6 +98,7 @@ const ANALYSIS: PortfolioAnalysis = {
     ],
     daily_volatility: 0.016,
     undiversified_volatility: 0.021,
+    established_volatility: 0.016,
     symbols: ["BTC/USD", "SPY"],
     correlation: [
       [1, 0.31],
@@ -259,6 +261,17 @@ describe("PortfolioPage", () => {
     // The loss in money is a share of the part that is measured, not of everything.
     expect(screen.getByText("$250.00")).toBeVisible();
     expect(screen.getAllByText("$12,500")).toHaveLength(2);
+  });
+
+  it("says when a newer holding's risk is an estimate from a short record", () => {
+    state.analysis = {
+      ...ANALYSIS,
+      young: [{ symbol: "PURR", name: "PURR", weight: 0.01, days: 208 }],
+    };
+    show("/portfolio");
+    expect(screen.getByText(/is a newer holding with/)).toBeVisible();
+    expect(screen.getByText(/208 days of prices/)).toBeVisible();
+    expect(screen.getByText(/scaled up for it/)).toBeVisible();
   });
 
   it("ties the holdings to the state of their markets and to the weekend", () => {

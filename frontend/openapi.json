@@ -92,6 +92,14 @@
           },
           "xray": {
             "$ref": "#/components/schemas/Xray"
+          },
+          "young": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Unmeasured"
+            },
+            "title": "Young",
+            "type": "array"
           }
         },
         "required": [
@@ -4261,6 +4269,11 @@
           },
           "deepest_fall": {
             "$ref": "#/components/schemas/Fall"
+          },
+          "established_volatility": {
+            "default": 0.0,
+            "title": "Established Volatility",
+            "type": "number"
           },
           "first_day": {
             "format": "date",

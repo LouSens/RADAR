@@ -99,6 +99,9 @@ class Analysis(BaseModel):
     covered_value: float = 0.0
     # Holdings counted in the money but not yet in the risk figures, and why.
     unmeasured: list[Unmeasured] = []
+    # Newer holdings: in the risk figures, but estimated on the short history they have.
+    # The loss limits are measured on the rest and scaled up for these.
+    young: list[Unmeasured] = []
     risk_level: model.RiskLevel | None = None
     positions: list[Position]
     xray: model.Xray
@@ -211,10 +214,11 @@ def analyse(
     # A holding with too little history is counted in the money and left out of the
     # risk figures, which then describe the rest. Nothing stands in for it.
     history = panel.returns[symbols].notna().sum()
-    short = [h for h in holdings if int(history[h.symbol]) < model.MIN_HISTORY]
+    short = [h for h in holdings if int(history[h.symbol]) < model.MIN_YOUNG]
+    young = [h for h in holdings if model.MIN_YOUNG <= int(history[h.symbol]) < model.MIN_HISTORY]
     short_value = {h.symbol: h.quantity * float(priced[h.symbol]) for h in short}
     everything = holdings
-    holdings = [h for h in holdings if h not in short]
+    holdings = [h for h in holdings if h not in short and h not in young]
     if not holdings:
         raise model.NotEnoughHistoryError(
             f"None of the holdings has {model.MIN_HISTORY} sessions of price history yet."
@@ -224,28 +228,42 @@ def analyse(
     values = np.array([h.quantity * float(priced[h.symbol]) for h in holdings])
     # Cash is part of the money and none of the risk: the weights of the priced
     # holdings add up to less than one by exactly the share held in cash.
-    total = float(values.sum()) + cash
+    young_symbols = [h.symbol for h in young]
+    young_values = np.array([h.quantity * float(priced[h.symbol]) for h in young])
+    total = float(values.sum()) + float(young_values.sum()) + cash
     weights = values / total
+    young_weights = young_values / total
     cash_weight = cash / total
     returns = panel.returns[symbols]
 
     grand_total = total + sum(short_value.values())
     mix = model.mix_returns(returns, weights)
-    xray = model.xray(returns, weights)
-    limits = model.loss_limits(mix, min_window=min_window)
+    xray = model.xray(returns, weights, panel.returns[young_symbols], young_weights)
+    # The limits are measured on the holdings with a long record, then scaled by how
+    # much the newer ones add to the mix's swings.
+    lift = (
+        xray.daily_volatility / xray.established_volatility
+        if young and xray.established_volatility > 0
+        else 1.0
+    )
+    limits = model.scale_limits(model.loss_limits(mix, min_window=min_window), lift)
     reference_symbols = [s for s in REFERENCES if s in panel.returns.columns]
     level = (
         model.risk_level(mix, panel.returns[reference_symbols], STOCKS)
         if STOCKS in reference_symbols
         else None
     )
+    if level is not None:
+        level = model.scale_level(level, lift)
+    prices = panel.prices[symbols + young_symbols]
+    weights_all = np.concatenate([weights, young_weights])
     episodes = [
         model.Episode(name=e.name, start=e.start, end=e.end) for e in universe.stress_episodes
     ]
     # Through a past episode cash is always there and never changes.
     if cash > 0:
         stress = model.stress(
-            prices.assign(**{CASH: 1.0}), np.append(weights, cash_weight), episodes
+            prices.assign(**{CASH: 1.0}), np.append(weights_all, cash_weight), episodes
         )
         xray = xray.model_copy(
             update={
@@ -258,7 +276,7 @@ def analyse(
             }
         )
     else:
-        stress = model.stress(prices, weights, episodes)
+        stress = model.stress(prices, weights_all, episodes)
 
     day = next((h for h in limits if h.horizon_days == 1), None)
     shown = (
@@ -300,6 +318,15 @@ def analyse(
                 days=int(history[h.symbol]),
             )
             for h in short
+        ],
+        young=[
+            Unmeasured(
+                symbol=h.symbol,
+                name=universe.get(h.symbol).name,
+                weight=float(young_values[i]) / grand_total,
+                days=int(history[h.symbol]),
+            )
+            for i, h in enumerate(young)
         ],
         risk_level=level,
         positions=[
@@ -344,7 +371,7 @@ def analyse(
             )
             if score
             else None,
-            xray=summary.grade_xray(xray.n_days),
+            xray=summary.grade_xray(xray.n_days, len(young)),
             risk=summary.grade_risk(shown),  # type: ignore[arg-type]
             stress=summary.grade_stress(
                 len(available), sum(1 for s in available if s.missing), len(stress)

@@ -148,8 +148,15 @@ def grade_risk(methods: list[dict[str, object]]) -> Trust:
     )
 
 
-def grade_xray(n_days: int) -> Trust:
-    """Solid when the mix was measured over three years of shared sessions or more."""
+def grade_xray(n_days: int, young: int = 0) -> Trust:
+    """Solid when the mix was measured over three years of shared sessions or more and
+    every holding has a long record."""
+    if young:
+        return Trust(
+            grade="fair",
+            reason=f"Measured over {n_days:,} trading days for most holdings, but {young} "
+            f"newer holding{'' if young == 1 else 's'} had to be estimated on a short history.",
+        )
     if n_days >= 750:
         return Trust(
             grade="solid",

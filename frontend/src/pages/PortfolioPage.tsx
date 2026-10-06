@@ -106,6 +106,17 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
           The figures below describe the other {formatShare(covered / value, 0)}.
         </p>
       )}
+      {analysis.young.length > 0 && (
+        <p className="well px-4 py-3 text-sm text-muted">
+          {analysis.young.map((item) => (
+            <span key={item.symbol}>
+              <span className="font-medium text-ink">{item.name}</span> is a newer holding with{" "}
+              {item.days} days of prices, so its risk is an estimate from a short record.{" "}
+            </span>
+          ))}
+          Loss figures are measured on the other holdings and scaled up for it.
+        </p>
+      )}
       <TileGrid>
         <Tile
           label="Your money, and where the risk sits"

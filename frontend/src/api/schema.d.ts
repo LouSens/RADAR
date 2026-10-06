@@ -441,6 +441,11 @@ export interface components {
             /** Value */
             value: number;
             xray: components["schemas"]["Xray"];
+            /**
+             * Young
+             * @default []
+             */
+            young: components["schemas"]["Unmeasured"][];
         };
         /** ArticleOut */
         ArticleOut: {
@@ -1978,6 +1983,11 @@ export interface components {
             /** Daily Volatility */
             daily_volatility: number;
             deepest_fall: components["schemas"]["Fall"];
+            /**
+             * Established Volatility
+             * @default 0
+             */
+            established_volatility: number;
             /**
              * First Day
              * Format: date

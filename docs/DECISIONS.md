@@ -1163,3 +1163,36 @@ comes from to Risk by holding; Past episodes to Past crashes; Markets together t
 Market connections, with tabs Two markets compared, All markets compared, Knock-on
 effects, and Weekend effect.
 
+## 043. Newer holdings join the risk figures on the history they have (2026-10-06)
+
+The user chose this over leaving a newer holding out (decision 041), with new listings
+in mind: "what if I go with ICO and IPO".
+
+| Sessions of prices | Treatment |
+|---|---|
+| 250 or more | established, as before |
+| 30 to 249 | **newer**: in the risk figures, estimated on its own record |
+| under 30 | counted in the money only; the screen names it and the share covered |
+
+**How a newer holding is estimated.** The established holdings keep their shrunk
+covariance on the long shared history, so one newcomer does not shorten everyone's
+record. The newcomer's own swings, and its correlation with each other holding, are
+measured on the sessions it has; two holdings with under 30 sessions in common are
+taken as unrelated. The pieces are made into one valid correlation matrix (negative
+eigenvalues clipped, diagonal restored).
+
+**Loss limits** cannot be backtested on a holding with a short record. They are measured
+and backtested on the established holdings, then multiplied by how much the newer ones
+raise the mix's swings (whole-mix volatility over established-part volatility). The
+risk level is scaled the same way. The backtest counts shown are those of the
+established part.
+
+**What this cannot do.** A newly listed asset has no record of a crash, so its risk is
+likely understated, and a holding in its first 30 sessions is not in the risk figures at
+all. The X-ray's trust mark drops to Fair whenever a newer holding is present, and the
+screen says which holding and how many days it has. Past crashes still mark a newer
+holding as missing for any episode before it existed.
+
+**On the real account:** `PURR` (208 sessions) is 1.1% of the money and about 11% of the
+risk; the one-day 95% limit rose from 0.50% to 0.55%.
+
