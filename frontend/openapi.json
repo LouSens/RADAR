@@ -2107,6 +2107,14 @@
             },
             "title": "Unsupported",
             "type": "array"
+          },
+          "wallets": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Wallet"
+            },
+            "title": "Wallets",
+            "type": "array"
           }
         },
         "required": [
@@ -4196,6 +4204,25 @@
           "mse"
         ],
         "title": "VolatilityScoreOut",
+        "type": "object"
+      },
+      "Wallet": {
+        "description": "One of the account's wallets and what Binance says it is worth, in dollars.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "Wallet",
         "type": "object"
       },
       "WeekendGap": {

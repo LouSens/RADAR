@@ -73,6 +73,17 @@ def account(
             return httpx.Response(margin_status, json=MARGIN if margin_status == 200 else {})
         if path == "/fapi/v2/positionRisk":
             return httpx.Response(200, json=FUTURES)
+        if path == "/fapi/v2/balance":
+            return httpx.Response(200, json=[{"asset": "USDT", "balance": "37.5"}])
+        if path == "/sapi/v1/asset/wallet/balance":
+            return httpx.Response(
+                200,
+                json=[
+                    {"walletName": "Spot", "balance": "90.42", "activate": True},
+                    {"walletName": "Earn", "balance": "306.24", "activate": True},
+                    {"walletName": "Options", "balance": "0", "activate": False},
+                ],
+            )
         return httpx.Response(404)
 
     return httpx.MockTransport(handler)
@@ -88,7 +99,7 @@ def test_it_reads_balances_and_nets_them_with_futures() -> None:
         ("BTC/USD", 0.3),  # 0.5 held, 0.2 sold short in futures
         ("ETH/USD", 2.5),  # 2 lent out through savings, 0.5 in margin
         ("SPY", 4.0),  # a tokenised US stock in the Funding wallet
-        ("USD", 1250.0),  # 250 in the wallet and 1,000 in fixed-term savings, as cash
+        ("USD", 1287.5),  # 250 spot, 1,000 in fixed-term savings, 37.5 idle in futures
     ]
     left_out = {u.symbol: u.reason for u in reading.holdings.unsupported}
     assert left_out == {
@@ -100,6 +111,8 @@ def test_it_reads_balances_and_nets_them_with_futures() -> None:
     assert bitcoin.distance_to_liquidation == pytest.approx(0.25)
     assert gold.liquidation_price is None
     assert gold.distance_to_liquidation is None
+    # Binance's own totals come back too, without the empty wallet.
+    assert [(w.name, w.value) for w in reading.wallets] == [("Spot", 90.42), ("Earn", 306.24)]
 
 
 def test_every_request_is_a_get_to_a_reading_endpoint_and_is_signed() -> None:
@@ -114,6 +127,8 @@ def test_every_request_is_a_get_to_a_reading_endpoint_and_is_signed() -> None:
         ("GET", "api.binance.com", "/sapi/v1/simple-earn/locked/position"),
         ("GET", "api.binance.com", "/sapi/v1/margin/account"),
         ("GET", "fapi.binance.com", "/fapi/v2/positionRisk"),
+        ("GET", "fapi.binance.com", "/fapi/v2/balance"),
+        ("GET", "api.binance.com", "/sapi/v1/asset/wallet/balance"),
     ]
     reading = binance.ALLOWED | binance.READ_BY_POST
     assert all((r.url.host, r.url.path) in reading for r in requests)
@@ -149,6 +164,9 @@ def test_every_request_is_a_get_to_a_reading_endpoint_and_is_signed() -> None:
         ("POST", "api.binance.com", "/sapi/v1/margin/loan"),
         ("POST", "fapi.binance.com", "/fapi/v1/order"),
         ("POST", "fapi.binance.com", "/fapi/v1/leverage"),
+        ("POST", "fapi.binance.com", "/fapi/v2/balance"),
+        ("POST", "api.binance.com", "/sapi/v1/asset/wallet/balance"),
+        ("GET", "api.binance.com", "/sapi/v1/asset/wallet/transfer"),
         ("GET", "fapi.binance.com", "/api/v3/account"),
         ("GET", "api.binance.com.evil.example", "/api/v3/account"),
         ("GET", "api.binance.us", "/api/v3/account"),
@@ -181,7 +199,7 @@ def test_the_source_has_no_way_to_trade_or_move_funds() -> None:
     assert not re.search(r"\.(get|post|put|delete|patch|request)\(f?[\"']http", source)
     assert source.count("self._client.send(") == 1
     assert not re.search(r"/(order|openOrders|withdraw|transfer|leverage|loan|repay)\b", source)
-    assert len(binance.ALLOWED) == 5
+    assert len(binance.ALLOWED) == 7
     assert frozenset({("api.binance.com", "/sapi/v1/asset/get-funding-asset")}) == (
         binance.READ_BY_POST
     )

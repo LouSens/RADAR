@@ -1241,6 +1241,11 @@ export interface components {
              * @default []
              */
             unsupported: components["schemas"]["Unsupported"][];
+            /**
+             * Wallets
+             * @default []
+             */
+            wallets: components["schemas"]["Wallet"][];
         };
         /** Position */
         Position: {
@@ -1985,6 +1990,16 @@ export interface components {
             mse: number;
             /** Qlike */
             qlike: number;
+        };
+        /**
+         * Wallet
+         * @description One of the account's wallets and what Binance says it is worth, in dollars.
+         */
+        Wallet: {
+            /** Name */
+            name: string;
+            /** Value */
+            value: number;
         };
         /** WeekendGap */
         WeekendGap: {

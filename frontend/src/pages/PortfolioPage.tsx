@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
-import type { LimitHorizon, PortfolioAnalysis, PortfolioLimit } from "../api/client";
+import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from "../api/client";
 import { usePortfolio, usePortfolioAnalysis, useRelationships } from "../api/queries";
 import { DriverEvidence, driverHeadline } from "../components/DriversPanel";
 import { HoldingsEditor } from "../components/HoldingsEditor";
@@ -655,6 +655,68 @@ function Forces({ analysis }: { analysis: PortfolioAnalysis }) {
   );
 }
 
+/** A gap smaller than this share is put down to prices moving since the last close. */
+const GAP_TOLERANCE = 0.03;
+
+/**
+ * What Binance says the account is worth, wallet by wallet, beside what RADAR found.
+ * A shortfall is stated, never hidden: money RADAR did not find is in none of its figures.
+ */
+export function ExchangeCheck({
+  wallets,
+  found,
+}: {
+  wallets: Portfolio["wallets"];
+  found: number | undefined;
+}) {
+  const total = wallets.reduce((sum, wallet) => sum + wallet.value, 0);
+  const gap = found === undefined ? undefined : total - found;
+  const short = gap !== undefined && total > 0 && gap / total > GAP_TOLERANCE;
+  return (
+    <section className="glass p-5 @xl:p-7" aria-label="Checked against Binance">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h2 className="text-base font-semibold tracking-tight">Checked against Binance</h2>
+        {gap !== undefined && (
+          <p className={`text-sm font-medium ${short ? "text-alert" : "text-calm"}`}>
+            {short ? `${formatMoney(gap)} not found` : "Everything accounted for"}
+          </p>
+        )}
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-x-10 gap-y-5 @xl:grid-cols-2">
+        <Bars
+          format={formatMoney}
+          rows={[
+            { key: "binance", name: "Binance says", value: total, colour: "var(--muted)" },
+            ...(found !== undefined
+              ? [{ key: "radar", name: "RADAR found", value: found, colour: "var(--accent)" }]
+              : []),
+          ]}
+        />
+        <Bars
+          format={formatMoney}
+          rows={wallets.map((wallet) => ({
+            key: wallet.name,
+            name: `${wallet.name} wallet`,
+            value: wallet.value,
+            colour: "var(--muted)",
+          }))}
+        />
+      </div>
+      {short && (
+        <p className="mt-4 text-sm leading-relaxed text-alert">
+          RADAR could not find {formatMoney(gap)} of what Binance reports. That money is in none of
+          the figures on the other tabs.
+        </p>
+      )}
+      <Caption>
+        Binance's figures are its own totals per wallet at the last read. RADAR's figure values what
+        it found at the last US market close, so the two can differ a little while prices move; a
+        difference under {formatShare(GAP_TOLERANCE, 0)} is treated as that.
+      </Caption>
+    </section>
+  );
+}
+
 export function PortfolioPage() {
   const { section } = useParams();
   const portfolio = usePortfolio();
@@ -717,6 +779,10 @@ export function PortfolioPage() {
             </section>
           )}
         </>
+      )}
+
+      {portfolio.data && section === "holdings" && portfolio.data.wallets.length > 0 && (
+        <ExchangeCheck wallets={portfolio.data.wallets} found={analysis?.value} />
       )}
 
       {portfolio.data && section === "holdings" && (

@@ -23,7 +23,7 @@ from radar.models.holdings import (
     Unsupported,
 )
 from radar.pipelines import portfolio as job
-from radar.providers.binance import BinanceError, Leveraged
+from radar.providers.binance import BinanceError, Leveraged, Wallet
 from radar.universe import Universe
 
 router = APIRouter(prefix="/api/v1/portfolio")
@@ -51,6 +51,8 @@ class PortfolioOut(BaseModel):
     binance_available: bool = False
     # Open leveraged exposure from the last exchange read.
     leveraged: list[Leveraged] = []
+    # The exchange's own dollar total per wallet at the last read, to check against.
+    wallets: list[Wallet] = []
 
 
 class HoldingsIn(BaseModel):
@@ -99,6 +101,7 @@ def _finish(session: Session, universe: Universe, read: Holdings, *, binance: bo
         problem=problem,
         binance_available=binance,
         leveraged=[Leveraged.model_validate(p) for p in job.stored_leveraged(session)],
+        wallets=[Wallet.model_validate(w) for w in job.stored_wallets(session)],
     )
 
 
@@ -118,6 +121,7 @@ def get_portfolio(universe: UniverseDep, session: SessionDep, binance: BinanceDe
         problem=problem,
         binance_available=binance is not None,
         leveraged=[Leveraged.model_validate(p) for p in job.stored_leveraged(session)],
+        wallets=[Wallet.model_validate(w) for w in job.stored_wallets(session)],
     )
 
 
@@ -159,7 +163,12 @@ def read_binance(
         reading, universe = job.read_exchange(session, universe, binance, finder)
     except BinanceError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
-    job.store(session, reading.holdings, [p.model_dump() for p in reading.leveraged])
+    job.store(
+        session,
+        reading.holdings,
+        [p.model_dump() for p in reading.leveraged],
+        [w.model_dump() for w in reading.wallets],
+    )
     return _finish(session, universe, reading.holdings, binance=True)
 
 

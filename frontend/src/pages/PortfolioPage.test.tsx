@@ -55,6 +55,7 @@ const PORTFOLIO: Portfolio = {
   problem: null,
   binance_available: false,
   leveraged: [],
+  wallets: [],
 };
 
 const ANALYSIS: PortfolioAnalysis = {
@@ -391,6 +392,35 @@ describe("PortfolioPage", () => {
       },
       expect.anything(),
     );
+  });
+
+  it("sets Binance's own totals beside what RADAR found, and says when money is missing", () => {
+    const wallets = [
+      { name: "Spot", value: 90.42 },
+      { name: "Funding", value: 4.19 },
+      { name: "Earn", value: 306.24 },
+    ];
+    state.portfolio = { ...PORTFOLIO, wallets };
+    state.analysis = { ...ANALYSIS, value: 363.24 };
+    show("/portfolio/holdings");
+    expect(screen.getByText("$400.85")).toBeVisible(); // Binance's total
+    expect(screen.getAllByText("$363.24")).toHaveLength(2); // the page header, and what RADAR found
+    expect(screen.getByText("Earn wallet")).toBeVisible();
+    expect(screen.getByText("$37.61 not found")).toBeVisible();
+    expect(screen.getByText(/That money is in none of\s+the figures/)).toBeVisible();
+
+    // A small difference is prices moving, not missing money.
+    cleanup();
+    state.analysis = { ...ANALYSIS, value: 398.0 };
+    show("/portfolio/holdings");
+    expect(screen.getByText("Everything accounted for")).toBeVisible();
+    expect(screen.queryByText(/not found/)).toBeNull();
+
+    // Typed-in holdings have nothing to be checked against.
+    cleanup();
+    state.portfolio = PORTFOLIO;
+    show("/portfolio/holdings");
+    expect(screen.queryByText("Checked against Binance")).toBeNull();
   });
 
   it("sends an unknown page back to the summary", () => {

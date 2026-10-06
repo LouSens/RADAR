@@ -1286,3 +1286,42 @@ Error is QLIKE; lower is better. Periods: Bitcoin from 30 September 2022, gold f
 forecast?", showing the error with and without news as paired bars for the horizon in
 view, and the verdict in words. New route `GET /assets/{symbol}/news-and-swings`.
 
+## 046. Binance: two more reads, and a check against Binance's own totals (2026-10-07)
+
+The user saw about $400.87 on Binance and $363 in RADAR, with the gap in cash. They
+agreed on 2026-10-07 to two more reading endpoints, both GET:
+
+| Read | Endpoint |
+|---|---|
+| Cash sitting in the futures wallet | `fapi.binance.com/fapi/v2/balance` |
+| Binance's own dollar total per wallet | `api.binance.com/sapi/v1/asset/wallet/balance` |
+
+The client's list is now seven GET endpoints and the one POST of decision 038. Both new
+ones are covered by the same tests: on the list, no body, refused under any other method.
+
+**The check.** Binance's total per wallet is stored at each read and shown on the
+Holdings tab beside what RADAR found. A shortfall above 3% is stated in red with the
+amount; under that it is put down to prices moving since the last close, which RADAR
+values at.
+
+**What it found on the real account (2026-10-07).**
+
+| Wallet | Binance says | RADAR found |
+|---|---|---|
+| Spot | $90.42 | about $89.7 (Bitcoin, PAX Gold, SPYB) |
+| Funding | $4.19 | about $3.9 (PURR) |
+| Earn | $306.24 | $269.04 |
+| Total | $400.85 | $363.24 |
+
+The futures wallet is empty, so that was not it. The whole gap, about $37, is in the
+Earn wallet. RADAR reads Earn two ways: flexible savings as the `LD`-prefixed balances
+Binance shows in the spot wallet, and fixed-term savings from
+`/sapi/v1/simple-earn/locked/position`. Together those give $269, so some Earn product
+is reported through neither.
+
+**Open, for the user.** The direct read of flexible savings is
+`GET /sapi/v1/simple-earn/flexible/position`. It is a third new endpoint, so it needs the
+user's agreement like the others. If it is added, flexible savings would be taken from
+it and the `LD` balances ignored, so that nothing is counted twice. Until then the
+Holdings tab shows the $37 as not found, and it is in none of the risk figures.
+
