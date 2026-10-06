@@ -25,12 +25,54 @@ export function CardHeader({ title, children }: { title: ReactNode; children?: R
   );
 }
 
-/** Every chart carries one: what it shows, the window, and the sample size. */
-export function Caption({ children }: { children: ReactNode }) {
+/** One short fact about a chart: a name and a value, not a sentence. */
+export interface Fact {
+  label: string;
+  value: ReactNode;
+}
+
+/**
+ * Every chart carries one: what it shows, the window, and the sample size. The facts are
+ * laid out as tiles across the card's full width, because a stack of short named values is
+ * read at a glance where the same thing as a paragraph is skipped. Anything that genuinely
+ * needs sentences goes in `children`, under the facts, kept to one readable column.
+ */
+export function Caption({ facts, children }: { facts?: readonly Fact[]; children?: ReactNode }) {
   return (
     <details className="about mt-3">
       <summary>About this</summary>
-      <p className="mt-2 max-w-[80ch] text-xs leading-relaxed text-muted">{children}</p>
+      <div>
+        {facts && facts.length > 0 && (
+          <dl className="facts">
+            {facts.map((fact) => (
+              <div key={fact.label}>
+                <dt className="label">{fact.label}</dt>
+                <dd>{fact.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {children && <p className="prose mt-3 text-xs leading-relaxed text-muted">{children}</p>}
+      </div>
+    </details>
+  );
+}
+
+/**
+ * How a figure was tested, for the reader who wants it. Closed by default: the answer
+ * comes first and the working is one tap away.
+ */
+export function Evidence({
+  children,
+  summary = "How this was checked",
+}: {
+  children: ReactNode;
+  summary?: string;
+}) {
+  return (
+    <details className="about">
+      <summary>{summary}</summary>
+      <div className="mt-4 flex flex-col gap-5">{children}</div>
     </details>
   );
 }
@@ -85,7 +127,7 @@ export function Segmented<T extends string>({
 }) {
   return (
     <div
-      className="inline-flex rounded-full border border-line bg-white/[0.03] p-0.5"
+      className="inline-flex max-w-full flex-wrap rounded-[20px] border border-line bg-white/[0.03] p-0.5"
       role="group"
       aria-label={label}
     >
@@ -263,7 +305,7 @@ export function Panel({
         {trust && (
           <details className="about mt-2">
             <summary>Why {GRADE[trust.grade].word.toLowerCase()}</summary>
-            <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-muted">{trust.reason}</p>
+            <p className="mt-2 prose text-sm leading-relaxed text-muted">{trust.reason}</p>
           </details>
         )}
       </header>

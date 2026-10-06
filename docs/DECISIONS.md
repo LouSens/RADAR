@@ -1934,3 +1934,53 @@ risk", "Continue", "Try an example", "Add my own". Home's shortcuts are "Your ri
 **Not measured.** Conversion and retention are named as aims, but RADAR records nothing
 about what people do, so none of this has been tested on real use.
 
+
+## 059. One stylesheet, one colour family, and evidence as facts (2026-10-06)
+
+The user's review: the words are tiring because almost every explanation is a paragraph
+inside a collapsible section; an opened "About this" uses only the left half of a wide
+card and wraps the text into a narrow ribbon; switching market in Signals looks glitchy;
+and the animations should feel of a piece.
+
+**Evidence is facts, not prose.** `Caption` now takes `facts`: a list of short named
+values laid out as tiles across the card's full width, in as many columns as fit
+(`.facts`, `auto-fit minmax(11rem, 1fr)`). Every one of the 39 captions was rewritten
+this way. What a chart shows, its window, and its sample size are still all there, as
+required, but as "Shows", "Window", "Sample" rather than buried mid-sentence. Sentences
+remain only where they carry a caveat that a label cannot, and those sit under the facts
+at one reading measure (`--measure`, 64ch, via `.prose`). The narrow ribbon was never a
+layout bug: it was a `max-w-[80ch]` on 12px text inside a 1,100px card.
+
+**One stylesheet.** `index.css` had been added to in layers until `:root`, `body::before`,
+`.tile`, `.label`, `.title`, `.well` and `.page-in` were each written two or three times,
+with the earlier copies dead. It is now one ordered sheet: tokens, page, type, material,
+pressable things, the working, motion, the phone's bar, phone, reduced motion. `.aurora`,
+`.radar`, `.market` and `.text-fluid-*` were dead and are gone, with the seven empty
+`.aurora` nodes removed from the pages.
+
+**One colour family.** The six hues were picked afresh at an even lightness and similar
+chroma in OKLCH so they read as a set, then written as hex. They must stay hex: the price
+charts read these variables and hand them to a parser that does not understand `oklch()`,
+and shipping them as `oklch()` made every chart throw. `--faint` was lightened to #7c8095,
+which is where the small "About this" text gets to about 4.8:1 on the ground.
+
+**One set of motions.** Three durations and two curves as tokens, used everywhere.
+Pressable surfaces compose one `transform` from `--lift` and `--squash`; written as
+separate `transform` rules they overrode each other, so a tap on a hovered card did
+nothing. Every `:hover` now sits behind `(hover: hover) and (pointer: fine)`, because on a
+phone a hover state sticks after a tap. `<details>` opens and closes on a height
+transition where the browser supports `interpolate-size`.
+
+**Signals stopped flickering.** Changing the market or the kind changed the query key, so
+the list unmounted, three skeletons took its place and the headline vanished: the card
+collapsed and sprang back on every tap. The signals queries now keep the previous data;
+the list stays mounted and dims (`[data-busy]`), and skeletons appear only on a first
+load, when there is genuinely nothing to show.
+
+**Not changed.** The name RADAR and the mark stay as they are. Inter stays, now with
+`font-optical-sizing: auto`.
+
+**Careful.** Plain CSS in `index.css` is outside Tailwind's layers, so it beats every
+utility class. The shared material rule sets no `position` and no `border-radius` for
+that reason: a first version did, and took `fixed` and `rounded-3xl` off the desktop
+sidebar.

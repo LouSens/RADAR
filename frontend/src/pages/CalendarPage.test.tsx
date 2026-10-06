@@ -120,7 +120,7 @@ describe("CalendarPage", () => {
       }),
     ).toHaveLength(2);
     expect(screen.getAllByText("No pattern")).toHaveLength(8);
-    expect(container.textContent).toMatch(/written down before any result was computed/);
+    expect(container.textContent).toMatch(/before any result was computed/);
     expect(container.textContent).toMatch(/36 comparisons of direction and 9 of size/);
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });

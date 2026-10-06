@@ -3,9 +3,8 @@ import { useState } from "react";
 import type { RiskHorizon, RiskMethod } from "../api/client";
 import { useRisk } from "../api/queries";
 import { formatCount, formatShare } from "../lib/format";
-import { stepsLabel } from "../lib/outlook";
 import { formatDate } from "../lib/time";
-import { Caption, Panel, Segmented, type PanelProps } from "./ui";
+import { Caption, Evidence, Panel, Segmented, type PanelProps } from "./ui";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -27,26 +26,30 @@ export function oddsLabel(level: number): string {
 
 const expected = (value: number) => (value < 10 ? value.toFixed(1) : value.toFixed(0));
 
-function Limit({ level, method, period }: { level: number; method: RiskMethod; period: string }) {
+/** "A bad day (about 1 in 20)", "A very bad week (about 1 in 100)". */
+export function badLabel(level: number, steps: number): string {
+  const unit = steps === 1 ? "day" : "week";
+  return `A ${level >= 0.99 ? "very bad" : "bad"} ${unit} (about 1 in ${Math.round(1 / (1 - level))})`;
+}
+
+function Limit({ level, method, steps }: { level: number; method: RiskMethod; steps: number }) {
+  const unit = steps === 1 ? "days" : "weeks";
   return (
     <div className="well p-4">
-      <p className="label">
-        Loss limit for {oddsLabel(level)} periods of {period}
-      </p>
+      <p className="label">{badLabel(level, steps)}</p>
       <p className="price-lg mt-2">{formatShare(method.var, 1)}</p>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        When the loss has gone past this limit, it has averaged about{" "}
+        Beyond that, losses have averaged{" "}
         <span className="num text-ink">{formatShare(method.expected_shortfall, 1)}</span>.
       </p>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        Broken <span className="num text-ink">{formatCount(method.breaches)}</span> times in{" "}
-        <span className="num text-ink">{formatCount(method.n)}</span> past periods; about{" "}
-        <span className="num text-ink">{expected(method.expected_breaches)}</span> would be
-        expected.
+        Passed <span className="num text-ink">{formatCount(method.breaches)}</span> times in{" "}
+        <span className="num text-ink">{formatCount(method.n)}</span> past {unit}; about{" "}
+        <span className="num text-ink">{expected(method.expected_breaches)}</span> expected.
       </p>
       {!method.reliable && (
         <p className="mt-2 text-sm text-alert">
-          This limit has not held at its stated rate. Treat it as unreliable.
+          This figure has not held up in the past. Treat it as rough.
         </p>
       )}
     </div>
@@ -58,8 +61,8 @@ function Methods({ horizon }: { horizon: RiskHorizon }) {
   const cell = (name: string, level: number) =>
     horizon.levels.find((l) => l.level === level)?.methods.find((m) => m.method === name);
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[30rem] text-sm">
+    <div>
+      <table className="w-full text-sm">
         <thead>
           <tr className="label text-left">
             <th className="pb-2 font-normal">Method</th>
@@ -111,7 +114,6 @@ export function RiskPanel({ asset, trust }: PanelProps) {
   const dayLimit = day?.levels
     .find((l) => l.level === 0.95)
     ?.methods.find((m) => m.method === day.shown);
-  const period = stepsLabel(horizon.steps, asset.trades_continuously);
   const sample = horizon.levels[0]?.methods[0];
 
   return (
@@ -119,36 +121,31 @@ export function RiskPanel({ asset, trust }: PanelProps) {
       id="risk"
       title="Possible loss"
       trust={trust}
-      headline={dayLimit ? `${formatShare(dayLimit.var, 1)} one-day loss limit` : undefined}
+      headline={dayLimit ? `A bad day could cost ${formatShare(dayLimit.var, 1)}` : undefined}
     >
       <div className="flex justify-end">
-        <Segmented options={HORIZONS} value={key} onChange={setKey} label="Length of period" />
+        <Segmented options={HORIZONS} value={key} onChange={setKey} label="Over" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2">
         {horizon.levels.map((level) => {
           const method = level.methods.find((m) => m.method === horizon.shown);
           return method ? (
-            <Limit key={level.level} level={level.level} method={method} period={period} />
+            <Limit key={level.level} level={level.level} method={method} steps={horizon.steps} />
           ) : null;
         })}
       </div>
 
-      <div className="border-t border-line pt-5">
-        <h3 className="text-sm font-semibold tracking-tight">How each method&apos;s limits held</h3>
-        <div className="mt-3">
-          <Methods horizon={horizon} />
-        </div>
-        <Caption>
-          Each limit was set using only what was known that day, then compared with the loss that
-          followed
-          {sample ? `, over ${formatCount(sample.n)} periods of ${period}` : ""} from{" "}
-          {formatDate(horizon.first_day)} to {formatDate(horizon.last_day)}. A limit that works is
-          broken about as often as it states. The figures shown above come from the method whose
-          limits held closest to that. A limit is marked unreliable when it was broken measurably
-          more or less often than stated, after allowing for the number of limits tested together.
-        </Caption>
-      </div>
+      <Evidence>
+        <p className="prose text-sm leading-relaxed text-muted">
+          Each figure was set on a past day from what was known then, and compared with the loss
+          that followed
+          {sample ? `, ${formatCount(sample.n)} times` : ""} from {formatDate(horizon.first_day)} to{" "}
+          {formatDate(horizon.last_day)}. A good figure is passed about as often as it says. Three
+          ways of working it out were tried; the one that held best is shown.
+        </p>
+        <Methods horizon={horizon} />
+      </Evidence>
 
       {risk.drawdowns.length > 0 && (
         <div className="border-t border-line pt-5">
@@ -169,10 +166,15 @@ export function RiskPanel({ asset, trust }: PanelProps) {
               </li>
             ))}
           </ul>
-          <Caption>
-            Falls from a high to the lowest daily close before the price recovered, since{" "}
-            {formatDate(asset.history_start)}.
-          </Caption>
+          <Caption
+            facts={[
+              {
+                label: "Shows",
+                value: "Every fall from a high to the lowest close before it recovered",
+              },
+              { label: "Window", value: `Since ${formatDate(asset.history_start)}` },
+            ]}
+          />
         </div>
       )}
     </Panel>

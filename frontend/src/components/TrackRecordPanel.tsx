@@ -74,13 +74,21 @@ export function TrackRecordPanel({ asset }: PanelProps) {
           </li>
         ))}
       </ul>
-      <Caption>
-        Everything else on this page is tested by replaying the past. This is different: each
-        day&apos;s forecasts are written down when they are made and never edited, then scored once
-        the days they cover have ended. With few results the ranges in brackets are wide, and that
-        is the honest reading. A {stepsLabel(longest, asset.trades_continuously)} forecast needs
-        that long before it can be scored.
-      </Caption>
+      <Caption
+        facts={[
+          {
+            label: "Different here",
+            value:
+              "Each day's forecasts are written down when made, never edited, and scored once their days have ended",
+          },
+          { label: "Everywhere else", value: "The past is replayed instead" },
+          { label: "Wide brackets", value: "With few results, that is the honest reading" },
+          {
+            label: "Needs time",
+            value: `A ${stepsLabel(longest, asset.trades_continuously)} forecast cannot be scored before then`,
+          },
+        ]}
+      />
     </Panel>
   );
 }

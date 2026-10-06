@@ -156,7 +156,7 @@ export function SystemPage() {
                 </table>
               </div>
             )}
-            <p className="mt-4 max-w-[78ch] text-xs leading-relaxed text-faint">
+            <p className="mt-4 prose text-xs leading-relaxed text-faint">
               Gaps is the share of bars the trading calendar expects that are missing. Stock markets
               count as up to date for 5 days after their last bar, to allow for weekends and
               holidays.

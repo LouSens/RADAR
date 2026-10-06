@@ -40,8 +40,6 @@ export function AssetPage() {
       className="flex flex-col gap-4 @xl:gap-6"
       style={{ "--tint": `var(${assetColorVar(asset)})` } as CSSProperties}
     >
-      <div className="aurora" aria-hidden="true" />
-
       <header className="flex items-baseline gap-3">
         <h1 className="title">{shortName(asset)}</h1>
         <span className="label">{asset.symbol}</span>

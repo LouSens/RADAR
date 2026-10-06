@@ -110,6 +110,9 @@ function Feed() {
     return asset ? `var(${assetColorVar(asset)})` : "var(--accent)";
   };
   const data = signals.data;
+  // While the next set is fetched the one on screen stays and dims. Only the very first
+  // load has nothing to show, and that is where the skeletons belong.
+  const busy = signals.isPlaceholderData || (signals.isFetching && !data);
   return (
     <>
       {data && data.portfolio.length > 0 && (
@@ -128,18 +131,16 @@ function Feed() {
         id="feed"
         title="Latest signals"
         headline={
-          data
-            ? data.signals.length > 0
-              ? "What changed, newest first, with what has followed each kind before"
-              : "Nothing has fired for this choice"
-            : undefined
+          !data || data.signals.length > 0
+            ? "What changed, newest first, with what has followed each kind before"
+            : "Nothing has fired for this choice"
         }
       >
         <div className="flex flex-wrap gap-3">
           <Segmented options={markets} value={market} onChange={setMarket} label="Market" />
           <Segmented options={KINDS} value={kind} onChange={setKind} label="Kind of signal" />
         </div>
-        {signals.isPending && (
+        {!data && !signals.isError && (
           <div role="status" aria-label="Loading" className="flex flex-col gap-4">
             {[0, 1, 2].map((i) => (
               <Skeleton key={i} className="h-12 w-full" />
@@ -148,18 +149,25 @@ function Feed() {
         )}
         {signals.isError && <Message>Signals are unavailable right now.</Message>}
         {data && data.signals.length > 0 && (
-          <ul className="-my-2 flex flex-col">
+          <ul className="-my-2 flex flex-col" data-busy={busy} aria-busy={busy}>
             {data.signals.map((signal) => (
               <FeedRow key={signal.id} signal={signal} colour={colourOf(signal.symbol)} />
             ))}
           </ul>
         )}
-        <Caption>
-          A signal says that something changed; it is not a forecast of direction. Each one links to
-          its track record: what the market did after every earlier signal of the same kind, set
-          against what it does on any day. An abnormal move is an hour&apos;s move more than 5 times
-          the usual size for the state the market was in. The date is the day the signal describes.
-          The newest 50 are shown.
+        <Caption
+          facts={[
+            { label: "Shows", value: "What changed, newest first. Not a forecast of direction." },
+            {
+              label: "Abnormal move",
+              value: "An hour's move over 5 times the usual size for the market's state",
+            },
+            { label: "Date", value: "The day the signal describes" },
+            { label: "Showing", value: "The newest 50" },
+          ]}
+        >
+          Each signal links to its track record: what the market did after every earlier signal of
+          the same kind, set against what it does on any day.
         </Caption>
       </Panel>
     </>
@@ -294,8 +302,12 @@ function RecordCard({ record, type }: { record: SignalRecord; type: SignalType }
 function Records({ type }: { type: SignalType }) {
   const query = useSignalRecords(type);
   const data = query.data;
-  if (query.isPending) return <PageSkeleton />;
-  if (!data) return <Message>This track record is unavailable right now.</Message>;
+  if (!data)
+    return query.isPending ? (
+      <PageSkeleton />
+    ) : (
+      <Message>This track record is unavailable right now.</Message>
+    );
   const findings = data.records.filter(
     (r) => isFinding(r.verdict) || isFinding(r.size_verdict),
   ).length;
@@ -322,21 +334,38 @@ function Records({ type }: { type: SignalType }) {
           kept here as the evidence.
         </p>
       )}
-      <ul className="flex flex-col gap-3">
+      <ul
+        className="flex flex-col gap-3"
+        data-busy={query.isPlaceholderData}
+        aria-busy={query.isPlaceholderData}
+      >
         {data.records.map((record) => (
           <RecordCard key={`${record.symbol}-${record.variant}`} record={record} type={type} />
         ))}
       </ul>
-      <Caption>
-        Every past signal was found using only what was known on its day; the market states come
-        from models fitted on earlier days only. What followed is measured from the close of the
-        signal&apos;s day. On each bar the dot is how often the market then ended higher, the band
-        is the range that share could plausibly lie in, and the line is the same share for any day:
-        a band that covers the line means no edge. Because {data.tested} comparisons were looked at
-        together across all signals, a result must still stand out after allowing for that. Kinds
-        with fewer than 30 cases are not judged. The findings about the size of the move were looked
-        for after the direction test found nothing, so treat them as provisional until they hold on
-        new data.
+      <Caption
+        facts={[
+          {
+            label: "Shows",
+            value: "What followed every past signal of this kind, against any day",
+          },
+          { label: "Found with", value: "Only what was known on the signal's day" },
+          { label: "Measured from", value: "The close of the signal's day" },
+          {
+            label: "Each bar",
+            value:
+              "Dot, how often it ended higher; band, where that share could lie; line, any day",
+          },
+          {
+            label: "Allowing for",
+            value: `${data.tested} comparisons looked at together across all signals`,
+          },
+          { label: "Not judged", value: "Kinds with fewer than 30 past cases" },
+        ]}
+      >
+        A band that covers the line means no edge. The findings about the size of the move were
+        looked for after the direction test found nothing, so treat them as provisional until they
+        hold on new data.
       </Caption>
     </Panel>
   );
@@ -347,7 +376,6 @@ export function SignalsPage() {
   if (type !== undefined && !isSignalType(type)) return <Navigate to={BASE} replace />;
   return (
     <div className="flex flex-col gap-4 @xl:gap-6">
-      <div className="aurora" aria-hidden="true" />
       <header>
         <h1 className="title">Signals</h1>
       </header>

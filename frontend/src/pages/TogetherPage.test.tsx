@@ -149,10 +149,8 @@ describe("TogetherPage", () => {
     show("/together/pairs");
     expect(screen.getByText(/512 days/)).toBeInTheDocument();
     expect(screen.getByText(/too few days to say/)).toBeInTheDocument();
-    expect(screen.getByText(/has a 95% range of\s+0.36 to 0.67/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Bitcoin's move from Friday's close to Monday's\s+close/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/95% range 0.36 to 0.67/)).toBeInTheDocument();
+    expect(screen.getByText(/Bitcoin's Friday-to-Monday move/)).toBeInTheDocument();
   });
 
   it("says when a pair has too few episodes, and that this is not cause", () => {
@@ -176,7 +174,7 @@ describe("TogetherPage", () => {
   it("colours the grid and states its sample", () => {
     show("/together/grid");
     expect(screen.getAllByText("0.53")).toHaveLength(2);
-    expect(screen.getByText(/on the 90 trading\s+days/)).toBeInTheDocument();
+    expect(screen.getByText(/90 trading days/)).toBeInTheDocument();
   });
 });
 

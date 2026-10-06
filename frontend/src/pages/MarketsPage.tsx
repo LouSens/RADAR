@@ -54,7 +54,6 @@ export function MarketsPage() {
   const primary = assets.data?.filter((a) => a.is_primary) ?? [];
   return (
     <div className="flex flex-col gap-4 @xl:gap-6">
-      <div className="aurora" aria-hidden="true" />
       <header>
         <h1 className="title">Markets</h1>
       </header>
@@ -81,11 +80,16 @@ export function MarketsPage() {
           {primary.map((asset) => (
             <CompareRow key={asset.slug} asset={asset} />
           ))}
-          <Caption>
-            Day is the change since the previous close; week, month, and year compare with the daily
-            close 7, 30, and 365 days ago. The range runs from the lowest to the highest price of
-            the last 365 days, with the current price marked.
-          </Caption>
+          <Caption
+            facts={[
+              { label: "Day", value: "Change since the previous close" },
+              { label: "Week, month, year", value: "Against the close 7, 30 and 365 days ago" },
+              {
+                label: "Range",
+                value: "Lowest to highest price of the last 365 days, today marked",
+              },
+            ]}
+          />
         </section>
       )}
 

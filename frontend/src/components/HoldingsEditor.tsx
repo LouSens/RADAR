@@ -232,15 +232,29 @@ export function HoldingsEditor({ portfolio }: { portfolio: Portfolio }) {
         </div>
       )}
 
-      <Caption>
-        {portfolio.binance_available
-          ? "Reading from Binance fetches balances and open exposure only, and is repeated every hour while Binance is the source. Cash balances are left out of the risk figures. "
-          : ""}
-        Quantities are units held: coins, or shares. A CSV file needs a first row naming a symbol
-        column and a quantity column, for example <span className="num">symbol,quantity</span>.
-        Names such as BTC, BTCUSDT, or BTC/USD are all understood. Holdings stay on this
-        computer&apos;s copy of RADAR. Nothing here can place a trade.
-      </Caption>
+      <Caption
+        facts={[
+          ...(portfolio.binance_available
+            ? [
+                {
+                  label: "Reading from Binance",
+                  value:
+                    "Balances and open exposure only, repeated every hour while Binance is the source",
+                },
+                { label: "Cash balances", value: "Left out of the risk figures" },
+              ]
+            : []),
+          { label: "Quantities", value: "Units held: coins, or shares" },
+          {
+            label: "A CSV file",
+            value:
+              "A first row naming a symbol column and a quantity column, for example symbol,quantity",
+          },
+          { label: "Names", value: "BTC, BTCUSDT and BTC/USD are all understood" },
+          { label: "Kept", value: "On this computer's copy of RADAR" },
+          { label: "Trading", value: "Nothing here can place a trade" },
+        ]}
+      />
     </div>
   );
 }

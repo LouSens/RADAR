@@ -99,13 +99,24 @@ function Upcoming({ calendar }: { calendar: Calendar }) {
           );
         })}
       </ul>
-      <Caption>
-        Dates and times come from the published schedules of the US Federal Reserve and the US
-        Bureau of Labor Statistics, shown in your local time. They were taken on one day and are
-        refreshed about once a year, so a date moved since then will not show until the next
-        refresh. Only scheduled events are listed. RADAR does not know what figure is expected, so
-        it cannot say whether a number will surprise; each event links to how markets have behaved
-        around past ones.
+      <Caption
+        facts={[
+          {
+            label: "Dates from",
+            value:
+              "The published schedules of the US Federal Reserve and Bureau of Labor Statistics",
+          },
+          { label: "Shown in", value: "Your local time" },
+          {
+            label: "Refreshed",
+            value:
+              "Taken on one day, about once a year; a date moved since then waits for the next refresh",
+          },
+          { label: "Listed", value: "Scheduled events only" },
+        ]}
+      >
+        RADAR does not know what figure is expected, so it cannot say whether a number will
+        surprise. Each event links to how markets have behaved around past ones.
       </Caption>
     </Panel>
   );
@@ -276,17 +287,31 @@ function Results({ calendar, eventKey }: { calendar: Calendar; eventKey: EventKe
           );
         })}
       </ul>
-      <Caption>
-        An event&apos;s day is the trading day of its date: the market session for gold and US
-        stocks, the calendar day in world time for Bitcoin. Moves are from one day&apos;s close to
-        the next. On each bar the dot is how often it happened around these events, the band is the
-        range that share could plausibly lie in, and the line is the same share on any day: a band
-        that covers the line means no pattern. The questions and the rules for judging them were
-        written down before any result was computed, and {calendar.direction_tests} comparisons of
-        direction and {calendar.size_tests} of size were then looked at together, so a result counts
-        only if it still stands out after allowing for that. Fewer than 30 events are not judged.
-        RADAR does not know the figure that was expected, so this says nothing about how a market
-        reacts to a surprise.
+      <Caption
+        facts={[
+          {
+            label: "An event's day",
+            value:
+              "Market hours for gold and US stocks; the calendar day in world time for Bitcoin",
+          },
+          { label: "Moves", value: "From one day's close to the next" },
+          {
+            label: "Each bar",
+            value: "Dot, how often it happened; band, where that share could lie; line, any day",
+          },
+          {
+            label: "Written down first",
+            value: "The questions and the rules for judging them, before any result was computed",
+          },
+          {
+            label: "Allowing for",
+            value: `${calendar.direction_tests} comparisons of direction and ${calendar.size_tests} of size, looked at together`,
+          },
+          { label: "Not judged", value: "Fewer than 30 past events" },
+        ]}
+      >
+        A band that covers the line means no pattern. RADAR does not know the figure that was
+        expected, so this says nothing about how a market reacts to a surprise.
       </Caption>
     </Panel>
   );
@@ -298,7 +323,6 @@ export function CalendarPage() {
   if (event !== undefined && !isEventKey(event)) return <Navigate to={BASE} replace />;
   return (
     <div className="flex flex-col gap-4 @xl:gap-6">
-      <div className="aurora" aria-hidden="true" />
       <header>
         <h1 className="title">Calendar</h1>
       </header>

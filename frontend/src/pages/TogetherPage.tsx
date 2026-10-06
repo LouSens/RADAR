@@ -111,8 +111,8 @@ function Brief({ data, name }: { data: Relationships; name: Namer }) {
               ))}
             </span>
             <span className="mt-2 block text-xs text-faint">
-              Size of daily swings over the next 5 sessions against usual. Lit cells are larger than
-              chance; "?" has too few past cases.
+              Size of daily swings over the next 5 trading days against usual. Lit cells are larger
+              than chance; "?" has too few past cases.
             </span>
           </Tile>
         )}
@@ -253,7 +253,7 @@ function Pairs({ data, name }: { data: Relationships; name: Namer }) {
       }
     >
       {options.length > 1 && (
-        <div className="-mx-1 overflow-x-auto px-1">
+        <div>
           <Segmented options={options} value={pairKey(pair)} onChange={setChosen} label="Pair" />
         </div>
       )}
@@ -271,18 +271,36 @@ function Pairs({ data, name }: { data: Relationships; name: Namer }) {
         ))}
       </dl>
       <PairChart pair={pair} a={a} b={b} />
-      <Caption>
-        Correlation of daily returns: +1 means they always move together, 0 means no link, −1 means
-        always opposite. The 90-day reading has a 95% range of{" "}
-        {pair.low_90 != null && pair.high_90 != null
-          ? `${pair.low_90.toFixed(2)} to ${pair.high_90.toFixed(2)}`
-          : "unknown width"}
-        . The fast-adapting line counts recent days more, so a change shows in it sooner. The chart
-        covers the last {formatCount(pair.series.length)} trading days; the whole record is{" "}
-        {formatCount(pair.n_days)} days from {formatDate(pair.first_day)}. Markets that shut at
-        weekends are compared with Bitcoin&apos;s move from Friday&apos;s close to Monday&apos;s
-        close.
-      </Caption>
+      <Caption
+        facts={[
+          { label: "Shows", value: "How closely the pair's daily returns moved together" },
+          { label: "Scale", value: "+1 always together, 0 no link, −1 always opposite" },
+          {
+            label: "90-day reading",
+            value: `95% range ${
+              pair.low_90 != null && pair.high_90 != null
+                ? `${pair.low_90.toFixed(2)} to ${pair.high_90.toFixed(2)}`
+                : "of unknown width"
+            }`,
+          },
+          {
+            label: "Fast-adapting line",
+            value: "Counts recent days more, so a change shows in it sooner",
+          },
+          {
+            label: "Chart covers",
+            value: `The last ${formatCount(pair.series.length)} trading days`,
+          },
+          {
+            label: "Whole record",
+            value: `${formatCount(pair.n_days)} days from ${formatDate(pair.first_day)}`,
+          },
+          {
+            label: "Weekends",
+            value: "Markets that shut are compared with Bitcoin's Friday-to-Monday move",
+          },
+        ]}
+      />
 
       <div className="border-t border-line pt-5">
         <h3 className="text-sm font-semibold tracking-tight">
@@ -309,11 +327,19 @@ function Pairs({ data, name }: { data: Relationships; name: Namer }) {
             </li>
           ))}
         </ul>
-        <Caption>
-          The same correlation, measured separately on the days each state applied. The state is the
-          one known at the time. Ranges in brackets are 95% ranges; where they overlap, the states
-          do not differ measurably.
-        </Caption>
+        <Caption
+          facts={[
+            {
+              label: "Shows",
+              value: "The same correlation, measured separately on the days each state applied",
+            },
+            { label: "The state", value: "The one known at the time" },
+            {
+              label: "Brackets",
+              value: "95% ranges; where they overlap, the states do not differ measurably",
+            },
+          ]}
+        />
       </div>
     </Panel>
   );
@@ -325,15 +351,24 @@ function cellColour(value: number): string {
 }
 
 function GridTable({ grid, name }: { grid: CorrelationGrid; name: Namer }) {
+  const ticker = (symbol: string) => symbol.split("/")[0] ?? symbol;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[34rem] border-separate border-spacing-0.5 text-xs">
+    <div>
+      {/* On a phone the rows carry tickers, as the columns do, so the grid fits the screen;
+          the names are listed beneath. */}
+      <table className="w-full table-fixed border-separate border-spacing-px text-[9px] @2xl:border-spacing-0.5 @2xl:text-xs">
+        <colgroup>
+          <col className="w-9 @2xl:w-44" />
+        </colgroup>
         <thead>
           <tr>
             <th />
             {grid.symbols.map((symbol) => (
-              <th key={symbol} className="label px-1 pb-1 text-center font-normal">
-                {symbol.split("/")[0]}
+              <th
+                key={symbol}
+                className="overflow-hidden pb-1 text-center text-[9px] font-semibold tracking-wide text-muted @2xl:text-[11px]"
+              >
+                {ticker(symbol)}
               </th>
             ))}
           </tr>
@@ -341,23 +376,40 @@ function GridTable({ grid, name }: { grid: CorrelationGrid; name: Namer }) {
         <tbody>
           {grid.symbols.map((symbol, i) => (
             <tr key={symbol}>
-              <th className="whitespace-nowrap pr-2 text-left text-[13px] font-normal">
-                {name(symbol)}
+              <th className="overflow-hidden whitespace-nowrap pr-1 text-left font-normal">
+                <span className="text-[9px] font-semibold tracking-wide text-muted @2xl:hidden">
+                  {ticker(symbol)}
+                </span>
+                <span className="hidden truncate text-[13px] @2xl:block">{name(symbol)}</span>
               </th>
               {grid.matrix[i]?.map((value, j) => (
                 <td
                   key={j}
-                  className="num rounded-md px-1 py-2 text-center"
+                  className="num rounded px-0 py-1.5 text-center @2xl:rounded-md @2xl:py-2"
                   style={{ background: i === j ? "transparent" : cellColour(value) }}
                   title={`${name(symbol)} and ${name(grid.symbols[j] ?? "")}`}
                 >
-                  {i === j ? "" : value.toFixed(2)}
+                  {i === j ? (
+                    ""
+                  ) : (
+                    <>
+                      <span className="@2xl:hidden">{value.toFixed(1)}</span>
+                      <span className="hidden @2xl:inline">{value.toFixed(2)}</span>
+                    </>
+                  )}
                 </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
+      <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-faint @2xl:hidden">
+        {grid.symbols.map((symbol) => (
+          <span key={symbol}>
+            <span className="font-semibold text-muted">{ticker(symbol)}</span> {name(symbol)}
+          </span>
+        ))}
+      </p>
     </div>
   );
 }
@@ -377,12 +429,21 @@ function AllMarkets({ data, name }: { data: Relationships; name: Namer }) {
         <Segmented options={SPANS} value={span} onChange={setSpan} label="Period" />
       </div>
       <GridTable grid={grid} name={name} />
-      <Caption>
-        Correlation of daily returns between every pair, on the {formatCount(grid.n_days)} trading
-        days from {formatDate(grid.first_day)} to {formatDate(grid.last_day)} that all of them have
-        prices for. Blue cells moved together, red cells moved opposite ways, and stronger colour
-        means a closer link. Markets that behave alike are placed next to each other.
-      </Caption>
+      <Caption
+        facts={[
+          { label: "Shows", value: "Correlation of daily returns between every pair" },
+          {
+            label: "Window",
+            value: `${formatCount(grid.n_days)} trading days, ${formatDate(grid.first_day)} to ${formatDate(grid.last_day)}`,
+          },
+          { label: "Measured on", value: "The days all of them have prices for" },
+          {
+            label: "Colour",
+            value: "Blue moved together, red moved opposite ways; stronger means closer",
+          },
+          { label: "Order", value: "Markets that behave alike sit next to each other" },
+        ]}
+      />
     </Panel>
   );
 }
@@ -413,7 +474,7 @@ function Spillovers({ data, name }: { data: Relationships; name: Namer }) {
                 .map((r) => (
                   <li key={r.steps} className="num flex justify-between gap-3 py-1 text-muted">
                     <span>
-                      Next {r.steps} session{r.steps === 1 ? "" : "s"}
+                      Next {r.steps} trading day{r.steps === 1 ? "" : "s"}
                     </span>
                     <span>
                       {r.ratio != null && r.ratio_low != null && r.ratio_high != null ? (
@@ -436,14 +497,24 @@ function Spillovers({ data, name }: { data: Relationships; name: Namer }) {
           </li>
         ))}
       </ul>
-      <Caption>
-        An episode starts on the first day a market&apos;s state reads turbulent after a stretch
-        when it did not, using the reading available that day. The figure is the other market&apos;s
-        average daily swing over the sessions that followed, as a multiple of its usual swing, with
-        a 95% range. A pair is said to spill over only when that is larger than chance would give,
-        after allowing for the {data.spillovers.length} comparisons made. Fewer than 15 episodes is
-        too few to judge. Two markets can both be reacting to the same news; this does not show that
-        one causes the other.
+      <Caption
+        facts={[
+          {
+            label: "An episode starts",
+            value: "The first day a market reads turbulent after a stretch when it did not",
+          },
+          { label: "Read with", value: "Only what was known that day" },
+          {
+            label: "The figure",
+            value:
+              "The other market's average daily swing over the days that followed, as a multiple of its usual swing",
+          },
+          { label: "Allowing for", value: `${data.spillovers.length} comparisons made` },
+          { label: "Not judged", value: "Fewer than 15 episodes" },
+        ]}
+      >
+        Two markets can both be reacting to the same news; this does not show that one causes the
+        other.
       </Caption>
     </Panel>
   );
@@ -519,12 +590,17 @@ function Weekends({ data, name }: { data: Relationships; name: Namer }) {
           </li>
         ))}
       </ul>
-      <Caption>
-        Bitcoin trades while stock markets are shut. Each weekend compares Bitcoin&apos;s move from
-        the last close to the next open with where the market opened against its last close. Long
-        weekends are included. Bitcoin&apos;s price at the open is the last one known before it. A
-        link is claimed only when it is larger than chance would give.
-      </Caption>
+      <Caption
+        facts={[
+          { label: "Shows", value: "Bitcoin's weekend move against where the market then opened" },
+          {
+            label: "Bitcoin's move",
+            value: "From the last close to the next open; long weekends included",
+          },
+          { label: "The market's", value: "Its opening price against its last close" },
+          { label: "A link is claimed", value: "Only when it is larger than chance would give" },
+        ]}
+      />
     </Panel>
   );
 }
@@ -542,7 +618,6 @@ export function TogetherPage() {
 
   return (
     <div className="flex flex-col gap-4 @xl:gap-6">
-      <div className="aurora" aria-hidden="true" />
       <header className="flex items-baseline gap-3">
         <h1 className="title">Market connections</h1>
       </header>

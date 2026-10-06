@@ -230,7 +230,6 @@ export function Overview() {
 
   return (
     <div className="flex flex-col gap-6 @xl:gap-8">
-      <div className="aurora" aria-hidden="true" />
       <header className="flex items-center justify-between gap-3">
         <h1 className="text-sm font-semibold tracking-[0.14em]">RADAR</h1>
         <p className="label">{today}</p>

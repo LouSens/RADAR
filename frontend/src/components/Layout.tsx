@@ -286,7 +286,7 @@ export function Layout() {
               Something needs attention
             </Link>
           )}
-          <p className="mt-4 max-w-[78ch] text-xs leading-relaxed text-faint md:mt-12">
+          <p className="mt-4 prose text-xs leading-relaxed text-faint md:mt-12">
             For information only. Not financial advice; RADAR places no trades.
           </p>
         </main>
