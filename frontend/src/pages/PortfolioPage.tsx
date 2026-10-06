@@ -8,6 +8,7 @@ import { DriverEvidence, driverHeadline } from "../components/DriversPanel";
 import { HoldingsEditor } from "../components/HoldingsEditor";
 import { LevelsPanel, MixesPanel, targetSummary } from "../components/PlanPanels";
 import { oddsLabel } from "../components/RiskPanel";
+import { RegularBuyingPanel } from "../components/RegularBuyingPanel";
 import { Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented } from "../components/ui";
 import {
@@ -852,6 +853,14 @@ export function PortfolioPage() {
       {portfolio.data &&
         section === "mixes" &&
         (analysis ? <MixesPanel analysis={analysis} /> : needsHoldings)}
+      {portfolio.data && section === "buying" && (
+        // Remounted once the holdings arrive, so the plan starts from what is held.
+        <RegularBuyingPanel
+          key={analysis ? "held" : "none"}
+          portfolio={portfolio.data}
+          analysis={analysis}
+        />
+      )}
       {portfolio.data &&
         section === "sources" &&
         (analysis ? <Sources analysis={analysis} /> : needsHoldings)}

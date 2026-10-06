@@ -4,6 +4,7 @@ import type { PortfolioAnalysis, WhatIf } from "../api/client";
 import { usePortfolio, useSetTarget, useWhatIf } from "../api/queries";
 import { formatMoney, formatShare } from "../lib/format";
 import { MIX_NAMES, dayLimit, levelNow, presets, type MixName, type Preset } from "../lib/plan";
+import { TickerBox } from "./TickerBox";
 import { Caption } from "./ui";
 import { Bars, StackBar, holdingColour, levelColour } from "./viz";
 
@@ -37,6 +38,8 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
   const order = analysis.positions.map((p) => p.symbol);
   const current = Object.fromEntries(analysis.positions.map((p) => [p.symbol, p.weight]));
   const [rows, setRows] = useState<Row[]>(() => rowsFrom(current, order));
+  // Names of assets found by ticker, until the list of known assets has caught up.
+  const [looked, setLooked] = useState<Record<string, string>>({});
 
   const name = (symbol: string) =>
     symbol === CASH
@@ -44,6 +47,7 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
       : ((
           analysis.positions.find((p) => p.symbol === symbol)?.name ??
           supported.find((a) => a.symbol === symbol)?.name ??
+          looked[symbol] ??
           symbol
         ).split(" (")[0] ?? symbol);
 
@@ -200,6 +204,17 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
           </div>
         </div>
       )}
+
+      <TickerBox
+        onFound={(asset) => {
+          setLooked((before) => ({ ...before, [asset.symbol]: asset.name }));
+          setRows((before) =>
+            before.some((r) => r.symbol === asset.symbol)
+              ? before
+              : [...before, { symbol: asset.symbol, percent: 0 }],
+          );
+        }}
+      />
 
       <div className="flex flex-wrap items-center gap-2.5">
         <button

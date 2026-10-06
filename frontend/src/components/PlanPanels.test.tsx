@@ -22,6 +22,7 @@ vi.mock("../api/queries", () => ({
     isError: false,
     isSuccess: false,
   }),
+  useLookup: () => ({ mutate: () => undefined, isPending: false, isError: false }),
   useWhatIf: () => ({
     mutate: state.tryMix,
     data: state.tried,

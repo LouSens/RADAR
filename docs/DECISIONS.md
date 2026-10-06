@@ -1622,3 +1622,48 @@ research grounds.
 **Housekeeping.** Storing the replay now removes signal rows it no longer produces, so
 changing a rule cannot leave old rows in the feed.
 
+## 053. Portfolio tools: regular buying, and trying any ticker (2026-10-06)
+
+Two things the user asked for, built between Phase 6 parts 1 and 2. Neither is in the
+spec; both extend F6.
+
+**Regular buying** (`models/regular_buying.py`, tab `/portfolio/buying`).
+
+- The user chooses what each purchase buys (any assets with stored prices, with their
+  shares), the amount, how often (weekly, every two weeks, monthly), and for how long
+  (6 months, 1 year, 2 years). Nothing is pre-decided; the plan starts from the
+  proportions held (decision 049).
+- The futures come from the same block bootstrap as the range ahead (decision 050):
+  runs of 10 real sessions, every asset at once. Along each the plan buys the amount at
+  the interval and never sells. 5,000 futures.
+- **The comparison.** The same total put in on the first day is run through the very
+  same futures. The screen shows both spreads, how often each ended below the money
+  paid in, and how often buying bit by bit ended ahead. It does not call either better:
+  the notebook shows it is a trade of less risk for less growth.
+- **Checked walk-forward**, like every range: the plan is simulated at past starts from
+  earlier sessions only and compared with how the real plan then went; starts are a
+  full plan apart. A test rewrites later days and checks earlier ranges do not move.
+- **The evidence is thin for long plans, and the screen says so.** Only about five
+  separate one-year stretches fit in the stored prices (four can be checked), two for
+  two years. The result states how many, the grade is "fair" at best under 30 cases, a
+  note appears under 10, and a plan is capped at 504 sessions.
+- Assets must share 250 sessions of prices. Trading costs and taxes are left out and
+  the caption says so.
+- It runs inside the request (about a second) and saves nothing, like `what-if`.
+- Named "Regular buying" on the screen, not "DCA" (decision 042).
+
+**Trying any ticker** (`POST /portfolio/lookup`, `TickerBox`).
+
+- On Try a mix and on Regular buying the user can type a ticker and say whether it is a
+  stock or a crypto coin (the same letters can be both, so RADAR does not guess). A
+  known asset is returned at once. An unknown one is looked up through the existing
+  discovery path (decision 041): Alpaca market data only, its history is fetched, and
+  it joins the stored assets, kept up to date by the worker afterwards.
+- This widens decision 041, which said assets are discovered from holdings and never
+  added by hand. The rule that mattered there stands: the user never has to add what
+  they hold. Looking one up to try it is a choice, not a chore.
+- Limits, stated on the screen: US stocks and funds, and the crypto Alpaca carries. A
+  newly listed asset still needs 30 sessions to be measured and 250 to be simulated.
+
+**Notebook.** `notebooks/09_regular_buying.ipynb`, on a made-up plan.
+
