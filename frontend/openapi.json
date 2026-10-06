@@ -356,6 +356,60 @@
         "title": "BarsOut",
         "type": "object"
       },
+      "BriefItem": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/Sentence"
+            },
+            "title": "Sentences",
+            "type": "array"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "sentences"
+        ],
+        "title": "BriefItem",
+        "type": "object"
+      },
+      "BriefOut": {
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BriefItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day",
+          "generated_at",
+          "items"
+        ],
+        "title": "BriefOut",
+        "type": "object"
+      },
       "CalibrationOut": {
         "properties": {
           "computed_at": {
@@ -3575,6 +3629,33 @@
         "title": "RiskOut",
         "type": "object"
       },
+      "Sentence": {
+        "properties": {
+          "section": {
+            "enum": [
+              "state",
+              "outlook",
+              "swings",
+              "risk",
+              "signals",
+              "portfolio",
+              "target"
+            ],
+            "title": "Section",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "section"
+        ],
+        "title": "Sentence",
+        "type": "object"
+      },
       "SentimentAccuracyOut": {
         "description": "How the tone model did on headlines labelled by hand.",
         "properties": {
@@ -4042,6 +4123,10 @@
       },
       "SignalRecordsOut": {
         "properties": {
+          "in_feed": {
+            "title": "In Feed",
+            "type": "boolean"
+          },
           "records": {
             "items": {
               "$ref": "#/components/schemas/SignalRecordOut"
@@ -4052,6 +4137,9 @@
           "tested": {
             "title": "Tested",
             "type": "integer"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
           },
           "type": {
             "enum": [
@@ -4066,7 +4154,9 @@
         "required": [
           "type",
           "records",
-          "tested"
+          "tested",
+          "in_feed",
+          "trust"
         ],
         "title": "SignalRecordsOut",
         "type": "object"
@@ -6764,6 +6854,25 @@
           }
         },
         "summary": "Get Volatility"
+      }
+    },
+    "/api/v1/briefs/latest": {
+      "get": {
+        "description": "The most recent brief: a short paragraph per market and one for the portfolio,\neach sentence naming the page that holds its evidence.",
+        "operationId": "get_latest_brief_api_v1_briefs_latest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Latest Brief"
       }
     },
     "/api/v1/health": {

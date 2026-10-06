@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import type { Asset } from "../api/client";
 import { useMarket, useNow } from "../api/market";
 import { useAssets } from "../api/queries";
+import { BriefCard } from "../components/BriefCard";
+import { LatestSignals } from "../components/LatestSignals";
 import { MarketStage } from "../components/MarketStage";
 import { Change, Message, RangeBar, Sparkline, assetColorVar, shortName } from "../components/ui";
 import { formatPrice } from "../lib/format";
@@ -143,6 +145,9 @@ export function Overview() {
           <div className="rise rise-3">
             <MarketStage asset={shown} linkToAsset />
           </div>
+
+          <BriefCard assets={assets.data ?? []} />
+          <LatestSignals assets={assets.data ?? []} />
 
           <section className="glass px-5 pb-2 pt-5 @xl:px-7 @xl:pt-6">
             <div className={`${COMPARE_GRID} items-end border-b border-line pb-3`}>

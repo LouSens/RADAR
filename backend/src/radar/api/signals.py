@@ -1,12 +1,16 @@
 """Routes for signals and their track records. They read stored results only."""
 
+from datetime import date
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import AwareDatetime, BaseModel
 
+from radar.analytics import summary
 from radar.api.routes import SessionDep, UniverseDep, find_asset
+from radar.brief.writer import Sentence
 from radar.db.models import SignalTrackRecord
+from radar.pipelines import brief as brief_job
 from radar.pipelines import portfolio as portfolio_job
 from radar.pipelines import rebalance
 from radar.pipelines import signals as job
@@ -60,6 +64,22 @@ class SignalRecordsOut(BaseModel):
     records: list[SignalRecordOut]
     # How many records and horizons were tested together and corrected for.
     tested: int
+    # Whether this type is shown in the feed. One that is not is kept as evidence.
+    in_feed: bool
+    trust: summary.Trust
+
+
+class BriefItem(BaseModel):
+    # A market's symbol, or "PORTFOLIO".
+    symbol: str
+    name: str
+    sentences: list[Sentence]
+
+
+class BriefOut(BaseModel):
+    day: date
+    generated_at: AwareDatetime
+    items: list[BriefItem]
 
 
 def _summary(row: SignalTrackRecord | None) -> RecordSummary | None:
@@ -130,4 +150,27 @@ def get_track_records(type: str, universe: UniverseDep, session: SessionDep) -> 
             for r in rows
         ],
         tested=sum(1 for r in every for h in r.horizons if h.signal.n >= track.MIN_OCCURRENCES),
+        in_feed=type in detect.FEED_TYPES,
+        trust=summary.grade_signals([r.n for r in rows]),
+    )
+
+
+@router.get("/briefs/latest", response_model=BriefOut)
+def get_latest_brief(session: SessionDep) -> BriefOut:
+    """The most recent brief: a short paragraph per market and one for the portfolio,
+    each sentence naming the page that holds its evidence."""
+    rows = brief_job.latest(session)
+    if not rows:
+        raise HTTPException(status_code=404, detail="No brief has been written yet")
+    return BriefOut(
+        day=rows[0].day,
+        generated_at=max(row.generated_at for row in rows),
+        items=[
+            BriefItem(
+                symbol=row.symbol,
+                name=row.name,
+                sentences=[Sentence.model_validate(s) for s in row.sentences],
+            )
+            for row in rows
+        ],
     )

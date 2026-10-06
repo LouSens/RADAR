@@ -30,6 +30,12 @@ const icon = {
       <circle cx="15" cy="12" r="5.5" />
     </>
   ),
+  signals: (
+    <>
+      <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2Z" />
+      <path d="M10 20.5a2 2 0 0 0 4 0" />
+    </>
+  ),
   portfolio: (
     <>
       <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12V3.5Z" />
@@ -194,6 +200,12 @@ function Sidebar({
             <Icon>{icon.together}</Icon>
           </span>
           <span className={hidden}>Market connections</span>
+        </NavLink>
+        <NavLink to="/signals" className={sideLink} title="Signals">
+          <span className="grid w-[22px] shrink-0 place-items-center">
+            <Icon>{icon.signals}</Icon>
+          </span>
+          <span className={hidden}>Signals</span>
         </NavLink>
 
         <p className={`label mt-5 px-2.5 pb-1 text-xs ${collapsed ? "sr-only" : ""}`}>Yours</p>

@@ -308,6 +308,25 @@ def grade_simulation(n: int, inside: int, level: float, days: int) -> Trust:
     )
 
 
+def grade_signals(occurrences: list[int]) -> Trust:
+    """Graded on the fewest past cases behind any kind of this signal: 100 for solid, 30
+    for fair. A record says what followed on average, so it is only as good as its count."""
+    if not occurrences:
+        return Trust(grade="rough", reason="This signal has not fired in the stored history.")
+    fewest, most = min(occurrences), max(occurrences)
+    span = f"{fewest:,}" if fewest == most else f"{fewest:,} to {most:,}"
+    record = f"Each kind of this signal rests on {span} past cases, found using only what "
+    record += "was known on the day"
+    if fewest >= 100:
+        return Trust(grade="solid", reason=record + ".")
+    if fewest >= 30:
+        return Trust(grade="fair", reason=record + ". Under 100 is a modest sample.")
+    return Trust(
+        grade="rough",
+        reason=record + ". Kinds with under 30 cases are not judged at all.",
+    )
+
+
 def grade_news(accuracy: dict[str, object] | None) -> Trust:
     """Graded on the low end of the accuracy range: 80% for solid, 65% for fair."""
     if not accuracy:

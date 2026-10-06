@@ -436,3 +436,25 @@ class Signal(Base):
     )
 
     __table_args__ = (UniqueConstraint("symbol", "ts", "type"),)
+
+
+class Brief(Base):
+    """One day's brief for one subject, kept with the payload it was written from."""
+
+    __tablename__ = "briefs"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    day: Mapped[date] = mapped_column(Date)
+    # A market's symbol, or "PORTFOLIO".
+    symbol: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text)
+    # The grounded input: every number in `text` is in here.
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # The text as sentences, each with the page that holds its evidence.
+    sentences: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    text: Mapped[str] = mapped_column(Text)
+    # "template", or the name of the writer whose text passed the grounding check.
+    writer: Mapped[str] = mapped_column(Text)
+    generated_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("day", "symbol"),)
