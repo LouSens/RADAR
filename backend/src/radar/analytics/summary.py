@@ -259,6 +259,25 @@ def grade_drivers(score: dict[str, object] | None) -> Trust:
     )
 
 
+def grade_mixes(n_days: int) -> Trust:
+    """Graded on how much history the mixes were run through: three years for solid."""
+    if n_days <= 0:
+        return Trust(
+            grade="rough", reason="There is too little shared history to run the mixes through."
+        )
+    if n_days >= 750:
+        return Trust(
+            grade="solid",
+            reason=f"Each mix was run through {n_days:,} trading days, deciding at every "
+            "monthly rebalance from earlier days only. This is what happened, not a forecast.",
+        )
+    return Trust(
+        grade="fair",
+        reason=f"Each mix was run through only {n_days:,} trading days. This is what "
+        "happened, not a forecast.",
+    )
+
+
 def grade_news(accuracy: dict[str, object] | None) -> Trust:
     """Graded on the low end of the accuracy range: 80% for solid, 65% for fair."""
     if not accuracy:

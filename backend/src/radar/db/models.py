@@ -360,6 +360,9 @@ class Portfolio(Base):
     # US dollars held as cash, dollar stablecoins included. Not a row in `holdings`,
     # because cash is not an asset with a price history.
     cash: Mapped[float] = mapped_column(Double, server_default="0")
+    # The risk level and split the user chose as a target, or null when none is set.
+    # It belongs to the user, not to the holdings: a new read of holdings keeps it.
+    target: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # The exchange's own dollar total per wallet at the last read; empty for manual
     # and CSV. Shown beside what RADAR found, so a gap is never silent.
     wallets: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")

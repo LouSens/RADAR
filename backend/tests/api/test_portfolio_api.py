@@ -389,3 +389,37 @@ def test_cash_is_part_of_the_money_and_none_of_the_risk(client: TestClient) -> N
         "/api/v1/portfolio", json={"holdings": [{"symbol": "USD", "quantity": 500}]}
     ).json()
     assert "Only cash is held" in only_cash["problem"]
+
+
+def test_a_target_is_set_kept_across_new_holdings_and_cleared(
+    client: TestClient, session: Session
+) -> None:
+    refused = client.put("/api/v1/portfolio/target", json={"level": "low"})
+    assert refused.status_code == 409  # nothing is held yet
+
+    client.put(
+        "/api/v1/portfolio",
+        json={"holdings": [{"symbol": "BTC", "quantity": 0.05}, {"symbol": "GLD", "quantity": 40}]},
+    )
+    # This universe has no stock market to measure against, so there is no plan.
+    analysis = client.get("/api/v1/portfolio/analysis").json()
+    assert analysis["plan"] is None
+
+    chosen = client.put("/api/v1/portfolio/target", json={"level": "moderate", "split": "equal"})
+    assert chosen.status_code == 200
+    stored = job.stored_target(session)
+    assert stored is not None
+    assert (stored.level, stored.split) == ("moderate", "equal")
+    assert stored.set_at is not None
+
+    # Saving holdings again does not forget what the user chose.
+    client.put("/api/v1/portfolio", json={"holdings": [{"symbol": "GLD", "quantity": 1}]})
+    session.expire_all()
+    kept = job.stored_target(session)
+    assert kept is not None
+    assert kept.level == "moderate"
+
+    assert client.put("/api/v1/portfolio/target", json={"level": None}).status_code == 200
+    session.expire_all()
+    assert job.stored_target(session) is None
+    assert client.put("/api/v1/portfolio/target", json={"level": "extreme"}).status_code == 422

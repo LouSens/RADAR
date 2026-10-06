@@ -5,6 +5,7 @@ runs inside a request: the analysis is recomputed and stored there, so that ever
 read is only a read.
 """
 
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from radar.api.routes import SessionDep, UniverseDep
+from radar.models import allocation
 from radar.models.holdings import (
     CASH,
     CASH_NAME,
@@ -23,6 +25,7 @@ from radar.models.holdings import (
     Unsupported,
 )
 from radar.pipelines import portfolio as job
+from radar.pipelines import rebalance
 from radar.providers.binance import BinanceError, Leveraged, Wallet
 from radar.universe import Universe
 
@@ -57,6 +60,13 @@ class PortfolioOut(BaseModel):
 
 class HoldingsIn(BaseModel):
     holdings: list[Holding] = Field(max_length=200)
+
+
+class TargetIn(BaseModel):
+    # The risk level to hold the portfolio against; null clears the target.
+    level: allocation.Level | None
+    # How the holdings are split among themselves under the target.
+    split: allocation.Method = "current"
 
 
 class CsvIn(BaseModel):
@@ -170,6 +180,26 @@ def read_binance(
         [w.model_dump() for w in reading.wallets],
     )
     return _finish(session, universe, reading.holdings, binance=True)
+
+
+@router.put("/target", response_model=job.Analysis)
+def put_target(body: TargetIn, universe: UniverseDep, session: SessionDep) -> job.Analysis:
+    """Choose, change, or clear the risk level and split the portfolio is held against.
+
+    Nothing is traded and nothing changes at the exchange: this only sets what the
+    portfolio is compared with.
+    """
+    target = (
+        None if body.level is None else rebalance.stamped(body.level, body.split, datetime.now(UTC))
+    )
+    if not job.set_target(session, target):
+        raise HTTPException(status_code=409, detail="There are no holdings yet.")
+    problem = job.refresh(session, universe)
+    session.commit()
+    analysis = job.stored_analysis(session)
+    if problem or analysis is None:
+        raise HTTPException(status_code=409, detail=problem or "No portfolio analysis yet")
+    return analysis
 
 
 @router.get("/analysis", response_model=job.Analysis)

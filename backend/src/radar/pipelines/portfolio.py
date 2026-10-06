@@ -32,7 +32,7 @@ from radar.models.holdings import (
     HoldingsSource,
 )
 from radar.models.tail_risk import MIN_WINDOW
-from radar.pipelines import discover
+from radar.pipelines import discover, rebalance
 from radar.pipelines.datasets import build_mixed_panel
 from radar.providers.alpaca_rest import AlpacaDataClient
 from radar.providers.binance import BinanceError, BinanceReading, BinanceSource
@@ -112,6 +112,9 @@ class Analysis(BaseModel):
     driver_names: dict[str, str] = {}
     # The current state of each holding's market, where RADAR models one.
     states: list[HoldingState] = []
+    # Risk levels, other mixes, and the gap to the user's target. Null when the
+    # stock market yardstick is not available.
+    plan: rebalance.Plan | None = None
     trust: Trusts
 
 
@@ -399,7 +402,19 @@ def refresh(session: Session, universe: Universe, panel: MixedPanel | None = Non
         result = analyse(holdings, panel, universe)
     except model.NotEnoughHistoryError as error:
         return str(error)
-    result = result.model_copy(update={"states": holding_states(session, result, panel, universe)})
+    states = holding_states(session, result, panel, universe)
+    plan = None
+    if result.risk_level is not None:
+        plan = rebalance.build(
+            result.xray,
+            result.risk_level,
+            [y.symbol for y in result.young],
+            {s.symbol: s.label for s in states},
+            result.covered_value,
+            panel,
+            stored_target(session),
+        )
+    result = result.model_copy(update={"states": states, "plan": plan})
     session.add(
         PortfolioAnalysis(
             portfolio_id=PORTFOLIO_ID,
@@ -433,6 +448,22 @@ def holding_states(
                 )
             )
     return states
+
+
+def stored_target(session: Session) -> rebalance.Target | None:
+    portfolio = session.get(Portfolio, PORTFOLIO_ID)
+    if portfolio is None or not portfolio.target:
+        return None
+    return rebalance.Target.model_validate(portfolio.target)
+
+
+def set_target(session: Session, target: rebalance.Target | None) -> bool:
+    """Store or clear the target. Returns False when there is no portfolio yet."""
+    portfolio = session.get(Portfolio, PORTFOLIO_ID)
+    if portfolio is None:
+        return False
+    portfolio.target = None if target is None else target.model_dump(mode="json")
+    return True
 
 
 def stored_wallets(session: Session) -> list[dict[str, Any]]:
