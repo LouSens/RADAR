@@ -147,3 +147,16 @@ def test_no_grade_or_change_tells_the_reader_what_to_do() -> None:
         assert "buy" not in lowered
         assert "sell" not in lowered
         assert "you should" not in lowered
+
+
+def test_the_range_ahead_is_graded_on_how_often_past_ranges_held() -> None:
+    # 80% of 40 is 32; anything from 27 to 37 is what such a range plausibly gives.
+    solid = summary.grade_simulation(40, 31, 0.8, 30)
+    assert solid.grade == "solid"
+    assert "held in 31 of 40 past 30-session forecasts" in solid.reason
+    assert summary.grade_simulation(40, 22, 0.8, 30).grade == "rough"
+    assert summary.grade_simulation(40, 40, 0.8, 30).grade == "rough"  # too wide is also off
+    few = summary.grade_simulation(12, 10, 0.8, 90)
+    assert few.grade == "fair"
+    assert "few cases" in few.reason
+    assert summary.grade_simulation(0, 0, 0.8, 30).grade == "rough"

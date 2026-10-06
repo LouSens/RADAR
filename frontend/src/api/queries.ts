@@ -25,6 +25,7 @@ import {
   type Timeframe,
   type TrackRecord,
   type Volatility,
+  type WhatIf,
 } from "./client";
 
 export function useAssets() {
@@ -244,3 +245,40 @@ export function useNewsTest(slug: string | undefined) {
     staleTime: 60 * 60_000,
   });
 }
+
+/** Choose, change, or clear the risk level and split the portfolio is compared with. */
+export function useSetTarget() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      input:
+        | { level: "low" | "moderate" | "high" | null; split?: string }
+        | { weights: Record<string, number> },
+    ) => putJson<PortfolioAnalysis>("/portfolio/target", input),
+    onSuccess: (analysis) => {
+      client.setQueryData(["portfolio", "analysis"], analysis);
+    },
+  });
+}
+
+/** Tag holdings as core or satellite, or clear a tag with null. */
+export function useSetTags() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { tags: Record<string, "core" | "satellite" | null> }) =>
+      putJson<PortfolioAnalysis>("/portfolio/tags", input),
+    onSuccess: (analysis) => {
+      client.setQueryData(["portfolio", "analysis"], analysis);
+      void client.invalidateQueries({ queryKey: ["portfolio"], exact: true });
+    },
+  });
+}
+
+/** The risk figures for a mix being tried. Saves nothing. */
+export function useWhatIf() {
+  return useMutation({
+    mutationFn: (input: { weights: Record<string, number> }) =>
+      postJson<WhatIf>("/portfolio/what-if", input),
+  });
+}
+

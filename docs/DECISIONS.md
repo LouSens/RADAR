@@ -1341,3 +1341,153 @@ Earn wallet total to the cent. The earlier shortfall of about $37 was flexible s
 that Binance does not mirror into the spot wallet. RADAR's total now matches Binance's
 within the small difference that comes from valuing at the last market close.
 
+## 048. Phase 5D, part 1: risk levels, other mixes, a target, and signals (2026-10-07)
+
+Fourth part of decision 035. Split in two; this is the part the user asked about (what
+low, moderate, and high risk look like, and how rebalancing reacts). Part 2 is the
+portfolio simulation and the core and satellite report.
+
+**Two questions kept apart.**
+
+- *How the holdings are split among themselves.* Five rules (spec F6): as it is now,
+  equal shares, smallest movement (minimum variance), equal risk each, and grouped by
+  behaviour (hierarchical risk parity). Long-only, no holding above 60% of the invested
+  part, or above an equal share when there are too few holdings for that.
+- *How much is kept in cash.* Cash does not move, so it scales the mix's movement down
+  in proportion. A level fixes the movement aimed for against US stocks, which fixes the
+  cash share: one minus the aim over the movement of the holdings with no cash at all.
+
+| Level | Band (multiple of US stocks' daily movement) | Aim |
+|---|---|---|
+| Low | under 0.5 | 0.25 |
+| Moderate | 0.5 to 1 | 0.75 |
+| High | 1 to 2 | 1.5 |
+
+The bands are those of the risk scale (decision 041); the aims are their midpoints. A
+level the holdings cannot reach without borrowing is shown as out of reach with no cash,
+not forced.
+
+**Backtest of the mixes.** Walk-forward: rebalanced every 21 sessions, each split worked
+out from the 250 sessions before it and nothing later (a test changes later returns and
+checks earlier splits do not move). Trading costs 0.1% of what is traded. Today's cash
+share is kept in every mix. Holdings with a short record are left out of the backtest
+and keep their share when a split is applied. Reported: daily movement, deepest fall,
+share traded per month, and growth over the period, which is labelled as what happened.
+
+**The target and the signals.** The user chooses a level and, optionally, a split.
+It is stored with the portfolio and kept when holdings are read again. Against it:
+
+| Signal | Rule |
+|---|---|
+| Movement above or below target | the mix's movement in current conditions is outside the level's band |
+| Drift | any holding, or cash, is more than 5 percentage points of the whole from its target share |
+| Turbulent market | a holding's market reads turbulent now (information, not counted as a move) |
+
+"Current conditions" is the long-run figure scaled by how much the mix has been moving
+lately (the same exponentially weighted measure the loss limits use) against its own
+long-run movement. This is how the app reacts to volatility: when markets get rougher
+the same holdings read higher on the scale, and the screen shows the gap. It does not
+react to headlines, because the tests in decisions 030 and 045 found news leads neither
+direction nor the size of moves.
+
+**Wording.** Each holding's gap to target is given as shares and as an amount of money,
+with a sign. Nothing says buy, sell, or what to do; setting a target changes nothing at
+Binance. Route `PUT /portfolio/target`; the plan is part of `GET /portfolio/analysis`.
+
+**On the real account (2026-10-07).** With no cash these holdings move 1.59 times as
+much as US stocks; with 76% in cash the mix reads low, 0.37 over the long run and 0.27
+in current conditions. Low would mean 84% in cash, moderate 53%, high 6%. Over 1,194
+trading days from 31 December 2021, the split as it is moved 0.34% a day with a deepest
+fall of 9.4%; the smallest-movement split moved 0.19% with a deepest fall of 4.5%.
+
+**Not built yet (part 2).** Portfolio simulation by block bootstrap; the core and
+satellite report. The detail tabs elsewhere still need the visual pass.
+
+## 049. Try a mix: the user sets the shares, the app shows the risk (2026-10-07)
+
+The first version of decision 048 opened with three cards, low, moderate, and high,
+each with its cash share already worked out. The user asked for the opposite: let them
+pick the share of each asset themselves and then show the typical day, the possible
+loss, and the movement against US stocks. That is the better design, because the levels
+were the app's choice and the mix is the user's.
+
+**What replaced the cards.** The tab is now "Try a mix" (`/portfolio/try`):
+
+- One row per holding with a slider and a number box for its share of the whole; cash
+  is whatever is left. Any asset RADAR stores prices for can be added, held or not.
+- "Work out the risk" runs the mix through the same analysis as the saved holdings, at
+  the portfolio's current value, and shows it beside the portfolio as it is: movement
+  against US stocks with its level, a typical day in money, the loss on about 1 day in
+  20 and 1 day in 100, the deepest fall on record, and each holding's share of the risk.
+- The levels and the other splits are kept only as starting points: one click fills the
+  rows, and every number can then be changed.
+- A tried mix can be set as the target. A target is now either a level with a split, or
+  a mix of the user's own with a share for every holding. A mix has no band, so only
+  drift and turbulent markets are flagged against it.
+
+**How it is computed.** `POST /portfolio/what-if` turns the shares into quantities at
+the latest stored prices and calls the same `analyse` function, without the driver
+regression. Nothing is saved. It is the second place a calculation runs inside a
+request (the first is saving holdings, decision 037); it takes about a second. Shares
+must be between 0 and 100%, add up to at most 100%, and name assets with stored prices.
+
+**Kept from decision 048.** The Compare mixes tab, the backtest, the signals, and the
+distance from the target are unchanged.
+
+## 050. Phase 5D part 2: the value range ahead, and core and satellite (2026-10-06)
+
+**The value range ahead** (`models/portfolio_simulation.py`, tab `/portfolio/ahead`).
+
+- A block bootstrap of the holdings' joint daily returns, as the spec asks: each of
+  10,000 paths joins runs of 10 consecutive real sessions, taken for every holding at
+  once. The run length is a judgement; the notebook shows the result barely moves from
+  1 to 20.
+- Holdings are left alone along a path (nothing is rebalanced) and cash does not move.
+  The range is for the covered value, 30 and 90 sessions ahead, with the same outputs
+  as a single market's range: quantiles, intervals, a fan, and the average deepest dip.
+- Instead of one fixed question, the chance of ending past, and of touching, every
+  change from -50% to +50% is stored, so the user picks the size on a slider
+  (decision 049).
+- Newer holdings (30 to 249 sessions) are not in the joint record. As with the loss
+  limits (decision 043), the paths are drawn from the established holdings and widened
+  by the same factor. The screen says so.
+- **Checked walk-forward.** A range is drawn at past dates from earlier sessions only
+  and compared with what followed; dates are a full horizon apart so no two outcomes
+  share a day. A test proves that rewriting later days changes no earlier range.
+- **Grade** (`grade_simulation`): on the 80% range at 30 sessions. Solid when the count
+  that held lies in the middle 95% of what a true 80% range would give, on at least 30
+  cases; fair when in line on fewer; rough when off.
+
+**What the check found, and what was done about it.** On the example mix in the
+notebook the 80% range held in 35 of 39 past 30-session cases. A constant-volatility
+bell curve checked on the same dates held equally often with the same width, and so did
+drawing single days. So the bootstrap is calibrated but **not measurably more accurate
+than the baseline**. It is kept because the spec asks for it, it does not assume a bell
+curve, and it gives path figures a formula for the end point does not. The baseline's
+record is stored (`baseline_coverage`) and stated on the screen beside the
+simulation's, with the words "not because its range has proved more accurate".
+
+**Core and satellite** (`models/sleeves.py`, tab `/portfolio/sleeves`).
+
+- Tags are now kept by symbol on the portfolio (`portfolios.tags`, migration 0016), so
+  a new read from an exchange keeps them. `PUT /portfolio/tags` sets or clears tags
+  and recomputes the analysis. Tags from a CSV are merged in.
+- The report shows, for core, satellite, untagged, and cash: share of the money, share
+  of the risk (from the X-ray, so they sum to 100%), and what the group added to return
+  over the last 250 sessions.
+- "Added to return" is each holding's weight today times the sum of its daily simple
+  returns, so the parts add up to the mix's return at fixed weights. It describes
+  today's mix in past markets, not what the user earned: RADAR does not know purchase
+  dates, and the screen says that. A holding with fewer sessions is added up over what
+  it has and is named.
+- There is no report until something is tagged; the tab then shows only the tag
+  controls. It takes the X-ray's grade.
+
+**Notebook.** `notebooks/07_portfolio.ipynb` documents the whole portfolio layer (risk
+model, risk by holding, the splits and their backtest, the range and its check, core
+and satellite) on a made-up example portfolio, so that no real holdings are committed.
+New model work is documented in a notebook from here on, at the user's request.
+
+**Not done.** The simulation is not run for a mix being tried (`what-if`), to keep that
+request quick.
+

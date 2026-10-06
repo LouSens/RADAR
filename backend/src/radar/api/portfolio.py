@@ -5,6 +5,7 @@ runs inside a request: the analysis is recomputed and stored there, so that ever
 read is only a read.
 """
 
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -12,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from radar.api.routes import SessionDep, UniverseDep
+from radar.models import allocation
 from radar.models.holdings import (
     CASH,
     CASH_NAME,
@@ -23,6 +25,8 @@ from radar.models.holdings import (
     Unsupported,
 )
 from radar.pipelines import portfolio as job
+from radar.pipelines import rebalance
+from radar.pipelines.datasets import build_mixed_panel
 from radar.providers.binance import BinanceError, Leveraged, Wallet
 from radar.universe import Universe
 
@@ -57,6 +61,26 @@ class PortfolioOut(BaseModel):
 
 class HoldingsIn(BaseModel):
     holdings: list[Holding] = Field(max_length=200)
+
+
+class TargetIn(BaseModel):
+    # A risk level to hold the portfolio against, or null.
+    level: allocation.Level | None = None
+    # How the holdings are split among themselves under a level.
+    split: allocation.Method = "current"
+    # Or a mix of the user's own: each holding's share of the whole, cash being the
+    # rest. With neither a level nor a mix, the target is cleared.
+    weights: dict[str, float] | None = Field(default=None, max_length=50)
+
+
+class WhatIfIn(BaseModel):
+    # Each holding's share of the whole, from 0 to 1. Cash is whatever is left over.
+    weights: dict[str, float] = Field(max_length=50)
+
+
+class TagsIn(BaseModel):
+    # Core or satellite by symbol; null clears a tag. Holdings not named keep theirs.
+    tags: dict[str, Literal["core", "satellite"] | None] = Field(max_length=200)
 
 
 class CsvIn(BaseModel):
@@ -95,7 +119,8 @@ def _finish(session: Session, universe: Universe, read: Holdings, *, binance: bo
     session.commit()
     return PortfolioOut(
         source=read.source,
-        holdings=sorted(read.holdings, key=lambda h: h.symbol),
+        # As stored, so that tags kept from before are on them.
+        holdings=sorted(job.stored_holdings(session)[1], key=lambda h: h.symbol),
         unsupported=read.unsupported,
         supported=_supported(universe),
         problem=problem,
@@ -170,6 +195,76 @@ def read_binance(
         [w.model_dump() for w in reading.wallets],
     )
     return _finish(session, universe, reading.holdings, binance=True)
+
+
+def _checked(weights: dict[str, float], universe: Universe) -> dict[str, float]:
+    """Shares that are sensible: known holdings, nothing negative, at most 100% in all."""
+    known = {a.symbol for a in universe.assets} | {CASH}
+    unknown = sorted(set(weights) - known)
+    if unknown:
+        raise HTTPException(
+            status_code=422, detail=f"RADAR has no price history for {', '.join(unknown)}."
+        )
+    if any(not (0.0 <= w <= 1.0) for w in weights.values()):
+        raise HTTPException(status_code=422, detail="Each share must be between 0% and 100%.")
+    shares = {s: w for s, w in weights.items() if s != CASH and w > 0}
+    if sum(shares.values()) > 1.0 + 1e-6:
+        raise HTTPException(status_code=422, detail="The shares add up to more than 100%.")
+    if not shares:
+        raise HTTPException(status_code=422, detail="Give at least one holding a share.")
+    return shares
+
+
+@router.post("/what-if", response_model=job.WhatIf)
+def post_what_if(body: WhatIfIn, universe: UniverseDep, session: SessionDep) -> job.WhatIf:
+    """The risk figures for a mix the user is trying out. Nothing is saved or traded."""
+    shares = _checked(body.weights, universe)
+    analysis = job.stored_analysis(session)
+    if analysis is None:
+        raise HTTPException(status_code=409, detail="Save your holdings first.")
+    try:
+        return job.what_if(shares, analysis.value, build_mixed_panel(session, universe), universe)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.put("/target", response_model=job.Analysis)
+def put_target(body: TargetIn, universe: UniverseDep, session: SessionDep) -> job.Analysis:
+    """Choose, change, or clear the risk level and split the portfolio is held against.
+
+    Nothing is traded and nothing changes at the exchange: this only sets what the
+    portfolio is compared with.
+    """
+    weights = _checked(body.weights, universe) if body.weights is not None else None
+    target = (
+        None
+        if body.level is None and weights is None
+        else rebalance.stamped(
+            None if weights is not None else body.level, body.split, weights, datetime.now(UTC)
+        )
+    )
+    if not job.set_target(session, target):
+        raise HTTPException(status_code=409, detail="There are no holdings yet.")
+    problem = job.refresh(session, universe)
+    session.commit()
+    analysis = job.stored_analysis(session)
+    if problem or analysis is None:
+        raise HTTPException(status_code=409, detail=problem or "No portfolio analysis yet")
+    return analysis
+
+
+@router.put("/tags", response_model=job.Analysis)
+def put_tags(body: TagsIn, universe: UniverseDep, session: SessionDep) -> job.Analysis:
+    """Tag holdings as core or satellite. The tags are kept by symbol, so reading the
+    holdings again does not lose them. Nothing is traded."""
+    if not job.set_tags(session, dict(body.tags)):
+        raise HTTPException(status_code=409, detail="There are no holdings yet.")
+    problem = job.refresh(session, universe)
+    session.commit()
+    analysis = job.stored_analysis(session)
+    if problem or analysis is None:
+        raise HTTPException(status_code=409, detail=problem or "No portfolio analysis yet")
+    return analysis
 
 
 @router.get("/analysis", response_model=job.Analysis)

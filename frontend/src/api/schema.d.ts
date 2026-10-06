@@ -391,6 +391,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Tags
+         * @description Tag holdings as core or satellite. The tags are kept by symbol, so reading the
+         *     holdings again does not lose them. Nothing is traded.
+         */
+        put: operations["put_tags_api_v1_portfolio_tags_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio/target": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Target
+         * @description Choose, change, or clear the risk level and split the portfolio is held against.
+         *
+         *     Nothing is traded and nothing changes at the exchange: this only sets what the
+         *     portfolio is compared with.
+         */
+        put: operations["put_target_api_v1_portfolio_target_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio/what-if": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post What If
+         * @description The risk figures for a mix the user is trying out. Nothing is saved or traded.
+         */
+        post: operations["post_what_if_api_v1_portfolio_what_if_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/relationships": {
         parameters: {
             query?: never;
@@ -442,9 +506,12 @@ export interface components {
             limits: components["schemas"]["LimitHorizon"][];
             /** Model Version */
             model_version: string;
+            plan?: components["schemas"]["Plan"] | null;
             /** Positions */
             positions: components["schemas"]["Position"][];
             risk_level?: components["schemas"]["RiskLevel"] | null;
+            simulation?: components["schemas"]["Simulation"] | null;
+            sleeves?: components["schemas"]["Report"] | null;
             /**
              * States
              * @default []
@@ -511,42 +578,6 @@ export interface components {
             symbol: string;
             /** Trades Continuously */
             trades_continuously: boolean;
-        };
-        /**
-         * Backtest
-         * @description How one method's limit held at one level. Every period is out of sample.
-         */
-        Backtest: {
-            /** Breach Rate */
-            breach_rate: number;
-            /** Breaches */
-            breaches: number;
-            /** Clustering P Value */
-            clustering_p_value: number | null;
-            /** Expected Breaches */
-            expected_breaches: number;
-            /**
-             * First Day
-             * Format: date
-             */
-            first_day: string;
-            /** Kupiec P Adjusted */
-            kupiec_p_adjusted?: number | null;
-            /** Kupiec P Value */
-            kupiec_p_value: number | null;
-            /**
-             * Last Day
-             * Format: date
-             */
-            last_day: string;
-            /** Level */
-            level: number;
-            /** Method */
-            method: string;
-            /** N */
-            n: number;
-            /** Reliable */
-            reliable: boolean;
         };
         /** BarOut */
         BarOut: {
@@ -634,6 +665,18 @@ export interface components {
             /** Steps */
             steps: number;
         };
+        /**
+         * Chance
+         * @description How often the simulated value was at or past one change from today.
+         */
+        Chance: {
+            /** Change */
+            change: number;
+            /** Ends Beyond */
+            ends_beyond: number;
+            /** Touches */
+            touches: number;
+        };
         /** ChangeOut */
         ChangeOut: {
             /** Text */
@@ -654,6 +697,18 @@ export interface components {
             accuracy_low?: number | null;
             /** Macro F1 */
             macro_f1: number;
+            /** N */
+            n: number;
+        };
+        /**
+         * Coverage
+         * @description How often past ranges of one stated level held what happened.
+         */
+        Coverage: {
+            /** Inside */
+            inside: number;
+            /** Level */
+            level: number;
             /** N */
             n: number;
         };
@@ -891,6 +946,19 @@ export interface components {
             /** Holdings */
             holdings: components["schemas"]["Holding"][];
         };
+        /** Horizon */
+        Horizon: {
+            /**
+             * Baseline Coverage
+             * @default []
+             */
+            baseline_coverage: components["schemas"]["Coverage"][];
+            /** Chances */
+            chances: components["schemas"]["Chance"][];
+            /** Coverage */
+            coverage: components["schemas"]["Coverage"][];
+            summary: components["schemas"]["HorizonSummary"];
+        };
         /** HorizonResult */
         HorizonResult: {
             /**
@@ -911,6 +979,37 @@ export interface components {
             pairs: components["schemas"]["PairResult"][];
             /** Steps */
             steps: number;
+        };
+        /**
+         * HorizonSummary
+         * @description The outcome distribution at one horizon, as prices.
+         */
+        HorizonSummary: {
+            /** Expected Worst Drawdown */
+            expected_worst_drawdown: number;
+            /** Histogram Counts */
+            histogram_counts: number[];
+            /** Histogram Edges */
+            histogram_edges: number[];
+            /** Intervals */
+            intervals: components["schemas"]["Interval"][];
+            /** Mean Return */
+            mean_return: number;
+            /** Quantiles */
+            quantiles: {
+                [key: string]: number;
+            };
+            /** Steps */
+            steps: number;
+        };
+        /** Interval */
+        Interval: {
+            /** High */
+            high: number;
+            /** Level */
+            level: number;
+            /** Low */
+            low: number;
         };
         /** LagOut */
         LagOut: {
@@ -960,6 +1059,29 @@ export interface components {
             touches: number;
         };
         /**
+         * LevelPlan
+         * @description What one risk level would ask of these holdings.
+         */
+        LevelPlan: {
+            /** Aim */
+            aim: number;
+            /** Band High */
+            band_high: number;
+            /** Band Low */
+            band_low: number;
+            /** Cash Share */
+            cash_share: number;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "low" | "moderate" | "high";
+            /** Ratio */
+            ratio: number;
+            /** Reachable */
+            reachable: boolean;
+        };
+        /**
          * Leveraged
          * @description An open futures exposure, as Binance reports it.
          */
@@ -984,7 +1106,7 @@ export interface components {
          * @description One method's current limit at one level, and how its past limits held.
          */
         Limit: {
-            backtest: components["schemas"]["Backtest"];
+            backtest: components["schemas"]["radar__models__tail_risk__Backtest"];
             /** Expected Shortfall */
             expected_shortfall: number;
             /** Method */
@@ -1055,6 +1177,22 @@ export interface components {
              * @constant
              */
             type: "news";
+        };
+        /**
+         * Move
+         * @description How far one holding sits from its target share of the whole.
+         */
+        Move: {
+            /** Change Value */
+            change_value: number;
+            /** Current Weight */
+            current_weight: number;
+            /** Drifted */
+            drifted: boolean;
+            /** Symbol */
+            symbol: string;
+            /** Target Weight */
+            target_weight: number;
         };
         /**
          * NewsTest
@@ -1215,6 +1353,34 @@ export interface components {
              * @enum {string}
              */
             verdict: "news helps" | "no measurable gain";
+        };
+        /** Plan */
+        Plan: {
+            /** In Band */
+            in_band?: boolean | null;
+            /** Invested Ratio */
+            invested_ratio: number;
+            /** Levels */
+            levels: components["schemas"]["LevelPlan"][];
+            /** Mixes */
+            mixes: components["schemas"]["radar__models__allocation__Backtest"][];
+            /**
+             * Moves
+             * @default []
+             */
+            moves: components["schemas"]["Move"][];
+            /** Now Ratio */
+            now_ratio: number | null;
+            /** Ratio */
+            ratio: number;
+            /**
+             * Signals
+             * @default []
+             */
+            signals: components["schemas"]["Signal"][];
+            target?: components["schemas"]["Target"] | null;
+            target_plan?: components["schemas"]["LevelPlan"] | null;
+            trust: components["schemas"]["Trust"];
         };
         /** PortfolioOut */
         PortfolioOut: {
@@ -1414,6 +1580,27 @@ export interface components {
             /** Weekends */
             weekends: components["schemas"]["WeekendGap"][];
         };
+        /** Report */
+        Report: {
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** N Days */
+            n_days: number;
+            /** Short */
+            short: string[];
+            /** Sleeves */
+            sleeves: components["schemas"]["Sleeve"][];
+            /** Total Return */
+            total_return: number;
+        };
         /** RiskHorizonOut */
         RiskHorizonOut: {
             /**
@@ -1602,6 +1789,47 @@ export interface components {
             /** Timeframe */
             timeframe: string;
         };
+        /**
+         * Signal
+         * @description Something that has moved the portfolio away from its target, with its size.
+         */
+        Signal: {
+            /** Against */
+            against: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "risk_above_target" | "risk_below_target" | "drift" | "turbulent";
+            /**
+             * Symbols
+             * @default []
+             */
+            symbols: string[];
+            /** Value */
+            value: number;
+        };
+        /** Simulation */
+        Simulation: {
+            /** Block */
+            block: number;
+            /** Fan */
+            fan: {
+                [key: string]: number[];
+            };
+            /** Horizons */
+            horizons: components["schemas"]["Horizon"][];
+            /** Model Version */
+            model_version: string;
+            /** N Days */
+            n_days: number;
+            /** N Paths */
+            n_paths: number;
+            /** Scale */
+            scale: number;
+            /** Start Value */
+            start_value: number;
+        };
         /** SimulationOut */
         SimulationOut: {
             /**
@@ -1625,6 +1853,22 @@ export interface components {
             start_price: number;
             /** Symbol */
             symbol: string;
+        };
+        /** Sleeve */
+        Sleeve: {
+            /** Contribution */
+            contribution: number;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "core" | "satellite" | "untagged" | "cash";
+            /** Risk Share */
+            risk_share: number;
+            /** Symbols */
+            symbols: string[];
+            /** Weight */
+            weight: number;
         };
         /** Spillover */
         Spillover: {
@@ -1791,6 +2035,49 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /** TagsIn */
+        TagsIn: {
+            /** Tags */
+            tags: {
+                [key: string]: ("core" | "satellite") | null;
+            };
+        };
+        /**
+         * Target
+         * @description What the user chose to hold the portfolio against: either a risk level with a way
+         *     of splitting the holdings, or a mix of their own with a share for every holding.
+         */
+        Target: {
+            /** Level */
+            level?: ("low" | "moderate" | "high") | null;
+            /** Set At */
+            set_at?: string | null;
+            /**
+             * Split
+             * @default current
+             * @enum {string}
+             */
+            split: "current" | "equal" | "min_variance" | "equal_risk" | "hierarchical";
+            /** Weights */
+            weights?: {
+                [key: string]: number;
+            } | null;
+        };
+        /** TargetIn */
+        TargetIn: {
+            /** Level */
+            level?: ("low" | "moderate" | "high") | null;
+            /**
+             * Split
+             * @default current
+             * @enum {string}
+             */
+            split: "current" | "equal" | "min_variance" | "equal_risk" | "hierarchical";
+            /** Weights */
+            weights?: {
+                [key: string]: number;
+            } | null;
+        };
         /** TopicSummary */
         TopicSummary: {
             /** Article Count */
@@ -1886,6 +2173,7 @@ export interface components {
         Trusts: {
             drivers?: components["schemas"]["Trust"] | null;
             risk: components["schemas"]["Trust"];
+            simulation?: components["schemas"]["Trust"] | null;
             stress: components["schemas"]["Trust"];
             xray: components["schemas"]["Trust"];
         };
@@ -2053,6 +2341,51 @@ export interface components {
              */
             since: string;
         };
+        /**
+         * WhatIf
+         * @description The risk of a mix the user is trying out, at the portfolio's current value.
+         */
+        WhatIf: {
+            /** Daily Volatility */
+            daily_volatility: number;
+            /** Deepest Fall */
+            deepest_fall: number;
+            /** Level */
+            level: string | null;
+            /** Limit 95 */
+            limit_95: number | null;
+            /** Limit 99 */
+            limit_99: number | null;
+            /** N Days */
+            n_days: number;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            /** Ratio */
+            ratio: number | null;
+            /** Risk Shares */
+            risk_shares: {
+                [key: string]: number;
+            };
+            /** Unmeasured */
+            unmeasured: components["schemas"]["Unmeasured"][];
+            /** Value */
+            value: number;
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+            /** Young */
+            young: components["schemas"]["Unmeasured"][];
+        };
+        /** WhatIfIn */
+        WhatIfIn: {
+            /** Weights */
+            weights: {
+                [key: string]: number;
+            };
+        };
         /** WindowResult */
         WindowResult: {
             /** Baseline */
@@ -2109,6 +2442,83 @@ export interface components {
             symbols: string[];
             /** Undiversified Volatility */
             undiversified_volatility: number;
+        };
+        /**
+         * Backtest
+         * @description How one way of splitting the holdings behaved, rebalanced monthly. History only.
+         */
+        radar__models__allocation__Backtest: {
+            /** Cost Paid */
+            cost_paid: number;
+            /** Daily Volatility */
+            daily_volatility: number;
+            /** Deepest Fall */
+            deepest_fall: number;
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "current" | "equal" | "min_variance" | "equal_risk" | "hierarchical";
+            /** N Days */
+            n_days: number;
+            /** Path */
+            path: number[];
+            /** Rebalances */
+            rebalances: number;
+            /** Total Return */
+            total_return: number;
+            /** Turnover */
+            turnover: number;
+            /** Weights Now */
+            weights_now: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * Backtest
+         * @description How one method's limit held at one level. Every period is out of sample.
+         */
+        radar__models__tail_risk__Backtest: {
+            /** Breach Rate */
+            breach_rate: number;
+            /** Breaches */
+            breaches: number;
+            /** Clustering P Value */
+            clustering_p_value: number | null;
+            /** Expected Breaches */
+            expected_breaches: number;
+            /**
+             * First Day
+             * Format: date
+             */
+            first_day: string;
+            /** Kupiec P Adjusted */
+            kupiec_p_adjusted?: number | null;
+            /** Kupiec P Value */
+            kupiec_p_value: number | null;
+            /**
+             * Last Day
+             * Format: date
+             */
+            last_day: string;
+            /** Level */
+            level: number;
+            /** Method */
+            method: string;
+            /** N */
+            n: number;
+            /** Reliable */
+            reliable: boolean;
         };
     };
     responses: never;
@@ -2690,6 +3100,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_tags_api_v1_portfolio_tags_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Analysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_target_api_v1_portfolio_target_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Analysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_what_if_api_v1_portfolio_what_if_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatIfIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhatIf"];
                 };
             };
             /** @description Validation Error */

@@ -259,6 +259,55 @@ def grade_drivers(score: dict[str, object] | None) -> Trust:
     )
 
 
+def grade_mixes(n_days: int) -> Trust:
+    """Graded on how much history the mixes were run through: three years for solid."""
+    if n_days <= 0:
+        return Trust(
+            grade="rough", reason="There is too little shared history to run the mixes through."
+        )
+    if n_days >= 750:
+        return Trust(
+            grade="solid",
+            reason=f"Each mix was run through {n_days:,} trading days, deciding at every "
+            "monthly rebalance from earlier days only. This is what happened, not a forecast.",
+        )
+    return Trust(
+        grade="fair",
+        reason=f"Each mix was run through only {n_days:,} trading days. This is what "
+        "happened, not a forecast.",
+    )
+
+
+# The stated level whose past record grades the portfolio's range ahead.
+SIMULATION_LEVEL = 0.8
+
+
+def grade_simulation(n: int, inside: int, level: float, days: int) -> Trust:
+    """Solid when the count of past ranges that held is one a range of that level
+    would plausibly give (the middle 95% of a binomial) on at least 30 cases; fair
+    when it is in line on fewer; rough when it is off."""
+    from scipy.stats import binom
+
+    if n <= 0:
+        return Trust(
+            grade="rough",
+            reason="There is too little shared history to check past ranges against what happened.",
+        )
+    low, high = binom.interval(0.95, n, level)
+    record = (
+        f"The {percent(level)} range held in {inside} of {n} past {days}-session "
+        "forecasts, each drawn from earlier days only"
+    )
+    if not low <= inside <= high:
+        return Trust(grade="rough", reason=record + ", which is off its stated level.")
+    if n >= 30:
+        return Trust(grade="solid", reason=record + ", in line with its stated level.")
+    return Trust(
+        grade="fair",
+        reason=record + ", in line with its stated level, but that is few cases to judge by.",
+    )
+
+
 def grade_news(accuracy: dict[str, object] | None) -> Trust:
     """Graded on the low end of the accuracy range: 80% for solid, 65% for fair."""
     if not accuracy:
