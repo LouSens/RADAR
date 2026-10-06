@@ -30,6 +30,12 @@ const icon = {
       <circle cx="15" cy="12" r="5.5" />
     </>
   ),
+  calendar: (
+    <>
+      <rect x="4" y="5.5" width="16" height="14" rx="2.5" />
+      <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />
+    </>
+  ),
   signals: (
     <>
       <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15l1.5-2Z" />
@@ -206,6 +212,12 @@ function Sidebar({
             <Icon>{icon.signals}</Icon>
           </span>
           <span className={hidden}>Signals</span>
+        </NavLink>
+        <NavLink to="/calendar" className={sideLink} title="Calendar">
+          <span className="grid w-[22px] shrink-0 place-items-center">
+            <Icon>{icon.calendar}</Icon>
+          </span>
+          <span className={hidden}>Calendar</span>
         </NavLink>
 
         <p className={`label mt-5 px-2.5 pb-1 text-xs ${collapsed ? "sr-only" : ""}`}>Yours</p>

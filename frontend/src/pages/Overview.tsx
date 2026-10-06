@@ -5,6 +5,7 @@ import type { Asset } from "../api/client";
 import { useMarket, useNow } from "../api/market";
 import { useAssets } from "../api/queries";
 import { BriefCard } from "../components/BriefCard";
+import { ComingUp } from "../components/ComingUp";
 import { LatestSignals } from "../components/LatestSignals";
 import { MarketStage } from "../components/MarketStage";
 import { Change, Message, RangeBar, Sparkline, assetColorVar, shortName } from "../components/ui";
@@ -146,6 +147,7 @@ export function Overview() {
             <MarketStage asset={shown} linkToAsset />
           </div>
 
+          <ComingUp />
           <BriefCard assets={assets.data ?? []} />
           <LatestSignals assets={assets.data ?? []} />
 

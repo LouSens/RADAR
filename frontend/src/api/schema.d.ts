@@ -305,6 +305,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Events
+         * @description Scheduled economic events: those still to come, and how each market has behaved
+         *     around past ones.
+         */
+        get: operations["get_events_api_v1_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -742,6 +763,27 @@ export interface components {
             /** Items */
             items: components["schemas"]["BriefItem"][];
         };
+        /** Calendar */
+        Calendar: {
+            /** Computed At */
+            computed_at?: string | null;
+            /** Direction Tests */
+            direction_tests: number;
+            /** Names */
+            names: {
+                [key: string]: string;
+            };
+            /** Results */
+            results: components["schemas"]["EventResult"][];
+            /** Size Tests */
+            size_tests: number;
+            /** Trust */
+            trust: {
+                [key: string]: components["schemas"]["Trust"];
+            };
+            /** Upcoming */
+            upcoming: components["schemas"]["Upcoming"][];
+        };
         /** CalibrationOut */
         CalibrationOut: {
             /**
@@ -932,6 +974,15 @@ export interface components {
             n: number;
             /** Offsets */
             offsets: number[];
+        };
+        /** EventResult */
+        EventResult: {
+            /** Key */
+            key: string;
+            /** Markets */
+            markets: components["schemas"]["MarketResult"][];
+            /** Name */
+            name: string;
         };
         /** EventStudyOut */
         EventStudyOut: {
@@ -1339,6 +1390,22 @@ export interface components {
             kind: "stock" | "crypto";
             /** Ticker */
             ticker: string;
+        };
+        /** MarketResult */
+        MarketResult: {
+            day_before: components["schemas"]["Share"];
+            event_day: components["schemas"]["Share"];
+            /** First Day */
+            first_day: string | null;
+            /** Last Day */
+            last_day: string | null;
+            /** N Events */
+            n_events: number;
+            next_day: components["schemas"]["Share"];
+            next_week: components["schemas"]["Share"];
+            size: components["schemas"]["Size"];
+            /** Symbol */
+            symbol: string;
         };
         /**
          * Move
@@ -2078,6 +2145,26 @@ export interface components {
             timeframe: string;
         };
         /**
+         * Share
+         * @description Tests 2 to 5: how often something happened around the event, against any day.
+         */
+        Share: {
+            /** Baseline */
+            baseline: number | null;
+            /** High */
+            high: number | null;
+            /** Low */
+            low: number | null;
+            /** N */
+            n: number;
+            /** P Value */
+            p_value: number | null;
+            /** Share */
+            share: number | null;
+            /** Verdict */
+            verdict: ("leans up" | "leans down" | "no measurable pattern" | "not enough events") | ("tends to carry on" | "tends to reverse" | "no measurable pattern" | "not enough events");
+        };
+        /**
          * Signal
          * @description Something that has moved the portfolio away from its target, with its size.
          */
@@ -2224,6 +2311,25 @@ export interface components {
             start_price: number;
             /** Symbol */
             symbol: string;
+        };
+        /**
+         * Size
+         * @description Test 1: the size of the event day's move against every other day.
+         */
+        Size: {
+            /** N */
+            n: number;
+            /** On Event */
+            on_event: number | null;
+            /** Other Days */
+            other_days: number | null;
+            /** P Value */
+            p_value: number | null;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "moves more on these days" | "moves less on these days" | "no measurable difference" | "not enough events";
         };
         /** Sleeve */
         Sleeve: {
@@ -2580,6 +2686,20 @@ export interface components {
             reason: string;
             /** Symbol */
             symbol: string;
+        };
+        /** Upcoming */
+        Upcoming: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Days Until */
+            days_until: number;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -3366,6 +3486,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BriefOut"];
+                };
+            };
+        };
+    };
+    get_events_api_v1_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Calendar"];
                 };
             };
         };

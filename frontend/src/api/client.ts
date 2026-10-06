@@ -50,6 +50,7 @@ export type Signal = components["schemas"]["SignalOut"];
 export type SignalRecords = components["schemas"]["SignalRecordsOut"];
 export type SignalRecord = components["schemas"]["SignalRecordOut"];
 export type Brief = components["schemas"]["BriefOut"];
+export type Calendar = components["schemas"]["Calendar"];
 export type SupportedAsset = components["schemas"]["SupportedAsset"];
 export type Timeframe = "1Hour" | "1Day";
 

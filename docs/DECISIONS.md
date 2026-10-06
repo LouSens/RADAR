@@ -1787,3 +1787,47 @@ what to do before an event.
 Fed days and possibly on inflation days; tests 2 to 5 will probably find nothing. This
 is written down so the result can be compared with the guess.
 
+## 056. Scheduled economic events: the result, and what the app shows (2026-10-06)
+
+The tests of decision 055, run once, with nothing changed afterwards.
+
+**Result.**
+
+- **Direction: no pattern.** Of 36 comparisons, one passed 5% on its own (Bitcoin the
+  day before a jobs report, 33% up against 50%); about two would be expected by luck,
+  and none survives the correction. Not before the event, not on the day, not after it.
+- **Size: two findings out of nine.** Gold moves more on Fed decision days (a typical
+  0.92% against 0.73%), and US stocks move more on jobs report days (0.87% against
+  0.72%). Bitcoin on inflation days looked larger (2.69% against 2.02%) but did not
+  survive the correction.
+- **Against the guess written in 055.** The guess was that stocks would move more on
+  Fed days and perhaps on inflation days. Neither held: close to close, US stocks moved
+  no more than usual on Fed days. The guess that direction would show nothing was right.
+
+**What this means for the user's request.** The request was a forecast of direction
+around these announcements. On dates and prices alone there is none to give, and the
+app says so and does not offer one. What it does offer is the calendar and the measured
+size of the day's move. A direction forecast conditional on the surprise would need the
+expected figures, which RADAR does not have.
+
+**What was built.**
+
+- `analytics/events.py` (pure), `pipelines/events.py`, stored as one `model_registry`
+  row named `events`; `uv run radar events`; the worker runs it once a day.
+- `GET /events`: the stored findings, plus the next events read from the dates file at
+  the time of the request.
+- Calendar screen (`/calendar`, `/calendar/{fed|jobs|inflation}`): "Coming up" in the
+  viewer's local time, and a tab per event with, for each market, the typical move on
+  the day against any other day and the four direction shares against any day.
+- "Coming up" on the Overview; Calendar in the sidebar.
+- **Grade** (`grade_events`): on the market with the fewest past events of the kind:
+  100 for solid, 30 for fair.
+- Days until an event are counted in the viewer's own calendar, so "tomorrow" is right
+  in GMT+8.
+- A report that came out on a market holiday (Good Friday 2023, for example) has no
+  trading day of its own for gold and stocks and is left out for them.
+- Notebook `10_events.ipynb`.
+
+**Not done.** Events are not yet in the daily brief. The dates file needs a refresh
+when the 2027 BLS schedule is published (it holds BLS dates to December 2026).
+

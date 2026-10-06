@@ -26,6 +26,7 @@ import {
   type TrackRecord,
   type Volatility,
   type Brief,
+  type Calendar,
   type RegularBuying,
   type SignalRecords,
   type Signals,
@@ -219,6 +220,15 @@ export function useSavePortfolio() {
       client.setQueryData(["portfolio"], saved);
       void client.invalidateQueries({ queryKey: ["portfolio", "analysis"] });
     },
+  });
+}
+
+/** Scheduled economic events: what is coming and how markets behaved around past ones. */
+export function useCalendar() {
+  return useQuery({
+    queryKey: ["calendar"],
+    queryFn: () => orNull(() => getJson<Calendar>("/events")),
+    refetchInterval: 30 * 60_000,
   });
 }
 
