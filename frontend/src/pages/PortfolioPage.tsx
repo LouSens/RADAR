@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from "../api/client";
 import { usePortfolio, usePortfolioAnalysis, useRelationships } from "../api/queries";
+import { RangeAheadPanel, SleevesPanel } from "../components/AheadPanels";
 import { DriverEvidence, driverHeadline } from "../components/DriversPanel";
 import { HoldingsEditor } from "../components/HoldingsEditor";
 import { LevelsPanel, MixesPanel, targetSummary } from "../components/PlanPanels";
@@ -12,6 +13,7 @@ import { Caption, Message, Panel, Segmented } from "../components/ui";
 import {
   Bars,
   Donut,
+  Meter,
   OneIn,
   RiskScale,
   StateChip,
@@ -73,6 +75,9 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
     .filter((state) => state.label === "turbulent")
     .reduce((sum, state) => sum + state.weight, 0);
   const episodes = analysis.stress.filter((e) => e.available && e.change != null);
+  const month = analysis.simulation?.horizons.find((h) => h.summary.steps === 30)?.summary;
+  const eighty = month?.intervals.find((i) => i.level === 0.8);
+  const ends = (month?.quantiles ?? {}) as Record<string, number>;
 
   // While stock markets are shut: what Bitcoin's move has meant for a held market's open.
   const together = useRelationships().data;
@@ -241,6 +246,26 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
             note={`${formatShare(day.var, 1)}, passed on about 1 day in 20`}
           >
             <OneIn lit={1} of={20} label="About 1 day in 20" />
+          </Tile>
+        )}
+
+        {month && eighty && (
+          <Tile
+            label="Value in 30 trading days"
+            to={`${BASE}/ahead`}
+            trust={trust.simulation ?? undefined}
+            figure={`${formatMoney(eighty.low)} – ${formatMoney(eighty.high)}`}
+            note="8 in 10 simulated futures end in this range"
+          >
+            <Meter
+              value={analysis.simulation?.start_value ?? covered}
+              min={ends["0.05"] ?? eighty.low}
+              max={ends["0.95"] ?? eighty.high}
+              band={[eighty.low, eighty.high]}
+              left={formatMoney(ends["0.05"] ?? eighty.low)}
+              right={formatMoney(ends["0.95"] ?? eighty.high)}
+              label="Where today's value sits in the range of simulated outcomes"
+            />
           </Tile>
         )}
 
@@ -833,6 +858,12 @@ export function PortfolioPage() {
       {portfolio.data &&
         section === "limits" &&
         (analysis ? <Limits analysis={analysis} /> : needsHoldings)}
+      {portfolio.data &&
+        section === "ahead" &&
+        (analysis ? <RangeAheadPanel analysis={analysis} /> : needsHoldings)}
+      {portfolio.data &&
+        section === "sleeves" &&
+        (analysis ? <SleevesPanel analysis={analysis} /> : needsHoldings)}
       {portfolio.data &&
         section === "forces" &&
         (analysis ? <Forces analysis={analysis} /> : needsHoldings)}

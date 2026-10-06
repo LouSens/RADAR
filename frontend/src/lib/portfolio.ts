@@ -7,6 +7,8 @@ export const PORTFOLIO_SECTIONS = [
   { path: "mixes", label: "Compare mixes" },
   { path: "sources", label: "Risk by holding" },
   { path: "limits", label: "Possible loss" },
+  { path: "ahead", label: "Value range ahead" },
+  { path: "sleeves", label: "Core and satellite" },
   { path: "forces", label: "What it moves with" },
   { path: "episodes", label: "Past crashes" },
 ] as const;

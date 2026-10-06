@@ -15,6 +15,14 @@ def joint(n: int = 600, seed: int = 4) -> np.ndarray:
     return np.column_stack([common + rng.normal(0, 0.002, n), 2 * common])
 
 
+def spread(ends: np.ndarray) -> float:
+    return float(np.quantile(ends, 0.975) - np.quantile(ends, 0.025))
+
+
+def width(horizon: sim.Horizon) -> float:
+    return horizon.summary.quantiles["0.95"] - horizon.summary.quantiles["0.05"]
+
+
 def test_same_seed_gives_identical_paths() -> None:
     returns, weights = joint(), np.array([0.5, 0.3])
     a = sim.simulate(returns, weights, 30, n_paths=300, seed=7)
@@ -66,7 +74,6 @@ def test_runs_of_days_keep_rough_patches_together() -> None:
     returns, weights = joint(), np.array([0.5, 0.5])
     runs = sim.simulate(returns, weights, 30, n_paths=4000, block=10, seed=5)[:, -1]
     single = sim.simulate(returns, weights, 30, n_paths=4000, block=1, seed=5)[:, -1]
-    spread = lambda x: np.quantile(x, 0.975) - np.quantile(x, 0.025)  # noqa: E731
     assert spread(runs) > spread(single) * 1.1
 
 
@@ -140,7 +147,6 @@ def test_the_stored_result_is_in_money_and_needs_enough_history() -> None:
         assert horizon.summary.expected_worst_drawdown < 0
         assert [c.level for c in horizon.coverage] == list(simulator.INTERVALS)
     # Further ahead, a wider range.
-    width = lambda h: h.summary.quantiles["0.95"] - h.summary.quantiles["0.05"]  # noqa: E731
     assert width(quarter) > width(month)
     # The fan starts at today's value and runs to the longest horizon.
     assert all(len(path) == 91 and path[0] == 1000.0 for path in result.fan.values())

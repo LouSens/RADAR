@@ -261,6 +261,19 @@ export function useSetTarget() {
   });
 }
 
+/** Tag holdings as core or satellite, or clear a tag with null. */
+export function useSetTags() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { tags: Record<string, "core" | "satellite" | null> }) =>
+      putJson<PortfolioAnalysis>("/portfolio/tags", input),
+    onSuccess: (analysis) => {
+      client.setQueryData(["portfolio", "analysis"], analysis);
+      void client.invalidateQueries({ queryKey: ["portfolio"], exact: true });
+    },
+  });
+}
+
 /** The risk figures for a mix being tried. Saves nothing. */
 export function useWhatIf() {
   return useMutation({
