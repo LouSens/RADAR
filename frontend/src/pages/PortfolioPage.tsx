@@ -9,7 +9,7 @@ import { HoldingsEditor } from "../components/HoldingsEditor";
 import { LevelsPanel, MixesPanel, targetSummary } from "../components/PlanPanels";
 import { oddsLabel } from "../components/RiskPanel";
 import { RegularBuyingPanel } from "../components/RegularBuyingPanel";
-import { Tabs } from "../components/Tabs";
+import { SectionMenu, Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented } from "../components/ui";
 import {
   Bars,
@@ -114,14 +114,12 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
         </p>
       )}
       {analysis.young.length > 0 && (
-        <p className="well px-4 py-3 text-sm text-muted">
-          {analysis.young.map((item) => (
-            <span key={item.symbol}>
-              <span className="font-medium text-ink">{item.name}</span> is a newer holding with{" "}
-              {item.days} days of prices, so its risk is an estimate from a short record.{" "}
-            </span>
-          ))}
-          Loss figures are measured on the other holdings and scaled up for it.
+        <p className="well px-4 py-2.5 text-sm text-muted">
+          <span className="font-medium text-ink">
+            {analysis.young.map((item) => item.name.split(" (")[0]).join(", ")}
+          </span>{" "}
+          is new, with {analysis.young.map((item) => item.days).join(" and ")} days of prices: its
+          risk is a rough estimate.
         </p>
       )}
       <TileGrid>
@@ -595,6 +593,8 @@ function Limits({ analysis }: { analysis: PortfolioAnalysis }) {
           : ""}
         . Today&apos;s proportions are assumed throughout. A week is five market sessions, and
         weekly periods do not overlap.
+        {analysis.young.length > 0 &&
+          " The limits are measured on the holdings with a long record and scaled up for the newer ones."}
       </Caption>
     </Panel>
   );
@@ -728,7 +728,7 @@ export function ExchangeCheck({
   const gap = found === undefined ? undefined : total - found;
   const short = gap !== undefined && total > 0 && gap / total > GAP_TOLERANCE;
   return (
-    <section className="glass p-5 @xl:p-7" aria-label="Checked against Binance">
+    <section className="glass p-4 @xl:p-7" aria-label="Checked against Binance">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h2 className="text-base font-semibold tracking-tight">Checked against Binance</h2>
         {gap !== undefined && (
@@ -805,8 +805,9 @@ export function PortfolioPage() {
       {portfolio.data && (section === undefined || section === "") && (
         <>
           {analysis ? <Brief analysis={analysis} /> : needsHoldings}
+          <SectionMenu base={BASE} items={PORTFOLIO_SECTIONS} title="Your portfolio" />
           {analysis && (
-            <section className="glass p-5 @xl:p-7">
+            <section className="glass p-4 @xl:p-7">
               <h2 className="text-base font-semibold tracking-tight">What you hold</h2>
               <ul className="mt-3">
                 {analysis.positions.map((position) => (
@@ -841,7 +842,7 @@ export function PortfolioPage() {
       )}
 
       {portfolio.data && section === "holdings" && (
-        <section className="glass p-5 @xl:p-7">
+        <section className="glass p-4 @xl:p-7">
           <h2 className="mb-4 text-base font-semibold tracking-tight">Your holdings</h2>
           <HoldingsEditor portfolio={portfolio.data} />
         </section>

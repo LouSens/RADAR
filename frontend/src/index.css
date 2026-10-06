@@ -413,35 +413,99 @@ body::before {
 }
 
 /* The pages of one market, as a row of tabs that scrolls sideways when it must. */
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin-inline: -0.25rem;
-  padding: 0.25rem;
+/* The way back from a page inside a subject. */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: -0.5rem;
+  padding: 0.4rem 0.75rem 0.4rem 0.5rem;
   border-radius: 999px;
-  position: relative;
-}
-
-.tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.tab-link {
-  flex: none;
-  border-radius: 999px;
-  padding: 0.45rem 0.95rem;
   font-size: 0.875rem;
   font-weight: 500;
-  white-space: nowrap;
+  color: var(--muted);
   transition:
     background 0.2s ease,
-    color 0.2s ease;
+    color 0.2s ease,
+    transform 0.15s ease;
 }
 
-.tab-link:hover {
+.back-link:hover {
   color: var(--ink);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* One page in a subject's list of pages: its name, what it answers, and an arrow. */
+.menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.8rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ink);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.menu-row svg {
+  color: var(--faint);
+  transition: transform 0.2s ease;
+}
+
+.menu-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line-strong);
+}
+
+.menu-row:hover svg {
+  transform: translateX(3px);
+  color: var(--ink);
+}
+
+/* Anything tapped gives a little under the finger. */
+.press,
+.menu-row,
+.back-link,
+.tile {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.press:active,
+.menu-row:active,
+.back-link:active,
+.tile:active {
+  transform: scale(0.975);
+}
+
+/* A page eases in when its address changes. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.page-in {
+  animation: page-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in {
+    animation: none;
+  }
+
+  .press:active,
+  .menu-row:active,
+  .back-link:active,
+  .tile:active {
+    transform: none;
+  }
 }
 
 /* A section with nothing stored yet says so, after a moment, instead of staying blank. */
@@ -545,5 +609,267 @@ body::before {
   .aurora::before,
   .aurora::after {
     animation: none;
+  }
+}
+
+/* On a phone: a little more air at the top, tighter cards, and a solid bar to tap on,
+   so nothing reads as cropped or shows through. */
+.capsule-solid {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+    rgba(13, 14, 20, 0.95);
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+    padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+  }
+
+  .pb-tabbar {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .tile {
+    padding: 0.8rem 0.95rem;
+    border-radius: 16px;
+  }
+
+  .menu-row {
+    min-height: 3.25rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 14px;
+  }
+}
+
+/* --------------------------------------------------------------------------------------
+   The look (decision 057): quiet, but not plain.
+
+   One light source and one material. The light is a soft glow at the top of the window
+   in the colour of whatever is being looked at; it belongs to the window, so it reaches
+   every edge. Cards are thin panes of the same dark glass, lit from above: translucent,
+   so the light shows through them and they sit in the page instead of on it. Colour is
+   kept for meaning: a market's own hue, calm green, alert red.
+   -------------------------------------------------------------------------------------- */
+@property --tint {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #5cd6f7;
+}
+
+:root {
+  --bg: #090a0e;
+  --radius-card: 20px;
+  transition: --tint 0.9s ease;
+}
+
+/* The pages' own glow was clipped to the content column and read as a frame. */
+.aurora {
+  display: none;
+}
+
+body::before {
+  content: "";
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  mask-image: none;
+  background:
+    radial-gradient(
+      110% 55% at 50% -12%,
+      color-mix(in srgb, var(--tint) 26%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      50% 38% at 100% 0%,
+      color-mix(in srgb, var(--tint) 12%, transparent),
+      transparent 70%
+    );
+}
+
+/* A fine grid of points near the top, like the face of an instrument. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 22px 22px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 46%);
+}
+
+.glass,
+.tile,
+.menu-row,
+.capsule {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.022));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.tile {
+  border-radius: 18px;
+}
+
+.tile:hover,
+.menu-row:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
+  border-color: color-mix(in srgb, var(--tint) 38%, rgba(255, 255, 255, 0.12));
+  transform: translateY(-1px);
+}
+
+/* A market's card carries a breath of its own colour in the corner. */
+.toned {
+  background:
+    radial-gradient(
+      90% 130% at 0% 0%,
+      color-mix(in srgb, var(--tone) 16%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.022));
+}
+
+.toned:hover {
+  background:
+    radial-gradient(
+      90% 130% at 0% 0%,
+      color-mix(in srgb, var(--tone) 24%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
+  border-color: color-mix(in srgb, var(--tone) 45%, rgba(255, 255, 255, 0.12));
+}
+
+.well {
+  background: rgba(255, 255, 255, 0.032);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+/* The bar a thumb rests on is solid, so nothing shows through it. */
+.capsule-solid {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)), #111218;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Where you are: lit in the page's colour. */
+.lens {
+  background: color-mix(in srgb, var(--tint) 16%, rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 34%, transparent);
+  color: var(--ink);
+}
+
+/* Small labels are set like the engraving on an instrument. */
+.label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.title {
+  font-size: clamp(1.7rem, 1.2rem + 1.8vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  background: linear-gradient(180deg, #ffffff 30%, #a9adbb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-primary {
+  box-shadow:
+    0 6px 20px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.menu-row:hover svg,
+.back-link:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 640px) {
+  .title {
+    font-size: 1.7rem;
+  }
+
+  .tile {
+    border-radius: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition: none;
+  }
+
+  .tile:hover,
+  .menu-row:hover {
+    transform: none;
+  }
+}
+
+/* A shortcut on Home: a round icon with its name beneath. */
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.action-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 16px;
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.action:hover {
+  color: var(--ink);
+}
+
+.action:hover .action-icon {
+  border-color: color-mix(in srgb, var(--tint) 45%, rgba(255, 255, 255, 0.12));
+  background: color-mix(in srgb, var(--tint) 14%, rgba(255, 255, 255, 0.05));
+}
+
+.action:active {
+  transform: scale(0.96);
+}
+
+@media (max-width: 640px) {
+  .tile.toned {
+    padding: 0.7rem 0.7rem 0.65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action:active {
+    transform: none;
   }
 }

@@ -2,9 +2,17 @@ import type { Signal } from "../api/client";
 
 export const SIGNAL_PAGES = [
   { path: "", label: "Latest" },
-  { path: "regime_change", label: "Change of state" },
-  { path: "abnormal_move", label: "Abnormal move" },
-  { path: "sentiment_shock", label: "Unusual news tone" },
+  {
+    path: "regime_change",
+    label: "Change of state",
+    hint: "What followed a change of market state",
+  },
+  {
+    path: "abnormal_move",
+    label: "Abnormal move",
+    hint: "What followed an unusually large hourly move",
+  },
+  { path: "sentiment_shock", label: "Unusual news tone", hint: "Tested, and why it is not shown" },
 ] as const;
 
 export type SignalType = Exclude<(typeof SIGNAL_PAGES)[number]["path"], "">;

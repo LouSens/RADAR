@@ -272,9 +272,12 @@ describe("PortfolioPage", () => {
       young: [{ symbol: "PURR", name: "PURR", weight: 0.01, days: 208 }],
     };
     show("/portfolio");
-    expect(screen.getByText(/is a newer holding with/)).toBeVisible();
-    expect(screen.getByText(/208 days of prices/)).toBeVisible();
-    expect(screen.getByText(/scaled up for it/)).toBeVisible();
+    expect(
+      screen.getByText(/is new, with 208 days of prices: its risk is a rough estimate/),
+    ).toBeVisible();
+    cleanup();
+    show("/portfolio/limits");
+    expect(screen.getByText(/scaled up for the newer ones/)).toBeInTheDocument();
   });
 
   it("ties the holdings to the state of their markets and to the weekend", () => {

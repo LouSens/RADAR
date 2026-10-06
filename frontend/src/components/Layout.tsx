@@ -1,15 +1,21 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
-import type { Asset } from "../api/client";
 import { useStreamStatus } from "../api/live";
 import { useAssets, useHealth } from "../api/queries";
-import { assetColorVar, shortName } from "./ui";
+import { assetColorVar } from "./ui";
 
 function RadarMark() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" stroke="var(--accent)" strokeOpacity="0.35" strokeWidth="1.2" />
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="var(--accent)"
+        strokeOpacity="0.35"
+        strokeWidth="1.2"
+      />
       <circle cx="12" cy="12" r="6" stroke="var(--accent)" strokeOpacity="0.6" strokeWidth="1.2" />
       <path d="M12 12 19 5" stroke="var(--accent)" strokeWidth="1.6" strokeLinecap="round" />
       <circle cx="12" cy="12" r="1.8" fill="var(--accent)" />
@@ -68,24 +74,6 @@ function Icon({ children }: { children: ReactNode }) {
   );
 }
 
-/** A coloured ring carrying the asset's initial: the asset's mark in navigation. */
-function AssetGlyph({ asset, size = 22 }: { asset: Asset; size?: number }) {
-  return (
-    <span
-      className="grid place-items-center rounded-full border text-[10px] font-bold leading-none"
-      style={{
-        width: size,
-        height: size,
-        borderColor: `var(${assetColorVar(asset)})`,
-        color: `var(${assetColorVar(asset)})`,
-      }}
-      aria-hidden="true"
-    >
-      {shortName(asset).charAt(0)}
-    </span>
-  );
-}
-
 /** Whether everything behind the app is fine: stored data and the live feed. */
 function useSystemGood(): boolean {
   const stream = useStreamStatus();
@@ -110,6 +98,23 @@ function SystemIcon({ good }: { good: boolean }) {
   );
 }
 
+/** The five places in RADAR. Everything else is reached from one of them. */
+const PLACES = [
+  { to: "/", label: "Home", icon: "home", under: [] },
+  { to: "/markets", label: "Markets", icon: "together", under: ["/asset", "/together"] },
+  { to: "/portfolio", label: "Portfolio", icon: "portfolio", under: [] },
+  { to: "/signals", label: "Signals", icon: "signals", under: [] },
+  { to: "/calendar", label: "Calendar", icon: "calendar", under: [] },
+] as const;
+
+/** Whether an address belongs to a place: the place itself or a page under it. */
+function isAt(place: (typeof PLACES)[number], pathname: string): boolean {
+  if (place.to === "/") return pathname === "/";
+  return [place.to, ...place.under].some(
+    (root) => pathname === root || pathname.startsWith(`${root}/`),
+  );
+}
+
 const WIDE = "(min-width: 1024px)";
 
 /** True when there is room for the full sidebar; narrower screens get the icon rail. */
@@ -128,7 +133,6 @@ function useWide(): boolean {
   return wide;
 }
 
-
 const COLLAPSED_KEY = "radar.sidebar.collapsed";
 
 function readCollapsed(): boolean {
@@ -145,22 +149,21 @@ const sideLink = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 const tab = ({ isActive }: { isActive: boolean }) =>
-  `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[20px] py-2 text-[10.5px] font-medium transition-all duration-300 ${
-    isActive ? "lens text-ink" : "text-muted"
+  `press flex h-11 items-center justify-center gap-2 rounded-full transition-all duration-300 ${
+    isActive ? "lens flex-[2.2] px-4 text-ink" : "flex-1 text-muted"
   }`;
 
 function Sidebar({
-  primary,
   collapsed,
   canToggle,
   onToggle,
 }: {
-  primary: Asset[];
   collapsed: boolean;
   canToggle: boolean;
   onToggle: () => void;
 }) {
   const good = useSystemGood();
+  const { pathname } = useLocation();
   const hidden = collapsed ? "sr-only" : "truncate";
   return (
     <aside
@@ -173,61 +176,24 @@ function Sidebar({
           <RadarMark />
           <span className={`text-[15px] font-bold tracking-[0.14em] ${hidden}`}>RADAR</span>
         </Link>
-        {!collapsed && canToggle && (
-          <CollapseButton collapsed={collapsed} onToggle={onToggle} />
-        )}
+        {!collapsed && canToggle && <CollapseButton collapsed={collapsed} onToggle={onToggle} />}
       </div>
 
       <nav aria-label="Main" className="mt-4 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-        <NavLink to="/" end className={sideLink} title="Overview">
-          <span className="grid w-[22px] shrink-0 place-items-center">
-            <Icon>{icon.home}</Icon>
-          </span>
-          <span className={hidden}>Overview</span>
-        </NavLink>
-
-        <p className={`label mt-5 px-2.5 pb-1 text-xs ${collapsed ? "sr-only" : ""}`}>Markets</p>
-        {collapsed && <div className="mx-2.5 my-3 border-t border-line" aria-hidden="true" />}
-        {primary.map((asset) => {
-          const to = `/asset/${asset.slug}`;
-          return (
-            <div key={asset.slug}>
-              <NavLink to={to} className={sideLink} title={shortName(asset)}>
-                <span className="grid w-[22px] shrink-0 place-items-center">
-                  <AssetGlyph asset={asset} />
-                </span>
-                <span className={hidden}>{shortName(asset)}</span>
-              </NavLink>
-            </div>
-          );
-        })}
-        <NavLink to="/together" className={sideLink} title="Market connections">
-          <span className="grid w-[22px] shrink-0 place-items-center">
-            <Icon>{icon.together}</Icon>
-          </span>
-          <span className={hidden}>Market connections</span>
-        </NavLink>
-        <NavLink to="/signals" className={sideLink} title="Signals">
-          <span className="grid w-[22px] shrink-0 place-items-center">
-            <Icon>{icon.signals}</Icon>
-          </span>
-          <span className={hidden}>Signals</span>
-        </NavLink>
-        <NavLink to="/calendar" className={sideLink} title="Calendar">
-          <span className="grid w-[22px] shrink-0 place-items-center">
-            <Icon>{icon.calendar}</Icon>
-          </span>
-          <span className={hidden}>Calendar</span>
-        </NavLink>
-
-        <p className={`label mt-5 px-2.5 pb-1 text-xs ${collapsed ? "sr-only" : ""}`}>Yours</p>
-        {collapsed && <div className="mx-2.5 my-3 border-t border-line" aria-hidden="true" />}
-        <NavLink to="/portfolio" className={sideLink} title="Portfolio">
-          <span className="grid w-[22px] shrink-0 place-items-center">
-            <Icon>{icon.portfolio}</Icon>
-          </span>
-          <span className={hidden}>Portfolio</span>
-        </NavLink>
+        {PLACES.map((place) => (
+          <Link
+            key={place.to}
+            to={place.to}
+            aria-current={isAt(place, pathname) ? "page" : undefined}
+            className={sideLink({ isActive: isAt(place, pathname) })}
+            title={place.label}
+          >
+            <span className="grid w-[22px] shrink-0 place-items-center">
+              <Icon>{icon[place.icon]}</Icon>
+            </span>
+            <span className={hidden}>{place.label}</span>
+          </Link>
+        ))}
       </nav>
 
       <div className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
@@ -238,9 +204,7 @@ function Sidebar({
             : {good ? "all systems normal" : "something needs attention"}
           </span>
         </NavLink>
-        {collapsed && canToggle && (
-          <CollapseButton collapsed={collapsed} onToggle={onToggle} />
-        )}
+        {collapsed && canToggle && <CollapseButton collapsed={collapsed} onToggle={onToggle} />}
       </div>
     </aside>
   );
@@ -265,8 +229,26 @@ function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
 }
 
 export function Layout() {
-  const primary = useAssets().data?.filter((a) => a.is_primary) ?? [];
+  const { pathname } = useLocation();
   const [preferCollapsed, setCollapsed] = useState(readCollapsed);
+
+  // The light behind the page takes the colour of the market being looked at. It is
+  // set on the document, so it fills the whole window and is never clipped.
+  const assets = useAssets().data;
+  useEffect(() => {
+    const slug = pathname.match(/^\/asset\/([^/]+)/)?.[1];
+    const asset = assets?.find((a) => a.slug === slug);
+    document.documentElement.style.setProperty(
+      "--tint",
+      `var(${asset ? assetColorVar(asset) : "--accent"})`,
+    );
+  }, [pathname, assets]);
+
+  // A new page starts at its top, like any other.
+  useEffect(() => {
+    if (typeof window.scrollTo === "function") window.scrollTo(0, 0);
+  }, [pathname]);
+
   const wide = useWide();
   const good = useSystemGood();
   // Between a phone and a full desktop there is only room for the icon rail.
@@ -285,7 +267,7 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Sidebar primary={primary} collapsed={collapsed} canToggle={wide} onToggle={toggle} />
+      <Sidebar collapsed={collapsed} canToggle={wide} onToggle={toggle} />
 
       {/* Phones navigate with the tabs at the bottom, within thumb reach; nothing on top. */}
       <div
@@ -294,7 +276,10 @@ export function Layout() {
         }`}
       >
         <main className="page pb-tabbar @container mx-auto w-full max-w-[1280px] flex-1">
-          <Outlet />
+          {/* Each page eases in; the key restarts it when the address changes. */}
+          <div key={pathname} className="page-in">
+            <Outlet />
+          </div>
           {/* On a phone the tabs hold the markets and the portfolio; the status lives here. */}
           <Link
             to="/system"
@@ -307,9 +292,7 @@ export function Layout() {
             {good ? "All systems normal" : "Something needs attention"}
           </Link>
           <p className="mt-4 max-w-[78ch] text-xs leading-relaxed text-faint md:mt-12">
-            RADAR is an analytics tool for information and education. It is not financial advice and
-            it does not place trades. Historical patterns do not guarantee future results. Gold is
-            represented by GLD, a fund backed by physical gold that trades only in US market hours.
+            For information only. Not financial advice; RADAR places no trades.
           </p>
         </main>
       </div>
@@ -318,27 +301,22 @@ export function Layout() {
         aria-label="Main, phone"
         className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:hidden"
       >
-        <div className="capsule pointer-events-auto mx-auto flex max-w-lg gap-0.5 rounded-[26px] p-1.5">
-          <NavLink to="/" end className={tab}>
-            <Icon>{icon.home}</Icon>
-            Overview
-          </NavLink>
-          {primary.map((asset) => (
-            <NavLink key={asset.slug} to={`/asset/${asset.slug}`} className={tab}>
-              <AssetGlyph asset={asset} />
-              <span className="max-w-full truncate px-0.5">
-                {shortName(asset).replace(/^US s/, "S")}
-              </span>
-            </NavLink>
-          ))}
-          <NavLink to="/together" className={tab}>
-            <Icon>{icon.together}</Icon>
-            <span className="max-w-full truncate px-0.5">Links</span>
-          </NavLink>
-          <NavLink to="/portfolio" className={tab}>
-            <Icon>{icon.portfolio}</Icon>
-            <span className="max-w-full truncate px-1">Portfolio</span>
-          </NavLink>
+        <div className="capsule capsule-solid pointer-events-auto mx-auto flex max-w-md gap-1 rounded-full p-1.5">
+          {PLACES.map((place) => {
+            const here = isAt(place, pathname);
+            return (
+              <Link
+                key={place.to}
+                to={place.to}
+                aria-label={place.label}
+                aria-current={here ? "page" : undefined}
+                className={tab({ isActive: here })}
+              >
+                <Icon>{icon[place.icon]}</Icon>
+                {here && <span className="text-[13px] font-semibold">{place.label}</span>}
+              </Link>
+            );
+          })}
         </div>
       </nav>
     </div>

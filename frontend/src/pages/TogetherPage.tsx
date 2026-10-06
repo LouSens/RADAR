@@ -3,7 +3,7 @@ import { Navigate, useParams } from "react-router-dom";
 
 import type { CorrelationGrid, Pair, Relationships } from "../api/client";
 import { useAssets, useRelationships } from "../api/queries";
-import { Tabs } from "../components/Tabs";
+import { SectionMenu, Tabs } from "../components/Tabs";
 import { Meter, Spark, Tile, TileGrid } from "../components/viz";
 import { Caption, Message, Panel, Segmented, shortName } from "../components/ui";
 import { formatChange, formatCount, formatShare } from "../lib/format";
@@ -545,10 +545,19 @@ export function TogetherPage() {
       <header className="flex items-baseline gap-3">
         <h1 className="title">Market connections</h1>
       </header>
-      <Tabs base={BASE} items={TOGETHER_SECTIONS} label="Market connections pages" />
+      <Tabs
+        base={BASE}
+        items={TOGETHER_SECTIONS}
+        label="Market connections pages"
+        parent="Market connections"
+        up={{ to: "/markets", label: "Markets" }}
+      />
       {query.isPending && <Message>Loading…</Message>}
       {!query.isPending && !data && <Message>Nothing is stored for this yet.</Message>}
       {data && (section === undefined || section === "") && <Brief data={data} name={name} />}
+      {(section === undefined || section === "") && (
+        <SectionMenu base={BASE} items={TOGETHER_SECTIONS} title="Look closer" />
+      )}
       {data && section === "pairs" && <Pairs data={data} name={name} />}
       {data && section === "grid" && <AllMarkets data={data} name={name} />}
       {data && section === "spillovers" && <Spillovers data={data} name={name} />}

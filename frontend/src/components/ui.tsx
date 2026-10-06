@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import type { Asset, Trust } from "../api/client";
 import { formatChange } from "../lib/format";
@@ -118,6 +118,7 @@ export function Sparkline({
   height?: number;
 }) {
   const path = sparklinePath(values, width, height);
+  const id = useId();
   if (!path) return <div style={{ width, height }} />;
   return (
     <svg
@@ -126,6 +127,13 @@ export function Sparkline({
       className="h-full w-full"
       aria-hidden="true"
     >
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={`var(${colorVar})`} stopOpacity="0.28" />
+          <stop offset="1" stopColor={`var(${colorVar})`} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${path} L${width},${height} L0,${height} Z`} fill={`url(#${id})`} />
       <path
         d={path}
         fill="none"
@@ -240,7 +248,7 @@ export function Panel({
 }) {
   return (
     <section id={id} className="glass" aria-labelledby={`${id}-title`}>
-      <header className="p-5 @xl:p-7">
+      <header className="p-4 @xl:p-7">
         <div className="flex items-center justify-between gap-3">
           <h2 id={`${id}-title`} className="label">
             {title}
@@ -248,7 +256,9 @@ export function Panel({
           <TrustBadge trust={trust} />
         </div>
         {headline && (
-          <p className="num mt-1.5 text-xl font-semibold leading-snug tracking-tight">{headline}</p>
+          <p className="num mt-1.5 text-lg font-semibold leading-snug tracking-tight @xl:text-xl">
+            {headline}
+          </p>
         )}
         {trust && (
           <details className="about mt-2">
@@ -257,7 +267,9 @@ export function Panel({
           </details>
         )}
       </header>
-      <div className="flex flex-col gap-6 border-t border-line p-5 @xl:p-7">{children}</div>
+      <div className="flex flex-col gap-5 border-t border-line p-4 @xl:gap-6 @xl:p-7">
+        {children}
+      </div>
     </section>
   );
 }

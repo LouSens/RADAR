@@ -2,10 +2,10 @@ import type { Pair, Spillover, WeekendGap } from "../api/client";
 
 export const TOGETHER_SECTIONS = [
   { path: "", label: "Summary" },
-  { path: "pairs", label: "Two markets compared" },
-  { path: "grid", label: "All markets compared" },
-  { path: "spillovers", label: "Knock-on effects" },
-  { path: "weekends", label: "Weekend effect" },
+  { path: "pairs", label: "Two markets compared", hint: "Any two markets side by side" },
+  { path: "grid", label: "All markets compared", hint: "Every market against every other" },
+  { path: "spillovers", label: "Knock-on effects", hint: "Does trouble in one spread to another" },
+  { path: "weekends", label: "Weekend effect", hint: "What Bitcoin's weekend means for Monday" },
 ] as const;
 
 export type TogetherSection = (typeof TOGETHER_SECTIONS)[number]["path"];

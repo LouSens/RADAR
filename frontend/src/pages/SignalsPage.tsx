@@ -3,7 +3,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { Signal, SignalRecord } from "../api/client";
 import { useAssets, useSignalRecords, useSignals } from "../api/queries";
-import { Tabs } from "../components/Tabs";
+import { SectionMenu, Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented, assetColorVar, shortName } from "../components/ui";
 import { formatCount, formatShare } from "../lib/format";
 import {
@@ -345,7 +345,14 @@ export function SignalsPage() {
         <h1 className="title">Signals</h1>
       </header>
       <Tabs base={BASE} items={SIGNAL_PAGES} label="Signal pages" />
-      {type === undefined ? <Feed /> : <Records type={type} />}
+      {type === undefined ? (
+        <>
+          <Feed />
+          <SectionMenu base={BASE} items={SIGNAL_PAGES} title="What has followed each kind" />
+        </>
+      ) : (
+        <Records type={type} />
+      )}
     </div>
   );
 }

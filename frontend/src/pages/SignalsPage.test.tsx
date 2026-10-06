@@ -242,6 +242,13 @@ describe("BriefCard", () => {
     expect(
       screen.getByRole("link", { name: "Bitcoin: the market is in a calm state." }),
     ).toHaveAttribute("href", "/asset/btc-usd/state");
+    // Only the first sentence of each subject shows until the rest is asked for.
+    expect(screen.queryByRole("link", { name: "No signals in the past 7 days." })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Read all" }));
+    expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
     expect(screen.getByRole("link", { name: "No signals in the past 7 days." })).toHaveAttribute(
       "href",
       "/signals",

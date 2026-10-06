@@ -1831,3 +1831,66 @@ expected figures, which RADAR does not have.
 **Not done.** Events are not yet in the daily brief. The dates file needs a refresh
 when the 2027 BLS schedule is published (it holds BLS dates to December 2026).
 
+## 057. Navigation and look, reworked after the user's review (2026-10-06)
+
+The user's review, in their words: sideways-scrolling tab strips on a phone feel
+machine-made; too many choices with no sign of where to start or what each page is for;
+no back button; phone cards cropped or oversized; on a desk the background and the
+cards feel disconnected, with the background stopping short like a border; and, after a
+first flat attempt, "minimalist and clean, not bland and tasteless". This replaces the
+navigation of decision 036 and the surfaces of decision 023.
+
+**Navigation.**
+
+- **Five places, the same on a phone and on a desk:** Home, Markets, Portfolio, Signals,
+  Calendar. System stays at the foot of the sidebar and as a status line on a phone.
+  The three markets are no longer in the main navigation: they are on Markets, with the
+  side-by-side comparison and Market connections.
+- **No tab strips anywhere.** A subject (a market, the portfolio, signals, market
+  connections) has its own page, and that page ends with a short list of its other
+  pages: each one's name and, in a few words, what it answers (`SectionMenu`; hints are
+  kept under 48 characters by a test). The portfolio's list is grouped: Understand your
+  risk, Try things.
+- **A way back on every inner page:** "Back to Portfolio", "Back to Gold". A market and
+  Market connections also lead back to Markets. Addresses are unchanged, so old links
+  and the brief's sentence links still work.
+- Every page starts at its top and eases in when the address changes; anything tapped
+  gives slightly under the finger. Both are off for people who ask for reduced motion.
+
+**Home, rebuilt around the portfolio** (after two references the user supplied: an
+exchange app's home and a banking app's). In order: the portfolio's value as the one
+large figure, with its risk level and typical day; four shortcuts as round icons (Your
+risk, Range ahead, Try a mix, Regular buying), so there is an obvious first thing to do;
+the three markets as small cards side by side, at every width; then what is coming up
+and the newest signals as short lists, and the brief, one sentence per subject until
+"Read all". With nothing held, the figure is replaced by "Start with what you hold" and
+one button. The large chart, the market picker, and the side-by-side table left Home:
+the chart is on each market's page and the table is on Markets.
+
+**The phone's bar** is a pill: the place you are in shows its name, the other four are
+icons with their names for screen readers.
+
+**Phone density.** Market cards are single compact rows on a phone and cards when there
+is room. Card padding, headline and figure sizes, the donut, and the gaps are smaller
+on a phone; the page has more room at the top; the bottom bar is solid, so page text no
+longer shows through it. The long note about a newer holding is one line, and its
+detail (limits scaled for newer holdings) moved to the Possible loss page.
+
+**The look: one light, one material.**
+
+- The glow behind a page used to be drawn inside the content column, which clipped it
+  and made the frame the user saw. It now belongs to the window (`body::before`), fills
+  it edge to edge, and takes the colour of the market being looked at, changing
+  smoothly between pages.
+- Cards, menu rows, and the navigation are the same thin translucent pane, lit from
+  above with a hairline edge: the light shows through, so a card sits in the page and
+  not on a different one. No blur and no drop shadows, except under the phone's bar.
+- Character without clutter: a market's card carries its own colour in the corner and
+  under its week line; small labels are set in spaced capitals; the page title is
+  larger; the place you are in is lit in the page's colour.
+- The first attempt of this pass (flat solid cards on a flat ground, no light) was
+  rejected by the user as bland and is not to be returned to.
+
+**Not changed.** Section names (decision 042), what each page contains, and every
+figure. The detail pages still have the density they had; only their frame changed.
+
