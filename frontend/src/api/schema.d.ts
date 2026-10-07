@@ -478,6 +478,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Steps
+         * @description Where cash over the plan goes, at what prices, and why. Worked out from the
+         *     stored portfolio and plan each time it is asked for; nothing is traded.
+         */
+        get: operations["get_steps_api_v1_portfolio_steps_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/target": {
         parameters: {
             query?: never;
@@ -1551,6 +1572,20 @@ export interface components {
             /** Weighted */
             weighted: number | null;
         };
+        /**
+         * Past
+         * @description What this ladder paid in past months, against buying everything on the first day.
+         */
+        Past: {
+            /** Average Saving */
+            average_saving: number;
+            /** Cheaper Share */
+            cheaper_share: number;
+            /** Months */
+            months: number;
+            /** Worst */
+            worst: number;
+        };
         /** Plan */
         Plan: {
             /** In Band */
@@ -2024,6 +2059,18 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /**
+         * Rung
+         * @description One part of a purchase: buy `amount` dollars at `price` or lower.
+         */
+        Rung: {
+            /** Amount */
+            amount: number;
+            /** Below */
+            below: number;
+            /** Price */
+            price: number;
+        };
         /** Sentence */
         Sentence: {
             /**
@@ -2411,6 +2458,62 @@ export interface components {
             units: number;
             /** Unpriced */
             unpriced: number;
+        };
+        /** Step */
+        Step: {
+            /** Amount */
+            amount: number;
+            /** Below High */
+            below_high?: number | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            past?: components["schemas"]["Past"] | null;
+            /** Place */
+            place?: number | null;
+            /** Price */
+            price: number;
+            /**
+             * Rungs
+             * @default []
+             */
+            rungs: components["schemas"]["Rung"][];
+            /** Share Now */
+            share_now: number;
+            /** Share Plan */
+            share_plan: number;
+            /** Symbol */
+            symbol: string;
+            /** Weekly Swing */
+            weekly_swing?: number | null;
+        };
+        /** Steps */
+        Steps: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * By
+             * Format: date-time
+             */
+            by: string;
+            /** Cash */
+            cash: number;
+            /** Cash Plan */
+            cash_plan: number;
+            /** Has Plan */
+            has_plan: boolean;
+            /** Model Version */
+            model_version: string;
+            /** Spare */
+            spare: number;
+            /** Steps */
+            steps: components["schemas"]["Step"][];
+            /** Value */
+            value: number;
         };
         /** StressPart */
         StressPart: {
@@ -3751,6 +3854,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_steps_api_v1_portfolio_steps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Steps"];
                 };
             };
         };

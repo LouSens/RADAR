@@ -7,11 +7,13 @@ import {
   usePortfolio,
   usePortfolioAnalysis,
   useSetLostCoins,
+  useSteps,
 } from "../api/queries";
 import { RangeAheadPanel } from "../components/AheadPanels";
 import { HoldingsEditor } from "../components/HoldingsEditor";
 import { LevelsPanel, targetSummary } from "../components/PlanPanels";
 import { RecordPanel } from "../components/RecordPanel";
+import { StepsPanel } from "../components/StepsPanel";
 import { badLabel } from "../components/RiskPanel";
 import { RegularBuyingPanel } from "../components/RegularBuyingPanel";
 import { PageSkeleton } from "../components/Skeleton";
@@ -735,6 +737,7 @@ export function PortfolioPage() {
   const analysis = usePortfolioAnalysis().data ?? undefined;
   const record = useAccountRecord().data;
   const setLost = useSetLostCoins();
+  const steps = useSteps().data;
 
   if (!isPortfolioSection(section)) return <Navigate to={BASE} replace />;
   const empty = portfolio.data !== undefined && portfolio.data.holdings.length === 0;
@@ -810,6 +813,15 @@ export function PortfolioPage() {
           <HoldingsEditor portfolio={portfolio.data} />
         </section>
       )}
+
+      {section === "todo" &&
+        (steps ? (
+          <StepsPanel steps={steps} />
+        ) : (
+          <Message>
+            {steps === null ? "Add your holdings first, then pick a plan." : "Working it out…"}
+          </Message>
+        ))}
 
       {section === "record" &&
         (record ? (

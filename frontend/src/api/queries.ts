@@ -18,6 +18,7 @@ import {
   type Risk,
   type Sentiment,
   type Simulation,
+  type Steps,
   type Summary,
   type Timeframe,
   type Volatility,
@@ -187,6 +188,15 @@ export function useAccountRecord() {
     queryKey: ["portfolio", "record"],
     queryFn: () => orNull(() => getJson<AccountRecord>("/portfolio/record")),
     staleTime: 60 * 60_000,
+  });
+}
+
+/** What to do with cash the plan does not keep: what to buy, at what prices, and why. */
+export function useSteps() {
+  return useQuery({
+    queryKey: ["portfolio", "steps"],
+    queryFn: () => orNull(() => getJson<Steps>("/portfolio/steps")),
+    refetchInterval: 10 * 60_000,
   });
 }
 

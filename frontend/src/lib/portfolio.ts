@@ -5,6 +5,7 @@ const TRY = "Try things";
 
 export const PORTFOLIO_SECTIONS = [
   { path: "", label: "Summary" },
+  { path: "todo", label: "What to do now", hint: "Where spare cash goes, and at what prices" },
   { path: "holdings", label: "Holdings", hint: "See, change or re-read what you hold" },
   { path: "record", label: "Your trades so far", hint: "What you made or lost, coin by coin" },
   {

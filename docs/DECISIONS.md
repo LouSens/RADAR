@@ -2975,3 +2975,36 @@ Two things are offered instead: a check before buying that says where the price 
 its week and month, since his own record shows he bought near the top; and one test not
 yet run, across every coin Binance lists, of whether coins low in their range did better
 afterwards than coins high in it. Its rules are to be written down before it is run.
+
+## 077. What to do now: spare cash, a ladder of prices, and the reasons (2026-10-07)
+
+The user asked for exact prices and amounts in the app, updated as his cash changes,
+with the reasons shown; and said he does not want to buy every month, only when he has
+more cash than he should.
+
+**Built.** `pipelines/steps.py`, `GET /portfolio/steps`, a "What to do now" page on
+Portfolio and a card on Home in place of "Make RADAR yours", which the user judged not
+to belong there.
+- When cash is above the plan's share by 2% of the account or 5 dollars, the cash over
+  is shared among the holdings short of their share.
+- Each purchase is split into up to three equal parts (`analytics/buying.ladder`): one
+  at today's price, the others one and two usual weekly swings lower. Parts are never
+  under 5 dollars. Whatever is not bought within 30 days is bought then.
+- A holding more than 5 points above its share is listed to sell back to it.
+- Each purchase shows why: its share now against the plan, where the price sits in the
+  last three months, how much it usually moves in a week, and what this same ladder paid
+  in past months against buying everything at once.
+
+**What the ladder is and is not.** Replayed on ten years of months it paid 0.5% to 0.9%
+more on average than buying at once, and got a lower price in about half of them
+(US stocks, gold, Bitcoin). It is shown with that figure. It is not a way to a better
+price; it keeps the user from putting a whole amount in at one price, which his record
+shows he did near the top. The steps are sized from the swing forecast, the one thing
+that can be forecast.
+
+**The user's plan was set** on his word: US stocks 25%, gold 20%, Bitcoin 7%, the
+altcoin he holds 1%, the rest cash.
+
+**Still to build from his list of 2026-10-07:** the check before buying; the test of
+coins low against high in their range, across every listed coin; then a review of
+routing, wording, the home page and the look on phone and desktop.

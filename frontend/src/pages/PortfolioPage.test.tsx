@@ -19,6 +19,7 @@ vi.mock("../api/queries", () => ({
   usePortfolioAnalysis: () => ({ data: state.analysis }),
   useAccountRecord: () => ({ data: null }),
   useSetLostCoins: () => ({ mutate: () => undefined }),
+  useSteps: () => ({ data: null }),
   useRelationships: () => ({ data: state.together }),
   useSetTarget: () => ({ mutate: state.setTarget, isPending: false, isError: false }),
   useSavePortfolio: () => ({

@@ -2555,6 +2555,35 @@
         "title": "PairPoint",
         "type": "object"
       },
+      "Past": {
+        "description": "What this ladder paid in past months, against buying everything on the first day.",
+        "properties": {
+          "average_saving": {
+            "title": "Average Saving",
+            "type": "number"
+          },
+          "cheaper_share": {
+            "title": "Cheaper Share",
+            "type": "number"
+          },
+          "months": {
+            "title": "Months",
+            "type": "integer"
+          },
+          "worst": {
+            "title": "Worst",
+            "type": "number"
+          }
+        },
+        "required": [
+          "months",
+          "average_saving",
+          "cheaper_share",
+          "worst"
+        ],
+        "title": "Past",
+        "type": "object"
+      },
       "Plan": {
         "properties": {
           "in_band": {
@@ -3817,6 +3846,30 @@
         "title": "RiskOut",
         "type": "object"
       },
+      "Rung": {
+        "description": "One part of a purchase: buy `amount` dollars at `price` or lower.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "below": {
+            "title": "Below",
+            "type": "number"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          }
+        },
+        "required": [
+          "price",
+          "amount",
+          "below"
+        ],
+        "title": "Rung",
+        "type": "object"
+      },
       "Sentence": {
         "properties": {
           "section": {
@@ -4918,6 +4971,158 @@
           "unpriced"
         ],
         "title": "Standing",
+        "type": "object"
+      },
+      "Step": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "below_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Below High"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "past": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Past"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "rungs": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Rung"
+            },
+            "title": "Rungs",
+            "type": "array"
+          },
+          "share_now": {
+            "title": "Share Now",
+            "type": "number"
+          },
+          "share_plan": {
+            "title": "Share Plan",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "weekly_swing": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Swing"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "kind",
+          "amount",
+          "share_now",
+          "share_plan",
+          "price"
+        ],
+        "title": "Step",
+        "type": "object"
+      },
+      "Steps": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "by": {
+            "format": "date-time",
+            "title": "By",
+            "type": "string"
+          },
+          "cash": {
+            "title": "Cash",
+            "type": "number"
+          },
+          "cash_plan": {
+            "title": "Cash Plan",
+            "type": "number"
+          },
+          "has_plan": {
+            "title": "Has Plan",
+            "type": "boolean"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "spare": {
+            "title": "Spare",
+            "type": "number"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "as_of",
+          "model_version",
+          "has_plan",
+          "value",
+          "cash",
+          "cash_plan",
+          "spare",
+          "steps",
+          "by"
+        ],
+        "title": "Steps",
         "type": "object"
       },
       "StressPart": {
@@ -7625,6 +7830,25 @@
           }
         },
         "summary": "Post Regular Buying"
+      }
+    },
+    "/api/v1/portfolio/steps": {
+      "get": {
+        "description": "Where cash over the plan goes, at what prices, and why. Worked out from the\nstored portfolio and plan each time it is asked for; nothing is traded.",
+        "operationId": "get_steps_api_v1_portfolio_steps_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Steps"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Steps"
       }
     },
     "/api/v1/portfolio/target": {

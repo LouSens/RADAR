@@ -27,7 +27,9 @@ from radar.models.holdings import (
 from radar.pipelines import account as account_job
 from radar.pipelines import discover, rebalance
 from radar.pipelines import portfolio as job
+from radar.pipelines import steps as steps_job
 from radar.pipelines.datasets import build_mixed_panel
+from radar.pipelines.signals import daily_close
 from radar.providers.binance import BinanceError, Leveraged, Wallet
 from radar.universe import Universe
 
@@ -156,6 +158,25 @@ def get_record(session: SessionDep) -> account_job.Record:
     if record is None:
         raise HTTPException(status_code=404, detail="No account record yet")
     return record
+
+
+@router.get("/steps", response_model=steps_job.Steps)
+def get_steps(universe: UniverseDep, session: SessionDep) -> steps_job.Steps:
+    """Where cash over the plan goes, at what prices, and why. Worked out from the
+    stored portfolio and plan each time it is asked for; nothing is traded."""
+    analysis = job.stored_analysis(session)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="No portfolio analysis yet")
+    weights = None
+    if analysis.plan is not None and analysis.plan.moves:
+        weights = {m.symbol: m.target_weight for m in analysis.plan.moves if m.symbol != CASH}
+    wanted = set(weights or {})
+    closes = {
+        asset.symbol: daily_close(session, asset)
+        for asset in discover.extend(universe, session).assets
+        if asset.symbol in wanted
+    }
+    return steps_job.build(analysis, weights, closes, datetime.now(UTC))
 
 
 @router.put("/record/lost", response_model=account_job.Record)

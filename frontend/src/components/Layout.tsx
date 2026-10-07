@@ -3,7 +3,6 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useStreamStatus } from "../api/live";
 import { useAssets, useHealth } from "../api/queries";
-import { markSeen } from "./GettingStarted";
 import { assetColorVar } from "./ui";
 
 function RadarMark() {
@@ -242,7 +241,6 @@ export function Layout() {
 
   // A new page starts at its top, like any other.
   useEffect(() => {
-    markSeen(pathname);
     if (typeof window.scrollTo === "function") window.scrollTo(0, 0);
   }, [pathname]);
 

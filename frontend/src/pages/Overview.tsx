@@ -3,10 +3,16 @@ import { Link } from "react-router-dom";
 
 import { useNow } from "../api/market";
 import type { Holding } from "../api/client";
-import { useAssets, usePortfolio, usePortfolioAnalysis, useSavePortfolio } from "../api/queries";
+import {
+  useAssets,
+  usePortfolio,
+  usePortfolioAnalysis,
+  useSavePortfolio,
+  useSteps,
+} from "../api/queries";
 import { BriefCard } from "../components/BriefCard";
 import { ComingUp } from "../components/ComingUp";
-import { GettingStarted } from "../components/GettingStarted";
+import { StepsCard } from "../components/StepsPanel";
 import { LatestSignals } from "../components/LatestSignals";
 import { MarketCard } from "../components/MarketCard";
 import { Skeleton } from "../components/Skeleton";
@@ -220,8 +226,7 @@ export function Overview() {
   const assets = useAssets();
   const now = useNow(60_000);
   const primary = assets.data?.filter((a) => a.is_primary) ?? [];
-  const portfolio = usePortfolio();
-  const analysis = usePortfolioAnalysis();
+  const steps = useSteps();
   const today = new Intl.DateTimeFormat("en-GB", {
     weekday: "long",
     day: "numeric",
@@ -236,11 +241,7 @@ export function Overview() {
       </header>
 
       <Hero />
-      <GettingStarted
-        portfolio={portfolio.data}
-        analysis={analysis.data}
-        markets={primary.length}
-      />
+      {steps.data && <StepsCard steps={steps.data} />}
 
       {assets.isError && <Message>Markets are unavailable right now.</Message>}
 
