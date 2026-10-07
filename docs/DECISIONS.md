@@ -2312,3 +2312,52 @@ Claim 3 passes on the fall and gives up some return.
 **After.** If claim 1 and claim 3 pass, the app can show "share to hold today" for each
 holding and for the portfolio as a suggestion under decision 062, with this record. An
 add-on that does not pass is not used, whatever its reputation.
+
+## 065. When to hold more cash and when to put it back: the result (2026-10-07)
+
+The test of decision 064, run once on 24 markets none of these rules had been run on.
+Notebook 13 shows every table.
+
+**Claim 1, as written: passed.** The core rule (swings times the 200-day average) had a
+shallower deepest fall than holding everything in 23 of 24 markets, by 15 points in the
+median market, in all four groups. It gave up about 3 points of return a year in the
+median market and had a lower return per unit of risk in three markets of four.
+
+**Claim 2: no add-on passed.** Halving around scheduled events and the stochastic
+(5,3,3) re-entry both made return per unit of risk measurably worse. Fair value gaps
+and order blocks as re-entry triggers changed it by nothing measurable and made the
+deepest fall 3 to 11 points deeper, because all they do is raise the share held.
+
+**Claim 3, as written: passed.** On 24 markets in equal parts the deepest fall went
+from 26% to 14%, with return a year going from about 22% to about 9%.
+
+**The check that was not in the plan, and that changes the reading.** The rule holds
+about half on average. Against a fixed share of that same size, held all the time: the
+rule's deepest fall was shallower in only 10 of 24 markets; it earned less in 20 of 24,
+by about 2 points a year in the median market (p = 0.013); and on the portfolio the
+fixed shares fell 11% and earned 10% a year against the rule's 14% and 9%. The
+protection came from how much was held, not from when.
+
+**My mistake in 064.** Comparing with "hold everything" lets any rule that holds less
+look good. The comparison should have been a fixed share of the same size. From now on
+a rule that changes how much is held is judged against a fixed share equal to its own
+average, as well as against holding everything.
+
+**My guess, checked.** Right that claim 1 would pass at a cost in return and that no
+add-on would. Wrong that it would be clearest in crypto: against a fixed share, crypto
+is where the rule did worst. I did not foresee that the timing would add nothing.
+
+**So.** No "move to cash now" or "put the cash back now" suggestion is built. Under
+decision 062 a suggestion needs a rule that passed its test; this one passed a test that
+was too easy and fails the fair one. Do not rerun with other averages, windows or
+triggers until one passes.
+
+**What can be built from it, if the user wants.** "How much" is answerable: for any
+share held, how far this mix fell and what it earned. That belongs with Try a mix. And
+the swings forecast can say when the next week is likely to be rougher than usual, which
+is a statement about risk with a record behind it, not a call on direction.
+
+**Still to do, agreed by the user.** Test the free outside data: Binance's public
+futures data (funding rates, buy-side volume) and the CFTC's weekly positioning report.
+New hosts, read-only market data, no account access; the test is to be written down
+first, with a fixed-share comparison in it.

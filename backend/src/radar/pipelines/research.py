@@ -20,7 +20,7 @@ log = structlog.get_logger(__name__)
 STORE = Path("data/research/daily")
 START = datetime(2016, 1, 1, tzinfo=UTC)
 FIELDS = ["open", "high", "low", "close", "volume"]
-# Free stock data is delayed; ask for nothing newer than this.
+# The full-market feed is free only for bars older than 15 minutes, as in the backfill.
 STOCK_DELAY = timedelta(minutes=20)
 
 
@@ -49,7 +49,7 @@ def fetch(client: AlpacaDataClient, symbol: str, now: datetime, loc: str) -> pd.
     if is_crypto(symbol):
         pages = client.iter_crypto_bar_pages([symbol], "1Day", START, now, loc=loc)
     else:
-        pages = client.iter_stock_bar_pages([symbol], "1Day", START, now - STOCK_DELAY, feed="iex")
+        pages = client.iter_stock_bar_pages([symbol], "1Day", START, now - STOCK_DELAY, feed="sip")
     bars = [bar for page in pages for bar in page.bars.get(symbol, [])]
     if not bars:
         return pd.DataFrame(columns=FIELDS)
