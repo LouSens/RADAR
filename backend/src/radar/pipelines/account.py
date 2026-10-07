@@ -32,7 +32,7 @@ from radar.pipelines import relationships
 from radar.providers import binance_public
 from radar.providers.binance import BinanceError
 from radar.providers.binance_history import BinanceHistory
-from radar.providers.public import PublicReader
+from radar.providers.public import PublicDataError, PublicReader
 
 log = get_logger(__name__)
 
@@ -272,14 +272,20 @@ class Record(BaseModel):
 
 
 def collect(
-    history: BinanceHistory, assets: list[str], now: datetime, pause: float = PAUSE
+    history: BinanceHistory,
+    assets: list[str],
+    now: datetime,
+    pause: float = PAUSE,
+    listed: dict[str, list[str]] | None = None,
 ) -> list[Entry]:
     """Every entry the account's history gives, for `assets`, the common coins, and
     whatever else its swaps and rewards mention. `pause` is the wait between requests,
     which keeps a long scan inside the exchange's limits."""
     entries: list[Entry] = []
     likely = set(assets)
-    names = likely | set(COMMON)
+    # With the exchange's own list every coin it trades is asked about; the common
+    # coins stay in for ones it has since stopped listing.
+    names = likely | set(COMMON) | set(listed or {})
     quiet, end = 0, now
     while end > SINCE and quiet < QUIET_WINDOWS:
         start = end - WINDOW
@@ -311,7 +317,8 @@ def collect(
         quiet = 0 if found else quiet + 1
         end = start
     for asset in sorted(names - ledger.CASH):
-        for quote in QUOTES:
+        quotes = (listed or {}).get(asset) or list(QUOTES)
+        for quote in quotes:
             try:
                 fills = history.fills(asset + quote)
             except BinanceError:
@@ -331,7 +338,7 @@ def collect(
                     entries.append(entry)
             # Nearly every trade is against USDT: a coin never traded there is not asked
             # about against the other dollars, unless the account itself points to it.
-            if quote == QUOTES[0] and not fills and asset not in likely:
+            if quote == quotes[0] and not fills and asset not in likely:
                 break
     return sorted(entries, key=lambda e: e.at)
 
@@ -501,9 +508,14 @@ def run(engine: Engine, now: datetime | None = None) -> int:
     now = now or datetime.now(UTC)
     with session_scope(engine) as session:
         held = held_units(session)
+    try:
+        with binance_public.reader() as source:
+            listed = binance_public.dollar_pairs(source, QUOTES)
+    except PublicDataError:
+        listed = None  # the common coins are still asked about
     history = BinanceHistory(key, secret)
     try:
-        entries = collect(history, sorted(held), now)
+        entries = collect(history, sorted(held), now, listed=listed)
     finally:
         history.close()
     with binance_public.reader() as source:

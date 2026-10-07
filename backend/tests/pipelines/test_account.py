@@ -168,3 +168,13 @@ def test_what_the_account_really_holds_overrides_what_history_leaves() -> None:
     kept = account.build(ENTRIES, prices, {"SOL": 1.01}, NOW).assets[0]
     assert kept.held is True
     assert kept.moved_out_cost == 0
+
+
+def test_with_the_exchanges_list_every_listed_coin_is_asked_about_on_its_own_pairs() -> None:
+    history = FakeHistory()
+    listed = {"RARE": ["USDC"], "SOL": ["USDT", "FDUSD"]}
+    account.collect(history, [], NOW, pause=0, listed=listed)  # type: ignore[arg-type]
+    assert "RAREUSDC" in history.asked  # a coin on no built-in list, on the pair it has
+    assert "RAREUSDT" not in history.asked
+    assert "SOLUSDC" not in history.asked  # not a pair the exchange lists
+    assert "MANTAUSDT" in history.asked  # the common coins are still asked about

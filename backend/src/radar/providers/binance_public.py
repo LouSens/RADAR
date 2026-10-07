@@ -1,7 +1,9 @@
 """Binance's public market data, read without a key (decision 067).
 
-Two reads only: hourly bars, which carry the volume bought by takers as well as the
-total, and the funding rate paid every 8 hours on a perpetual contract. Nothing here can
+Three reads only: hourly bars, which carry the volume bought by takers as well as the
+total; the funding rate paid every 8 hours on a perpetual contract; and the list of
+pairs the exchange trades, which is how every coin an account may have traded is found
+(decision 076). Nothing here can
 see an account; the signed reader for holdings is `binance.py` and stays separate.
 """
 
@@ -13,7 +15,9 @@ SPOT_HOST = "api.binance.com"
 FUTURES_HOST = "fapi.binance.com"
 BARS = (SPOT_HOST, "/api/v3/klines")
 FUNDING = (FUTURES_HOST, "/fapi/v1/fundingRate")
-ALLOWED = frozenset({BARS, FUNDING})
+# Every pair the exchange lists. Market information only; nothing about any account.
+PAIRS = (SPOT_HOST, "/api/v3/exchangeInfo")
+ALLOWED = frozenset({BARS, FUNDING, PAIRS})
 PAGE = 1000
 HOUR_MS = 3_600_000
 BAR_FIELDS = ["open", "high", "low", "close", "volume", "taker_buy"]
@@ -79,3 +83,14 @@ def funding_rates(source: PublicReader, symbol: str, start_ms: int, end_ms: int)
             break
     series = pd.Series(rates, index=pd.to_datetime(stamps, unit="ms", utc=True), name="funding")
     return series[~series.index.duplicated(keep="last")].sort_index()
+
+
+def dollar_pairs(source: PublicReader, cash: tuple[str, ...]) -> dict[str, list[str]]:
+    """Every coin the exchange lists against one of the `cash` currencies, with the
+    currencies it is listed against, in the order given."""
+    listed: dict[str, list[str]] = {}
+    for pair in source.get(*PAIRS, {}).get("symbols", []):
+        base, quote = str(pair.get("baseAsset", "")), str(pair.get("quoteAsset", ""))
+        if base and quote in cash and base not in cash:
+            listed.setdefault(base, []).append(quote)
+    return {base: [c for c in cash if c in quotes] for base, quotes in sorted(listed.items())}
