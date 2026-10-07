@@ -46,6 +46,8 @@ const asset = (name: string, extra: Partial<AssetRecord> = {}): AssetRecord => (
   sells_unusual: false,
   held_units: 2,
   missing_share: 0,
+  held: true,
+  moved_out_cost: 0,
   ...extra,
 });
 
@@ -60,35 +62,42 @@ const RECORD: AccountRecord = {
   put_in: 300,
   as_traded: 310,
   if_held: 270,
-  assets: [
-    asset("SOL"),
-    asset("DUST", { standing: { ...asset("x").standing, purchases: 1, sales: 0 } }),
-  ],
+  assets: [asset("SOL"), asset("GONE", { held: false, unrealised: null, value: 0 })],
   months: [],
   priced_at_market: 1,
+  moved_out_cost: 0,
 };
 
 describe("RecordPanel", () => {
   afterEach(cleanup);
 
-  it("opens with the total in plain words, and how far there is to climb back", () => {
-    const { container } = render(<RecordPanel record={{ ...RECORD, realised: -30 }} worth={500} />);
+  it("opens with one total for every coin and all time, in plain words", () => {
+    const record = { ...RECORD, realised: -30, moved_out_cost: 48 };
+    const { container } = render(<RecordPanel record={record} worth={500} />);
     expect(screen.getByText("You are down $50.00 in total")).toBeInTheDocument();
-    expect(container.textContent).toMatch(/From 24 trades since 1 Jan 2025/);
+    expect(container.textContent).toMatch(/Every coin, all time: 24 trades since 1 Jan 2025/);
     expect(container.textContent).toMatch(
       /everything you hold \(\$500\.00\) would have to rise 10\.0%/,
     );
-    expect(screen.getByText("On coins you sold")).toBeInTheDocument();
-    expect(screen.getByText("On coins you still have")).toBeInTheDocument();
-    expect(screen.getByText("Fees you paid")).toBeInTheDocument();
-    expect(
-      screen.getByText("Your selling left you better off than never selling"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Coins that made money")).toBeInTheDocument();
+    expect(screen.getByText("Coins that lost money")).toBeInTheDocument();
+    expect(container.textContent).toMatch(/coins you paid \$48\.00 for left your trading wallet/);
+  });
+
+  it("keeps coins you hold now apart from coins you no longer hold", () => {
+    render(<RecordPanel record={RECORD} />);
+    expect(screen.getByText("Coins you hold now")).toBeInTheDocument();
+    expect(screen.getByText("Coins you no longer hold")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent)).toEqual(["SOL"]);
+    expect(screen.getByText("Average price you paid")).toBeInTheDocument();
+    expect(screen.getByText("worth $180.00")).toBeInTheDocument();
+    expect(screen.getByText("down 10.0%")).toBeInTheDocument();
+    expect(screen.getByText("GONE")).toBeInTheDocument();
+    expect(screen.getByText("bought 12, sold 12")).toBeInTheDocument();
   });
 
   it("says when you usually buy and sell without any jargon", () => {
     const { container } = render(<RecordPanel record={RECORD} />);
-    expect(screen.getByText("You are up $10.00 in total")).toBeInTheDocument();
     expect(container.textContent).toMatch(
       /You usually bought near the highest price of that week, when the price had risen 3\.0% in the day before/,
     );
@@ -98,17 +107,6 @@ describe("RecordPanel", () => {
     expect(container.textContent).toMatch(/Buying nearer the top and selling nearer the bottom/);
     expect(container.textContent).not.toMatch(/chance|realised|unrealised|break-even|weighted/i);
     expect(container.textContent).not.toMatch(/\b(you should|buy now|sell now)\b/i);
-  });
-
-  it("lists every coin, biggest loss first, with where each is back to zero", () => {
-    render(<RecordPanel record={RECORD} />);
-    const names = screen.getAllByRole("heading", { level: 4 }).map((h) => h.textContent);
-    expect(names).toEqual(["SOL", "DUST"]);
-    expect(screen.getAllByText("You are back to zero at")).toHaveLength(2);
-    expect(
-      screen.getAllByText(/You usually bought it near the highest price of that week\./),
-    ).toHaveLength(2);
-    expect(screen.queryByText(/You usually sold it/)).toBeNull();
   });
 
   it("weights the overall figure by the money in each coin's trades", () => {

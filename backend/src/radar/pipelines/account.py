@@ -204,6 +204,8 @@ QUIET_WINDOWS = 12
 HOUR_MS = 3_600_000
 # Seconds between requests for fills.
 PAUSE = 0.2
+# A coin is a holding when what is held is worth at least this many dollars.
+HELD_FROM = 1.0
 
 Prices = Callable[[str, datetime, datetime], pd.DataFrame]
 
@@ -236,6 +238,11 @@ class AssetRecord(BaseModel):
     # Units held now according to the portfolio, and how far history is from them.
     held_units: float | None
     missing_share: float | None
+    # Whether what is held is worth showing as a holding, and not a crumb.
+    held: bool = False
+    # Cost of units that history still shows but the account no longer has: moved,
+    # withdrawn, or swapped in a way the trade history does not list.
+    moved_out_cost: float = 0.0
 
 
 class Month(BaseModel):
@@ -260,6 +267,8 @@ class Record(BaseModel):
     months: list[Month]
     # Entries whose cost was taken from the market price of the day.
     priced_at_market: int
+    # Cost of coins that left without a sale on record, over all coins.
+    moved_out_cost: float = 0.0
 
 
 def collect(
@@ -391,7 +400,10 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
     standings = ledger.standing(entries, price_at)
     assets: list[AssetRecord] = []
     for asset in traded:
-        now_standing = standings[asset]
+        from_history = standings[asset]
+        now_standing, moved_out = (
+            ledger.reconcile(from_history, held.get(asset, 0.0)) if held else (from_history, 0.0)
+        )
         frame = bars.get(asset)
         price: float | None = None
         buys = sells = None
@@ -406,12 +418,13 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
             buys_unusual = trading.place_is_unusual(context, "buy", frame)
             sells_unusual = trading.place_is_unusual(context, "sell", frame)
         cost = now_standing.average_cost
+        value = None if price is None else now_standing.units * price
         assets.append(
             AssetRecord(
                 asset=asset,
                 standing=now_standing,
                 price=price,
-                value=None if price is None else now_standing.units * price,
+                value=value,
                 unrealised=(
                     None if price is None or cost is None else (price - cost) * now_standing.units
                 ),
@@ -424,8 +437,10 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
                 sells_unusual=sells_unusual,
                 held_units=held.get(asset),
                 missing_share=(
-                    ledger.missing_share(now_standing.units, held[asset]) if asset in held else None
+                    ledger.missing_share(from_history.units, held[asset]) if asset in held else None
                 ),
+                held=value is not None and value >= HELD_FROM,
+                moved_out_cost=moved_out,
             )
         )
     assets.sort(key=lambda a: a.standing.bought, reverse=True)
@@ -454,6 +469,7 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
         assets=assets,
         months=[by_month[key] for key in sorted(by_month)],
         priced_at_market=sum(a.standing.priced_at_market for a in assets),
+        moved_out_cost=sum(a.moved_out_cost for a in assets),
     )
 
 

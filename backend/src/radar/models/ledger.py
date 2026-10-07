@@ -225,6 +225,32 @@ def against_holding(entries: Iterable[Entry], asset: str, price_now: float) -> C
     )
 
 
+def reconcile(now: Standing, held: float) -> tuple[Standing, float]:
+    """Bring a standing down to the units actually held, and say what the rest cost.
+
+    History can leave more units than the account really has: coins moved to another
+    wallet, withdrawn, or swapped in a way the trade history does not list. What is
+    really held is the truth. The extra units leave at their average cost, so nothing is
+    counted as gained or lost on them, and their cost is returned so that it can be
+    shown as money whose fate the record does not know.
+    """
+    extra = now.units - max(held, 0.0)
+    if extra <= DUST or now.units <= DUST:
+        return now, 0.0
+    cost_gone = now.cost * extra / now.units
+    left = now.units - extra
+    return (
+        now.model_copy(
+            update={
+                "units": left if left > DUST else 0.0,
+                "cost": now.cost - cost_gone if left > DUST else 0.0,
+                "average_cost": now.average_cost if left > DUST else None,
+            }
+        ),
+        cost_gone,
+    )
+
+
 def missing_share(from_history: float, held: float) -> float | None:
     """How far the units rebuilt from history are from the units actually held, as a
     share of what is held. Missing when nothing is held."""

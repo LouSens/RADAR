@@ -169,3 +169,21 @@ def test_a_swap_is_a_purchase_a_sale_or_one_coin_for_another() -> None:
         ("arrived", "SOL", 20.0, None),
     ]
     assert ledger.from_conversion(T0, "USDT", 5.0, "USDC", 5.0) == []
+
+
+def test_what_is_really_held_is_the_truth_and_the_rest_leaves_at_cost() -> None:
+    now = ledger.standing([buy(0, 4, 400), sell(1, 1, 90)])["SOL"]  # 3 left, cost 300
+    same, gone = ledger.reconcile(now, held=3.0)
+    assert (same, gone) == (now, 0.0)
+
+    less, gone = ledger.reconcile(now, held=1.0)
+    assert (less.units, less.cost, less.average_cost) == (1.0, 100.0, 100.0)
+    assert gone == pytest.approx(200)
+    assert less.realised == now.realised  # nothing is counted as gained or lost on them
+
+    none, gone = ledger.reconcile(now, held=0.0)
+    assert (none.units, none.cost, none.average_cost) == (0.0, 0.0, None)
+    assert gone == pytest.approx(300)
+
+    more, gone = ledger.reconcile(now, held=5.0)  # held more than history shows: left alone
+    assert (more.units, gone) == (3.0, 0.0)

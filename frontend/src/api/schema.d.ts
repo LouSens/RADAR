@@ -672,10 +672,20 @@ export interface components {
             /** Buys Unusual */
             buys_unusual: boolean;
             compared: components["schemas"]["Compared"] | null;
+            /**
+             * Held
+             * @default false
+             */
+            held: boolean;
             /** Held Units */
             held_units: number | null;
             /** Missing Share */
             missing_share: number | null;
+            /**
+             * Moved Out Cost
+             * @default 0
+             */
+            moved_out_cost: number;
             /** Price */
             price: number | null;
             sells: components["schemas"]["Habit"] | null;
@@ -1618,6 +1628,11 @@ export interface components {
             model_version: string;
             /** Months */
             months: components["schemas"]["Month"][];
+            /**
+             * Moved Out Cost
+             * @default 0
+             */
+            moved_out_cost: number;
             /** Priced At Market */
             priced_at_market: number;
             /** Put In */

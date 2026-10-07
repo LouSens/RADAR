@@ -40,7 +40,7 @@ ENTRIES = [
 
 
 def test_the_record_adds_up_what_was_paid_made_and_left() -> None:
-    record = account.build(ENTRIES, prices, {"SOL": 1.0}, NOW)
+    record = account.build(ENTRIES, prices, {"SOL": 1.01}, NOW)
 
     assert [a.asset for a in record.assets] == ["SOL"]  # cash is not a holding
     sol = record.assets[0]
@@ -56,7 +56,8 @@ def test_the_record_adds_up_what_was_paid_made_and_left() -> None:
     assert sol.compared is not None
     assert sol.compared.put_in == 200
     assert sol.compared.as_traded == pytest.approx(1.0 * last + 125)
-    assert sol.missing_share == pytest.approx(0.01)
+    assert sol.missing_share == pytest.approx(0)
+    assert sol.held is True
     assert record.trades == 3
     assert record.realised == pytest.approx(30)
     assert record.first_trade == hour(200)
@@ -149,3 +150,21 @@ def test_collecting_follows_the_accounts_own_swaps_to_find_what_to_ask_for() -> 
     assert {"SOLUSDT", "SOLUSDC", "SOLFDUSD"} <= set(history.asked)
     assert "MANTAUSDT" in history.asked
     assert "MANTAUSDC" not in history.asked
+
+
+def test_what_the_account_really_holds_overrides_what_history_leaves() -> None:
+    # History leaves 1.01 SOL; the account holds none of it, and holds some BTC.
+    record = account.build(ENTRIES, prices, {"BTC": 0.5}, NOW)
+    sol = record.assets[0]
+    assert sol.standing.units == 0
+    assert sol.held is False
+    assert sol.value == 0
+    assert sol.unrealised is None
+    assert sol.moved_out_cost == pytest.approx(105)
+    assert record.moved_out_cost == pytest.approx(105)
+    assert sol.standing.realised == pytest.approx(30)  # the sale on record is untouched
+    assert record.unrealised == 0
+
+    kept = account.build(ENTRIES, prices, {"SOL": 1.01}, NOW).assets[0]
+    assert kept.held is True
+    assert kept.moved_out_cost == 0

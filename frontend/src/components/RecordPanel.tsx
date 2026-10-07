@@ -125,51 +125,66 @@ function Timing({ record }: { record: AccountRecord }) {
   );
 }
 
-function AssetCard({ asset }: { asset: AssetRecord }) {
+/** A coin you hold now: what it is worth, what you paid, and how it stands. */
+function HeldCard({ asset }: { asset: AssetRecord }) {
   const now = asset.standing;
-  // Crumbs left by fees are not a holding worth a line.
-  const holding = now.average_cost != null && (asset.value ?? 0) >= 0.01;
-  const total = totalOf(asset);
-  const habits = [
-    asset.buys_unusual && asset.buys && `You usually bought it ${placeWords(asset.buys.place)}.`,
-    asset.sells_unusual && asset.sells && `You usually sold it ${placeWords(asset.sells.place)}.`,
-  ].filter((line) => line && !line.includes("middle"));
+  const open = asset.unrealised ?? 0;
+  const paid = now.average_cost ?? 0;
+  const change = paid > 0 && asset.price != null ? asset.price / paid - 1 : undefined;
   return (
     <article className="well p-4">
       <header className="flex items-baseline justify-between gap-3">
         <h4 className="font-semibold tracking-tight">{asset.asset}</h4>
-        <span className={`num font-semibold ${tone(total)}`}>{signed(total)}</span>
+        <span className="num text-sm text-muted">worth {formatMoney(asset.value ?? 0)}</span>
       </header>
-      <p className="text-xs text-muted">
-        Bought {formatCount(now.purchases)} {now.purchases === 1 ? "time" : "times"}, sold{" "}
-        {formatCount(now.sales)}
+      <p className={`num mt-1 text-[1.35rem] font-semibold tracking-tight ${tone(open)}`}>
+        {signed(open)}
+        {change !== undefined && (
+          <span className="ml-2 text-sm font-medium">
+            {change >= 0 ? "up" : "down"} {percent(change)}
+          </span>
+        )}
       </p>
       <dl className="mt-2">
-        <StatRow label="On what you sold">
-          <span className={tone(now.realised)}>{signed(now.realised)}</span>
-        </StatRow>
-        {holding && asset.unrealised != null && (
-          <StatRow label="On what you still have">
-            <span className={tone(asset.unrealised)}>{signed(asset.unrealised)}</span>
+        <StatRow label="Average price you paid">{formatPrice(paid)}</StatRow>
+        {asset.price != null && <StatRow label="Price now">{formatPrice(asset.price)}</StatRow>}
+        {now.sales > 0 && (
+          <StatRow label="From earlier sales of it">
+            <span className={tone(now.realised)}>{signed(now.realised)}</span>
           </StatRow>
         )}
-        {holding && now.average_cost != null && (
-          <StatRow label="You are back to zero at">{formatPrice(now.average_cost)}</StatRow>
-        )}
-        {holding && asset.price != null && (
-          <StatRow label="Price now">{formatPrice(asset.price)}</StatRow>
-        )}
       </dl>
-      {habits.length > 0 && <p className="mt-2 text-xs text-muted">{habits.join(" ")}</p>}
     </article>
+  );
+}
+
+/** A coin you traded and no longer hold: one line with how it ended. */
+function PastRow({ asset }: { asset: AssetRecord }) {
+  const now = asset.standing;
+  const result = now.realised;
+  return (
+    <li className="flex items-baseline justify-between gap-3 border-t border-line py-2.5 first:border-t-0">
+      <span className="min-w-0">
+        <span className="font-medium">{asset.asset}</span>{" "}
+        <span className="text-xs text-muted">
+          bought {formatCount(now.purchases)}, sold {formatCount(now.sales)}
+        </span>
+      </span>
+      <span className={`num shrink-0 font-medium ${tone(result)}`}>{signed(result)}</span>
+    </li>
   );
 }
 
 /** What your trades have made or lost so far, and when you tend to buy and sell. */
 export function RecordPanel({ record, worth }: { record: AccountRecord; worth?: number }) {
   const total = record.realised + record.unrealised;
-  const difference = record.as_traded - record.if_held;
-  const coins = [...record.assets].sort((a, b) => totalOf(a) - totalOf(b));
+  const held = record.assets.filter((a) => a.held);
+  const past = record.assets
+    .filter((a) => !a.held)
+    .sort((a, b) => a.standing.realised - b.standing.realised);
+  const results = record.assets.map(totalOf);
+  const won = results.filter((r) => r > 0).reduce((sum, r) => sum + r, 0);
+  const lost = results.filter((r) => r < 0).reduce((sum, r) => sum + r, 0);
   const climb = worth && worth > 0 && total < 0 ? -total / worth : undefined;
   return (
     <Panel
@@ -182,57 +197,57 @@ export function RecordPanel({ record, worth }: { record: AccountRecord; worth?: 
       }
     >
       <p className="text-sm text-muted">
-        From {formatCount(record.trades)} trades
+        Every coin, all time: {formatCount(record.trades)} trades
         {record.first_trade ? ` since ${formatDate(record.first_trade)}` : ""}.
         {climb !== undefined &&
           ` To get it back from growth alone, everything you hold (${formatMoney(worth ?? 0)}) would have to rise ${percent(climb)}.`}
       </p>
 
-      <div className="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
-        <Figure
-          label="On coins you sold"
-          value={record.realised}
-          note="Final: these trades are closed"
-        />
-        <Figure
-          label="On coins you still have"
-          value={record.unrealised}
-          note="Changes as prices move"
-        />
-        <Figure label="Fees you paid" value={-record.fees} note="Already counted in the totals" />
-        <Figure
-          label="Versus buying and keeping"
-          value={difference}
-          note={
-            difference >= 0
-              ? "Your selling left you better off than never selling"
-              : "Never selling would have left you better off"
-          }
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <Figure label="Coins that made money" value={won} note="added together" />
+        <Figure label="Coins that lost money" value={lost} note="added together" />
       </div>
+
+      {record.moved_out_cost >= 1 && (
+        <p className="text-sm text-muted">
+          Not counted either way: coins you paid {formatMoney(record.moved_out_cost)} for left your
+          trading wallet without a sale on record (moved, withdrawn, or swapped another way). If
+          they were lost, your total is that much lower.
+        </p>
+      )}
+
+      {held.length > 0 && (
+        <div className="border-t border-line pt-5">
+          <h3 className="text-sm font-semibold tracking-tight">Coins you hold now</h3>
+          <div className="mt-3 grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-3">
+            {held.map((asset) => (
+              <HeldCard key={asset.asset} asset={asset} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {past.length > 0 && (
+        <div className="border-t border-line pt-5">
+          <h3 className="text-sm font-semibold tracking-tight">Coins you no longer hold</h3>
+          <p className="mt-1 text-sm text-muted">How each ended. Biggest loss first.</p>
+          <ul className="mt-2">
+            {past.map((asset) => (
+              <PastRow key={asset.asset} asset={asset} />
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Timing record={record} />
-
-      <div className="border-t border-line pt-5">
-        <h3 className="text-sm font-semibold tracking-tight">Coin by coin</h3>
-        <p className="mt-1 text-sm text-muted">Biggest loss first.</p>
-        <div className="mt-3 grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-3">
-          {coins.map((asset) => (
-            <AssetCard key={asset.asset} asset={asset} />
-          ))}
-        </div>
-      </div>
 
       <Caption
         facts={[
           { label: "Where this comes from", value: "Your Binance trade history, read-only" },
+          { label: "Fees", value: `${formatMoney(record.fees)} paid, already inside the totals` },
           {
-            label: "Back to zero at",
-            value: "The average price you paid for the coins you still have",
-          },
-          {
-            label: "Versus buying and keeping",
-            value: "The same money put in on the same days and never sold, at today's prices",
+            label: "Hold now",
+            value: "Only what is really in your account and worth $1 or more",
           },
           {
             label: "Coins sent in from elsewhere",
@@ -240,8 +255,7 @@ export function RecordPanel({ record, worth }: { record: AccountRecord; worth?: 
           },
           {
             label: "A coin is missing?",
-            value:
-              "Only coins found in your swaps, rewards, holdings and a short list are searched",
+            value: "About 150 common coins are searched, plus any in your swaps and rewards",
           },
           { label: "Updated", value: `${formatDate(record.as_of)}, once a day` },
         ]}

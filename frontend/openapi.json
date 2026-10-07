@@ -294,6 +294,11 @@
               }
             ]
           },
+          "held": {
+            "default": false,
+            "title": "Held",
+            "type": "boolean"
+          },
           "held_units": {
             "anyOf": [
               {
@@ -315,6 +320,11 @@
               }
             ],
             "title": "Missing Share"
+          },
+          "moved_out_cost": {
+            "default": 0.0,
+            "title": "Moved Out Cost",
+            "type": "number"
           },
           "price": {
             "anyOf": [
@@ -2830,6 +2840,11 @@
             },
             "title": "Months",
             "type": "array"
+          },
+          "moved_out_cost": {
+            "default": 0.0,
+            "title": "Moved Out Cost",
+            "type": "number"
           },
           "priced_at_market": {
             "title": "Priced At Market",

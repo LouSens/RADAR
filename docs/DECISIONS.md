@@ -2898,3 +2898,47 @@ shown as a record, not a forecast.
 **Routing.** A link on Home still pointed at the removed page per kind of event. Fixed;
 the addresses of removed pages now lead to the nearest page that exists, and a test
 walks every address the app links to.
+
+## 075. What the user wants the assistant to do, in his own terms; and the trades page corrected (2026-10-07)
+
+**The user, restated.** A passive investor. He adds cash to Binance weekly or monthly
+and trades once in each period. Bitcoin, gold and US stocks are held for the long run.
+Altcoins are speculation: at most 1% of the account in any one, at most ten of them,
+so at most 10% in all. He has lost money on past trades and wants to climb back to a
+gain slowly, without losing more. He wants the app to be an analyst, guardian and
+manager that cannot trade: it tells him what to hold, when to rebalance, add or take
+profit, where and how much, which news to be careful about, and what a Fed or data
+release means for his holdings. He places every trade himself.
+
+**What can be built honestly from this, and what cannot.**
+- *A plan*: target shares for cash, Bitcoin, gold and US stocks, with the altcoin caps
+  (1% each, 10% together) enforced. Can be built.
+- *This period's to-do*: given the cash just added and what is held, the purchases that
+  bring the account back to the plan, and sales only where a holding has grown past its
+  share by a set margin. This is arithmetic against a plan the user chose. It is the
+  form "when to take profit" and "when to add" take: a holding above its share is
+  trimmed, one below it is topped up. Can be built.
+- *Alerts*: a holding outside its share; an altcoin above its cap; rougher days
+  forecast; a market turned turbulent; a scheduled release inside the coming period.
+  Can be built from what exists.
+- *Releases*: RADAR has no figure for what is expected, and decision 056 stands: tested
+  over ten years, no release showed a lean in direction. What was found is size: gold
+  moves more on Fed days, US stocks on jobs days. So the assistant can say "a release
+  falls on your buying day; prices usually move more that day, in either direction" and
+  offer to shift the purchase by a day. It cannot say "if the number is high, sell".
+- *Buying and selling at the right time*: not something any tested reading can do
+  (decisions 061 to 073). The to-do list keeps him to his plan; it does not time
+  the market.
+
+**The trades page, corrected after the user's review.**
+- Coins traded long ago and no longer held were missing (MANTA, his largest loss, and
+  TAO among them), because the account no longer pointed to them. About 150 common
+  coins are now always asked about. A complete answer needs Binance's public list of
+  pairs, which is one more endpoint and awaits the user's yes.
+- What the account really holds is the truth. Units that history still shows but the
+  account does not have left at cost, counted neither as gain nor loss, and their cost
+  is shown as money whose fate the record does not know (`ledger.reconcile`).
+- A coin is "held" only when what is held is worth a dollar or more.
+- One total for every coin and all time, then coins held now, then coins no longer
+  held. The comparison with buying and keeping is off the screen until it is verified.
+- Plain words throughout; no statistical phrase is shown (the check is still applied).
