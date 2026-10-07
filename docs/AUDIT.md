@@ -1,150 +1,191 @@
-# RADAR: audit of the product and the repository
+# RADAR: audit of the product, the code and the notebooks
 
-Written 2026-10-07 by Claude, acting as product QA and repository QA. It covers the
-whole directory as it stands on branch `pay-in-timing` (everything up to pull request 21
-is merged to `main`). The companion file `WHAT_RADAR_IS.md` explains the app itself.
-This file is the criticism, including of my own work.
+Written 2026-10-07 by Claude, acting as product QA and repository QA. Second version,
+after a full pass over the code and after the user restated what the product is for.
+The companion `WHAT_RADAR_IS.md` describes the app; `PROJECT_SPEC.md` section 0 holds
+the new direction. This file is the criticism, including of my own work.
 
-## Verdict
+**Corrections to the first version of this audit.** (1) I wrote that analysis is a chain
+of hand-run commands. Wrong: the worker schedules all 16 jobs. (2) I called the news
+pipeline "poor value" and proposed a minimal planner. That rested on a wrong picture of
+the user. News failed as a *forecast*; it is still what explains a move after the fact.
 
-**The engineering is sound and the product is unfocused.** RADAR is about 21,000 lines
-of backend, 13,500 of frontend, 581 passing backend tests, 15 notebooks and 70 recorded
-decisions. Roughly half of that effort went into questions whose answer was predictable
-from theory ("can public daily prices tell which way the market goes next?") and into a
-news pipeline that feeds nothing. The parts that do work (risk, swings, portfolio X-ray,
-paying-in simulation) are under-used, and the thing you actually asked for, an assistant
-built around your own portfolio, does not exist yet as a screen.
+## 1. What the user wants (stated 2026-10-07)
 
-| Area | Grade | One-line reason |
+1. **Awareness.** What is going on (news, macro) and *why* each asset I own went up or
+   down (technical and fundamental reasons).
+2. **Protection.** When to cut a loss and take profit, as ranges with conditions; moving
+   a stop to break-even before a profit becomes a loss; when to add or reduce without
+   going all in or all out. The user has no rules of their own: the app should propose
+   rules, and let the parameters be edited to see different results.
+3. **Analytics for each asset owned**, from the data we have.
+4. **A showcase.** It must demo well and show skill in finance data, a full machine
+   learning pipeline, and full-stack work (database, deployment).
+5. **Focus.** The app today "babbles about so many things".
+
+## 2. Verdict
+
+**Sound engineering pointed at the wrong centre.** The app is organised around three
+markets and a list of studies. The user needs it organised around *their holdings* and
+three verbs: explain, protect, size. Of 30 API routes, 13 serve per-market study pages
+and only the three primary markets get state, outlook, swings and risk at all
+(`universe.primary` in every model pipeline). A holding outside those three gets a price
+and a place in the portfolio maths and nothing else.
+
+| Area | Grade | Reason |
 |---|---|---|
-| Data handling (ingest, cleaning, time order) | Good | Idempotent, raw kept, no lookahead, tested |
-| Risk and swings (volatility, loss limits, stress) | Good | The one forecast that holds up on unseen data |
-| Portfolio maths (X-ray, mixes, paying in) | Fair | Correct, but knows quantities only, not what you paid |
-| Direction and timing research (notebooks 11 to 15) | Honest, poor value | Five notebooks, one answer: no |
-| News (tone, topics, fine-tuning) | Poor value | Drives no forecast and no signal |
-| Signals | Weak | True statements, little to act on |
-| Product focus | Poor | Goal changed three times; home screen still market-first |
-| Documentation | Poor | Spec describes an older product; README is one line |
+| Data handling | Good | Idempotent, raw kept, time order enforced and tested |
+| Risk and swings | Good | The forecast that holds up on unseen data |
+| Portfolio maths | Fair | Correct, but knows quantity only, not what was paid |
+| Explaining a move | Missing | The parts exist (drivers, abnormal moves, events, news); nothing joins them |
+| Protection rules | Missing | Three behaviours tested in notebook 14; no tool the user can use |
+| Per-holding analytics | Poor | Three markets only; indicators exist only in research code, drawn nowhere |
+| Machine learning as a showcase | Fair | Real models, real tests, but no place in the app shows the pipeline |
+| Notebooks | Poor to read | See section 6 |
+| Focus | Poor | See section 5 |
+| Documentation | Poor | Spec described an older product; README is one line |
 
-## The theory that should have steered the work
+## 3. The theory that should steer the work
 
-1. **Prices are close to a fair game.** In a market many people trade, today's price
-   already holds what is publicly known, so the next move is close to a coin toss with a
-   small upward tilt. An edge, where one exists, is a point or two above 50% and needs
-   private data, speed, or thousands of independent cases to show. We have about 2,500
-   days per market. *Consequence: notebooks 11 to 14 were always likely to say no.*
-2. **No stopping rule beats a fair game** (the optional stopping theorem). If the price
-   is a fair game with upward drift, any rule for choosing *when* to buy within a fixed
-   window pays the same on average, minus the drift lost while waiting. *Consequence:
-   notebook 15 found every one of eight readings paid 0.2% to 0.8% more than the
-   scheduled day. That is the theorem showing up in the data.*
-3. **Swings cluster; direction does not.** Rough days follow rough days. This is the
-   best-established fact in the field, and it is why the volatility forecast works.
-   *Consequence: risk warnings are the honest core of the product.*
-4. **Holding less always falls less.** Any rule that holds cash part of the time looks
-   safer than holding everything. It only counts if it beats a fixed share of the same
-   average size. *I missed this in decision 064 and fixed it in 065.*
-5. **Test many things and some pass by luck.** Each notebook corrects for this inside
-   itself. Nothing corrects for it *across* notebooks, and the same 27 markets were
-   reused in 13, 14 and 15, so they are no longer fresh evidence.
-6. **With a rising market, putting money in sooner wins on average.** Regular paying-in
-   is about cash flow and nerves, not about return. The app should say this plainly.
-7. **Estimated "best mixes" are fragile.** With short records, clever splits rarely beat
-   equal weights out of sample. Notebook 07 partly shows this; the app still offers five.
+1. **Prices are close to a fair game.** Public daily data gives at best a point or two
+   over a coin toss on direction. Notebooks 11 to 14 confirmed it.
+2. **No rule for *when* to buy inside a fixed window beats the first day on average**
+   (optional stopping). Notebook 15: all eight readings paid 0.2% to 0.8% more.
+3. **Swings cluster.** Rough days follow rough days. This is why risk can be forecast,
+   and why stop and take-profit *ranges* can be sized honestly from expected swings.
+4. **A stop is insurance, not profit.** It lowers the average a little and cuts the
+   worst case a lot (notebook 14: ended lower in 20 of 27 markets, worst point better
+   in 21). The app must show both numbers for every rule.
+5. **Holding less always falls less.** A sizing rule is judged against a fixed share of
+   the same average size (decision 065).
+6. **Try enough settings and one will look good by luck.** This matters now, because
+   "edit the parameters and see" is trial and error. A rule tool must search on one part
+   of history, judge on a later part and on other markets, and show how many settings
+   were tried.
+7. **Explaining is easier than predicting.** Splitting today's move into "the whole
+   market", "this asset alone", "an event day", "unusually large" is arithmetic on known
+   data. It needs no forecast and is always available.
 
-## What went wrong, in order of cost
+## 4. What went wrong, in order of cost
 
-1. **The product was built before the question was asked.** Six phases followed a spec
-   for a "market outlook dashboard". Only on 2026-10-07 did you say what you want: a
-   portfolio assistant. Markets, news and signals were built as destinations when they
-   should have been inputs. I followed the spec phase by phase and did not challenge it.
-2. **Sunk cost on direction.** After notebook 11 said no, each of your next questions
-   (LSTM, cash timing, outside data, timing within the month) became another full
-   notebook. I should have said after the first: theory gives this a few per cent chance,
-   here is what it costs, here is what else that time buys. I recorded guesses, and most
-   were right, which means the runs taught us little.
-3. **News was built before it was tested.** A tone model, a fine-tuned version, topics,
-   an event study and a lexicon rival were built in Phases 4 and 5. Only afterwards did
-   decision 045 test whether news improves anything. It did not, in 12 of 12 comparisons.
-4. **Honesty turned into an app that mostly reports what it cannot do.** The rule
-   "every claim carries its evidence" is right. Applied to features with no edge, it
-   fills screens with "no measurable pattern". Those features should have been removed,
-   not labelled.
-5. **The assistant cannot see what you paid.** A holding is a symbol and a quantity.
-   There is no purchase price and no transaction history, so RADAR cannot show your real
-   gain or loss, cannot tell when you are near break-even, and cannot replay your actual
-   paying-in. For a portfolio assistant this is the largest functional gap.
-6. **My own errors.** A test that was too easy (064). First model settings that could
-   not learn even a planted pattern (061). A false RSI "finding" from counting clustered
-   days (061). Two visual regressions you caught (sidebar, charts). One merge with a red
-   type check. And in notebook 15, a dip forecast designed without each market's own dip
-   rate as an input, so it lost to a baseline that had it.
+1. **Built around markets, not holdings.** Six phases followed a spec for a market
+   outlook dashboard. I did not challenge it.
+2. **I guessed the user twice and was wrong twice.** First "wants statistical honesty
+   above all", then "passive monthly investor". I should have asked in Phase 0.
+3. **Sunk cost on direction.** Five notebooks on variations of one question after the
+   first said no. The time would have built the explain and protect tools.
+4. **Negative results were shipped as features.** News-and-swings, tone-versus-price,
+   signal track records and event studies are research findings ("no effect") shown as
+   app pages. That is the babbling: the app reports its own homework.
+5. **Every card explains itself at length.** Each has a caption of four to six facts
+   (Shows, Assumes, Window, Measured on...). Right for an audit, tiring for a user.
+6. **No purchase history.** A holding is a symbol and a quantity (`models/holdings.py`).
+   Break-even, real gain and loss, and every stop the user asked for depend on it.
+7. **My technical errors.** A test that was too easy (064); model settings that could
+   not learn (061); a false RSI finding from clustered days (061); two visual
+   regressions; a merge with a red type check; a dip forecast in notebook 15 that was
+   denied the one input its baseline had; a wrong claim in the first version of this
+   audit.
 
-## Decisions I now think were irrational
+## 5. What should not be in the app
 
-- Adding screens faster than removing them. Decision 069 "folds away" six sections;
-  none has been removed.
-- Three stacked pull requests of 60+ commits, reviewed by nobody but CI.
-- A decisions log of 2,700 lines and a status paragraph of about 1,500 words in
-  `CLAUDE.md`. Both are write-only: too long for either of us to use.
-- Testing crypto on Alpaca's history (from 2021) when Binance's public history (from
-  2017) was approved and used for only three coins.
-- Fixed thresholds chosen for convenience and never questioned: a 5% dip for bonds and
-  coins alike, 21 trading days as "a month", 0.1% cost for every market.
-- Spending on a soft-voting ensemble where theory said there was nothing to find, and
-  not on the one place machine learning has a real target (risk).
+Kept as research in notebooks where it has a result; removed from screens and routes.
 
-## Repository findings
+| Remove | Why | What replaces it |
+|---|---|---|
+| **Markets together** page (pair correlations, risk spreading, weekend gaps) | About markets, not your holdings | The "how your holdings move together" grid already in the X-ray |
+| **News and swings** section (`/news-and-swings`) | A negative research result | Nothing |
+| **Tone versus price** section (`/event-study`) | A negative research result | Nothing |
+| **Forecast accuracy** as a page per market | Belongs to the models, not to a market | One Models page |
+| **What it moves with** as a page | A regression table nobody acts on | One line inside "why it moved" |
+| **Signals** as a place, and a track-record page per signal type | True, nothing to act on | Alerts on your holdings and your rules |
+| **Compare mixes** (five allocation rules) | Differences are within noise on this data | One sizing tool: how much to hold |
+| **Core and satellite** | A tagging exercise with a report | Nothing |
+| **Event study per event** on Calendar | Five-question study as a page | The date, and one line: "moves are usually N times normal" |
+| **News topics**, the word-list rival | Machinery with no reader | Headlines tied to a move |
+| **Markets** as a top-level place for three fixed markets | The user's assets are the subject | A page per holding |
+| Long captions on every card | Fatigue | One line; the detail moves to Models |
+| About 1,900 lines of research-only code in the app package | Imported by nothing the app runs | A `research` package beside the app |
+
+Navigation after the cut, five places: **Home** (your portfolio), **Holdings** (one page
+each), **Rules**, **Calendar**, **Models**.
+
+## 6. The notebooks
+
+All 15 run and their numbers are right. As documents they are hard to read, and the
+user said so. Measured:
+
+| Problem | Evidence |
+|---|---|
+| Lines too wide to read | Widest code line per notebook: 117 to 303 characters |
+| Cells too long | Up to 73 lines in one cell (notebook 15), 56 (notebook 11) |
+| Logic written inside notebooks, untested | 22 functions defined in notebooks 11 to 15 |
+| No shared look | Every notebook sets its own chart style; colours and sizes differ |
+| Jargon column names | "p across markets", "share of resamples not ahead", "ranking score" |
+| Walls of text | 3,017 words of commentary in notebook 11 |
+| No common shape | Each is organised differently; none opens with the answer |
+| Overlap | 11 to 15 are one question five ways |
+| Heavy files | Notebook 15 is 2.1 MB |
+
+**What a notebook should be:** the answer in three lines at the top; then Question,
+Data, Method, Result, What it means, Limits, in that order every time; one shared style
+module; every chart with a plain title that states the finding, labelled axes with
+units, and no table wider than the page; all logic imported from tested code.
+**Proposed set:** one notebook per model that lives in the app (state, range, swings and
+loss, news, portfolio, rules), and one "what we tested and why it failed" notebook that
+replaces 11 to 15.
+
+## 7. Code findings
 
 | Finding | Evidence | Severity |
 |---|---|---|
-| About 1,900 lines of research-only code live in the app package and are imported by nothing the app runs | `analytics/technical.py`, `positioning.py`, `buying.py`, `models/direction.py`, `payin.py`, `providers/cftc.py`, `binance_public.py`, `public.py`, `pipelines/research.py` | Medium |
-| Spec is out of date | `docs/PROJECT_SPEC.md` section 1 still describes a market outlook app | Medium |
-| No orientation for a newcomer | `README.md` is one line | Medium |
-| No login on the API | Fine on your own machine; a blocker before anyone else uses it | High if shared |
-| Analysis is a chain of about 14 hand-run commands in a required order | `radar regime`, `simulate`, `volatility`, `risk`, ... `brief` | Medium |
-| Notebooks are not checked by CI and need a filled database to rebuild | They can drift from the code without anyone noticing | Medium |
-| Notebooks 11 to 14 overlap | Same question, same answer, four files, 1.7 MB | Low |
-| Very large files | `PortfolioPage.tsx` 923 lines, `api/routes.py` 869, `pipelines/portfolio.py` 754 | Low |
-| Frontend tested less than backend | 20 test files for 69 source files; no end-to-end test of a whole screen flow | Medium |
-| Language models run only on the host, not in the worker | Tone scoring silently stops on any other machine (decision 030) | Low, since news drives nothing |
-| Notebook 15 is 2.1 MB, uncommitted, with placeholder text | Work in progress | Note |
+| Models cover three markets only | `universe.primary` in 18 places across pipelines | High for the new product |
+| No cost or purchase date on a holding | `Holding(symbol, quantity, tag)` | High |
+| No login, no access control on the API | No auth dependency in `api/` | High before sharing; fine locally (ports bound to 127.0.0.1) |
+| Research code inside the app package | `technical`, `direction`, `payin`, `positioning`, `buying`, `cftc`, `binance_public`, `public`, `pipelines/research` | Medium |
+| Model tracking is partial | MLflow is used by the regime model only; a `model_registry` table exists | Medium for a showcase |
+| No end-to-end test | 581 backend tests and 20 frontend test files, none drives a whole screen against a running API | Medium |
+| Modules with no test of their own | `analytics/correlation.py`, `transmission.py`, `models/drivers.py`, `models/topics.py`, `pipelines/worker.py` (some are covered through API tests) | Medium |
+| Notebooks outside CI | They need a filled database; nothing detects drift | Medium |
+| Very large files | `PortfolioPage.tsx` 923 lines, `api/routes.py` 869, `pipelines/portfolio.py` 754, `NewsPanel.tsx` 526 | Low |
+| Database image not pinned | `timescale/timescaledb:latest-pg17` | Low |
+| Language models run on the host only | Decision 030; tone scoring stops on any other machine | Medium for deployment |
+| Not deployed anywhere | Docker Compose on one machine; no hosted demo | High for a showcase |
+| Docs out of date | README one line; status block in `CLAUDE.md` about 1,500 words | Medium |
+| Uncommitted work | Notebook 15 and one setting in `models/payin.py` | Note |
 
-## What is not considered anywhere, and must be
+Clean: no TODO or FIXME markers; no unused components; lint and type checks pass; no
+secret in the repository; the trading and host restrictions are enforced by tests.
 
-1. **Your currency.** You are in GMT+8 and hold US-dollar assets. Exchange-rate moves
-   change your real result and are not modelled.
-2. **What you paid, fees and tax.** See point 5 above.
-3. **Your goal.** There is no target amount, horizon, monthly budget or loss you can
-   live with. Without one, "how much to hold" has no reference point.
-4. **One bull market.** Stocks from 2016, crypto from 2021. No 2008, no long flat
-   decade. Every "worst case" in the app is milder than history.
-5. **Advice.** Suggestions about buying and selling shown to other people may count as
-   regulated financial advice. Settle this before sharing the app.
-6. **Privacy.** Connecting a language model to the daily brief would send your portfolio
-   figures to an outside service.
+## 8. What is still not considered anywhere
 
-## What I recommend, in order
+1. **Currency.** The user is in GMT+8 holding US-dollar assets.
+2. **Fees and tax** on the user's actual venues.
+3. **One bull market.** Stocks from 2016, crypto from 2021 (Binance's public history
+   goes back to 2017 and is approved, but used for three coins only).
+4. **Advice.** Stop and take-profit suggestions shown to other people may be regulated.
+5. **Privacy.** A language model on the brief would send portfolio figures outside.
+6. **Fundamentals.** The user asked for "fundamental news". We have headlines only: no
+   earnings, no on-chain data, no economic series beyond event dates.
 
-1. **Stop direction and timing research.** Record notebook 15 as the last of its kind.
-2. **Cut before building.** Remove from the main path: news tone studies, markets
-   together, outside forces, per-signal track-record pages, compare mixes, core and
-   satellite. Move research-only code out of the app package.
-3. **Give the portfolio a memory.** Purchases with date, amount and price, so the app
-   can show real gain and loss, break-even, and your actual paying-in history.
-4. **Ask for a goal.** Monthly amount, horizon, and the fall you can tolerate.
-5. **Build one home screen** from what holds up: value and real gain, risk now, the
-   range ahead if you keep paying in, how much to hold for the fall you can tolerate,
-   and warnings (rougher week, drift, turbulent market, event day).
-6. **Show technical readings as context only**, each with its record, never as a signal.
-7. **Rewrite the spec and README** for the product in point 5, and cut the status block
-   in `CLAUDE.md` to a few lines.
+## 9. Recommended order
 
-## My assumptions, so you can correct them
+1. Record notebook 15 and stop direction research.
+2. Cut section 5 from the app; move research code out.
+3. Purchases: date, amount, price. Real gain, loss and break-even per holding.
+4. Run every model for every holding, not three markets.
+5. Holding page: chart with indicators, "why it moved", state, risk, your position.
+6. Rules: a small set with editable parameters, each with its cost and its saving,
+   searched and judged as section 3 point 6 requires; alerts when a condition is met.
+7. Risk forecast with the pooled ensemble, done properly; a Models page showing data,
+   training, testing and live scoring for every model.
+8. Rebuild the notebooks to the shape in section 6.
+9. Deploy a demo with example data.
 
-- You want the truth about what works more than output that sounds actionable.
-- The app is for you alone, on your own machine.
-- "RSI (5,3,3)" means the stochastic oscillator (you confirmed this today).
-- A month is 21 trading days, a trade costs 0.1%, and a "dip" is 5%.
-- Alpaca's data is good enough for stocks; I never checked it against a second source.
-- You pay in monthly, in US dollars. I do not know the amount or how long you plan to.
+## 10. My assumptions, to be corrected
+
+- The app is used by one person for now, and shown to others as a demo with example data.
+- "RSI (5,3,3)" is the stochastic oscillator; EMAs are 9 and 13, with 50 and 200 added by me.
+- The user holds mostly crypto and some US-listed assets, and adds money from time to time.
+- A rule the app proposes is a starting point the user may change, never an instruction.
+- Showing a failed research result honestly is worth more in a demo than hiding it.

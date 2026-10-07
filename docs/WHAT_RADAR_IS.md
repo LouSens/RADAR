@@ -9,9 +9,11 @@ RADAR is a private web app for one person. It collects prices and news for Bitco
 gold and US stocks, reads what you hold (typed in, from a CSV file, or from Binance with
 a read-only key), and shows you the state of those markets, how risky your mix is, what
 range of outcomes is plausible, and what happens if you keep paying in each month. It
-never buys or sells. As of 2026-10-07 its stated purpose is to be a **personal portfolio
-assistant**; before that it was a market outlook dashboard, and most of what is built
-still reflects the older purpose.
+never buys or sells. As of 2026-10-07 its stated purpose is to be **an analyst for each
+asset you own**: explain what moved it, guard the position with rules you can tune, help
+size the mix, and show its machine learning openly. Before that it was a market outlook
+dashboard, and most of what is built still reflects the older purpose. Section 12 says
+what it is becoming.
 
 ## 2. Words used in this project
 
@@ -193,9 +195,10 @@ make migrate   # create the tables
 make backfill  # download history, about 17 minutes the first time
 ```
 
-After that the analysis commands are run by hand, in order: `uv run radar regime`,
-`simulate`, `volatility`, `risk`, `sentiment`, `track`, `portfolio`, `relationships`,
-`signals`, `events`, `brief`. `make test` and `make lint` check everything.
+After that the worker runs the analysis on a schedule (sixteen jobs: sync, quality,
+state, outlook, calibration, swings, risk, news, tone study, track record, relationships,
+signals, events, brief, portfolio). Each can also be run by hand, for example
+`uv run radar volatility`. `make test` and `make lint` check everything.
 
 ## 9. How the purpose changed
 
@@ -205,15 +208,18 @@ After that the analysis commands are run by hand, in order: `uv run radar regime
 | Phase 5 | Plus a portfolio layer on top |
 | Phase 6 | Plus signals and a daily brief |
 | Notebooks 11 to 15 | A search for something that times buying and selling |
-| 2026-10-07 | A personal portfolio assistant; markets, news and signals become inputs |
+| 2026-10-07, morning | A personal portfolio assistant; markets, news and signals become inputs |
+| 2026-10-07, later | An analyst for each asset you own: explain, protect, size; also a showcase |
 
 ## 10. Where things stand today
 
 - Everything through pull request 21 is merged to `main`.
 - Branch `pay-in-timing` holds the written-down test (decision 070) and its code.
   Notebook 15 has been run once and is not committed or written up.
-- The portfolio-first home screen, the "how much to hold" tool, and purchase history do
-  not exist yet.
+- State, outlook, swings and loss limits are computed for the three primary markets
+  only. Other holdings get a price and a place in the portfolio maths.
+- Purchase history, the per-holding page, "why it moved", the rules tool and the Models
+  page do not exist yet.
 
 ## 11. What RADAR can honestly tell you, and what it cannot
 
@@ -225,3 +231,39 @@ After that the analysis commands are run by hand, in order: `uv run radar regime
 | What paying in monthly could lead to | Whether news will move the price |
 | How far a given cash share would have fallen | Your real gain or loss (it does not know what you paid) |
 | When a scheduled event is coming and how big moves tend to be | Anything about your currency, fees or tax |
+
+## 12. What RADAR is becoming
+
+Defined in `PROJECT_SPEC.md` section 0 and `DECISIONS.md` 071.
+
+```
+            YOUR HOLDINGS  (quantity + what you paid)
+                          │
+     ┌────────────────────┼────────────────────┐
+     ▼                    ▼                    ▼
+  EXPLAIN              PROTECT               SIZE
+  why it moved         your rules            how much to hold
+  ─ wider market       ─ cut loss            ─ risk of the mix
+  ─ its own move       ─ trailing stop       ─ past bad episodes
+  ─ event day          ─ break-even stop     ─ range ahead
+  ─ unusual size       ─ take profit
+  ─ headlines          ─ add / reduce
+     ▲                    ▲                    ▲
+     └────────── MODELS (shown on one page) ───┘
+       state · expected swings · chance of a large fall · news tone
+```
+
+| Place | What is there |
+|---|---|
+| Home | Your value and real gain, what changed and why, alerts from your rules |
+| Holdings | One page per asset: chart with your indicators, state, risk, your cost and stops |
+| Rules | Each rule with parameters you can change and what it would have cost and saved |
+| Calendar | Coming Fed, jobs and inflation days |
+| Models | Every model: its data, its test, its score, its live record |
+
+**Leaving the app:** markets together, the news studies, signal track-record pages,
+compare mixes, core and satellite, per-event studies. They stay as research write-ups.
+
+**Two honest limits that will stay visible.** A stop or take-profit rule is insurance:
+it usually costs a little and occasionally saves a lot, and the app shows both. And no
+reading or model says which way a price goes next; five notebooks tested that.

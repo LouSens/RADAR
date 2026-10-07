@@ -2703,3 +2703,35 @@ result is recorded here as 071; lint and tests pass. Files: `analytics/technical
 (exponential average, Fibonacci level, the new readings), `analytics/buying.py` (months,
 day paid, savings, shuffled waits), new `models/payin.py` (inputs, answers, ensemble,
 yearly walk-forward, scoring), their tests, `notebooks/src/15_when_to_pay_in.py`.
+
+## 071. The product, restated by the user: explain, protect, size, and show the work (2026-10-07)
+
+Decision 069 called RADAR a portfolio assistant and I then described it as a planner
+for a passive monthly investor. The user corrected that. In their words they want to
+know what is going on and why their assets move; how to prevent large losses (cut-loss
+and take-profit ranges with conditions, a stop moved to break-even before a profit
+turns into a loss, adding and reducing without going all in or out); analytics for each
+asset they own; and an app that demos well and shows a full machine learning pipeline
+and full-stack work. They have no rules of their own: the app is to propose rules whose
+parameters they can edit to see different results. They also find the app unfocused and
+the notebooks hard to read.
+
+**Decided.**
+- The product is defined in `PROJECT_SPEC.md` section 0: three jobs (explain, protect,
+  size), features F11 to F15, five places, and build plan A to I. It replaces the
+  one-sentence product of 069 and its order of work.
+- What leaves the app is listed in `AUDIT.md` section 5. Nothing is deleted without the
+  user's say.
+- News and indicators have a use after all: explaining a move, and as readings on a
+  chart. Decision 045 stands (news drives no forecast).
+- Decision 061 said never to show a level as a place to add or reduce. Revised at the
+  user's request: a level may be drawn on a chart as a reading, and may trigger a rule
+  the user has switched on, shown with that rule's record. It is still never RADAR's
+  own call.
+- Trial and error on rule settings is allowed only with a guard: search on the earlier
+  part of the record, judge on the later part and on other markets, and state how many
+  settings were tried.
+- Direction research ends with notebook 15, whose result is still to be recorded.
+
+**Corrected.** The first audit said the analysis jobs are run by hand. The worker
+schedules all sixteen.
