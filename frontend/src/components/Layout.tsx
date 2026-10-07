@@ -5,6 +5,7 @@ import { useStreamStatus } from "../api/live";
 import { useAssets, useHealth, usePortfolioAnalysis, useSteps } from "../api/queries";
 import { formatMoney } from "../lib/format";
 import { assetColorVar } from "./ui";
+import { Skeleton } from "./Skeleton";
 
 /** The mark: a rising line that leaves a radar ring, on a plain dark badge. */
 export function RadarMark({ size = 30 }: { size?: number }) {
@@ -173,8 +174,18 @@ const sideLink = ({ isActive }: { isActive: boolean }) =>
 
 /** The account at a glance, at the foot of the sidebar: worth, risk, and what to do. */
 function Account() {
-  const analysis = usePortfolioAnalysis().data;
+  const query = usePortfolioAnalysis();
+  const analysis = query.data;
   const steps = useSteps().data;
+  if (query.isPending) {
+    return (
+      <div className="well mt-3 flex flex-col gap-2 p-3.5" aria-hidden="true">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-6 w-28" />
+        <Skeleton className="h-8 w-full" />
+      </div>
+    );
+  }
   if (!analysis) return null;
   const level = analysis.risk_level?.label;
   const todo = steps?.has_plan ? steps.steps.length : 0;

@@ -3195,3 +3195,15 @@ The reader and the rules were written and tested on branch `stock-screen`, which
 merged and can be picked up if a source is ever agreed. Nothing of it is in the app.
 Stocks are therefore held only through the broad US stock fund in the plan, and no
 individual stock is suggested.
+
+## 084. The portfolio's risk pages as pictures (2026-10-07)
+
+- **Possible loss**: each figure is the loss in red with a row of dots under it, one lit
+  ("about 1 of every 20 days is worse"), and two small figures: what it averages when
+  worse, and how often it was passed in the past against how often expected. The two
+  paragraphs it replaced said the same in sentences.
+- **Past crashes**: one bar per episode, drawn against the largest, with the change and
+  the money beside the name. Dates, the deepest fall, the worst day and each holding's
+  part are behind "Details".
+- **Risk by holding**: the table of how closely the holdings move together is folded
+  behind a tap; the bars of money against risk stay in view.

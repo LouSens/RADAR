@@ -9,7 +9,7 @@ import { OutlookPanel } from "../components/OutlookPanel";
 import { RegimePanel } from "../components/RegimePanel";
 import { RiskPanel } from "../components/RiskPanel";
 import { SummaryCard } from "../components/SummaryCard";
-import { PageSkeleton } from "../components/Skeleton";
+import { CardSkeleton, PageSkeleton } from "../components/Skeleton";
 import { SectionMenu, Tabs } from "../components/Tabs";
 import { VolatilityPanel } from "../components/VolatilityPanel";
 import { Change, Message, RangeBar, StatRow, assetColorVar, shortName } from "../components/ui";
@@ -22,7 +22,8 @@ export function AssetPage() {
   const assets = useAssets();
   const asset = assets.data?.find((a) => a.slug === slug);
   const market = useMarket(asset);
-  const summary = useSummary(asset?.slug).data ?? undefined;
+  const summaryQuery = useSummary(asset?.slug);
+  const summary = summaryQuery.data ?? undefined;
   const trust = summary?.trust;
 
   if (assets.isPending) return <PageSkeleton cards={3} />;
@@ -56,7 +57,11 @@ export function AssetPage() {
           <div className="rise">
             <MarketStage key={asset.slug} asset={asset} allowCandles />
           </div>
-          {summary && <SummaryCard asset={asset} summary={summary} />}
+          {summary ? (
+            <SummaryCard asset={asset} summary={summary} />
+          ) : summaryQuery.isPending ? (
+            <CardSkeleton lines={4} />
+          ) : null}
           <SectionMenu base={base} items={SECTIONS} title="Look closer" />
           <section className="glass rise rise-2 grid grid-cols-1 gap-x-12 gap-y-6 p-4 @xl:p-7 @4xl:grid-cols-2">
             <div>

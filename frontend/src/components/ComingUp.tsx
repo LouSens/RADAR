@@ -2,11 +2,13 @@ import { Link } from "react-router-dom";
 
 import { useCalendar } from "../api/queries";
 import { daysAway, when } from "../pages/CalendarPage";
+import { CardSkeleton } from "./Skeleton";
 
 /** The next few scheduled economic events, on the Overview. */
 export function ComingUp() {
-  const calendar = useCalendar().data;
-  const next = calendar?.upcoming.slice(0, 3) ?? [];
+  const query = useCalendar();
+  const next = query.data?.upcoming.slice(0, 3) ?? [];
+  if (query.isPending) return <CardSkeleton lines={3} />;
   if (next.length === 0) return null;
   return (
     <section className="glass p-4 @xl:p-7" aria-labelledby="coming-up-title">

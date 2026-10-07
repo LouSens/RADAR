@@ -3,6 +3,7 @@ import { useSentiment } from "../api/queries";
 import { formatCount, formatShare } from "../lib/format";
 import { formatDate, formatDateTime, zoneLabel } from "../lib/time";
 import { Evidence, Caption, Panel, StatRow, type PanelProps } from "./ui";
+import { CardSkeleton } from "./Skeleton";
 
 /** A plain word for a tone score between -1 and +1. */
 export function toneWord(score: number | null | undefined): string {
@@ -179,7 +180,9 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
 }
 
 export function NewsPanel({ asset, trust }: PanelProps) {
-  const sentiment = useSentiment(asset.slug).data;
+  const query = useSentiment(asset.slug);
+  const sentiment = query.data;
+  if (query.isPending) return <CardSkeleton lines={5} />;
   if (!sentiment) return null;
   const accuracy = sentiment.accuracy;
 

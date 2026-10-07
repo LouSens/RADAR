@@ -5,6 +5,7 @@ import { useRisk } from "../api/queries";
 import { formatCount, formatShare } from "../lib/format";
 import { formatDate } from "../lib/time";
 import { Caption, Evidence, Panel, Segmented, type PanelProps } from "./ui";
+import { CardSkeleton } from "./Skeleton";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -105,8 +106,10 @@ function Methods({ horizon }: { horizon: RiskHorizon }) {
 }
 
 export function RiskPanel({ asset, trust }: PanelProps) {
-  const risk = useRisk(asset.slug).data;
+  const query = useRisk(asset.slug);
+  const risk = query.data;
   const [key, setKey] = useState<HorizonKey>("1");
+  if (query.isPending) return <CardSkeleton lines={4} />;
   if (!risk) return null;
   const horizon = risk.horizons.find((h) => String(h.horizon_days) === key) ?? risk.horizons[0];
   if (!horizon) return null;
