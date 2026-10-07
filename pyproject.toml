@@ -68,7 +68,6 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "PT", "RUF", "S", "T2
 
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/**" = ["S101"]
-"backend/scripts/build_notebook.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -89,7 +88,7 @@ follow_imports = "skip"
 
 [[tool.mypy.overrides]]
 # Jupyter's libraries ship without type hints.
-module = ["build_notebook", "build_notebooks"]
+module = ["build_notebooks"]
 disallow_untyped_calls = false
 
 [tool.pytest.ini_options]

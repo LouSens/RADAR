@@ -2,8 +2,16 @@ import { type ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useStreamStatus } from "../api/live";
-import { useAssets, useHealth, usePortfolioAnalysis, useSteps } from "../api/queries";
+import {
+  useAssets,
+  useFollowHoldings,
+  useHealth,
+  usePortfolio,
+  usePortfolioAnalysis,
+  useSteps,
+} from "../api/queries";
 import { formatMoney } from "../lib/format";
+import { accountWorth } from "../lib/portfolio";
 import { assetColorVar } from "./ui";
 import { Skeleton } from "./Skeleton";
 
@@ -177,6 +185,7 @@ function Account() {
   const query = usePortfolioAnalysis();
   const analysis = query.data;
   const steps = useSteps().data;
+  const wallets = usePortfolio().data?.wallets;
   if (query.isPending) {
     return (
       <div className="well mt-3 flex flex-col gap-2 p-3.5" aria-hidden="true">
@@ -194,7 +203,7 @@ function Account() {
       <Link to="/portfolio" className="press block">
         <span className="label block">Your account</span>
         <span className="num mt-1 block text-xl font-semibold tracking-tight">
-          {formatMoney(analysis.value)}
+          {formatMoney(accountWorth(wallets, analysis.value) ?? analysis.value)}
         </span>
         {level && <span className="mt-0.5 block text-xs capitalize text-muted">{level} risk</span>}
       </Link>
@@ -290,6 +299,7 @@ function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
 }
 
 export function Layout() {
+  useFollowHoldings();
   const { pathname } = useLocation();
   const [preferCollapsed, setCollapsed] = useState(readCollapsed);
 

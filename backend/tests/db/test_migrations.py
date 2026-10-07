@@ -72,11 +72,13 @@ def test_sync_assets_is_idempotent(session: Session) -> None:
 
     assets = {a.symbol: a for a in session.scalars(select(Asset))}
     assert set(assets) == {a.symbol for a in universe.assets}
-    assert assets["GLD"].is_primary
-    assert assets["GLD"].provider_symbols == {"bars": "GLD", "news": ["GLD"]}
+    # Gold is followed as PAX Gold, which reads the fund's news (decisions 087, 089).
+    assert not assets["GLD"].is_primary
+    assert assets["GLD"].provider_symbols == {"bars": "GLD", "news": []}
+    assert assets["PAXG/USD"].provider_symbols == {"bars": "PAXG/USD", "news": ["GLD"]}
     assert assets["BTC/USD"].provider_symbols == {"bars": "BTC/USD", "news": ["BTCUSD"]}
     assert assets["SPY"].is_primary
-    assert not assets["PAXG/USD"].is_primary
+    assert assets["PAXG/USD"].is_primary
 
 
 def _bar(ts: datetime, close: float = 100.0) -> Bar:

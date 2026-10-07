@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -171,7 +172,22 @@ export function usePortfolio() {
   return useQuery({
     queryKey: ["portfolio"],
     queryFn: () => getJson<Portfolio>("/portfolio"),
+    // Holdings kept on an exchange are read again by the server when they are a few
+    // minutes old; asking again is what lets a purchase show up by itself.
+    refetchInterval: 5 * 60_000,
+    refetchOnWindowFocus: true,
   });
+}
+
+/** When the holdings are read afresh, everything worked out from them is fetched again. */
+export function useFollowHoldings() {
+  const client = useQueryClient();
+  const readAt = usePortfolio().data?.read_at;
+  useEffect(() => {
+    if (!readAt) return;
+    void client.invalidateQueries({ queryKey: ["portfolio", "analysis"] });
+    void client.invalidateQueries({ queryKey: ["portfolio", "steps"] });
+  }, [client, readAt]);
 }
 
 /** Where the portfolio's risk comes from, its loss limits, and past episodes replayed. */
@@ -217,7 +233,10 @@ export function useSteps() {
   return useQuery({
     queryKey: ["portfolio", "steps"],
     queryFn: () => orNull(() => getJson<Steps>("/portfolio/steps")),
-    refetchInterval: 10 * 60_000,
+    // The prices to buy at follow the market: asked again every minute and whenever
+    // the window is returned to.
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 }
 

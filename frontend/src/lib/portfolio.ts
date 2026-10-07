@@ -87,3 +87,16 @@ export function parseQuantity(text: string): number | undefined {
   const value = Number(text.replace(/,/g, "").trim());
   return text.trim() !== "" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
+
+/**
+ * What the account is worth. Where the exchange gives its own total, that is the figure:
+ * it is priced this minute, and the screen should say what the exchange says. Otherwise
+ * it is RADAR's own valuation at the last market close.
+ */
+export function accountWorth(
+  wallets: { value: number }[] | undefined,
+  valued: number | undefined,
+): number | undefined {
+  const own = (wallets ?? []).reduce((sum, wallet) => sum + wallet.value, 0);
+  return own > 0 ? own : valued;
+}

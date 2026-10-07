@@ -51,8 +51,9 @@ DRIVER_WINDOW = 250
 # What the mix's swings are set against: the stock market is the yardstick.
 STOCKS = "SPY"
 REFERENCES = ("TLT", "GLD", "SPY", "BTC/USD")
-# Holdings whose market state is read from another instrument (decision 011).
-STATE_OF = {"PAXG/USD": "GLD"}
+# Holdings whose market state is read from another instrument: gold held as the fund
+# reads the state of gold itself (decision 087; before it, the other way round).
+STATE_OF = {"GLD": "PAXG/USD"}
 
 
 class Position(BaseModel):
@@ -653,6 +654,12 @@ def set_tags(session: Session, tags: dict[str, str | None]) -> bool:
     ):
         row.tag = kept.get(row.symbol)
     return True
+
+
+def read_at(session: Session) -> datetime | None:
+    """When the holdings were last read or saved."""
+    portfolio = session.get(Portfolio, PORTFOLIO_ID)
+    return None if portfolio is None else portfolio.updated_at
 
 
 def stored_wallets(session: Session) -> list[dict[str, Any]]:

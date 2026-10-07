@@ -6,11 +6,11 @@ read is only a read.
 """
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 from sqlalchemy.orm import Session
 
 from radar.api.routes import SessionDep, UniverseDep
@@ -29,6 +29,7 @@ from radar.pipelines import account as account_job
 from radar.pipelines import check as check_job
 from radar.pipelines import discover, rebalance
 from radar.pipelines import portfolio as job
+from radar.pipelines import prices as prices_job
 from radar.pipelines import steps as steps_job
 from radar.pipelines.datasets import build_mixed_panel
 from radar.pipelines.signals import daily_close
@@ -49,6 +50,8 @@ class SupportedAsset(BaseModel):
 
 
 class PortfolioOut(BaseModel):
+    # When the holdings were last read from where they are kept.
+    read_at: AwareDatetime | None = None
     # Where the holdings last came from: "manual" or "csv". Null when none are saved.
     source: str | None
     holdings: list[Holding]
@@ -83,6 +86,10 @@ class TargetIn(BaseModel):
 class WhatIfIn(BaseModel):
     # Each holding's share of the whole, from 0 to 1. Cash is whatever is left over.
     weights: dict[str, float] = Field(max_length=50)
+
+
+# Holdings on an exchange are read again when the last read is older than this.
+STEPS_FRESH = timedelta(minutes=5)
 
 
 class LostIn(BaseModel):
@@ -127,7 +134,13 @@ def get_asset_finder(request: Request) -> job.Finder | None:
     return job.asset_finder(request.app.state.engine)
 
 
+def get_live_prices() -> prices_job.Reader:
+    """The reader of latest trades. Tests replace it so that none calls Alpaca."""
+    return prices_job.live
+
+
 BinanceDep = Annotated[job.Reader | None, Depends(get_binance_reader)]
+LivePricesDep = Annotated[prices_job.Reader, Depends(get_live_prices)]
 FinderDep = Annotated[job.Finder | None, Depends(get_asset_finder)]
 
 
@@ -143,6 +156,7 @@ def _finish(session: Session, universe: Universe, read: Holdings, *, binance: bo
     session.commit()
     return PortfolioOut(
         source=read.source,
+        read_at=job.read_at(session),
         # As stored, so that tags kept from before are on them.
         holdings=sorted(job.stored_holdings(session)[1], key=lambda h: h.symbol),
         unsupported=read.unsupported,
@@ -164,23 +178,63 @@ def get_record(session: SessionDep) -> account_job.Record:
     return record
 
 
+def _follow_exchange(
+    session: Session, universe: Universe, binance: job.Reader | None, finder: job.Finder | None
+) -> Universe:
+    """Read the exchange again when the holdings come from it and the last read is old,
+    so a purchase or a deposit shows up without anyone asking. If the exchange cannot be
+    reached, what is stored is kept. Returns the universe the reading was resolved in."""
+    source, _ = job.stored_holdings(session)
+    last = job.read_at(session)
+    stale = last is None or datetime.now(UTC) - last > STEPS_FRESH
+    if binance is None or source != "binance" or not stale:
+        return universe
+    try:
+        reading, universe = job.read_exchange(session, universe, binance, finder)
+        job.store(
+            session,
+            reading.holdings,
+            [p.model_dump() for p in reading.leveraged],
+            [w.model_dump() for w in reading.wallets],
+        )
+        job.refresh(session, universe)
+        session.commit()
+    except BinanceError:
+        session.rollback()
+    return universe
+
+
 @router.get("/steps", response_model=steps_job.Steps)
-def get_steps(universe: UniverseDep, session: SessionDep) -> steps_job.Steps:
+def get_steps(
+    universe: UniverseDep,
+    session: SessionDep,
+    binance: BinanceDep,
+    finder: FinderDep,
+    live: LivePricesDep,
+) -> steps_job.Steps:
     """Where cash over the plan goes, at what prices, and why. Worked out from the
-    stored portfolio and plan each time it is asked for; nothing is traded."""
+    portfolio and plan each time it is asked for; nothing is traded.
+
+    When the holdings come from Binance and were last read more than a few minutes ago,
+    they are read again first, so a purchase or a deposit shows up without anyone asking
+    for it. If Binance cannot be reached, what is stored is used.
+    """
+    universe = _follow_exchange(session, universe, binance, finder)
     analysis = job.stored_analysis(session)
     if analysis is None:
         raise HTTPException(status_code=404, detail="No portfolio analysis yet")
     weights = None
     if analysis.plan is not None and analysis.plan.moves:
         weights = {m.symbol: m.target_weight for m in analysis.plan.moves if m.symbol != CASH}
-    wanted = set(weights or {})
-    closes = {
-        asset.symbol: daily_close(session, asset)
-        for asset in discover.extend(universe, session).assets
-        if asset.symbol in wanted
-    }
-    return steps_job.build(analysis, weights, closes, datetime.now(UTC))
+    wanted = set(weights or {}) | {p.symbol for p in analysis.positions if p.symbol != CASH}
+    assets = [a for a in discover.extend(universe, session).assets if a.symbol in wanted]
+    closes = {a.symbol: daily_close(session, a) for a in assets if a.symbol in (weights or {})}
+    # The prices to act on are the prices now, not the last daily close.
+    latest = prices_job.newest(
+        prices_job.stored(session, wanted), live(assets, universe.crypto_location)
+    )
+    steps = steps_job.build(analysis, weights, closes, datetime.now(UTC), latest)
+    return steps.model_copy(update={"checked_at": job.read_at(session)})
 
 
 @router.get("/check/{coin}", response_model=check_job.Check)
@@ -214,8 +268,12 @@ def put_lost_coins(body: LostIn, session: SessionDep) -> account_job.Record:
 
 
 @router.get("", response_model=PortfolioOut)
-def get_portfolio(universe: UniverseDep, session: SessionDep, binance: BinanceDep) -> PortfolioOut:
-    """The saved holdings and the assets that can be held."""
+def get_portfolio(
+    universe: UniverseDep, session: SessionDep, binance: BinanceDep, finder: FinderDep
+) -> PortfolioOut:
+    """The saved holdings and the assets that can be held. Holdings kept on Binance are
+    read again first when the last read is more than a few minutes old."""
+    universe = _follow_exchange(session, universe, binance, finder)
     source, holdings = job.stored_holdings(session)
     problem = (
         "These holdings do not share enough price history to analyse yet."
@@ -224,6 +282,7 @@ def get_portfolio(universe: UniverseDep, session: SessionDep, binance: BinanceDe
     )
     return PortfolioOut(
         source=source,
+        read_at=job.read_at(session),
         holdings=holdings,
         supported=_supported(universe),
         problem=problem,

@@ -16,7 +16,7 @@ from radar.models import simulator
 from radar.models.portfolio_simulation import BLOCK, Coverage, sample_days
 
 MODEL_VERSION = "regular-buying-1"
-DEFAULT_PATHS = 5_000
+DEFAULT_PATHS = 10_000
 BACKTEST_PATHS = 1_000
 # Sessions of joint history needed, and the longest plan that may be simulated.
 MIN_DAYS = 250

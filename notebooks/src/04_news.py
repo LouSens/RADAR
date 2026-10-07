@@ -1,539 +1,407 @@
 # %% [markdown]
-# # News: scoring the tone of headlines, and fine-tuning the model that does it
+# # Can the tone of headlines be scored, and how well?
 #
-# **In short.** Each article's headline and summary is scored by a language model trained
-# on financial text. Part 1 measures how much news there is and how well the scores agree
-# with labelled headlines. Part 2 fine-tunes the model on headlines like ours and tests it
-# on ones it never saw.
+# **In short.** A language model reads each headline and calls it positive, negative
+# or neutral for someone who holds the asset. A general finance model (FinBERT) was
+# then trained further on headlines from this app's own feed. Whether the trained model
+# is better was decided by a rule written down before the test, on headlines newer than
+# anything it had trained on. The result is printed in step 5. Either way the accuracy
+# on a single headline is modest, so the app shows the average of many headlines with
+# that accuracy beside it, and tone drives no forecast and no alert.
 #
-# Rebuild with `uv run python backend/scripts/build_notebooks.py 04_news`
-# (needs `uv sync --extra nlp`).
-
-# %% [markdown]
-# ---
+# | Step | What it does | Code | Screen in the app |
+# |---|---|---|---|
+# | 1 | Counts how much news each market has | `radar.pipelines.sentiment` | News |
+# | 2 | Shows what the scores look like | `radar.models.sentiment` | News |
+# | 3 | Splits labelled headlines so the test is fair | `radar.models.dataset` | |
+# | 4 | Trains the model further | `radar.models.finetune` | |
+# | 5 | Tests it on headlines it never saw | `radar.models.classification` | News |
 #
-# # Part 1. Tone
-
-# %% [markdown]
-# # News: tone, topics, and whether news moves price
+# **No headline is printed here.** The labels are kept by article number only and the
+# text is joined in from the database while the notebook runs.
 #
-# **The questions.** What is the tone of the news on each market? What is it about?
-# And does a change in tone come before a price move, after it, or neither?
-#
-# **The pipeline.**
-#
-# 1. Every stored article's headline and summary is scored by a language model
-#    (FinBERT), giving the probability that the tone is positive, negative, or neutral.
-#    The article's score is positive minus negative, from -1 to +1.
-# 2. A second model assigns each article one topic from a fixed list.
-# 3. Scores are averaged per day for each market.
-# 4. Days with unusually strong tone are found, and the price around them is examined.
-#
-# No article text appears in this notebook. Notebook 06 covers how the tone model was
-# fine-tuned and tested.
-#
-# Rebuild with `uv run python backend/scripts/build_notebooks.py 05_news`.
+# Needs `uv sync --extra nlp`. Rebuild with
+# `uv run python backend/scripts/build_notebooks.py 04_news`.
 
 # %%
+import contextlib
+import io
+import logging
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sqlalchemy import func, select
+from IPython.display import display
 
-from radar.analytics import event_study
-from radar.db.models import ModelRegistry, NewsArticle, NewsSentiment, NewsSymbol, NewsTopic, SentimentAggregate
+warnings.filterwarnings("ignore")  # progress-bar notices from the model library
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+from transformers.utils import logging as model_logging
+
+model_logging.disable_progress_bar()
+model_logging.set_verbosity_error()
+from sqlalchemy import select
+
+from radar.db.models import ModelRegistry, NewsArticle, NewsSentiment, NewsSymbol, SentimentAggregate
 from radar.db.session import make_engine, session_scope
-from radar.models import topics
-from radar.pipelines import event_study as study_job
+from radar.models import classification, dataset, evidence, finetune, sentiment
+from radar.models.lexicon import DEFAULT_PATH, Lexicon
+from radar.notebooks import ACCENT, BAD, GOOD, INK, MUTED, use_style
+from radar.pipelines import finetune as finetune_job
 from radar.pipelines import sentiment as sentiment_job
+from radar.pipelines.labels import load_labels
 from radar.universe import get_universe
 
-plt.rcParams.update({"figure.figsize": (11, 3.4), "axes.grid": True, "grid.alpha": 0.3})
-pd.set_option("display.float_format", lambda v: f"{v:.3f}")
+use_style()
+pd.set_option("display.float_format", lambda value: f"{value:,.3f}")
 engine, universe = make_engine(), get_universe()
-symbols = [a.symbol for a in universe.primary]
+MARKETS = {asset.symbol: asset.name for asset in universe.primary}
+# Labels drawn before gold was followed as PAX Gold carry the fund's ticker.
+BY_KIND = {asset.kind: asset.name for asset in universe.primary}
+NAMED = {asset.symbol: BY_KIND.get(asset.kind, asset.name) for asset in universe.assets}
+TONES = {"positive": GOOD, "neutral": MUTED, "negative": BAD}
 version = sentiment_job.active_version(engine)
-topic_version = topics.version_of(topics.MODEL_ID)
 
 with session_scope(engine) as session:
     scores = pd.read_sql(
-        select(NewsSymbol.symbol, NewsArticle.created_at, NewsSentiment.score, NewsTopic.topic)
+        select(NewsSymbol.symbol, NewsArticle.created_at, NewsSentiment.score)
         .join(NewsArticle, NewsArticle.id == NewsSymbol.article_id)
         .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
-        .outerjoin(NewsTopic, (NewsTopic.article_id == NewsArticle.id) & (NewsTopic.model_version == topic_version))
-        .where(NewsSentiment.model_version == version, NewsArticle.duplicate_of.is_(None)),
+        .where(
+            NewsSentiment.model_version == version,
+            NewsArticle.duplicate_of.is_(None),
+            NewsSymbol.symbol.in_(list(MARKETS)),
+        ),
         session.connection(),
     )
-    daily = pd.read_sql(select(SentimentAggregate).where(SentimentAggregate.bucket == "1Day"), session.connection())
-    accuracy = session.scalars(
-        select(ModelRegistry).where(ModelRegistry.name == sentiment_job.MODEL_NAME, ModelRegistry.is_current)
+    daily = pd.read_sql(
+        select(SentimentAggregate).where(SentimentAggregate.bucket == "1Day"), session.connection()
+    )
+    in_use = session.scalars(
+        select(ModelRegistry).where(
+            ModelRegistry.name == sentiment_job.MODEL_NAME, ModelRegistry.is_current
+        )
     ).first().metrics
-    studies = {s: study_job.current(session, s).metrics for s in symbols}
-    inputs = {a.symbol: study_job.daily_inputs(session, a) for a in universe.primary}
-scores["created_at"] = pd.to_datetime(scores["created_at"], utc=True)
-print(f"tone model in use: {version}; {len(scores):,} article-market links scored")
+    trained = session.scalars(
+        select(ModelRegistry)
+        .where(ModelRegistry.name == finetune_job.MODEL_NAME, ModelRegistry.is_current)
+        .order_by(ModelRegistry.trained_at.desc())
+    ).first()
+    record, model_dir, trained_at = trained.metrics, trained.artefact_path, trained.trained_at
+    labelled = finetune_job.with_text(session, finetune_job.load_training_labels())
+    earlier = finetune_job.with_text(session, load_labels())
+scores["market"] = scores["symbol"].map(MARKETS)
+labelled["market"] = labelled["symbol"].map(NAMED)
+print(f"model in use: {version}; {len(scores):,} scored articles across {len(MARKETS)} markets")
 
 # %% [markdown]
-# ## 1. How much news there is
+# ## Step 1. How much news there is
 #
-# This decides everything that follows. Bitcoin and US stocks have many articles a day.
-# Gold has one or two, which is too few for some of the analysis, and the app says so.
+# This decides everything after it. A market with one or two articles a day cannot
+# support a daily average worth much, and the app says so on that market's page.
 
 # %%
-coverage = pd.DataFrame(
+today = pd.Timestamp.now(tz="UTC")
+amount = pd.DataFrame(
     {
-        a.symbol: {
-            "measured from": a.news_start,
-            "articles": int((scores["symbol"] == a.symbol).sum()),
-            "articles per day": (scores["symbol"] == a.symbol).sum()
-            / max((pd.Timestamp.now(tz="UTC") - pd.Timestamp(a.news_start, tz="UTC")).days, 1),
+        asset.name: {
+            "counted from": asset.news_start,
+            "articles": int((scores["symbol"] == asset.symbol).sum()),
+            "a day": (scores["symbol"] == asset.symbol).sum()
+            / max((today - pd.Timestamp(asset.news_start, tz="UTC")).days, 1),
         }
-        for a in universe.primary
+        for asset in universe.primary
+        if asset.news_start is not None
     }
 ).T
-coverage
+fig, ax = plt.subplots(figsize=(8, 2.2))
+ax.barh(amount.index[::-1], amount["a day"][::-1].astype(float), color=ACCENT)
+for place, value in enumerate(amount["a day"][::-1].astype(float)):
+    ax.text(value, place, f"  {value:.1f}", va="center")
+ax.set(title="Articles a day", xlabel="")
+ax.grid(axis="y", visible=False)
+amount
 
 # %% [markdown]
-# ## 2. How good is the tone model?
+# ## Step 2. What the scores look like
 #
-# Measured on 200 headlines labelled separately, before any model output for them
-# existed. The labels were written by an AI model (Claude), not a person. The rival is
-# counting positive and negative words from a finance word list.
+# Each article gets a score from -1 (negative) to +1 (positive).
 
 # %%
-table = {"Tone model": accuracy["model"]}
-if "baseline" in accuracy:
-    table["Word counting"] = accuracy["baseline"]
-if "topics" in accuracy:
-    table["Topic model (7 topics)"] = accuracy["topics"]
-print("labelled by:", accuracy["labelled_by"])
-pd.DataFrame({k: {"headlines": v["n"], "accuracy": v["accuracy"], "macro F1": v["macro_f1"]} for k, v in table.items()}).T
-
-# %%
-pd.DataFrame(accuracy["by_symbol"]).T.rename(columns={"n": "headlines"})
+fig, axes = plt.subplots(1, len(MARKETS), figsize=(11, 2.8), sharey=True)
+for ax, name in zip(axes, MARKETS.values()):
+    part = scores.loc[scores["market"] == name, "score"]
+    ax.hist(part, bins=40, color=ACCENT, alpha=0.85, density=True)
+    ax.set(title=f"{name}: {len(part):,} articles", xlabel="score", yticks=[])
+fig.tight_layout()
 
 # %% [markdown]
-# ## 3. What the scores look like
+# Scores pile up near -1, 0 and +1 because the model is usually sure of itself. That is
+# normal for this kind of model and is why the app shows a day's average, never one
+# article's score.
+#
+# In the chart below, look at how each line moves, not where it sits. News about US
+# stocks reads as negative almost all the time while prices rose for years, so the
+# level of a market's tone says more about how its news is written than about the
+# market, and tone is not comparable between markets.
 
 # %%
-fig, axes = plt.subplots(1, 3, figsize=(13, 3.2), sharey=True)
-for ax, s in zip(axes, symbols):
-    part = scores.loc[scores["symbol"] == s, "score"]
-    ax.hist(part, bins=40, color="tab:blue", alpha=0.8, density=True)
-    ax.set(title=f"{s}: n = {len(part):,}, mean {part.mean():+.2f}", xlabel="tone score")
-
-# %% [markdown]
-# Scores pile up near -1, 0, and +1 because the model is usually confident. That is
-# normal for this kind of model, and is why daily averages are used, not single scores.
-
-# %%
-fig, axes = plt.subplots(3, 1, figsize=(12, 7), sharex=False)
-for ax, s in zip(axes, symbols):
-    part = daily[daily["symbol"] == s].sort_values("ts").set_index("ts")
+fig, axes = plt.subplots(len(MARKETS), 1, figsize=(10, 2.1 * len(MARKETS)))
+for ax, (symbol, name) in zip(axes, MARKETS.items()):
+    part = daily[daily["symbol"] == symbol].sort_values("ts").set_index("ts")
     smooth = part["score_mean"].rolling(30, min_periods=10).mean()
-    ax.plot(smooth.index, smooth.values, color="tab:blue")
-    ax.axhline(0, color="black", linewidth=0.6)
-    ax.set(title=f"{s}: daily tone, 30-day average ({int(part['article_count'].sum()):,} articles on {int((part['article_count'] > 0).sum()):,} days)")
-plt.tight_layout()
+    ax.fill_between(smooth.index, 0, smooth.values, where=smooth.values >= 0, color=GOOD, alpha=0.5, lw=0)
+    ax.fill_between(smooth.index, 0, smooth.values, where=smooth.values < 0, color=BAD, alpha=0.5, lw=0)
+    ax.axhline(0, color=INK, lw=0.6)
+    with_news = int((part["article_count"] > 0).sum())
+    ax.set(title=f"{name}: tone, 30-day average ({with_news:,} days with news)", ylabel="score")
+fig.tight_layout()
 
 # %% [markdown]
-# ## What to take from this
+# ## Step 3. Labelled headlines, split so the test is fair
 #
-# - The tone model is good enough to say whether recent headlines read as positive or
-#   negative, and not good enough to trust on any single article.
-# - Tone is used to describe the news around a holding. It drives no forecast and no
-#   signal: a separate test found it does not improve the swings forecast, and a study of
-#   tone against price found that news mostly follows the move it describes (both are in
-#   `07_what_we_tested`).
-# - All articles come from one provider, and tone models misread sarcasm, negation, and
-#   headlines that only report a price.
-
-# %% [markdown]
-# ---
-#
-# # Part 2. Fine-tuning
-
-# %% [markdown]
-# # Fine-tuning the news sentiment model
-#
-# **What this notebook shows.** RADAR scores the tone of each news article with FinBERT,
-# a language model already trained on financial sentences. Here that model is given a
-# few more passes over *our* kind of headlines, with labels, to see whether it gets
-# better at them, and the result is tested on headlines it never saw.
-#
-# **How to read it.** Each section does one step of the pipeline, in the order the steps
-# must happen. The code calls the same modules the app uses (`radar.models.finetune`,
-# `radar.pipelines.finetune`), so nothing here is a copy that could drift.
-#
-# **Honest limits, up front.**
-#
-# - The labels were written by an AI model (Claude), not by a person. Fine-tuning on
-#   them teaches FinBERT to agree with that labeller. The test below measures agreement
-#   with the same labeller on unseen headlines, not agreement with human judgement.
-# - No article text is printed in this notebook. Headlines belong to the news provider.
-#
-# Rebuild with `uv run python backend/scripts/build_notebooks.py 06_sentiment_finetuning`.
+# 1,800 stored headlines were drawn at random and each was labelled positive, negative
+# or neutral *for a financial reader*. The labels were written by an AI model, not a
+# person, which the last section comes back to.
 
 # %%
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-
-from radar.db.session import make_engine, session_scope
-from radar.models import classification, dataset, finetune, sentiment
-from radar.models.lexicon import DEFAULT_PATH, Lexicon
-from radar.pipelines import finetune as job
-from IPython.display import display
-
-from radar.pipelines.labels import load_labels
-
-plt.rcParams.update({"figure.figsize": (9, 3.4), "axes.grid": True, "grid.alpha": 0.3})
-pd.set_option("display.float_format", lambda v: f"{v:.3f}")
-engine = make_engine()
+print(f"{len(labelled):,} labelled headlines; labelled by: {sorted(set(labelled['labelled_by']))}")
+counts = pd.crosstab(labelled["market"], labelled["sentiment"])[list(TONES)]
+ax = counts.plot.barh(stacked=True, color=list(TONES.values()), figsize=(8, 2.4))
+ax.set(title="Labelled headlines by market and label", ylabel="")
+ax.grid(axis="y", visible=False)
+ax.legend(ncol=3, loc="lower right");
 
 # %% [markdown]
-# ## 1. The labelled data
+# Testing a model on something it has in effect already seen makes it look better than
+# it is. Three guards are used.
 #
-# 1,800 stored headlines were drawn at random, 720 each for Bitcoin and US stocks and
-# 360 for gold (gold has far less news). Each was labelled positive, negative, or
-# neutral *for a financial reader*. The labels are stored in the repository by article
-# id only; the text is joined in from the database here.
+# 1. **Split by time, not at random.** The model trains on the oldest headlines, its
+#    settings are chosen on later ones, and it is tested on the newest. That is how it
+#    is used: on news that arrives after it was trained.
+# 2. **No near-copies across the parts.** Many headlines are templates that differ only
+#    in a number. Each is reduced to a key with numbers removed, and a key may appear
+#    once in the whole set.
+# 3. **A test part used once.** Choices are made on the middle part. The test part is
+#    scored only after every choice is made.
 
 # %%
-with session_scope(engine) as session:
-    data = job.with_text(session, job.load_training_labels())
-    reference = job.with_text(session, load_labels())
-
-print(f"{len(data):,} labelled headlines, labelled by: {sorted(set(data['labelled_by']))}")
-pd.crosstab(data["symbol"], data["sentiment"], margins=True)
-
-# %% [markdown]
-# ## 2. Splitting without leakage
-#
-# "Leakage" means testing a model on something it has, in effect, already seen. That
-# makes the score look better than it is. Three guards are used.
-#
-# 1. **Split by time, not at random.** The model trains on the oldest headlines, is
-#    tuned on later ones, and is tested on the newest. This is how it will be used: on
-#    news that arrives after it was trained.
-# 2. **No near-duplicate headlines across parts.** Many headlines are templates that
-#    differ only in a number. Each headline is reduced to a key with numbers removed,
-#    and a key is allowed only once in the whole dataset.
-# 3. **A separate test part, used once.** The validation part is for making choices
-#    (which epoch to keep). The test part is scored only after every choice is made.
-
-# %%
-parts = {name: data[data["split"] == name] for name in dataset.SPLITS}
-summary = pd.DataFrame(
-    {
-        name: {
-            "headlines": len(part),
-            "earliest": part["created_at"].min().date(),
-            "latest": part["created_at"].max().date(),
-            "positive": (part["sentiment"] == "positive").mean(),
-            "negative": (part["sentiment"] == "negative").mean(),
-            "neutral": (part["sentiment"] == "neutral").mean(),
-        }
-        for name, part in parts.items()
-    }
-).T
-summary
-
-# %%
-# The checks the pipeline runs before any training. Each raises an error if it fails.
-job.check_dataset(data, reference)
-
-keys = data["headline"].map(dataset.headline_key)
-checks = {
-    "articles appearing twice": int(data["article_id"].duplicated().sum()),
-    "headline keys appearing twice": int(keys.duplicated().sum()),
-    "articles shared with the 200-headline reference sample": len(
-        set(data["article_id"]) & set(reference["article_id"])
+parts = {name: labelled[labelled["split"] == name] for name in dataset.SPLITS}
+finetune_job.check_dataset(labelled, earlier)  # raises if any guard is broken
+keys = labelled["headline"].map(dataset.headline_key)
+guards = {
+    "articles appearing twice": int(labelled["article_id"].duplicated().sum()),
+    "near-copies appearing twice": int(keys.duplicated().sum()),
+    "articles shared with the earlier 200-headline sample": len(
+        set(labelled["article_id"]) & set(earlier["article_id"])
     ),
-    "headline keys shared with the reference sample": len(
-        set(keys) & set(reference["headline"].map(dataset.headline_key))
-    ),
-    "train newer than validation": bool(
+    "near-copies shared with that sample": len(set(keys) & set(earlier["headline"].map(dataset.headline_key))),
+    "training headlines newer than the middle part": int(
         parts["train"]["created_at"].max() >= parts["validation"]["created_at"].min()
     ),
-    "validation newer than test": bool(
+    "middle-part headlines newer than the test part": int(
         parts["validation"]["created_at"].max() >= parts["test"]["created_at"].min()
     ),
 }
-pd.Series(checks, name="count (all must be 0 or False)").to_frame()
+pd.Series(guards, name="count (every one must be 0)").to_frame()
 
 # %%
-fig, ax = plt.subplots()
-colours = {"train": "tab:blue", "validation": "tab:orange", "test": "tab:green"}
+fig, ax = plt.subplots(figsize=(10, 2.8))
+shades = {"train": ACCENT, "validation": "#c9952b", "test": INK}
+words = {"train": "training", "validation": "middle part, for choices", "test": "test"}
 for name, part in parts.items():
-    months = part["created_at"].dt.tz_localize(None).dt.to_period("Q").dt.to_timestamp()
-    counts = months.value_counts().sort_index()
-    ax.bar(counts.index, counts.values, width=80, color=colours[name], label=f"{name} (n = {len(part):,})")
-ax.set(title="Labelled headlines per quarter, by part: the parts do not overlap in time", ylabel="headlines")
-ax.legend();
+    quarters = part["created_at"].dt.tz_localize(None).dt.to_period("Q").dt.to_timestamp()
+    per = quarters.value_counts().sort_index()
+    ax.bar(per.index, per.values, width=80, color=shades[name], label=f"{words[name]}: {len(part):,}")
+ax.set(title="Labelled headlines by quarter: the three parts do not overlap in time", ylabel="headlines")
+ax.legend(ncol=3);
 
 # %% [markdown]
-# ## 3. Training
+# ## Step 4. Training
 #
-# The settings are the standard ones for fine-tuning a BERT-sized model, chosen before
-# looking at any result: 4 passes over the training part, learning rate 0.00002, batches
-# of 16, a fixed random seed. After each pass the model is scored on the validation
-# part, and the pass with the best validation score is the one kept.
+# The settings are the usual ones for a model of this size and were fixed before any
+# result was seen. After each pass over the training headlines the model is scored on
+# the middle part, and the pass with the best score there is kept.
 #
-# The training run itself is done by `uv run radar finetune`, which stores its record.
-# This notebook reads that record instead of retraining, so the numbers below are the
-# ones behind the model the app actually uses.
+# Training is run by `uv run radar finetune`, which stores its record. This notebook
+# reads that record, so the numbers are the ones behind the model the app uses.
 
 # %%
-from sqlalchemy import select
-
-from radar.db.models import ModelRegistry
-
-with session_scope(engine) as session:
-    row = session.scalars(
-        select(ModelRegistry)
-        .where(ModelRegistry.name == job.MODEL_NAME, ModelRegistry.is_current)
-        .order_by(ModelRegistry.trained_at.desc())
-    ).first()
-    record, model_dir, trained_at = row.metrics, row.artefact_path, row.trained_at
-
 training = record["training"]
-print(f"trained {trained_at:%Y-%m-%d %H:%M} UTC from {training['base_model']}")
-print(f"train {training['n_train']:,} / validation {training['n_validation']:,} headlines, "
-      f"learning rate {training['learning_rate']}, batch {training['batch_size']}, seed {training['seed']}")
-epochs = pd.DataFrame(training["epochs"]).set_index("epoch")
-epochs
-
-# %%
-fig, axes = plt.subplots(1, 2, figsize=(11, 3.4))
-axes[0].plot(epochs.index, epochs["train_loss"], marker="o", label="training")
-axes[0].plot(epochs.index, epochs["validation_loss"], marker="o", label="validation")
-axes[0].set(title="Loss per pass (lower is better)", xlabel="pass", xticks=epochs.index)
+print(f"trained {trained_at:%Y-%m-%d} from {training['base_model']}")
+print(
+    f"{training['n_train']:,} training and {training['n_validation']:,} middle-part headlines; "
+    f"learning rate {training['learning_rate']}, batches of {training['batch_size']}, seed {training['seed']}"
+)
+passes = pd.DataFrame(training["epochs"]).set_index("epoch")
+fig, axes = plt.subplots(1, 2, figsize=(10, 3))
+axes[0].plot(passes.index, passes["train_loss"], marker="o", color=MUTED, label="training headlines")
+axes[0].plot(passes.index, passes["validation_loss"], marker="o", color=ACCENT, label="middle part")
+axes[0].set(title="Error after each pass (lower is better)", xlabel="pass", xticks=passes.index)
 axes[0].legend()
-axes[1].plot(epochs.index, epochs["validation_accuracy"], marker="o", label="accuracy")
-axes[1].plot(epochs.index, epochs["validation_macro_f1"], marker="o", label="macro F1")
-axes[1].axvline(training["best_epoch"], color="grey", linestyle="--", label="pass kept")
-axes[1].set(title="Validation score per pass", xlabel="pass", xticks=epochs.index)
-axes[1].legend();
+axes[1].plot(passes.index, passes["validation_accuracy"] * 100, marker="o", color=ACCENT)
+axes[1].axvline(training["best_epoch"], color=INK, ls="--", label="pass kept")
+axes[1].set(title="Right on the middle part, %", xlabel="pass", xticks=passes.index)
+axes[1].legend()
+fig.tight_layout()
 
 # %% [markdown]
-# **Reading the curves.** Training loss keeps falling because the model is memorising
-# the training headlines. Validation loss is the honest one: when it stops falling and
-# turns up, further passes are fitting noise (overfitting). The pass kept is the one
-# with the best validation score, marked by the dashed line.
-
-# %% [markdown]
-# ## 4. The test: headlines the model never saw
+# Error on the training headlines keeps falling because the model is memorising them.
+# The middle part is the honest line: once it stops falling, further passes fit noise.
 #
-# Now, and only now, the test part is used. Three methods label the same newest
-# headlines: the original FinBERT, the fine-tuned model, and a simple count of positive
-# and negative words from a finance word list.
+# ## Step 5. The test
+#
+# ### First test: the newest labelled headlines
+#
+# Three methods label the same headlines: the general model, the trained one, and a
+# count of positive and negative words from a finance word list.
 
 # %%
 test = parts["test"]
-truth = test["sentiment"].tolist()
-texts = test["text"].tolist()
-
-base_scorer = sentiment.FinbertScorer()
-tuned_scorer = sentiment.FinbertScorer(model_dir, finetune.MODEL_VERSION)
-predictions = {
-    "Original FinBERT": [sentiment.LABELS[i] for i in base_scorer.probabilities(texts).argmax(axis=1)],
-    "Fine-tuned": [sentiment.LABELS[i] for i in tuned_scorer.probabilities(texts).argmax(axis=1)],
-}
+truth, texts = test["sentiment"].tolist(), test["text"].tolist()
+general = sentiment.FinbertScorer()
+tuned = sentiment.FinbertScorer(model_dir, finetune.MODEL_VERSION)
+with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    # loading the models prints download notices, which are not results
+    said = {
+        "general model": [sentiment.LABELS[i] for i in general.probabilities(texts).argmax(axis=1)],
+        "trained model": [sentiment.LABELS[i] for i in tuned.probabilities(texts).argmax(axis=1)],
+    }
 if DEFAULT_PATH.is_file():
-    predictions["Word list"] = Lexicon.load().labels(texts)
-
-reports = {name: classification.report(truth, labels, sentiment.LABELS) for name, labels in predictions.items()}
+    said["word list"] = Lexicon.load().labels(texts)
+results = {name: classification.report(truth, labels, sentiment.LABELS) for name, labels in said.items()}
 pd.DataFrame(
-    {name: {"accuracy": r.accuracy, "macro F1": r.macro_f1, "headlines": r.n} for name, r in reports.items()}
+    {
+        name: {"headlines": r.n, "right, %": r.accuracy * 100, "balanced score (macro F1)": r.macro_f1}
+        for name, r in results.items()
+    }
 ).T
 
 # %%
-per_class = pd.concat(
-    {
-        name: pd.DataFrame([c.model_dump() for c in r.classes]).set_index("label")[["precision", "recall", "f1", "support"]]
-        for name, r in reports.items()
-    }
-)
-per_class
-
-# %%
-labels = list(sentiment.LABELS)
-fig, axes = plt.subplots(1, len(predictions), figsize=(4.2 * len(predictions), 3.8))
-for ax, (name, predicted) in zip(np.atleast_1d(axes), predictions.items()):
-    table = pd.crosstab(
-        pd.Categorical(truth, labels), pd.Categorical(predicted, labels), dropna=False
-    ).to_numpy()
-    ax.imshow(table, cmap="Blues")
-    ax.set(xticks=range(3), yticks=range(3), xticklabels=labels, yticklabels=labels,
-           xlabel="model said", ylabel="label", title=name)
+order = list(sentiment.LABELS)
+fig, axes = plt.subplots(1, len(said), figsize=(3.7 * len(said), 3.4))
+for ax, (name, predicted) in zip(np.atleast_1d(axes), said.items()):
+    grid = pd.crosstab(pd.Categorical(truth, order), pd.Categorical(predicted, order), dropna=False).to_numpy()
+    ax.imshow(grid, cmap="GnBu")
+    ax.set(xticks=range(3), yticks=range(3), xticklabels=order, yticklabels=order, xlabel="the method said", ylabel="the label", title=name)
     ax.grid(False)
-    for i in range(3):
-        for j in range(3):
-            ax.text(j, i, int(table[i, j]), ha="center", va="center",
-                    color="white" if table[i, j] > table.max() / 2 else "black")
-plt.tight_layout()
+    for row in range(3):
+        for column in range(3):
+            ax.text(column, row, int(grid[row, column]), ha="center", va="center", color="white" if grid[row, column] > grid.max() / 2 else INK)
+fig.tight_layout()
 
 # %% [markdown]
-# **Reading the grids.** Each row is what the label says; each column is what the model
-# said. The diagonal (top-left to bottom-right) is where they agree. A good model has
-# its large numbers on the diagonal.
-
-# %% [markdown]
-# ## 5. Is the difference real?
+# Each row is what the label says and each column what the method said. Agreement is on
+# the diagonal, so a good method has its large numbers there.
 #
-# A higher score on 269 headlines could be luck. McNemar's test looks only at the
-# headlines where the two models disagree about being right, and asks how likely such a
-# lopsided split would be if the models were really equal. A p-value under 0.05 is
-# taken as a real difference.
+# A higher score on a few hundred headlines can be luck. The check below (McNemar's
+# test) looks only at headlines where one model was right and the other wrong, and asks
+# how likely so lopsided a split would be if the two were equal.
 
 # %%
-comparison = classification.mcnemar(truth, predictions["Original FinBERT"], predictions["Fine-tuned"])
-adopted, reason = job.decide(reports["Original FinBERT"], reports["Fine-tuned"], comparison)
+first_check = classification.mcnemar(truth, said["general model"], said["trained model"])
+adopted, reason = finetune_job.decide(results["general model"], results["trained model"], first_check)
 pd.Series(
     {
-        "test headlines": comparison.n,
-        "only the original was right": comparison.only_first_right,
-        "only the fine-tuned model was right": comparison.only_second_right,
-        "p-value": round(comparison.p_value, 6),
-        "fine-tuned model adopted": adopted,
-        "reason": reason,
+        "headlines": first_check.n,
+        "only the general model was right": first_check.only_first_right,
+        "only the trained model was right": first_check.only_second_right,
+        "could be luck (p)": round(first_check.p_value, 4),
+        "trained model adopted on this test": adopted,
+        "why": reason,
     },
-    name="value",
+    name="first test",
 ).to_frame()
 
 # %% [markdown]
-# ## 6. A second opinion: the earlier 200-headline sample
+# ### Second test: larger, and fixed in advance
 #
-# Before any fine-tuning, 200 other headlines were labelled to measure the original
-# model. None of them is in the training data (checked above), but their dates fall
-# inside the training period, so this is a weaker test than the one above. It is shown
-# because it was labelled separately and earlier.
-
-# %%
-reference_truth = reference["sentiment"].tolist()
-reference_texts = reference["text"].tolist()
-pd.DataFrame(
-    {
-        name: classification.report(
-            reference_truth,
-            [sentiment.LABELS[i] for i in scorer.probabilities(reference_texts).argmax(axis=1)],
-            sentiment.LABELS,
-        ).model_dump(include={"n", "accuracy", "macro_f1"})
-        for name, scorer in (("Original FinBERT", base_scorer), ("Fine-tuned", tuned_scorer))
-    }
-).T
-
-# %% [markdown]
-# ## 7. Does it hold for each market?
-
-# %%
-by_market = {}
-for symbol, group in test.groupby("symbol"):
-    index = [test.index.get_loc(i) for i in group.index]
-    by_market[symbol] = {
-        "headlines": len(group),
-        **{
-            name: classification.report(
-                [truth[i] for i in index], [predicted[i] for i in index], sentiment.LABELS
-            ).accuracy
-            for name, predicted in predictions.items()
-        },
-    }
-pd.DataFrame(by_market).T
-
-# %% [markdown]
-# ## 8. A larger test, fixed in advance
+# The first test was too small to settle it. Changing the model and trying again would
+# have turned the test into a place to tune, so the **same saved model** was scored on
+# a fresh set of headlines instead:
 #
-# The test in section 5 had 269 headlines. A 5-point gain on that few could easily be
-# luck, and the result was indeed "not measurable". Rather than adjust the model and try
-# again (which would turn the test into a tuning set), the **same saved model** was
-# scored on a fresh set of 700 headlines:
-#
-# - all later than every training and validation headline;
-# - sharing no article and no headline key with anything labelled before;
+# - all newer than every headline used in training or for choices;
+# - sharing no article and no near-copy with anything labelled before;
 # - labelled before either model had scored them;
-# - with the adoption rule written down and committed before the labels existed.
-#
-# Nothing was retrained and no setting was changed.
+# - with the rule for adopting the model written down and committed before the labels
+#   existed.
 
 # %%
-replication = record.get("replication")
-if replication is None:
-    print("The larger test has not been run yet.")
+second = record.get("replication")
+if second is None:
+    print("The larger test has not been run.")
 else:
-    display(pd.DataFrame(
-        {
-            "Original FinBERT": {"accuracy": replication["base"]["accuracy"], "macro F1": replication["base"]["macro_f1"]},
-            "Fine-tuned": {"accuracy": replication["fine_tuned"]["accuracy"], "macro F1": replication["fine_tuned"]["macro_f1"]},
-            **({"Word list": {"accuracy": replication["baseline"]["accuracy"], "macro F1": replication["baseline"]["macro_f1"]}} if "baseline" in replication else {}),
-        }
-    ).T.assign(headlines=replication["n"]))
-    comparison2 = replication["comparison"]
-    display(pd.Series(
-        {
-            "headlines": replication["n"],
-            "from": replication["first"],
-            "to": replication["last"],
-            "only the original was right": comparison2["only_first_right"],
-            "only the fine-tuned model was right": comparison2["only_second_right"],
-            "p-value": f"{comparison2['p_value']:.2g}",
-            "first decision (269 headlines)": record.get("first_decision", {}).get("reason"),
-            "decision now": record["reason"],
-            "fine-tuned model adopted": record["adopted"],
-        },
-        name="value",
-    ).to_frame())
-
-# %%
-if replication is not None:
-    from radar.models import evidence
-
     rows = {}
-    for name, key in (("Original FinBERT", "base"), ("Fine-tuned", "fine_tuned")):
-        low, high = evidence.share_interval(replication[key]["accuracy"], replication["n"])
-        rows[name] = {"accuracy": replication[key]["accuracy"], "95% range, low": low, "95% range, high": high}
+    for name, key in (("general model", "base"), ("trained model", "fine_tuned"), ("word list", "baseline")):
+        if key not in second:
+            continue
+        low, high = evidence.share_interval(second[key]["accuracy"], second["n"])
+        rows[name] = {"right, %": second[key]["accuracy"] * 100, "from": low * 100, "to": high * 100}
     ranges = pd.DataFrame(rows).T
-    fig, ax = plt.subplots(figsize=(7, 2.6))
-    ax.errorbar(
-        ranges["accuracy"], ranges.index,
-        xerr=[ranges["accuracy"] - ranges["95% range, low"], ranges["95% range, high"] - ranges["accuracy"]],
-        fmt="o", capsize=5,
+    fig, ax = plt.subplots(figsize=(8, 2.2))
+    span = [ranges["right, %"] - ranges["from"], ranges["to"] - ranges["right, %"]]
+    ax.errorbar(ranges["right, %"], ranges.index, xerr=span, fmt="o", capsize=5, color=ACCENT, ecolor=MUTED)
+    ax.set(title=f"Right on {second['n']} unseen headlines, with the range it could plausibly be in", xlabel="%")
+    ax.grid(axis="y", visible=False)
+    ax.margins(y=0.4)
+    check = second["comparison"]
+    display(ranges.round(1))
+    display(
+        pd.Series(
+            {
+                "headlines": second["n"],
+                "from": second["first"],
+                "to": second["last"],
+                "only the general model was right": check["only_first_right"],
+                "only the trained model was right": check["only_second_right"],
+                "could be luck (p)": f"{check['p_value']:.2g}",
+                "decision": record["reason"],
+                "trained model adopted": record["adopted"],
+            },
+            name="second test",
+        ).to_frame()
     )
-    ax.set(title=f"Accuracy on {replication['n']} unseen headlines, with 95% ranges", xlim=(0.4, 0.75))
-    display(ranges)
-    display(pd.DataFrame(replication["by_symbol"]).T.rename(columns={"n": "headlines", "base": "original"}))
 
 # %% [markdown]
-# **Reading this.** When the two ranges do not overlap, the gain is not luck. Note what
-# the test does *not* say: an accuracy near 60% is still modest. Roughly four headlines
-# in ten get a different label from the labeller's. Section 9 looks at what kind of
-# mistakes those are.
+# Where the two ranges do not overlap, the gain is not luck. Note what the test does
+# *not* say: the figure for "right" is still modest. Many headlines get a different
+# label from the labeller's.
 #
-# ## 9. What kind of mistakes?
+# ### What kind of mistakes
 #
-# Calling a mildly positive headline "neutral" is a small error. Calling a negative
-# headline "positive" is a serious one. The second kind is what would mislead a reader.
+# Calling a mildly positive headline neutral is a small error. Calling a negative one
+# positive is the kind that would mislead a reader.
 
 # %%
-if replication is not None and "direction" in replication:
-    display(pd.DataFrame(
-        {"Original FinBERT": replication["direction_base"], "Fine-tuned": replication["direction"]}
-    ).T.rename(columns={
-        "n": "headlines", "opposite": "direction backwards", "opposite_rate": "share backwards",
-        "both_polar": "both took a side", "same_direction": "same side when both did",
-    }))
+if second is not None and "direction" in second:
+    kinds = pd.DataFrame({"general model": second["direction_base"], "trained model": second["direction"]}).T
+    kinds["backwards, %"] = kinds["opposite_rate"] * 100
+    display(
+        kinds.rename(columns={"n": "headlines", "opposite": "backwards", "both_polar": "both took a side"})[
+            ["headlines", "backwards", "backwards, %", "both took a side"]
+        ]
+    )
+if second is not None and "by_symbol" in second:
+    each = pd.DataFrame(second["by_symbol"]).T
+    each.index = each.index.map(lambda symbol: NAMED.get(symbol, symbol))
+    each[["base", "fine_tuned"]] *= 100
+    display(each.rename(columns={"n": "headlines", "base": "general, right %", "fine_tuned": "trained, right %"}))
 
 # %% [markdown]
 # ## What to take from this
 #
-# - The decision to use the fine-tuned model follows a rule fixed in advance: more
-#   accurate on unseen test headlines **and** a McNemar p-value under 0.05. The first
-#   test (section 5) was too small to tell; the larger one (section 8) decides.
-# - Accuracy around 60% on single headlines is modest. The app therefore shows the
-#   figure with its range beside the tone reading, and leans on daily averages of many
-#   articles, not on any one article's score.
-# - Agreement here is with one labeller. A person labelling the same headlines might
-#   disagree with some labels, and a model trained to match them inherits their habits.
-# - With a few hundred test headlines per market, the per-market figures in section 7
-#   are rough. Treat differences of a few points there as noise.
+# - Which model is used follows a rule fixed in advance: more often right on unseen
+#   headlines **and** a gap too large to be luck. The first test was too small to tell;
+#   the second decides, and its outcome is in the table above.
+# - Being right on a single headline is modest either way. The app therefore shows that
+#   figure beside the tone, and leans on the average of many articles.
+# - Tone describes the news around a holding. It drives no forecast and no alert: a
+#   separate test found it does not improve the forecast of movement size, and a study
+#   of tone against price found that news mostly follows the move it describes (both in
+#   `07_what_we_tested`).
+# - Agreement here is with one labeller, and that labeller is an AI model. A person
+#   might label some headlines differently, and a model trained to match these labels
+#   inherits their habits. Labels from a person are still owed.
+# - All articles come from one provider. Gold's news is the news written about the
+#   gold fund, read for PAX Gold, because the coin has almost none of its own.
+# - With a few hundred test headlines per market, the per-market figures are rough.

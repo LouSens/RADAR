@@ -191,7 +191,9 @@ class Backfill:
     # --- news ----------------------------------------------------------------------
 
     def backfill_news(self, asset: Asset, news_symbol: str) -> None:
-        key = f"news:{news_symbol}"
+        # Kept per asset: two assets may read the same ticker's news, and each needs
+        # its own links to the articles.
+        key = f"news:{asset.symbol}:{news_symbol}"
 
         def fetch(session: Session, window: Window) -> int:
             articles: list[NewsArticle] = [

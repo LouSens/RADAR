@@ -14,7 +14,8 @@ import { stateColour } from "./viz";
  * enough that the three sit side by side on a phone. Tap to open the market.
  */
 export function MarketCard({ asset, priced }: { asset: Asset; priced?: Asset }) {
-  // Gold is held as PAXG, so its card shows the PAXG price: the one in the portfolio.
+  // Another asset's price can stand in for this one's, where the same thing is held
+  // another way.
   const market = useMarket(priced ?? asset);
   const state = useSummary(asset.slug).data?.state;
   return (

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 export interface TabItem {
   /** Path under `base`; empty for the subject's own page. */
@@ -52,16 +52,28 @@ export function Tabs({
   /** Where the subject itself sits, when it is reached from another page. */
   up?: { to: string; label: string };
 }) {
-  const { pathname } = useLocation();
+  const { pathname, key } = useLocation();
+  const navigate = useNavigate();
   const inside = items.some((item) => item.path !== "" && pathname === `${base}/${item.path}`);
   if (!inside && !up) return null;
   const to = inside ? base : (up?.to ?? base);
   const name = inside ? (parent ?? label.replace(/ pages$/, "")) : up?.label;
+  // Arrived by a link inside the app: go back to exactly that page, wherever it was. A
+  // page opened directly (a bookmark, a reload) has nowhere to go back to, so it goes up.
+  const cameFromInside = key !== "default";
   return (
     <nav aria-label={label}>
-      <Link to={to} className="back-link">
+      <Link
+        to={to}
+        className="back-link"
+        onClick={(event) => {
+          if (!cameFromInside) return;
+          event.preventDefault();
+          void navigate(-1);
+        }}
+      >
         <Chevron back />
-        Back to {name}
+        {cameFromInside ? "Back" : `Back to ${name}`}
       </Link>
     </nav>
   );

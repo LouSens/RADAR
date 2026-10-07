@@ -2789,6 +2789,18 @@
             ],
             "title": "Problem"
           },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
           "source": {
             "anyOf": [
               {
@@ -5106,6 +5118,18 @@
             "title": "Price",
             "type": "number"
           },
+          "priced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priced At"
+          },
           "rungs": {
             "default": [],
             "items": {
@@ -5169,6 +5193,18 @@
           "cash_plan": {
             "title": "Cash Plan",
             "type": "number"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
           },
           "has_plan": {
             "title": "Has Plan",
@@ -7832,7 +7868,7 @@
     },
     "/api/v1/portfolio": {
       "get": {
-        "description": "The saved holdings and the assets that can be held.",
+        "description": "The saved holdings and the assets that can be held. Holdings kept on Binance are\nread again first when the last read is more than a few minutes old.",
         "operationId": "get_portfolio_api_v1_portfolio_get",
         "responses": {
           "200": {
@@ -8141,7 +8177,7 @@
     },
     "/api/v1/portfolio/steps": {
       "get": {
-        "description": "Where cash over the plan goes, at what prices, and why. Worked out from the\nstored portfolio and plan each time it is asked for; nothing is traded.",
+        "description": "Where cash over the plan goes, at what prices, and why. Worked out from the\nportfolio and plan each time it is asked for; nothing is traded.\n\nWhen the holdings come from Binance and were last read more than a few minutes ago,\nthey are read again first, so a purchase or a deposit shows up without anyone asking\nfor it. If Binance cannot be reached, what is stored is used.",
         "operationId": "get_steps_api_v1_portfolio_steps_get",
         "responses": {
           "200": {

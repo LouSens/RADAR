@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 import type { Steps } from "../api/client";
 import { formatMoney, formatPrice } from "../lib/format";
-import { formatDate } from "../lib/time";
+import { formatDate, formatDateTime } from "../lib/time";
 import { Caption, Message, Panel } from "./ui";
 
 type Step = Steps["steps"][number];
@@ -140,6 +140,10 @@ function StepCard({ step, by }: { step: Step; by: string }) {
     <article className="well flex flex-col gap-4 p-4">
       <h3 className="text-base font-semibold tracking-tight">{stepLine(step)}</h3>
       {buy && <Ladder step={step} />}
+      <p className="text-xs text-muted">
+        Price now <span className="num text-ink">{formatPrice(step.price)}</span>
+        {step.priced_at ? `, at ${formatDateTime(step.priced_at)}` : ", at the last close"}
+      </p>
       <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
         <div>
           <p className="label mb-2">Share of your account</p>
@@ -222,7 +226,12 @@ export function StepsPanel({ steps }: { steps: Steps }) {
             label: "Cash now",
             value: `${formatMoney(steps.cash)}; your plan keeps ${formatMoney(steps.cash_plan)}`,
           },
-          { label: "Updates", value: "Each time you look, from your balances and your plan" },
+          {
+            label: "Your Binance account",
+            value: steps.checked_at
+              ? `Read again by itself; last at ${formatDateTime(steps.checked_at)}`
+              : "Read again by itself each time you look",
+          },
           { label: "You place the trades", value: "RADAR cannot buy or sell anything" },
         ]}
       >

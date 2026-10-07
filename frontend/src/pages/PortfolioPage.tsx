@@ -39,6 +39,7 @@ import {
 import { formatChange, formatCount, formatMoney, formatShare } from "../lib/format";
 import {
   PORTFOLIO_SECTIONS,
+  accountWorth,
   isPortfolioSection,
   largestImbalance,
   worstEpisode,
@@ -724,23 +725,24 @@ export function ExchangeCheck({
   return (
     <section className="glass p-4 @xl:p-7" aria-label="Checked against Binance">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="text-base font-semibold tracking-tight">Checked against Binance</h2>
+        <h2 className="text-base font-semibold tracking-tight">Your Binance account</h2>
         {gap !== undefined && (
           <p className={`text-sm font-medium ${short ? "text-alert" : "text-calm"}`}>
             {short ? `${formatMoney(gap)} not found` : "Everything accounted for"}
           </p>
         )}
       </div>
+      <p className="num mt-2 text-2xl font-semibold tracking-tight">{formatMoney(total)}</p>
       <div className="mt-4 grid grid-cols-1 gap-x-10 gap-y-5 @xl:grid-cols-2">
-        <Bars
-          format={formatMoney}
-          rows={[
-            { key: "binance", name: "Binance says", value: total, colour: "var(--muted)" },
-            ...(found !== undefined
-              ? [{ key: "radar", name: "RADAR found", value: found, colour: "var(--accent)" }]
-              : []),
-          ]}
-        />
+        {short && found !== undefined && (
+          <Bars
+            format={formatMoney}
+            rows={[
+              { key: "binance", name: "Binance says", value: total, colour: "var(--muted)" },
+              { key: "radar", name: "RADAR found", value: found, colour: "var(--accent)" },
+            ]}
+          />
+        )}
         <Bars
           format={formatMoney}
           rows={wallets.map((wallet) => ({
@@ -759,8 +761,14 @@ export function ExchangeCheck({
       )}
       <Caption
         facts={[
-          { label: "Binance's figure", value: "Its own totals per wallet, at the last read" },
-          { label: "RADAR's figure", value: "What it found, valued at the last US market close" },
+          {
+            label: "The total",
+            value: "Binance's own, per wallet, read a few minutes ago at most",
+          },
+          {
+            label: "Checked",
+            value: "RADAR adds up what it can price and warns if money is missing",
+          },
           {
             label: "Treated as equal",
             value: `A difference under ${formatShare(GAP_TOLERANCE, 0)}, which prices moving can explain`,
@@ -797,7 +805,11 @@ export function PortfolioPage() {
     <div className="flex flex-col gap-4 @xl:gap-6">
       <header className="flex items-baseline gap-3">
         <h1 className="title">Portfolio</h1>
-        {analysis && <span className="label num">{formatMoney(analysis.value)}</span>}
+        {analysis && (
+          <span className="label num">
+            {formatMoney(accountWorth(portfolio.data?.wallets, analysis.value) ?? analysis.value)}
+          </span>
+        )}
       </header>
       <Tabs base={BASE} items={PORTFOLIO_SECTIONS} label="Portfolio pages" />
 
@@ -831,7 +843,40 @@ export function PortfolioPage() {
       {portfolio.data && section === "holdings" && (
         <section className="glass p-4 @xl:p-7">
           <h2 className="mb-4 text-base font-semibold tracking-tight">Your holdings</h2>
-          <HoldingsEditor portfolio={portfolio.data} />
+          {portfolio.data.source === "binance" && analysis ? (
+            <>
+              <ul>
+                {analysis.positions.map((position) => (
+                  <li
+                    key={position.symbol}
+                    className="flex items-baseline justify-between gap-4 border-t border-line py-2.5 text-sm first:border-t-0"
+                  >
+                    <span className="min-w-0">
+                      <span className="font-medium">{position.name.split(" (")[0]}</span>{" "}
+                      <span className="num hidden text-muted @sm:inline">
+                        {formatCount(position.quantity)}
+                      </span>
+                    </span>
+                    <span className="num shrink-0 font-medium">
+                      {formatMoney(position.value)}{" "}
+                      <span className="text-muted">{formatShare(position.weight, 0)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-muted">
+                Read from Binance by itself every few minutes. Nothing to type.
+              </p>
+              <details className="about mt-3">
+                <summary>Enter holdings by hand instead</summary>
+                <div className="mt-3">
+                  <HoldingsEditor portfolio={portfolio.data} />
+                </div>
+              </details>
+            </>
+          ) : (
+            <HoldingsEditor portfolio={portfolio.data} />
+          )}
         </section>
       )}
 

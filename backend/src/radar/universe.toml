@@ -28,17 +28,15 @@ history_start = 2021-01-01
 news_symbols = ["BTCUSD"]
 news_start = 2022-01-01
 
-# Gold. One instrument, chosen for data quality (docs/DECISIONS.md 011).
+# The gold fund. No longer the gold market (docs/DECISIONS.md 087): kept for its longer
+# price history and for anyone who holds it. Its news is read by PAX Gold below.
 [[assets]]
 symbol = "GLD"
 kind = "gold"
-name = "Gold"
+name = "Gold fund (GLD)"
 asset_class = "stock"
-is_primary = true
 bars_symbol = "GLD"
 history_start = 2016-01-04
-news_symbols = ["GLD"]
-news_start = 2023-01-01
 
 [[assets]]
 symbol = "ETH/USD"
@@ -54,15 +52,20 @@ asset_class = "crypto"
 bars_symbol = "SOL/USD"
 history_start = 2021-06-17
 
-# Portfolio asset only (docs/DECISIONS.md 014). Daily bars are complete on us-1, which is
-# what the portfolio lab needs. Gold analysis and gold news use GLD, not this.
+# Gold, followed as PAX Gold: a coin backed by gold, which is what the user holds and
+# which trades around the clock (docs/DECISIONS.md 087).
 [[assets]]
 symbol = "PAXG/USD"
 kind = "gold"
-name = "PAX Gold"
+name = "Gold"
 asset_class = "crypto"
+is_primary = true
 bars_symbol = "PAXG/USD"
 history_start = 2021-01-01
+# Gold's news is written about the metal and its fund; the coin has almost none of
+# its own (41 articles in the audit), so the fund's ticker is read for it.
+news_symbols = ["GLD"]
+news_start = 2023-01-01
 
 # US stocks. A primary asset because the user holds it (docs/DECISIONS.md 021).
 [[assets]]

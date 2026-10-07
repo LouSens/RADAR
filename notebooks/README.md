@@ -22,12 +22,14 @@ Old numbers, for reading older decisions: 02 and 03 are now `02_state_and_range`
 `05_portfolio_and_paying_in`.
 
 Rebuild one with `uv run python backend/scripts/build_notebooks.py <name>`. Sources are
-in `src/`.
+in `src/`. `04_news` needs `uv sync --extra nlp` and the trained model's files.
 
-## Still owed
+## How each one is laid out
 
-Notebooks 01 to 05 were merged and cut down without being run again, so their charts
-and wording are as first built. Each still needs: the shared style
-(`radar.notebooks.use_style`), the answer stated first, plainer chart titles and column
-names, any logic written inside the notebook moved into tested code, and every holding
-covered instead of three markets. `06_trading_record` is the pattern to follow.
+The answer comes first, then a table of each step with the code it runs and the screen
+it feeds. Charts and tables use plain names. The closing section only repeats what a
+count printed in the notebook supports. All of them use `radar.notebooks.use_style`.
+
+The markets shown are the three the app follows. The example portfolio is made up, so
+no notebook covers the user's own holdings; experiments on real holdings stay in the
+gitignored `data/private/`.

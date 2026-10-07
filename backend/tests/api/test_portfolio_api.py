@@ -12,7 +12,7 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from radar.api.app import create_app
-from radar.api.portfolio import get_asset_finder, get_binance_reader
+from radar.api.portfolio import get_asset_finder, get_binance_reader, get_live_prices
 from radar.db.assets import sync_assets
 from radar.db.models import PortfolioAnalysis, PortfolioHolding
 from radar.features.calendars import nyse_schedule
@@ -99,6 +99,7 @@ def client(engine: Engine, session: Session) -> Iterator[TestClient]:
     # Tests never read a real key from this machine's .env.
     app.dependency_overrides[get_binance_reader] = lambda: None
     app.dependency_overrides[get_asset_finder] = lambda: None
+    app.dependency_overrides[get_live_prices] = lambda: lambda assets, loc: {}
     with TestClient(app) as test_client:
         yield test_client
 
@@ -601,3 +602,40 @@ def test_a_ticker_is_looked_up_so_it_can_be_tried(client: TestClient) -> None:
         client.post("/api/v1/portfolio/lookup", json={"ticker": "X", "kind": "bond"}).status_code
         == 422
     )
+
+
+def test_what_to_do_reads_binance_again_by_itself_when_the_last_read_is_old(
+    client: TestClient, engine: Engine, session: Session
+) -> None:
+    from datetime import timedelta
+
+    from sqlalchemy import update
+
+    from radar.db.models import Portfolio
+
+    held = {"quantity": 0.4}
+    reads: list[float] = []
+
+    def reader(_: object) -> BinanceReading:
+        reads.append(held["quantity"])
+        return reading(("BTC/USD", held["quantity"]))
+
+    app = client.app
+    app.dependency_overrides[get_binance_reader] = lambda: reader  # type: ignore[attr-defined]
+    assert client.post("/api/v1/portfolio/binance").status_code == 200
+    assert reads == [0.4]
+
+    # Asked again at once: the reading is fresh, so Binance is left alone.
+    first = client.get("/api/v1/portfolio/steps").json()
+    assert reads == [0.4]
+    assert first["checked_at"] is not None
+
+    # Something was bought on the exchange, and ten minutes pass.
+    held["quantity"] = 0.9
+    session.execute(update(Portfolio).values(updated_at=datetime.now(UTC) - timedelta(minutes=10)))
+    session.commit()
+    later = client.get("/api/v1/portfolio/steps").json()
+    assert reads == [0.4, 0.9]
+    assert later["checked_at"] > first["checked_at"]
+    assert client.get("/api/v1/portfolio").json()["holdings"][0]["quantity"] == 0.9
+    app.dependency_overrides.pop(get_binance_reader)  # type: ignore[attr-defined]

@@ -228,9 +228,13 @@ export function StatRow({ label, children }: { label: string; children: ReactNod
 }
 
 /** CSS variable for an asset's series colour. */
-export function assetColorVar(asset: Pick<Asset, "symbol" | "asset_class">): string {
-  if (asset.symbol === "BTC/USD") return "--btc";
-  if (asset.symbol === "GLD" || asset.symbol === "PAXG/USD") return "--gold";
+export function assetColorVar(
+  asset: Pick<Asset, "symbol" | "asset_class"> & { kind?: string | null },
+): string {
+  if (asset.kind === "bitcoin" || asset.symbol === "BTC/USD") return "--btc";
+  // By what it is where that is known; by name for the two forms of gold otherwise.
+  if (asset.kind === "gold" || asset.symbol === "GLD" || asset.symbol === "PAXG/USD")
+    return "--gold";
   return asset.asset_class === "stock" ? "--stock" : "--accent";
 }
 
