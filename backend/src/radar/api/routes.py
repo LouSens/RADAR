@@ -137,6 +137,7 @@ def asset_out(asset: Asset) -> AssetOut:
         name=asset.name,
         asset_class=asset.asset_class,
         is_primary=asset.is_primary,
+        kind=asset.kind,
         history_start=asset.history_start,
         news_start=asset.news_start,
         trades_continuously=asset.asset_class == "crypto",

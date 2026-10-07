@@ -4,6 +4,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from "../api/client";
 import {
   useAccountRecord,
+  useAssets,
   usePortfolio,
   usePortfolioAnalysis,
   useSetLostCoins,
@@ -504,7 +505,9 @@ function LimitCard({
           <dt className="label">In the past</dt>
           <dd className="num mt-1">
             {formatCount(test.breaches)} of {formatCount(test.n)} {unit}{" "}
-            <span className="text-muted">(about {expected(test.expected_breaches)} expected)</span>
+            <span className="hidden text-muted @md:inline">
+              (about {expected(test.expected_breaches)} expected)
+            </span>
           </dd>
         </div>
       </dl>
@@ -775,6 +778,7 @@ export function PortfolioPage() {
   const record = useAccountRecord().data;
   const setLost = useSetLostCoins();
   const steps = useSteps().data;
+  const kinds = Object.fromEntries((useAssets().data ?? []).map((a) => [a.symbol, a.kind]));
 
   if (!isPortfolioSection(section)) return <Navigate to={BASE} replace />;
   const empty = portfolio.data !== undefined && portfolio.data.holdings.length === 0;
@@ -845,10 +849,17 @@ export function PortfolioPage() {
           suggestions={[
             ...new Set([
               ...(record?.assets ?? []).filter((a) => a.held).map((a) => a.asset),
-              "BTC",
-              "PAXG",
-              "ETH",
-              "SOL",
+              // Then the coins traded most, so the list follows the account.
+              ...[...(record?.assets ?? [])]
+                .sort(
+                  (x, y) =>
+                    y.standing.purchases +
+                    y.standing.sales -
+                    x.standing.purchases -
+                    x.standing.sales,
+                )
+                .slice(0, 5)
+                .map((a) => a.asset),
             ]),
           ]}
         />
@@ -868,7 +879,7 @@ export function PortfolioPage() {
 
       {portfolio.data &&
         section === "try" &&
-        (analysis ? <PlanPanel analysis={analysis} /> : needsHoldings)}
+        (analysis ? <PlanPanel analysis={analysis} kinds={kinds} /> : needsHoldings)}
       {portfolio.data && section === "try" && (
         <Link to={`${BASE}/buying`} className="menu-row">
           <span className="min-w-0">

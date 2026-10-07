@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
 vi.mock("../api/queries", () => ({
   useSetTarget: () => ({ mutate: state.save, isPending: false, isSuccess: false, isError: false }),
   useWhatIf: () => ({ mutate: state.preview, data: state.result }),
+  useMixRisk: () => ({ data: { deepest_fall: -0.2 }, isPending: false }),
 }));
 
 const position = (symbol: string, name: string, weight: number) => ({
@@ -36,10 +37,12 @@ const ANALYSIS = {
   plan: null,
 } as unknown as PortfolioAnalysis;
 
+const KINDS = { "BTC/USD": "bitcoin", "PAXG/USD": "gold", SPY: "stocks", GLD: "gold" };
+
 const show = () =>
   render(
     <MemoryRouter>
-      <PlanPanel analysis={ANALYSIS} />
+      <PlanPanel analysis={ANALYSIS} kinds={KINDS} />
     </MemoryRouter>,
   );
 
@@ -90,11 +93,21 @@ describe("PlanPanel", () => {
 
   it("turns a starting point into shares for what is really held", () => {
     const careful = STARTS[0];
-    expect(sharesFor(careful, ["SPY", "GLD", "BTC/USD", "DOGE"], { DOGE: 5 })).toEqual({
+    expect(sharesFor(careful, ["SPY", "GLD", "BTC/USD", "DOGE"], { DOGE: 5 }, KINDS)).toEqual({
       SPY: 25,
       GLD: 20,
       "BTC/USD": 7,
       DOGE: 1,
     });
+    // Gold held two ways shares gold's part between them.
+    expect(sharesFor(careful, ["GLD", "PAXG/USD"], {}, KINDS)).toEqual({
+      GLD: 10,
+      "PAXG/USD": 10,
+    });
+  });
+
+  it("shows how far each starting point fell on these holdings, not a fixed figure", () => {
+    show();
+    expect(screen.getAllByText("fell up to 20%")).toHaveLength(3);
   });
 });

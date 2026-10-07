@@ -192,6 +192,16 @@ export function useAccountRecord() {
   });
 }
 
+/** The risk of one mix of the holdings, worked out for the account as it is. */
+export function useMixRisk(weights: Record<string, number> | undefined) {
+  return useQuery({
+    queryKey: ["portfolio", "mix-risk", weights],
+    queryFn: () => postJson<WhatIf>("/portfolio/what-if", { weights: weights ?? {} }),
+    enabled: weights !== undefined,
+    staleTime: 10 * 60_000,
+  });
+}
+
 /** Whether a coin's price is high or low against its own recent past. */
 export function useBuyCheck(coin: string) {
   return useQuery({

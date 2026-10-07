@@ -3207,3 +3207,26 @@ individual stock is suggested.
   part are behind "Details".
 - **Risk by holding**: the table of how closely the holdings move together is folded
   behind a tap; the bars of money against risk stay in view.
+
+## 085. Nothing on a screen knows a ticker by name; every card holds its place while it loads (2026-10-07)
+
+The user asked that nothing be hardcoded and that no card appear from nowhere.
+
+- **What an asset is** now lives in the universe file (`kind`: stocks, gold or bitcoin)
+  and is served with each asset. The plan page, the three starting points and the gold
+  card on Home read it. No screen names SPY, GLD, PAXG or BTC any more: gold's card
+  shows the price of whichever other asset is also gold, and anything with no kind is a
+  small bet, capped.
+- **The three starting points** show how far each has fallen on the user's own holdings,
+  worked out when the page opens, in place of three fixed figures from a one-off run.
+- **The coins offered in "Before you buy"** are the ones held and the ones traded most.
+- **Skeletons**: every card that waits for data (the brief, coming events, signals, a
+  market's summary and each of its pages, the sidebar's account) draws a placeholder of
+  its own shape until the data lands.
+- **Narrow screens**: where a row holds a result and a count, the result stays and the
+  count steps aside.
+
+**Still fixed in code, on purpose, and said here:** the shares of the three starting
+points; the thresholds of the to-do list (2% or 5 dollars spare, 5 points over); the
+list of common coins asked about when Binance's own list cannot be read; and one
+sentence stating the result of the test of decision 079.

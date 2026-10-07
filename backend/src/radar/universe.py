@@ -28,6 +28,10 @@ class Asset(_Config):
     name: str
     asset_class: AssetClass
     is_primary: bool = False
+    # What the asset is to a long-run holder: the broad stock market, gold, or Bitcoin.
+    # Left out for anything else, which the plan treats as a small bet. The screens
+    # use this instead of knowing any ticker by name.
+    kind: Literal["stocks", "gold", "bitcoin"] | None = None
     bars_symbol: str
     history_start: date
     news_symbols: tuple[str, ...] = ()

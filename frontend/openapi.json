@@ -222,6 +222,17 @@
             "title": "Is Primary",
             "type": "boolean"
           },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
           "name": {
             "title": "Name",
             "type": "string"

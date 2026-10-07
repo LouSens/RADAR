@@ -19,6 +19,7 @@ stock = ["1Hour", "1Day"]
 
 [[assets]]
 symbol = "BTC/USD"
+kind = "bitcoin"
 name = "Bitcoin"
 asset_class = "crypto"
 is_primary = true
@@ -30,6 +31,7 @@ news_start = 2022-01-01
 # Gold. One instrument, chosen for data quality (docs/DECISIONS.md 011).
 [[assets]]
 symbol = "GLD"
+kind = "gold"
 name = "Gold"
 asset_class = "stock"
 is_primary = true
@@ -56,6 +58,7 @@ history_start = 2021-06-17
 # what the portfolio lab needs. Gold analysis and gold news use GLD, not this.
 [[assets]]
 symbol = "PAXG/USD"
+kind = "gold"
 name = "PAX Gold"
 asset_class = "crypto"
 bars_symbol = "PAXG/USD"
@@ -64,6 +67,7 @@ history_start = 2021-01-01
 # US stocks. A primary asset because the user holds it (docs/DECISIONS.md 021).
 [[assets]]
 symbol = "SPY"
+kind = "stocks"
 name = "US stocks (S&P 500)"
 asset_class = "stock"
 is_primary = true

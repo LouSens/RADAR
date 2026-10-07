@@ -166,7 +166,7 @@ function PastRow({ asset }: { asset: AssetRecord }) {
     <li className="flex items-baseline justify-between gap-3 border-t border-line py-2.5 first:border-t-0">
       <span className="min-w-0">
         <span className="font-medium">{asset.asset}</span>{" "}
-        <span className="text-xs text-muted">
+        <span className="hidden text-xs text-muted @sm:inline">
           bought {formatCount(now.purchases)}, sold {formatCount(now.sales)}
         </span>
       </span>
