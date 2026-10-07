@@ -858,6 +858,17 @@
             "title": "Outcomes",
             "type": "array"
           },
+          "place_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Day"
+          },
           "place_month": {
             "anyOf": [
               {
@@ -883,6 +894,17 @@
           "place_week": {
             "title": "Place Week",
             "type": "number"
+          },
+          "place_year": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Year"
           },
           "price": {
             "title": "Price",

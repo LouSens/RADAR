@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useStreamStatus } from "../api/live";
@@ -8,15 +8,17 @@ import { assetColorVar } from "./ui";
 
 /** The mark: a sweep across two rings with one blip, on a lit badge. */
 export function RadarMark({ size = 30 }: { size?: number }) {
+  // Each copy needs its own gradient: one inside a hidden sidebar would not paint.
+  const badge = useId();
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
       <defs>
-        <linearGradient id="radar-badge" x1="4" y1="2" x2="28" y2="30">
+        <linearGradient id={badge} x1="4" y1="2" x2="28" y2="30">
           <stop stopColor="#7fe0f2" />
           <stop offset="1" stopColor="#7c86f0" />
         </linearGradient>
       </defs>
-      <rect width="32" height="32" rx="9.5" fill="url(#radar-badge)" />
+      <rect width="32" height="32" rx="9.5" fill={`url(#${badge})`} />
       <path d="M16 16 25.5 9.5A11.5 11.5 0 0 0 16 4.5V16Z" fill="#06131a" fillOpacity="0.28" />
       <circle cx="16" cy="16" r="11.5" stroke="#06131a" strokeOpacity="0.5" strokeWidth="1.5" />
       <circle cx="16" cy="16" r="6" stroke="#06131a" strokeOpacity="0.5" strokeWidth="1.5" />

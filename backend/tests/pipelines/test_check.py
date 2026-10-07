@@ -73,3 +73,15 @@ def test_the_users_own_record_is_set_beside_the_price() -> None:
     assert {o.where for o in record.buy_outcomes} <= {"high", "middle", "low"}
     other = check.build("ADA", bars(np.linspace(100, 200, 2400)), record, NOW)
     assert other.yours is None
+
+
+def test_the_day_and_the_year_are_read_too_when_there_are_prices_for_them() -> None:
+    hourly = bars(np.linspace(100, 200, 2400))
+    days = pd.date_range("2025-10-01", periods=370, freq="D", tz="UTC")
+    year = pd.DataFrame({"high": 400.0, "low": 100.0, "close": 150.0}, index=days)
+    found = check.build("SOL", hourly, None, NOW, year)
+    assert found.place_day == 1.0
+    # 200 between a year's low of 100 and high of 400.
+    assert found.place_year == pytest.approx(1 / 3)
+    assert check.build("SOL", hourly, None, NOW, year.iloc[:100]).place_year is None
+    assert check.build("SOL", hourly, None, NOW).place_year is None

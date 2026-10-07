@@ -3123,3 +3123,33 @@ none. The official free source is the US regulator's filings (SEC EDGAR, company
 facts). That is a new host and needs the user's yes and a test, as every source does.
 The rules are filters on the business, not a forecast of the share price, and would be
 shown that way.
+
+## 081. A design pass after the user's review: fewer doors, a desktop Home, a new mark, more periods in the check (2026-10-07)
+
+The user's review, with a screenshot of the Portfolio menu: too many options, too much
+text, cards left hanging on desktop, the four Home shortcuts not sized for a wide
+screen, the sidebar empty, the logo and name weak. He also asked that "low or high" for
+a coin be an insight over several periods, never a reason to buy.
+
+**Done.**
+- *Portfolio menu*: six tiles with icons in a grid (What to do now, Before you buy, My
+  plan, My trades, Holdings, My risk) in place of twelve rows in four groups. The four
+  risk pages are reached from My risk; regular buying from My plan. `SectionMenu` draws
+  tiles everywhere and leaves out pages marked `hidden`.
+- *Home on a wide screen*: the portfolio sits on a pane beside the to-do card, the
+  shortcuts become rows with the name beside the icon, and the lower cards sit on a
+  twelve-column grid so none is left hanging.
+- *Sidebar*: a card at its foot with the account's worth, its risk and how many things
+  there are to do.
+- *Mark and name*: a lit badge with a radar sweep and one blip, and the name set in
+  lower case with a full stop in the accent colour. Each copy of the mark carries its
+  own gradient, since one inside the hidden sidebar would not paint on a phone.
+- *Before you buy*: today, this week, this month, the last three months and the last
+  year, each as a line with a dot. It says where the price is, in neutral colour, and
+  states what decision 079 found. It names no coin a good buy.
+
+**Not done.** The risk, market and plan pages still carry their long text. Type, colour
+and motion were not reworked beyond the above. A new typeface would be a new
+dependency, so it waits for the user's choice. Desktop was checked by measuring the
+layout, because the preview pane is phone-width: the user's own look at it is the real
+check.

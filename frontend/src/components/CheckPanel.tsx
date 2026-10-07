@@ -74,12 +74,14 @@ export function CheckResult({ check }: { check: BuyCheck }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 @xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 @xl:grid-cols-2 @4xl:grid-cols-5">
+        {check.place_day != null && <PlaceBar label="Today" place={check.place_day} />}
         <PlaceBar label="This week" place={check.place_week} />
         {check.place_month != null && <PlaceBar label="This month" place={check.place_month} />}
         {check.place_quarter != null && (
           <PlaceBar label="Last 3 months" place={check.place_quarter} />
         )}
+        {check.place_year != null && <PlaceBar label="Last year" place={check.place_year} />}
       </div>
 
       {(check.habit_place != null || check.yours || outcomes.length > 0) && (

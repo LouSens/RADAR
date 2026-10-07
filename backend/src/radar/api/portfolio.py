@@ -193,11 +193,12 @@ def get_check(coin: str, session: SessionDep) -> check_job.Check:
     try:
         with binance_public.reader() as source:
             bars = check_job.fetch(source, name)
+            daily = check_job.fetch_year(source, name) if len(bars) else None
     except PublicDataError:
         raise HTTPException(status_code=404, detail=f"No prices for {name}.") from None
     if len(bars) < check_job.WEEK + 1:
         raise HTTPException(status_code=404, detail=f"No prices for {name}.")
-    return check_job.build(name, bars, account_job.stored(session), datetime.now(UTC))
+    return check_job.build(name, bars, account_job.stored(session), datetime.now(UTC), daily)
 
 
 @router.put("/record/lost", response_model=account_job.Record)

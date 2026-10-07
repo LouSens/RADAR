@@ -9,7 +9,12 @@ export const PORTFOLIO_SECTIONS = [
   { path: "record", label: "My trades", hint: "What you made or lost, coin by coin" },
   { path: "holdings", label: "Holdings", hint: "See or change what you hold" },
   { path: "risk", label: "My risk", hint: "How much it could move or lose" },
-  { path: "sources", label: "Risk by holding", hint: "Which holding carries the risk", hidden: true },
+  {
+    path: "sources",
+    label: "Risk by holding",
+    hint: "Which holding carries the risk",
+    hidden: true,
+  },
   { path: "limits", label: "Possible loss", hint: "How much a bad day could cost", hidden: true },
   {
     path: "ahead",

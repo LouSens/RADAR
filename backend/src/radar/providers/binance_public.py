@@ -94,3 +94,30 @@ def dollar_pairs(source: PublicReader, cash: tuple[str, ...]) -> dict[str, list[
         if base and quote in cash and base not in cash:
             listed.setdefault(base, []).append(quote)
     return {base: [c for c in cash if c in quotes] for base, quotes in sorted(listed.items())}
+
+
+DAY_MS = 24 * HOUR_MS
+
+
+def daily_bars(source: PublicReader, symbol: str, start_ms: int, end_ms: int) -> pd.DataFrame:
+    """Every daily bar that opened in [start, end), from the same read as the hourly ones."""
+    rows: list[list[str | int]] = []
+    cursor = start_ms
+    while cursor < end_ms:
+        page = source.get(
+            *BARS,
+            {
+                "symbol": symbol,
+                "interval": "1d",
+                "startTime": cursor,
+                "endTime": end_ms - 1,
+                "limit": PAGE,
+            },
+        )
+        if not page:
+            break
+        rows.extend(page)
+        cursor = int(page[-1][0]) + DAY_MS
+        if len(page) < PAGE:
+            break
+    return bars_frame(rows) if rows else pd.DataFrame(columns=BAR_FIELDS)

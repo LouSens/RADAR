@@ -240,7 +240,7 @@ export function StepsCard({ steps }: { steps: Steps }) {
   return (
     <Link
       to="/portfolio/todo"
-      className="glass press block p-4 @xl:p-7"
+      className="glass press block h-full p-4 @xl:p-7"
       aria-label="What to do now"
     >
       <p className="label">What to do now</p>

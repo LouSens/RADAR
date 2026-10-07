@@ -944,12 +944,16 @@ export interface components {
              * @default []
              */
             outcomes: components["schemas"]["radar__pipelines__account__Outcome"][];
+            /** Place Day */
+            place_day?: number | null;
             /** Place Month */
             place_month: number | null;
             /** Place Quarter */
             place_quarter: number | null;
             /** Place Week */
             place_week: number;
+            /** Place Year */
+            place_year?: number | null;
             /** Price */
             price: number;
             /** Weekly Swing */

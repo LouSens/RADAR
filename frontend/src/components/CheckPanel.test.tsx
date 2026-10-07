@@ -9,7 +9,9 @@ const CHECK: BuyCheck = {
   as_of: "2026-10-07T09:00:00Z",
   model_version: "check-1",
   price: 118.8,
+  place_day: 0.5,
   place_week: 0.92,
+  place_year: 0.3,
   place_month: 0.8,
   place_quarter: 0.4,
   move_day: 0.031,
@@ -43,6 +45,8 @@ describe("CheckResult", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("This month")).toBeInTheDocument();
     expect(screen.getByText("Last 3 months")).toBeInTheDocument();
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Last year")).toBeInTheDocument();
   });
 
   it("sets your own record beside it, leaving out groups with too few purchases", () => {
