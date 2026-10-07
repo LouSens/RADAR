@@ -12,7 +12,7 @@ const HEADLINE = {
 
 const ABOUT = [
   "Crypto prices come from one exchange, Kraken.",
-  "Gold is represented by the GLD fund, which has no weekend or overnight prices.",
+  "Gold is priced as PAX Gold, a coin backed by gold, which trades around the clock; its history starts in 2021.",
   "Live stock prices come from one exchange (IEX). Stored stock history is 15 minutes delayed.",
   "Crypto history starts in 2021, so rare events are thinly represented.",
   "The newest point on a chart is drawn from the live feed until its hour or day ends.",

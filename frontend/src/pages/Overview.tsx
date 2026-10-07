@@ -1,4 +1,3 @@
-import type { Asset } from "../api/client";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
@@ -230,14 +229,6 @@ export function Overview() {
   const assets = useAssets();
   const now = useNow(60_000);
   const primary = assets.data?.filter((a) => a.is_primary) ?? [];
-  // Where the same thing can be held another way (gold as a coin), the card shows that
-  // price: it is the one in the portfolio.
-  const held = (asset: Asset) =>
-    asset.kind
-      ? assets.data?.find(
-          (a) => a.kind === asset.kind && !a.is_primary && a.symbol !== asset.symbol,
-        )
-      : undefined;
   const steps = useSteps();
   const today = new Intl.DateTimeFormat("en-GB", {
     weekday: "long",
@@ -283,7 +274,7 @@ export function Overview() {
         </div>
         <div className="grid grid-cols-3 gap-2 @xl:gap-4">
           {primary.map((asset) => (
-            <MarketCard key={asset.slug} asset={asset} priced={held(asset)} />
+            <MarketCard key={asset.slug} asset={asset} />
           ))}
         </div>
       </section>

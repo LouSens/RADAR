@@ -3250,3 +3250,39 @@ again to see a purchase, and found the Signals page too long to scroll.
   cannot be reached the stored reading is kept.
 - **Signals** opens with five from the last three months, with one button for ten more
   and one to include older ones.
+
+## 087. Gold is followed as PAX Gold, not as the gold fund (2026-10-07)
+
+Decision 011 made the gold fund (GLD) the primary gold market, for its ten years of
+history and its news, and kept PAX Gold for the portfolio only. The user holds PAX Gold
+and no gold fund, and asked that the gold market, its data and its projections be the
+thing he holds. Spot gold (XAU/USD) was asked for too; the Alpaca plan refuses metal and
+currency rates.
+
+**Decided.** `PAXG/USD` is the primary gold market. The state, the range ahead, the
+swings, the possible loss, signals and the events study are all worked out on it. The
+fund stays in the universe, not primary, as a cross-check and so that a holding of it
+would still be priced; held, it reads the state of gold from PAX Gold. Gold's news is
+still read from the fund's ticker, because the coin has almost none of its own.
+
+**What it costs, and is said on the System page.** History from January 2021 instead of
+2016, so the models have seen about half as much gold, and none of 2016 to 2020. In
+exchange it trades around the clock like the user's holding, and the prices and ranges
+on screen are the ones he can compare with Binance.
+
+**No screen names a ticker for this.** The asset's `kind` says it is gold.
+
+## 088. Back goes back, and Holdings is a list when Binance supplies it (2026-10-07)
+
+The user found navigation confusing: a link took him from Portfolio to Markets, and
+"back" then went up to Markets' own page, not to where he had been. He also found the
+Holdings page odd: two totals side by side and a form to fill in, for an account that
+is read from Binance.
+
+- **The way back** on every inner page goes to the page the reader came from when they
+  arrived by a link inside the app, and is labelled "Back". Only a page opened directly
+  (a bookmark, a reload) goes up to its subject, labelled "Back to …" as before.
+- **Holdings**, when Binance is the source: Binance's own total as one figure, its
+  wallets as bars, and what is held as a list with value and share. What RADAR found is
+  shown beside Binance's figure only when money is missing. The form for typing
+  holdings is behind "Enter holdings by hand instead".

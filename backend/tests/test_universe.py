@@ -33,7 +33,7 @@ def test_default_universe_matches_the_audit_decisions() -> None:
     universe = load_universe()
     assert universe.crypto_location == "us-1"
     assert universe.timeframes.crypto == ("1Hour", "1Day")
-    assert [a.symbol for a in universe.primary] == ["BTC/USD", "GLD", "SPY"]
+    assert [a.symbol for a in universe.primary] == ["BTC/USD", "PAXG/USD", "SPY"]
     assert {a.symbol for a in universe.of_class("stock")} == {
         "SPY",
         "GLD",
@@ -50,9 +50,11 @@ def test_default_universe_matches_the_audit_decisions() -> None:
     assert universe.get("BTC/USD").news_start == date(2022, 1, 1)
     assert universe.news_symbols == ("BTCUSD", "GLD", "SPY")
     assert universe.timeframes_for(universe.get("SPY")) == ("1Hour", "1Day")
+    # Gold is followed as PAX Gold, the form the user holds, and reads the fund's news.
     paxg = universe.get("PAXG/USD")
-    assert not paxg.is_primary
-    assert paxg.news_symbols == ()
+    assert paxg.is_primary
+    assert paxg.news_symbols == ("GLD",)
+    assert not gold.is_primary
 
 
 def test_loads_a_custom_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
