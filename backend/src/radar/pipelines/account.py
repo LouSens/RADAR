@@ -481,15 +481,19 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
 
 
 def held_units(session: Session) -> dict[str, float]:
-    """Units of each crypto asset the stored portfolio says are held now."""
+    """Units of each asset the stored portfolio says are held now, under the name the
+    exchange's trade history uses for it: a crypto pair by its coin, and a US stock by
+    its ticker with the `B` Binance puts on its tokenised stocks."""
     analysis = portfolio_job.stored_analysis(session)
     if analysis is None:
         return {}
-    return {
-        position.symbol.split("/")[0]: position.quantity
-        for position in analysis.positions
-        if "/" in position.symbol
-    }
+    held: dict[str, float] = {}
+    for position in analysis.positions:
+        if "/" in position.symbol:
+            held[position.symbol.split("/")[0]] = position.quantity
+        elif position.symbol != "USD":
+            held[position.symbol + "B"] = position.quantity
+    return held
 
 
 def stored(session: Session) -> Record | None:
