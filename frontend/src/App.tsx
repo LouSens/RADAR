@@ -5,6 +5,7 @@ import { Layout } from "./components/Layout";
 import { Message } from "./components/ui";
 import { AssetPage } from "./pages/AssetPage";
 import { CalendarPage } from "./pages/CalendarPage";
+import { MarketsPage } from "./pages/MarketsPage";
 import { Overview } from "./pages/Overview";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { SignalsPage } from "./pages/SignalsPage";
@@ -17,6 +18,7 @@ export function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Overview />} />
+        <Route path="markets" element={<MarketsPage />} />
         <Route path="asset/:slug/:section?" element={<AssetPage />} />
         <Route path="together/:section?" element={<TogetherPage />} />
         <Route path="portfolio/:section?" element={<PortfolioPage />} />

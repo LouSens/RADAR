@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { PortfolioAnalysis, WhatIf } from "../api/client";
 import { usePortfolio, useSetTarget, useWhatIf } from "../api/queries";
 import { formatMoney, formatShare } from "../lib/format";
-import { MIX_NAMES, dayLimit, levelNow, presets, type MixName, type Preset } from "../lib/plan";
+import { dayLimit, presets, type Preset } from "../lib/plan";
 import { TickerBox } from "./TickerBox";
 import { Caption } from "./ui";
 import { Bars, StackBar, holdingColour, levelColour } from "./viz";
@@ -223,7 +223,7 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
           disabled={over || empty || tryMix.isPending}
           onClick={() => tryMix.mutate({ weights })}
         >
-          {tryMix.isPending ? "Working it out…" : "Work out the risk"}
+          {tryMix.isPending ? "Working it out…" : "Show the risk"}
         </button>
       </div>
       {tryMix.isError && <p className="text-sm text-alert">{tryMix.error.message}</p>}
@@ -328,19 +328,28 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
         </div>
       )}
 
-      <Caption>
-        Give each holding a share of your {formatMoney(analysis.value)} and the rest is held as
-        cash. The figures are worked out the same way as on the other tabs, from the prices stored
-        for each holding, so &quot;Now&quot; and &quot;This mix&quot; can be compared directly. Your
-        mix reads {levelNow(analysis.plan)} today. Low, moderate, and high are this app&apos;s own
-        bands (under half the daily movement of US stocks, up to the same, up to double) and are
-        here only as starting points, as are the other splits (
-        {(["equal", "min_variance", "equal_risk", "hierarchical"] as MixName[])
-          .map((m) => MIX_NAMES[m].toLowerCase())
-          .join(", ")}
-        ). Trying a mix saves nothing and changes nothing at Binance; neither does setting a target,
-        which only decides what your portfolio is compared with.
-      </Caption>
+      <Caption
+        facts={[
+          {
+            label: "You set",
+            value: `Each holding's share of your ${formatMoney(analysis.value)}; the rest is cash`,
+          },
+          {
+            label: "Comparable",
+            value: "“Now” and “This mix” use the same method as everywhere else in RADAR",
+          },
+          {
+            label: "Low, moderate, high",
+            value:
+              "RADAR's own bands: under half the daily movement of US stocks, up to the same, up to double",
+          },
+          {
+            label: "Changes nothing",
+            value: "Trying a mix saves nothing and places nothing at your exchange",
+          },
+          { label: "A target", value: "Only sets what your portfolio is compared with" },
+        ]}
+      />
     </div>
   );
 }

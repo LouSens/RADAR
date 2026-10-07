@@ -1,17 +1,55 @@
 import type { Position, StressResult, Xray } from "../api/client";
 
+const RISK = "Understand your risk";
+const TRY = "Try things";
+
 export const PORTFOLIO_SECTIONS = [
   { path: "", label: "Summary" },
-  { path: "holdings", label: "Holdings" },
-  { path: "try", label: "Try a mix" },
-  { path: "mixes", label: "Compare mixes" },
-  { path: "buying", label: "Regular buying" },
-  { path: "sources", label: "Risk by holding" },
-  { path: "limits", label: "Possible loss" },
-  { path: "ahead", label: "Value range ahead" },
-  { path: "sleeves", label: "Core and satellite" },
-  { path: "forces", label: "What it moves with" },
-  { path: "episodes", label: "Past crashes" },
+  { path: "holdings", label: "Holdings", hint: "See, change or re-read what you hold" },
+  {
+    path: "sources",
+    label: "Risk by holding",
+    hint: "Which holding carries the risk",
+    group: RISK,
+  },
+  { path: "limits", label: "Possible loss", hint: "How much a bad day could cost", group: RISK },
+  {
+    path: "ahead",
+    label: "Value range ahead",
+    hint: "Where its value might be in 1 to 3 months",
+    group: RISK,
+  },
+  {
+    path: "forces",
+    label: "What it moves with",
+    hint: "Which outside forces it follows",
+    group: RISK,
+  },
+  {
+    path: "episodes",
+    label: "Past crashes",
+    hint: "How it would have fared in past crashes",
+    group: RISK,
+  },
+  { path: "try", label: "Try a mix", hint: "Change the shares and see the risk", group: TRY },
+  {
+    path: "mixes",
+    label: "Compare mixes",
+    hint: "Five ways to split the same holdings",
+    group: TRY,
+  },
+  {
+    path: "buying",
+    label: "Regular buying",
+    hint: "Simulate buying a fixed amount on a schedule",
+    group: TRY,
+  },
+  {
+    path: "sleeves",
+    label: "Core and satellite",
+    hint: "Tag holdings and compare the groups",
+    group: TRY,
+  },
 ] as const;
 
 export type PortfolioSection = (typeof PORTFOLIO_SECTIONS)[number]["path"];

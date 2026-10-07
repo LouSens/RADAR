@@ -1,28 +1,72 @@
 @import "tailwindcss";
 
-/* One dark world, shared with the owner's portfolio site: near-black ground, Inter set
-   tight and heavy for display, the same face with fixed-width digits for numbers, and "liquid glass"
-   surfaces. The accent is a cool radar blue; rising and falling prices have their own
-   colours and never borrow the accent. */
+/* ======================================================================================
+   RADAR's look, in one place.
+
+   One ground, one light, one material. The ground is near-black. The light is a soft glow
+   at the top of the window in the colour of whatever is being looked at; it belongs to the
+   window, so it reaches every edge. Cards are thin panes of the same glass, lit from above.
+   Colour carries meaning only: a market's own hue, calm green, alert red, and the radar
+   cyan for anything you can act on.
+
+   Every token is declared once here. This file used to be a pile of later patches, with
+   :root, body::before, .tile, .label, .title, .well and .page-in each written two or three
+   times; the last one won and the earlier ones were dead. Add to the right section instead.
+   ====================================================================================== */
+
+/* ---------- Tokens ------------------------------------------------------------------- */
+
+@property --tint {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #62cfe8;
+}
+
 :root {
-  --bg: #06070a;
+  /* Ground and ink */
+  --bg: #090a0e;
   --ink: #f3f4f7;
-  --muted: #9a9daa;
-  --faint: #62657a;
-  --line: rgba(255, 255, 255, 0.08);
+  --muted: #9ea2b0;
+  --faint: #7c8095;
+  --line: rgba(255, 255, 255, 0.085);
   --line-strong: rgba(255, 255, 255, 0.18);
-  --grid: rgba(255, 255, 255, 0.045);
-  --accent: #5cd6f7;
-  --accent-ink: #04222b;
-  --accent-dim: rgba(92, 214, 247, 0.1);
-  --accent-glow: rgba(92, 214, 247, 0.22);
-  --calm: #3ddc97;
-  --alert: #ff6b5e;
-  --btc: #f7a43b;
-  --gold: #e9c46a;
-  --stock: #8b93ff;
-  --radius-card: 24px;
+
+  /* One family of hues: picked at an even lightness and a similar chroma in OKLCH, so they
+     read as a set rather than as six unrelated brand colours, then written here in hex.
+     They must stay hex: the price charts read these variables and parse the colour
+     themselves, and that parser does not understand oklch(). */
+  --accent: #62cfe8; /* radar cyan: anything you can act on */
+  --calm: #64d599; /* up, passing, fine */
+  --alert: #f46f68; /* down, failing, needs attention */
+  --btc: #eea65b;
+  --gold: #e1c981;
+  --stock: #97a0ef;
+
+  --accent-ink: #002a33;
+  --accent-dim: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-glow: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  /* Type: one scale, used by the classes below and nowhere else. */
+  --step--1: 0.8125rem;
+  --step-0: 0.9375rem;
+  --step-1: 1.0625rem;
+  --step-2: clamp(1.2rem, 1.05rem + 0.5vw, 1.45rem);
+  --step-3: clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
+  --step-4: clamp(2.1rem, 1.5rem + 2.8vw, 3.2rem);
+  --measure: 64ch;
+
+  /* Motion: three durations and two curves for the whole app, so nothing moves on a
+     curve of its own. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.3, 0.7, 0.2, 1);
+  --fast: 0.16s;
+  --mid: 0.26s;
+  --slow: 0.38s;
+
+  --radius-card: 20px;
+
   color-scheme: dark;
+  transition: --tint 0.9s ease;
 }
 
 @theme inline {
@@ -38,6 +82,8 @@
   --color-alert: var(--alert);
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+
+/* ---------- The page ------------------------------------------------------------------ */
 
 html {
   -webkit-font-smoothing: antialiased;
@@ -58,25 +104,54 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.65;
+  /* Inter is a variable font with an optical size axis: small text keeps its open shapes
+     and display text gets the tighter cut, without a second font file. */
+  font-optical-sizing: auto;
+  font-size: var(--step-0);
+  line-height: 1.6;
   letter-spacing: -0.011em;
   overflow-x: hidden;
 }
 
-/* The ground: a fine dot grid that fades out down the page. */
+/* Nothing in a column of figures may push the page sideways. */
+body,
+.num {
+  overflow-wrap: break-word;
+}
+
+/* The light: one glow at the top of the window, in the page's colour. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -2;
   pointer-events: none;
-  background: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px) 0 0 / 26px 26px;
-  mask-image: linear-gradient(to bottom, #000 0%, transparent 78%);
+  background:
+    radial-gradient(
+      110% 55% at 50% -12%,
+      color-mix(in srgb, var(--tint) 26%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      50% 38% at 100% 0%,
+      color-mix(in srgb, var(--tint) 12%, transparent),
+      transparent 70%
+    );
+}
+
+/* A fine grid of points near the top, like the face of an instrument. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 22px 22px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 46%);
 }
 
 ::selection {
-  background: rgba(92, 214, 247, 0.32);
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
   color: #fff;
 }
 
@@ -84,232 +159,6 @@ body::before {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 6px;
-}
-
-/* Numbers use the text face with fixed-width digits, so columns align without the
-   typewriter look of a monospace font. */
-.num {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum", "cv11", "ss01";
-  letter-spacing: -0.02em;
-}
-
-.display {
-  font-weight: 700;
-  letter-spacing: -0.032em;
-  line-height: 1.08;
-  text-wrap: balance;
-}
-
-.title {
-  font-size: clamp(1.6rem, 1.25rem + 1.4vw, 2.1rem);
-  font-weight: 650;
-  letter-spacing: -0.028em;
-  line-height: 1.15;
-}
-
-.price-xl {
-  font-size: clamp(2.2rem, 1.5rem + 3vw, 3.4rem);
-  font-weight: 650;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.price-lg {
-  font-size: clamp(1.5rem, 1.25rem + 0.9vw, 1.9rem);
-  font-weight: 650;
-  letter-spacing: -0.035em;
-  line-height: 1.05;
-}
-
-.label {
-  font-size: 0.8125rem;
-  color: var(--muted);
-  letter-spacing: -0.005em;
-}
-
-.text-fluid-h1 {
-  font-size: clamp(2.1rem, 1.1rem + 4.6vw, 4.4rem);
-}
-
-.text-fluid-h2 {
-  font-size: clamp(1.7rem, 1.2rem + 2.2vw, 2.9rem);
-}
-
-.text-fluid-price {
-  font-size: clamp(1.6rem, 1.1rem + 2vw, 2.6rem);
-}
-
-/* Liquid glass */
-.glass {
-  position: relative;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.012) 100%),
-    rgba(11, 12, 17, 0.78);
-  backdrop-filter: blur(22px) saturate(170%);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-card);
-  box-shadow:
-    0 16px 40px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
-}
-
-/* The thin highlight along a glass card's top edge. */
-.glass::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 12%;
-  right: 12%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
-  pointer-events: none;
-}
-
-.glass-lift {
-  transition:
-    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    border-color 0.25s ease,
-    box-shadow 0.35s ease;
-}
-
-.glass-lift:hover {
-  transform: translateY(-3px);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow:
-    0 24px 55px rgba(0, 0, 0, 0.6),
-    0 0 26px var(--accent-dim),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
-}
-
-.well {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid var(--line);
-  border-radius: 14px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 999px;
-  padding: 0.6rem 1.15rem;
-  font-weight: 600;
-  font-size: 0.9rem;
-  letter-spacing: -0.01em;
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.btn:active {
-  transform: scale(0.98);
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-  box-shadow:
-    0 8px 24px var(--accent-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-
-.btn-primary:hover {
-  background: #86e2fa;
-}
-
-.btn-ghost {
-  border: 1px solid var(--line-strong);
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.btn-ghost:hover {
-  border-color: rgba(255, 255, 255, 0.34);
-  background: rgba(255, 255, 255, 0.07);
-}
-
-/* Radar: concentric rings with a slow sweep. Decorative. */
-.radar {
-  position: absolute;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  pointer-events: none;
-  background:
-    repeating-radial-gradient(circle, transparent 0 38px, rgba(92, 214, 247, 0.1) 38px 39px),
-    radial-gradient(circle, rgba(92, 214, 247, 0.08), transparent 68%);
-  mask-image: radial-gradient(circle, #000 30%, transparent 70%);
-}
-
-.radar::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(92, 214, 247, 0.32), transparent 22%);
-  animation: sweep 9s linear infinite;
-}
-
-@keyframes sweep {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse-dot {
-  50% {
-    opacity: 0.35;
-  }
-}
-
-.live-dot {
-  animation: pulse-dot 1.6s ease-in-out infinite;
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-}
-
-/* Content starts visible if animations are off; this only softens the entrance. */
-.rise {
-  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.rise-2 {
-  animation-delay: 0.08s;
-}
-
-.rise-3 {
-  animation-delay: 0.16s;
-}
-
-@media (max-width: 640px) {
-  :root {
-    --radius-card: 20px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .live-dot,
-  .rise,
-  .radar::after {
-    animation: none;
-  }
-
-  .glass-lift:hover {
-    transform: none;
-  }
-
-  html {
-    scroll-behavior: auto;
-  }
 }
 
 /* Page gutters grow with the screen and stay clear of a notch or rounded corner. */
@@ -330,48 +179,118 @@ body::before {
   }
 }
 
-/* Ambient light behind the page, tinted by whichever market is in view. It moves slowly
-   and changes colour smoothly when the market changes. */
-.aurora {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  overflow: hidden;
+/* ---------- Type --------------------------------------------------------------------- */
+
+/* Headings break where the meaning does, and prose never leaves one word on a line. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
 }
 
-.aurora::before,
-.aurora::after {
+p,
+li,
+dd,
+summary,
+figcaption {
+  text-wrap: pretty;
+}
+
+/* A line of running text stops at a comfortable width wherever it appears. One token,
+   so no screen invents its own measure. */
+.prose {
+  max-width: var(--measure);
+}
+
+/* Numbers use the text face with fixed-width digits, so columns align without the
+   typewriter look of a monospace font. */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "cv11", "ss01";
+  letter-spacing: -0.02em;
+}
+
+.display {
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+/* A page's name. A breath of light across it, nothing more. */
+.title {
+  font-size: var(--step-3);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  background: linear-gradient(180deg, #ffffff 35%, #c9cdd9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.price-xl {
+  font-size: var(--step-4);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.price-lg {
+  font-size: var(--step-2);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+/* Small names are set like the engraving on an instrument. */
+.label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- Material ----------------------------------------------------------------- */
+
+/* One pane of glass, lit from above. Translucent, so the window's light shows through it
+   and it sits in the page rather than on it.
+
+   This rule sets no `position` and no `border-radius`: these classes are written beside
+   Tailwind utilities such as `fixed` and `rounded-3xl`, and plain CSS here is outside
+   Tailwind's layers, so it would silently win over them. Each class below sets only its
+   own radius, and `position` is declared where it is actually needed. */
+.glass,
+.tile,
+.menu-row,
+.capsule {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.022));
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.glass {
+  position: relative;
+  border-radius: var(--radius-card);
+}
+
+/* The thin highlight along a card's top edge. */
+.glass::before {
   content: "";
   position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  transition: background 0.9s ease;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  pointer-events: none;
 }
 
-.aurora::before {
-  width: 46rem;
-  height: 30rem;
-  left: 50%;
-  top: -14rem;
-  translate: -50% 0;
-  background: color-mix(in srgb, var(--tint, var(--accent)) 26%, transparent);
-  animation: drift 22s ease-in-out infinite alternate;
-}
-
-.aurora::after {
-  width: 30rem;
-  height: 24rem;
-  right: -10rem;
-  top: 26rem;
-  background: color-mix(in srgb, var(--tint, var(--accent)) 12%, transparent);
-  animation: drift 28s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes drift {
-  to {
-    transform: translate3d(5rem, 2.5rem, 0) scale(1.12);
-  }
+.well {
+  background: rgba(255, 255, 255, 0.032);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
 }
 
 /* The stage: the one large surface that holds the price and its chart. */
@@ -385,63 +304,396 @@ body::before {
   height: clamp(230px, 44svh, 470px);
 }
 
-/* A selectable market. The chosen one lights up in its own colour. */
-.market {
-  position: relative;
-  text-align: left;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.025);
-  transition:
-    background 0.25s ease,
-    border-color 0.25s ease,
-    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+/* One answer on a dashboard. The whole tile is a link to its evidence. */
+.tile {
+  padding: 1.1rem 1.2rem 1.2rem;
+  border-radius: 18px;
 }
 
-.market:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.market[aria-pressed="true"] {
-  border-color: color-mix(in srgb, var(--tone) 55%, transparent);
+/* A market's card carries a breath of its own colour in the corner. */
+.toned {
   background:
-    linear-gradient(160deg, color-mix(in srgb, var(--tone) 16%, transparent), transparent 62%),
-    rgba(255, 255, 255, 0.04);
+    radial-gradient(
+      90% 130% at 0% 0%,
+      color-mix(in srgb, var(--tone) 16%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.022));
+}
+
+/* Floating navigation capsules. */
+.capsule {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02)),
+    rgba(12, 13, 19, 0.62);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border-color: rgba(255, 255, 255, 0.13);
   box-shadow:
-    0 14px 34px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    0 12px 36px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
 }
 
-/* The pages of one market, as a row of tabs that scrolls sideways when it must. */
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin-inline: -0.25rem;
-  padding: 0.25rem;
+/* The bar a thumb rests on is solid, so nothing shows through it. */
+.capsule-solid {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)), #111218;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Where you are: lit in the page's colour. */
+.lens {
+  background: color-mix(in srgb, var(--tint) 16%, rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 34%, transparent);
+  color: var(--ink);
+}
+
+/* ---------- Things you can press ----------------------------------------------------- */
+
+/* Every pressable surface moves on one transform, composed from two variables: the lift
+   under a cursor and the squash under a finger. Written as separate `transform` rules they
+   overrode each other, and a tap on a hovered card did nothing. */
+.press,
+.tile,
+.menu-row,
+.back-link,
+.action,
+.glass-lift,
+.btn {
+  --lift: 0px;
+  --squash: 1;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateY(var(--lift)) scale(var(--squash));
+  transition:
+    transform var(--mid) var(--ease),
+    background-color var(--mid) ease,
+    background var(--mid) ease,
+    border-color var(--mid) ease,
+    box-shadow var(--mid) ease,
+    color var(--fast) ease;
+}
+
+.press:active,
+.tile:active,
+.menu-row:active,
+.back-link:active,
+.action:active,
+.btn:active {
+  --squash: 0.975;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   border-radius: 999px;
-  position: relative;
+  padding: 0.6rem 1.15rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
 }
 
-.tabs::-webkit-scrollbar {
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow:
+    0 6px 20px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.btn-ghost {
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* The way back from a page inside a subject. */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: -0.5rem;
+  padding: 0.4rem 0.75rem 0.4rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* One page in a subject's list of pages: its name, what it answers, and an arrow. */
+.menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.8rem 1rem;
+  border-radius: 16px;
+  color: var(--ink);
+}
+
+.menu-row svg {
+  color: var(--faint);
+  transition: transform var(--mid) var(--ease);
+}
+
+/* A shortcut on Home: a round icon with its name beneath. */
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+}
+
+.action-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 16px;
+  color: var(--ink);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition:
+    border-color var(--mid) ease,
+    background var(--mid) ease;
+}
+
+/* Hover belongs to a mouse. On a touch screen it sticks after a tap, which reads as a
+   card that will not let go. */
+@media (hover: hover) and (pointer: fine) {
+  .tile:hover,
+  .menu-row:hover {
+    --lift: -2px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
+    border-color: color-mix(in srgb, var(--tint) 38%, rgba(255, 255, 255, 0.12));
+  }
+
+  .toned:hover {
+    background:
+      radial-gradient(
+        90% 130% at 0% 0%,
+        color-mix(in srgb, var(--tone) 24%, transparent),
+        transparent 62%
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
+    border-color: color-mix(in srgb, var(--tone) 45%, rgba(255, 255, 255, 0.12));
+  }
+
+  .glass-lift:hover {
+    --lift: -3px;
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow:
+      0 24px 55px rgba(0, 0, 0, 0.6),
+      0 0 26px var(--accent-dim),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .menu-row:hover svg {
+    transform: translateX(3px);
+    color: var(--ink);
+  }
+
+  .back-link:hover {
+    color: var(--ink);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .btn-primary:hover {
+    background: color-mix(in srgb, var(--accent) 86%, white);
+  }
+
+  .btn-ghost:hover {
+    border-color: rgba(255, 255, 255, 0.34);
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .action:hover {
+    color: var(--ink);
+  }
+
+  .action:hover .action-icon {
+    border-color: color-mix(in srgb, var(--tint) 45%, rgba(255, 255, 255, 0.12));
+    background: color-mix(in srgb, var(--tint) 14%, rgba(255, 255, 255, 0.05));
+  }
+
+  .about > summary:hover {
+    color: var(--ink);
+  }
+}
+
+/* ---------- The working, one tap away ------------------------------------------------ */
+
+/* "About this" and "How this was checked": the answer comes first, the evidence opens
+   under it. The panel uses the card's full width; it used to be a narrow ribbon of prose
+   down the left of the card. */
+.about > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--step--1);
+  font-weight: 500;
+  color: var(--faint);
+  transition: color var(--fast) ease;
+}
+
+.about > summary::-webkit-details-marker {
   display: none;
 }
 
-.tab-link {
-  flex: none;
-  border-radius: 999px;
-  padding: 0.45rem 0.95rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  white-space: nowrap;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease;
+.about > summary::before {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  font-size: 0.7rem;
+  line-height: 1;
 }
 
-.tab-link:hover {
+.about[open] > summary::before {
+  content: "−";
+}
+
+/* Facts, not a paragraph: what it shows, over what window, from how many cases. They fill
+   the width in as many columns as fit. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.facts > div {
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.facts dd {
+  margin: 0.2rem 0 0;
+  font-size: var(--step--1);
+  line-height: 1.45;
   color: var(--ink);
+}
+
+/* Opening and closing glides, where the browser can size the hidden content. */
+@supports (interpolate-size: allow-keywords) {
+  :root {
+    interpolate-size: allow-keywords;
+  }
+
+  .about::details-content {
+    block-size: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      block-size var(--mid) var(--ease),
+      content-visibility var(--mid) allow-discrete,
+      opacity var(--mid) ease;
+  }
+
+  .about[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+
+/* ---------- Motion ------------------------------------------------------------------- */
+
+/* A page's parts arrive one after another, quickly, so the eye is led down the page. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.page-in > * > * {
+  animation: page-in 0.34s var(--ease) both;
+}
+
+.page-in > * > *:nth-child(2) {
+  animation-delay: 0.04s;
+}
+
+.page-in > * > *:nth-child(3) {
+  animation-delay: 0.08s;
+}
+
+.page-in > * > *:nth-child(4) {
+  animation-delay: 0.12s;
+}
+
+.page-in > * > *:nth-child(n + 5) {
+  animation-delay: 0.16s;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* Content starts visible if animations are off; this only softens the entrance. */
+.rise {
+  animation: rise 0.6s var(--ease) both;
+}
+
+.rise-2 {
+  animation-delay: 0.08s;
+}
+
+.rise-3 {
+  animation-delay: 0.16s;
+}
+
+@keyframes pulse-dot {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.live-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* Where content is about to be: a soft moving sheen, never a blank or a spinner. */
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.05) 25%,
+      rgba(255, 255, 255, 0.12) 40%,
+      rgba(255, 255, 255, 0.05) 60%
+    )
+    0 0 / 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+
+/* Figures already on screen stay there while the next set is fetched: they dim, and
+   nothing is unmounted, so the page does not collapse and spring back. */
+[data-busy="true"] {
+  opacity: 0.45;
+  transition: opacity var(--mid) ease;
 }
 
 /* A section with nothing stored yet says so, after a moment, instead of staying blank. */
@@ -457,93 +709,147 @@ body::before {
   animation: rise 0.4s 1.5s both;
 }
 
-/* One answer on a dashboard. The whole tile is a link to its evidence. */
-.tile {
-  padding: 1.1rem 1.2rem 1.2rem;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
-    rgba(11, 12, 17, 0.78);
-  backdrop-filter: blur(22px) saturate(170%);
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-  transition:
-    border-color 0.2s ease,
-    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
+/* ---------- The phone's bar ---------------------------------------------------------- */
 
-.tile:hover {
-  border-color: rgba(255, 255, 255, 0.24);
-  transform: translateY(-2px);
-}
-
-/* The longer explanation, one tap away, so the page shows figures first. */
-.about > summary {
-  display: inline-flex;
+/* Every tab keeps its label in place and only its width, light, and the label's opening
+   change, all on one curve, so moving between places glides instead of snapping. Nothing
+   scales and nothing is added or removed. */
+.bar-tab {
+  display: flex;
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 2.75rem;
   align-items: center;
-  gap: 0.35rem;
-  cursor: pointer;
-  list-style: none;
-  font-size: 0.75rem;
-  color: var(--faint);
-  transition: color 0.2s ease;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px transparent;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    flex-grow var(--slow) var(--ease-soft),
+    background-color var(--slow) ease,
+    box-shadow var(--slow) ease,
+    color var(--mid) ease;
 }
 
-.about > summary::-webkit-details-marker {
-  display: none;
+.bar-tab svg {
+  flex: none;
 }
 
-.about > summary::before {
-  content: "+";
-  display: inline-grid;
-  place-items: center;
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  font-size: 0.7rem;
-  line-height: 1;
+.bar-tab-label {
+  max-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transition:
+    max-width var(--slow) var(--ease-soft),
+    margin-left var(--slow) var(--ease-soft),
+    opacity 0.2s ease;
 }
 
-.about[open] > summary::before {
-  content: "−";
-}
-
-.about > summary:hover {
+.bar-tab[aria-current="page"] {
+  flex-grow: 2.2;
   color: var(--ink);
+  background-color: color-mix(in srgb, var(--tint) 16%, rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 34%, transparent);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tile:hover {
-    transform: none;
+.bar-tab[aria-current="page"] .bar-tab-label {
+  max-width: 6rem;
+  margin-left: 0.5rem;
+  opacity: 1;
+  transition-delay: 0s, 0s, 0.12s;
+}
+
+/* ---------- On a phone --------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .page {
+    padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+    padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+  }
+
+  .pb-tabbar {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .tile {
+    padding: 0.8rem 0.95rem;
+    border-radius: 16px;
+  }
+
+  .tile.toned {
+    padding: 0.7rem 0.7rem 0.65rem;
+  }
+
+  .menu-row {
+    min-height: 3.25rem;
+    padding: 0.65rem 0.9rem;
+    border-radius: 14px;
+  }
+
+  .facts {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
   }
 }
 
-/* Floating navigation capsules. */
-.capsule {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02)),
-    rgba(12, 13, 19, 0.62);
-  backdrop-filter: blur(26px) saturate(190%);
-  -webkit-backdrop-filter: blur(26px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  box-shadow:
-    0 12px 36px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
-}
-
-.lens {
-  background: rgba(255, 255, 255, 0.13);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 4px 14px rgba(0, 0, 0, 0.3);
-}
+/* ---------- When motion is unwelcome -------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora::before,
-  .aurora::after {
+  html {
+    scroll-behavior: auto;
+  }
+
+  :root {
+    transition: none;
+  }
+
+  .page-in > * > *,
+  .rise,
+  .live-dot,
+  .skeleton,
+  .section-body:empty::before {
     animation: none;
+  }
+
+  .press,
+  .tile,
+  .menu-row,
+  .back-link,
+  .action,
+  .glass-lift,
+  .btn,
+  .bar-tab,
+  .bar-tab-label,
+  .menu-row svg,
+  .about::details-content {
+    transition: none;
+  }
+
+  .press:active,
+  .tile:active,
+  .menu-row:active,
+  .back-link:active,
+  .action:active,
+  .btn:active {
+    --squash: 1;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .tile:hover,
+    .menu-row:hover,
+    .glass-lift:hover {
+      --lift: 0px;
+    }
+
+    .menu-row:hover svg {
+      transform: none;
+    }
   }
 }

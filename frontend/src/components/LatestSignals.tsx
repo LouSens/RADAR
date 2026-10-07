@@ -8,10 +8,10 @@ import { assetColorVar, shortName } from "./ui";
 
 /** The few newest signals on the Overview, each leading to its track record. */
 export function LatestSignals({ assets }: { assets: Asset[] }) {
-  const data = useSignals({ limit: 5 }).data;
+  const data = useSignals({ limit: 3 }).data;
   if (!data || data.signals.length === 0) return null;
   return (
-    <section className="glass p-5 @xl:p-7" aria-labelledby="latest-signals-title">
+    <section className="glass p-4 @xl:p-7" aria-labelledby="latest-signals-title">
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="latest-signals-title" className="text-base font-semibold tracking-tight">
           Latest signals

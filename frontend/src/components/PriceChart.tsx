@@ -38,16 +38,12 @@ function cssVar(name: string): string {
 
 /** Where a bar sits on the time axis: local clock time for hours, the trading day for days. */
 function axisTime(ts: string, timeframe: Timeframe, assetClass: AssetClass): Time {
-  return timeframe === "1Day"
-    ? tradingDay(ts, assetClass)
-    : (chartSeconds(ts) as UTCTimestamp);
+  return timeframe === "1Day" ? tradingDay(ts, assetClass) : (chartSeconds(ts) as UTCTimestamp);
 }
 
 /** Whole numbers for large prices, so the scale stays narrow on a phone. */
 function axisPrice(price: number): string {
-  return Math.abs(price) >= 1000
-    ? Math.round(price).toLocaleString("en-US")
-    : price.toFixed(2);
+  return Math.abs(price) >= 1000 ? Math.round(price).toLocaleString("en-US") : price.toFixed(2);
 }
 
 function themeOptions(timeframe: Timeframe) {

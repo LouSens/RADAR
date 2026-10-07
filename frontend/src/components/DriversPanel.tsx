@@ -4,7 +4,7 @@ import type { DriverWindow, Trust } from "../api/client";
 import { useDrivers } from "../api/queries";
 import { formatCount, formatShare } from "../lib/format";
 import { formatDate } from "../lib/time";
-import { Caption, Panel, Segmented, type PanelProps } from "./ui";
+import { Evidence, Caption, Panel, Segmented, type PanelProps } from "./ui";
 
 const VERDICT: Record<string, string> = {
   "moves with": "Moves with it",
@@ -96,45 +96,57 @@ export function DriverEvidence({
   return (
     <>
       <DriverBars window={window} names={names} />
-      <Caption>
-        Each dot is how much {subject} moved on a day when that force moved by one of its own
-        typical days, with the others held still. The line is the 95% range; when it crosses the
-        centre, no link can be claimed. Measured on the {formatCount(window.window)} trading days
-        from {formatDate(window.first_day)} to {formatDate(window.last_day)}. Each force is
-        represented by a fund that tracks it.
-      </Caption>
-      <dl className="grid grid-cols-1 gap-4 border-t border-line pt-5 @xl:grid-cols-3">
-        <div className="well p-4">
-          <dt className="label">Moves these forces account for</dt>
-          <dd className="price-lg mt-2">{formatShare(window.r_squared, 0)}</dd>
-          <dd className="mt-1 text-sm text-muted">In this window. The rest is its own.</dd>
-        </div>
-        {score && (
-          <>
-            <div className="well p-4">
-              <dt className="label">On days it had not seen</dt>
-              <dd className="price-lg mt-2">{formatShare(Math.max(score.r_squared, 0), 0)}</dd>
-              <dd className="mt-1 text-sm text-muted">
-                Over {formatCount(score.n_days)} days since {formatDate(score.first_day)}.
-              </dd>
-            </div>
-            <div className="well p-4">
-              <dt className="label">
-                {names[window.baseline] ?? window.baseline} alone, same days
-              </dt>
-              <dd className="price-lg mt-2">
-                {formatShare(Math.max(score.baseline_r_squared, 0), 0)}
-              </dd>
-              <dd className="mt-1 text-sm text-muted">The simple rival to beat.</dd>
-            </div>
-          </>
-        )}
-      </dl>
-      <Caption>
-        The unseen-day figure fits on one window and predicts the 20 trading days after it, again
-        and again. It is the honest one: a model can always explain the days it was fitted on. This
-        shows what has moved together, not what causes what.
-      </Caption>
+      <Caption
+        facts={[
+          {
+            label: "Each dot",
+            value: `How much ${subject} moved when that force moved by one of its own typical days, the others held still`,
+          },
+          {
+            label: "The line",
+            value: "The 95% range. When it crosses the centre, no link can be claimed.",
+          },
+          {
+            label: "Window",
+            value: `${formatCount(window.window)} trading days, ${formatDate(window.first_day)} to ${formatDate(window.last_day)}`,
+          },
+          { label: "Each force", value: "Is represented by a fund that tracks it" },
+        ]}
+      />
+      <Evidence summary="How much this explains">
+        <dl className="grid grid-cols-1 gap-3 @xl:grid-cols-3">
+          <div className="well p-4">
+            <dt className="label">Explained in this period</dt>
+            <dd className="price-lg mt-2">{formatShare(window.r_squared, 0)}</dd>
+            <dd className="mt-1 text-sm text-muted">Of its moves. The rest is its own.</dd>
+          </div>
+          {score && (
+            <>
+              <div className="well p-4">
+                <dt className="label">On days not used to measure it</dt>
+                <dd className="price-lg mt-2">{formatShare(Math.max(score.r_squared, 0), 0)}</dd>
+                <dd className="mt-1 text-sm text-muted">
+                  {formatCount(score.n_days)} days since {formatDate(score.first_day)}.
+                </dd>
+              </div>
+              <div className="well p-4">
+                <dt className="label">
+                  {names[window.baseline] ?? window.baseline} alone, same days
+                </dt>
+                <dd className="price-lg mt-2">
+                  {formatShare(Math.max(score.baseline_r_squared, 0), 0)}
+                </dd>
+                <dd className="mt-1 text-sm text-muted">The simple comparison.</dd>
+              </div>
+            </>
+          )}
+        </dl>
+        <p className="prose text-sm leading-relaxed text-muted">
+          The middle figure is the honest one: the links are measured on one stretch of days and
+          then tried on the 20 trading days after it, again and again. This shows what has moved
+          together, not what causes what.
+        </p>
+      </Evidence>
     </>
   );
 }
@@ -160,7 +172,7 @@ export function DriversPanel({ asset, trust }: PanelProps & { trust?: Trust }) {
       headline={driverHeadline(window, names)}
     >
       <div className="flex justify-end">
-        <Segmented options={WINDOWS} value={key} onChange={setKey} label="Period measured" />
+        <Segmented options={WINDOWS} value={key} onChange={setKey} label="Measured over" />
       </div>
       <DriverEvidence
         window={window}

@@ -114,12 +114,20 @@ export function LevelsPanel({ analysis }: { analysis: PortfolioAnalysis }) {
               </li>
             ))}
           </ul>
-          <Caption>
-            The grey bar is each holding&apos;s share of your money today and the blue mark its
-            share under your target. The amount on the right is the size of the gap at today&apos;s
-            value; the amounts cancel out. A gap is in bold when it is wider than 5 percentage
-            points. Chosen on {target.set_at ? formatDate(target.set_at) : "an earlier day"}.
-          </Caption>
+          <Caption
+            facts={[
+              { label: "Grey bar", value: "Each holding's share today" },
+              { label: "Blue mark", value: "Its share under your target" },
+              {
+                label: "The amount",
+                value: "The gap at today's value, in bold when wider than 5 points",
+              },
+              {
+                label: "Target chosen",
+                value: target.set_at ? formatDate(target.set_at) : "On an earlier day",
+              },
+            ]}
+          />
         </div>
       )}
     </Panel>
@@ -231,22 +239,31 @@ export function MixesPanel({ analysis }: { analysis: PortfolioAnalysis }) {
       <Legend parts={parts(Object.fromEntries(order.map((s) => [s, 1])), order, name)} />
       {!level && (
         <p className="text-sm text-muted">
-          These splits apply to a risk-level target. To try one with your own numbers, start from it
-          on the Try a mix tab.
+          These splits apply to a risk-level target. To use your own numbers, start from one on Try
+          a mix.
         </p>
       )}
-      <Caption>
-        Each mix splits the same holdings a different way and keeps today&apos;s share in cash.
-        &quot;As it is now&quot; holds your current proportions; &quot;equal shares&quot; gives each
-        holding the same; &quot;smallest movement&quot; is the split that moved least; &quot;equal
-        risk each&quot; makes every holding carry the same share of the risk; &quot;grouped by
-        behaviour&quot; shares risk between groups of holdings that move alike. No holding goes
-        above 60% except in your own split. Run over {sample ? formatCount(sample.n_days) : ""}{" "}
-        trading days from {sample ? formatDate(sample.first_day) : ""} to{" "}
-        {sample ? formatDate(sample.last_day) : ""}, rebalanced every 21 sessions with a trading
-        cost of 0.1%, each decision using only the 250 sessions before it. Holdings with a short
-        price record are left out. Growth is what happened over that period and says nothing about
-        what comes next.
+      <Caption
+        facts={[
+          {
+            label: "Shows",
+            value:
+              "The same holdings split a different way by each mix, with today's share kept in cash",
+          },
+          { label: "Cap", value: "No holding above 60%, except in your own split" },
+          {
+            label: "Window",
+            value: `${sample ? formatCount(sample.n_days) : ""} trading days, ${sample ? formatDate(sample.first_day) : ""} to ${sample ? formatDate(sample.last_day) : ""}`,
+          },
+          {
+            label: "Method",
+            value:
+              "Re-split every 21 trading days at a cost of 0.1%, each time using only the 250 days before",
+          },
+          { label: "Left out", value: "Holdings with a short price record" },
+        ]}
+      >
+        Growth is what happened then and says nothing about what comes next.
       </Caption>
     </Panel>
   );

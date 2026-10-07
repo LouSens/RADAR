@@ -49,8 +49,8 @@ describe("SummaryCard", () => {
     expect(screen.getByText("Turbulent")).toBeVisible();
     expect(screen.getByText("for 3 days")).toBeVisible();
     expect(screen.getByRole("img", { name: "93% sure" })).toBeVisible();
-    // A stock's week is five market sessions.
-    expect(screen.getByText("Likely range, next 5 market sessions")).toBeVisible();
+    // A stock's week is five trading days.
+    expect(screen.getByText("Likely range, next 5 trading days")).toBeVisible();
     expect(screen.getByText("$344.00 – $372.00")).toBeVisible();
     expect(
       screen.getByRole("img", { name: "Now $357.00, between $344.00 and $372.00" }),

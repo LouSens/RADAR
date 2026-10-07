@@ -12,7 +12,7 @@ import {
   stepsLabel,
 } from "../lib/outlook";
 import { formatDate } from "../lib/time";
-import { Caption, Panel, Segmented, StatRow, assetColorVar, type PanelProps } from "./ui";
+import { Evidence, Caption, Panel, Segmented, StatRow, assetColorVar, type PanelProps } from "./ui";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -194,15 +194,21 @@ function LevelCheck({
         </dl>
       ) : (
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Enter a price to see how many simulated outcomes end beyond it after {period}, and how
-          many reach it at any point on the way. These are two different questions.
+          Enter a price to see how often the simulated outcomes end past it after {period}, and how
+          often they touch it on the way.
         </p>
       )}
       {answer && (
-        <Caption>
-          Share of {formatCount(answer.n_paths)} simulated outcomes over {period}. Reaching a level
-          is judged at each day&apos;s closing price, so a brief move within a day is not counted.
-        </Caption>
+        <Caption
+          facts={[
+            { label: "Shows", value: `Share of ${formatCount(answer.n_paths)} simulated outcomes` },
+            { label: "Over", value: period },
+            {
+              label: "Judged at",
+              value: "Each day's close, so a move within a day is not counted",
+            },
+          ]}
+        />
       )}
     </div>
   );
@@ -223,16 +229,15 @@ function TrackRecord({
   const error = errorAgainstBaseline(first);
   const level = Math.abs(error) < 0.005;
   return (
-    <div className="border-t border-line pt-5">
-      <h3 className="text-sm font-semibold tracking-tight">How past ranges held</h3>
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[26rem] text-sm">
+    <Evidence summary="How past ranges held">
+      <div>
+        <table className="w-full text-sm">
           <thead>
             <tr className="label text-left">
-              <th className="pb-2 font-normal">Range stated</th>
-              <th className="pb-2 text-right font-normal">Held, as simulated</th>
-              <th className="pb-2 text-right font-normal">Held, after adjustment</th>
-              <th className="pb-2 text-right font-normal">Past cases</th>
+              <th className="pb-2 font-normal">Range</th>
+              <th className="pb-2 text-right font-normal">Held</th>
+              <th className="pb-2 text-right font-normal">Held, adjusted</th>
+              <th className="pb-2 text-right font-normal">Cases</th>
             </tr>
           </thead>
           <tbody>
@@ -257,7 +262,7 @@ function TrackRecord({
           </tbody>
         </table>
       </div>
-      <Caption>
+      <p className="prose text-sm leading-relaxed text-muted">
         For every day from {formatDate(first.first_origin)} to {formatDate(first.last_origin)} the
         simulation was run using only what was known that day, looking{" "}
         {stepsLabel(first.steps, asset.trades_continuously)} ahead, then compared with what
@@ -272,8 +277,8 @@ function TrackRecord({
             } than a simple forecast that assumes constant volatility${
               error < 0 ? "." : ", so here the simulation adds nothing over that simple forecast."
             }`}
-      </Caption>
-    </div>
+      </p>
+    </Evidence>
   );
 }
 
@@ -337,7 +342,7 @@ export function OutlookPanel({ asset, trust }: PanelProps) {
                   {rangeText(r.low, r.high)}
                 </StatRow>
               ))}
-            <StatRow label="Average deepest fall on the way">
+            <StatRow label="Typical deepest dip on the way">
               {formatChange(horizon.expected_worst_drawdown)}
             </StatRow>
           </dl>
@@ -349,23 +354,38 @@ export function OutlookPanel({ asset, trust }: PanelProps) {
             band={main}
             colorVar={colorVar}
           />
-          <Caption>
-            Where {formatCount(simulation.n_paths)} simulated prices end after {period}, starting
-            from the close on {formatDate(simulation.as_of)}. Brighter bars are inside the{" "}
-            {main ? percent(main.interval.level) : ""} range. The most extreme 1% of outcomes are
-            not drawn.
-          </Caption>
+          <Caption
+            facts={[
+              { label: "Shows", value: "How the spread of outcomes widens" },
+              { label: "Over", value: period },
+              { label: "Line", value: "The middle outcome" },
+              {
+                label: "Bands",
+                value: `Darker holds half of ${formatCount(simulation.n_paths)} outcomes, lighter 90%`,
+              },
+            ]}
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-x-12 gap-y-7 border-t border-line pt-6 @4xl:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]">
         <div>
           <Fan simulation={simulation} steps={horizon.steps} colorVar={colorVar} />
-          <Caption>
-            How the spread widens over {period}: the line is the middle outcome, the darker band
-            holds half of the {formatCount(simulation.n_paths)} simulated outcomes, and the lighter
-            band holds 90%.
-          </Caption>
+          <Caption
+            facts={[
+              {
+                label: "Shows",
+                value: `Where ${formatCount(simulation.n_paths)} simulated prices end`,
+              },
+              { label: "Over", value: period },
+              { label: "From", value: `The close on ${formatDate(simulation.as_of)}` },
+              {
+                label: "Brighter bars",
+                value: `Inside the ${main ? percent(main.interval.level) : ""} range`,
+              },
+              { label: "Not drawn", value: "The most extreme 1% of outcomes" },
+            ]}
+          />
         </div>
         <LevelCheck key={asset.slug} asset={asset} simulation={simulation} horizon={horizon} />
       </div>

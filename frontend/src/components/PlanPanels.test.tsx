@@ -198,7 +198,7 @@ describe("LevelsPanel", () => {
     expect(screen.getByText("55% · $220.00")).toBeVisible();
     expect(screen.getByLabelText("Bitcoin share, slider")).toHaveValue("30");
 
-    fireEvent.click(screen.getByRole("button", { name: "Work out the risk" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show the risk" }));
     expect(state.tryMix).toHaveBeenCalledWith({ weights: { "BTC/USD": 0.3, SPY: 0.15 } });
   });
 
@@ -206,7 +206,7 @@ describe("LevelsPanel", () => {
     render(<LevelsPanel analysis={ANALYSIS} />);
     fireEvent.change(screen.getByLabelText("Bitcoin share, percent"), { target: { value: "95" } });
     expect(screen.getByText("10% too much")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Work out the risk" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Show the risk" })).toBeDisabled();
   });
 
   it("offers the levels and the other splits as starting points, not as decisions", () => {

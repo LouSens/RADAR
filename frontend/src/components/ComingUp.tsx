@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 
 import { useCalendar } from "../api/queries";
-import { formatDateTime } from "../lib/time";
 import { daysAway, when } from "../pages/CalendarPage";
 
 /** The next few scheduled economic events, on the Overview. */
@@ -10,7 +9,7 @@ export function ComingUp() {
   const next = calendar?.upcoming.slice(0, 3) ?? [];
   if (next.length === 0) return null;
   return (
-    <section className="glass p-5 @xl:p-7" aria-labelledby="coming-up-title">
+    <section className="glass p-4 @xl:p-7" aria-labelledby="coming-up-title">
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="coming-up-title" className="text-base font-semibold tracking-tight">
           Coming up
@@ -19,18 +18,17 @@ export function ComingUp() {
           Calendar
         </Link>
       </div>
-      <ul className="mt-3 grid grid-cols-1 gap-3 @2xl:grid-cols-3">
+      <ul className="mt-2 flex flex-col">
         {next.map((event) => (
-          <li key={`${event.key}-${event.at}`}>
+          <li key={`${event.key}-${event.at}`} className="border-t border-line first:border-t-0">
             <Link
               to={`/calendar/${event.key}`}
-              className="well block px-4 py-3 transition-colors hover:bg-white/[0.04]"
+              className="group flex items-baseline justify-between gap-4 py-3 text-sm"
             >
-              <span className="label block">{when(daysAway(event.at))}</span>
-              <span className="mt-1 block font-medium">{event.name}</span>
-              <span className="num mt-0.5 block text-sm text-muted">
-                {formatDateTime(event.at)}
+              <span className="min-w-0 truncate font-medium group-hover:text-accent">
+                {event.name}
               </span>
+              <span className="num shrink-0 text-muted">{when(daysAway(event.at))}</span>
             </Link>
           </li>
         ))}

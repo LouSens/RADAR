@@ -1,13 +1,17 @@
-/** The pages of one market, in the order they are shown. The first has no path of its own. */
+/** The pages of one market. The first, with no path, is the market's own page. */
 export const SECTIONS = [
   { path: "", label: "Summary" },
-  { path: "state", label: "Current state" },
-  { path: "outlook", label: "Price range ahead" },
-  { path: "swings", label: "Daily movement" },
-  { path: "risk", label: "Possible loss" },
-  { path: "drivers", label: "What it moves with" },
-  { path: "news", label: "News" },
-  { path: "record", label: "Forecast accuracy" },
+  { path: "state", label: "Current state", hint: "Calm, normal or turbulent right now" },
+  {
+    path: "outlook",
+    label: "Price range ahead",
+    hint: "Where the price might be in days or weeks",
+  },
+  { path: "swings", label: "Daily movement", hint: "How much it is expected to move each day" },
+  { path: "risk", label: "Possible loss", hint: "How bad a bad day or week could be" },
+  { path: "drivers", label: "What it moves with", hint: "Which outside forces it follows" },
+  { path: "news", label: "News", hint: "Recent headlines and their tone" },
+  { path: "record", label: "Forecast accuracy", hint: "How past forecasts turned out" },
 ] as const;
 
 export type SectionPath = (typeof SECTIONS)[number]["path"];

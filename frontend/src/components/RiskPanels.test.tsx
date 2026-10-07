@@ -147,13 +147,13 @@ describe("VolatilityPanel", () => {
       news_helps: false,
     };
     render(<VolatilityPanel asset={GOLD} />);
-    expect(screen.getByText("Does news improve this forecast?")).toBeVisible();
-    expect(screen.getByText("No measurable gain")).toBeVisible();
-    expect(screen.getByText("0.728")).toBeVisible();
-    expect(screen.getByText("0.731")).toBeVisible();
-    expect(screen.getByText(/Error higher by 0.4%, within chance/)).toBeVisible();
-    expect(screen.getByText(/written down\s+before the test was run/)).toBeInTheDocument();
-    expect(screen.getByText(/12 comparisons made across all markets/)).toBeInTheDocument();
+    expect(screen.getByText("Does news improve this forecast?")).toBeInTheDocument();
+    expect(screen.getByText("No measurable gain")).toBeInTheDocument();
+    expect(screen.getByText("0.728")).toBeInTheDocument();
+    expect(screen.getByText("0.731")).toBeInTheDocument();
+    expect(screen.getByText(/Error higher by 0.4%, within chance/)).toBeInTheDocument();
+    expect(screen.getByText(/before the test was run/)).toBeInTheDocument();
+    expect(screen.getByText(/12 comparisons across all markets/)).toBeInTheDocument();
     // When the rule is met for the horizon in view, it says so.
     cleanup();
     state.newsTest = {
@@ -164,8 +164,8 @@ describe("VolatilityPanel", () => {
       news_helps: true,
     };
     render(<VolatilityPanel asset={GOLD} />);
-    expect(screen.getByText("Yes, measurably")).toBeVisible();
-    expect(screen.getByText(/Error lower by 17.6%, more than chance/)).toBeVisible();
+    expect(screen.getByText("Yes, measurably")).toBeInTheDocument();
+    expect(screen.getByText(/Error lower by 17.6%, more than chance/)).toBeInTheDocument();
   });
 
   it("shows nothing until a forecast is stored", () => {
@@ -176,7 +176,7 @@ describe("VolatilityPanel", () => {
   it("shows the forecast beside the last realised value, without a direction", () => {
     render(<VolatilityPanel asset={GOLD} />);
     expect(
-      screen.getByText("Typical daily move expected over the next 1 market session"),
+      screen.getByText("Typical daily move expected over the next 1 trading day"),
     ).toBeInTheDocument();
     expect(screen.getByText("±1.24%")).toBeInTheDocument();
     expect(screen.getByText("±1.00%")).toBeInTheDocument();
@@ -222,12 +222,8 @@ describe("RiskPanel", () => {
 
   it("shows each limit from the best method, with breaches against expected", () => {
     render(<RiskPanel asset={GOLD} />);
-    expect(
-      screen.getByText("Loss limit for 19 in 20 periods of 1 market session"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Loss limit for 99 in 100 periods of 1 market session"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("A bad day (about 1 in 20)")).toBeInTheDocument();
+    expect(screen.getByText("A very bad day (about 1 in 100)")).toBeInTheDocument();
     expect(screen.getAllByText("2.0%").length).toBeGreaterThan(0);
     expect(screen.getByText("98")).toBeInTheDocument(); // 97.55 expected breaches at 95%
     expect(screen.getByText("Past losses scaled to expected swings")).toBeInTheDocument();
@@ -237,7 +233,7 @@ describe("RiskPanel", () => {
   it("marks a limit that failed its coverage test as unreliable", () => {
     render(<RiskPanel asset={GOLD} />);
     // Only the 99% limit of the shown method failed; the 95% one held.
-    expect(screen.getAllByText(/Treat it as unreliable/)).toHaveLength(1);
+    expect(screen.getAllByText(/Treat it as rough/)).toHaveLength(1);
     expect(screen.getByText(/130 of 1,951, unreliable/)).toBeInTheDocument();
   });
 

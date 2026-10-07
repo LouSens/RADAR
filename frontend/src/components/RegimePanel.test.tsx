@@ -37,9 +37,24 @@ const REGIME: Regime = {
   probabilities: { calm: 0.97, normal: 0.03, turbulent: 0 },
   days_in_state: 12,
   states: [
-    { label: "calm", typical_daily_volatility: 0.0145, typical_duration_days: 37, next_states: { normal: 0.98, turbulent: 0.02 } },
-    { label: "normal", typical_daily_volatility: 0.0223, typical_duration_days: 20.5, next_states: { calm: 0.56, turbulent: 0.44 } },
-    { label: "turbulent", typical_daily_volatility: 0.0358, typical_duration_days: 33.5, next_states: { calm: 0, normal: 1 } },
+    {
+      label: "calm",
+      typical_daily_volatility: 0.0145,
+      typical_duration_days: 37,
+      next_states: { normal: 0.98, turbulent: 0.02 },
+    },
+    {
+      label: "normal",
+      typical_daily_volatility: 0.0223,
+      typical_duration_days: 20.5,
+      next_states: { calm: 0.56, turbulent: 0.44 },
+    },
+    {
+      label: "turbulent",
+      typical_daily_volatility: 0.0358,
+      typical_duration_days: 33.5,
+      next_states: { calm: 0, normal: 1 },
+    },
   ],
   history: [
     { ts: "2026-10-01T00:00:00Z", label: "normal", probability: 0.8 },

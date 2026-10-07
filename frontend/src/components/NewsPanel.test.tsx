@@ -120,14 +120,14 @@ describe("NewsPanel", () => {
     expect(link).toHaveAttribute("rel", "noreferrer noopener");
     expect(screen.getByText("Recent headlines")).toBeInTheDocument();
     expect(screen.queryByText(/0\.93/)).toBeNull(); // the single-article score is not shown
-    expect(screen.getByText(/not ranked or coloured by tone/)).toBeInTheDocument();
+    expect(screen.getByText(/not coloured by tone/)).toBeInTheDocument();
   });
 
   it("folds the subject breakdown away and marks it rough", () => {
     render(<NewsPanel asset={BITCOIN} />);
     const summary = screen.getByText("What the news is about");
     expect(summary.closest("details")).not.toHaveAttribute("open");
-    expect(screen.getByText("(rough)")).toBeInTheDocument();
+    expect(screen.getByText("(a rough guide)")).toBeInTheDocument();
     expect(screen.getByText("Hacks, fraud, and failures")).toBeInTheDocument();
   });
 
@@ -165,13 +165,13 @@ describe("NewsPanel", () => {
 
   it("shows how the tone model was checked, with ranges and who labelled the sample", () => {
     render(<NewsPanel asset={BITCOIN} />);
-    expect(screen.getByText("How the tone model was checked")).toBeInTheDocument();
+    expect(screen.getByText("How the tone reading was checked")).toBeInTheDocument();
     expect(screen.getByText("Agreed with the label, on 200 headlines")).toBeInTheDocument();
     expect(screen.getByText("(64% to 77%)")).toBeInTheDocument();
     expect(screen.getByText("Counting positive and negative words")).toBeInTheDocument();
     expect(screen.getByText("52%")).toBeInTheDocument();
-    expect(screen.getByText(/written by an AI model \(Claude\), not a person/)).toBeInTheDocument();
-    expect(screen.getByText(/A single article's tone is often wrong/)).toBeInTheDocument();
+    expect(screen.getByText(/An AI model \(Claude\), not a person/)).toBeInTheDocument();
+    expect(screen.getByText(/Calling a mild article neutral/)).toBeInTheDocument();
   });
 
   it("gives each subject its own verdict", () => {

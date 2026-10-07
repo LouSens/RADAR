@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Portfolio, PortfolioAnalysis, RegularBuying } from "../api/client";
 import { useRegularBuying } from "../api/queries";
@@ -240,6 +240,16 @@ export function RegularBuyingPanel({
     });
   }
 
+  // Open on an answer, not on an empty form: run the starting plan once.
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current || !valid) return;
+    started.current = true;
+    run();
+    // Only on arrival: later runs are the user's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <Panel
       id="buying"
@@ -354,7 +364,7 @@ export function RegularBuyingPanel({
             disabled={!valid || simulate.isPending}
             onClick={run}
           >
-            {simulate.isPending ? "Working it out…" : "Run the simulation"}
+            {simulate.isPending ? "Working it out…" : "See where it could end up"}
           </button>
           {valid && (
             <span className="num text-sm text-muted">
@@ -403,18 +413,39 @@ export function RegularBuyingPanel({
               {eighty.n < 10 && " That is very few cases, so treat the range as a rough guide."}
             </p>
           )}
-          <Caption>
-            Each of {formatCount(result.n_paths)} simulated futures joins runs of {result.block}{" "}
-            real trading days in a row, taken from {formatCount(result.n_days)} days of prices (
-            {formatDate(found.first_day)} to {formatDate(found.last_day)}) for every asset at once.
-            Along each one the plan buys {formatMoney(result.amount)} every {result.every} trading
-            days and never sells; trading costs are not counted. The all-at-once figures put the
-            same {formatMoney(result.paid_in)} in on the first day and run it through the very same
-            futures. Only about {result.separate_periods} separate{" "}
+          <Caption
+            facts={[
+              {
+                label: "Shows",
+                value: `${formatCount(result.n_paths)} simulated futures for this plan`,
+              },
+              {
+                label: "Built from",
+                value: `Runs of ${result.block} real trading days in a row, every asset at once`,
+              },
+              {
+                label: "Drawn from",
+                value: `${formatCount(result.n_days)} days of prices, ${formatDate(found.first_day)} to ${formatDate(found.last_day)}`,
+              },
+              {
+                label: "The plan",
+                value: `Buys ${formatMoney(result.amount)} every ${result.every} trading days and never sells`,
+              },
+              {
+                label: "All at once",
+                value: `The same ${formatMoney(result.paid_in)} on the first day, through the very same futures`,
+              },
+              { label: "Not counted", value: "Trading costs" },
+              {
+                label: "Checked",
+                value:
+                  "The plan simulated at earlier dates from the days before them, against how it then went",
+              },
+            ]}
+          >
+            Only about {result.separate_periods} separate{" "}
             {result.separate_periods === 1 ? "stretch" : "stretches"} of this length fit in the
-            stored prices, so this shows what those years would allow, not what will happen. For the
-            check, the plan was simulated at earlier dates from the days before them and compared
-            with how it then went.
+            stored prices, so this shows what those years would allow, not what will happen.
           </Caption>
         </>
       )}

@@ -36,7 +36,7 @@ export function Tile({
         <TrustBadge trust={trust} />
       </span>
       {figure !== undefined && (
-        <span className="num mt-2 block text-[1.6rem] font-semibold leading-tight tracking-tight">
+        <span className="num mt-1.5 block text-[1.35rem] font-semibold leading-tight tracking-tight @xl:mt-2 @xl:text-[1.6rem]">
           {figure}
         </span>
       )}
@@ -341,7 +341,7 @@ export function Donut({
     });
   };
   return (
-    <span className="mx-auto block w-full max-w-[13rem] shrink-0">
+    <span className="mx-auto block w-full max-w-[10.5rem] shrink-0 @xl:max-w-[13rem]">
       <span className="relative block aspect-square">
         <svg
           viewBox="0 0 120 120"

@@ -5,7 +5,7 @@ import { useNewsTest, useVolatility } from "../api/queries";
 import { formatChange, formatCount, formatShare } from "../lib/format";
 import { stepsLabel } from "../lib/outlook";
 import { formatDate } from "../lib/time";
-import { Caption, Panel, Segmented, StatRow, assetColorVar, type PanelProps } from "./ui";
+import { Caption, Evidence, Panel, Segmented, StatRow, assetColorVar, type PanelProps } from "./ui";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -14,10 +14,10 @@ const HORIZONS = [
 type HorizonKey = (typeof HORIZONS)[number]["value"];
 
 const METHOD: Record<string, string> = {
-  har: "Recent swings: last day, week, and month",
-  gbt: "Tree model with the market state",
+  har: "From recent movement",
+  gbt: "Recent movement and market state",
   carry: "Yesterday repeated",
-  regime: "Average for the current market state",
+  regime: "Average for the market state",
 };
 
 /** Two lines on one scale: what was forecast each day, and what then happened. */
@@ -105,7 +105,7 @@ function verdict(pValue: number | null | undefined, worse: boolean): string {
 
 const FAMILY: Record<string, string> = {
   har: "The method shown",
-  gbt: "Tree model",
+  gbt: "The detailed method",
 };
 
 /** Forecast error with and without news, side by side, with the verdict in words. */
@@ -152,15 +152,29 @@ export function NewsCheck({ test, horizonDays }: { test: NewsTest; horizonDays: 
           </div>
         ))}
       </div>
-      <Caption>
-        The same forecast was made twice on each of {formatCount(horizon.n)} days from{" "}
-        {formatDate(horizon.first_day)} to {formatDate(horizon.last_day)}: once from past movement
-        alone, and once also knowing how many articles were published that day, how unusual that
-        number was, and their tone. Shorter bars mean smaller error. News counts as an improvement
-        only if the error is lower by more than chance would give, after allowing for the{" "}
-        {test.comparisons} comparisons made across all markets. This rule was written down before
-        the test was run.
-      </Caption>
+      <Caption
+        facts={[
+          {
+            label: "Shows",
+            value:
+              "The same forecast made twice on each day: from past movement alone, and also knowing the news",
+          },
+          {
+            label: "The news added",
+            value: "How many articles that day, how unusual that number was, and their tone",
+          },
+          {
+            label: "Window",
+            value: `${formatCount(horizon.n)} days, ${formatDate(horizon.first_day)} to ${formatDate(horizon.last_day)}`,
+          },
+          { label: "Shorter bars", value: "Smaller error" },
+          {
+            label: "Counts as better",
+            value: `Only beyond chance, allowing for ${test.comparisons} comparisons across all markets`,
+          },
+          { label: "Written down first", value: "This rule, before the test was run" },
+        ]}
+      />
     </div>
   );
 }
@@ -207,61 +221,62 @@ export function VolatilityPanel({ asset, trust }: PanelProps) {
             )}
           </dl>
           <p className="mt-3 text-xs leading-relaxed text-faint">
-            This is the size of a typical move in either direction. It says nothing about which
-            direction.
+            The size of a typical move, up or down. It says nothing about which direction.
           </p>
         </div>
         <div>
           <History horizon={horizon} colorVar={assetColorVar(asset)} />
-          <Caption>
-            The coloured line is the forecast made on each day; the grey line is the swing that
-            followed over the next {period}. Last {formatCount(horizon.history.length)} forecasts.
-          </Caption>
+          <Caption
+            facts={[
+              { label: "Coloured line", value: "The forecast made on each day" },
+              { label: "Grey line", value: `The swing that followed over the next ${period}` },
+              {
+                label: "Showing",
+                value: `The last ${formatCount(horizon.history.length)} forecasts`,
+              },
+            ]}
+          />
         </div>
       </div>
 
-      <div className="border-t border-line pt-5">
-        <h3 className="text-sm font-semibold tracking-tight">How each method has done</h3>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[26rem] text-sm">
-            <thead>
-              <tr className="label text-left">
-                <th className="pb-2 font-normal">Method</th>
-                <th className="pb-2 text-right font-normal">Forecast error</th>
-                <th className="pb-2 text-right font-normal">Against the one shown</th>
-              </tr>
-            </thead>
-            <tbody>
-              {horizon.scores.map((score) => (
-                <tr key={score.model} className="border-t border-line">
-                  <td className="py-2">{METHOD[score.model] ?? score.model}</td>
-                  <td className="num py-2 text-right">{score.qlike.toFixed(3)}</td>
-                  <td className="py-2 text-right text-muted">
-                    {score.model === horizon.shown
-                      ? "Shown"
-                      : verdict(
-                          score.model === "har" && trees
-                            ? shown?.dm_p_value_vs_har
-                            : score.dm_p_value_vs_har,
-                          score.qlike > (shown?.qlike ?? 0),
-                        )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <Caption>
+      <Evidence>
+        <p className="prose text-sm leading-relaxed text-muted">
           Scored on {formatCount(horizon.n)} days from {formatDate(horizon.first_day)} to{" "}
-          {formatDate(horizon.last_day)}, each forecast made with only what was known that day.
-          Lower error is better; zero would be a perfect forecast.{" "}
+          {formatDate(horizon.last_day)}, each forecast made from what was known that day. Lower
+          error is better.{" "}
           {trees
-            ? "The tree model is shown because it was measurably better than the simpler method on those days."
-            : "The tree model was not measurably better than the simpler method on those days, so the simpler one is shown."}
-        </Caption>
-      </div>
-
-      {newsTest && <NewsCheck test={newsTest} horizonDays={horizon.horizon_days} />}
+            ? "The more detailed method is shown because it was measurably better."
+            : "A more detailed method was not measurably better, so the simpler one is shown."}
+        </p>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="label text-left">
+              <th className="pb-2 font-normal">Method</th>
+              <th className="pb-2 text-right font-normal">Error</th>
+              <th className="pb-2 text-right font-normal">Against the one shown</th>
+            </tr>
+          </thead>
+          <tbody>
+            {horizon.scores.map((score) => (
+              <tr key={score.model} className="border-t border-line">
+                <td className="py-2 pr-3">{METHOD[score.model] ?? score.model}</td>
+                <td className="num py-2 text-right">{score.qlike.toFixed(3)}</td>
+                <td className="py-2 pl-3 text-right text-muted">
+                  {score.model === horizon.shown
+                    ? "Shown"
+                    : verdict(
+                        score.model === "har" && trees
+                          ? shown?.dm_p_value_vs_har
+                          : score.dm_p_value_vs_har,
+                        score.qlike > (shown?.qlike ?? 0),
+                      )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {newsTest && <NewsCheck test={newsTest} horizonDays={horizon.horizon_days} />}
+      </Evidence>
     </Panel>
   );
 }
