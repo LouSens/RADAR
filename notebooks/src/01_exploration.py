@@ -77,10 +77,12 @@ fig.tight_layout()
 # Bitcoin and gold start in 2021, US stocks in 2016. Anything learned about the first
 # two comes from few market cycles, which the later notebooks repeat where it matters.
 #
-# **Gold's hourly prices have gaps.** PAX Gold is thinly traded at some hours, and an
-# hour with no trade has no price. The table above counts them. Daily prices are
-# complete, so anything built on days is unaffected; the size of a day's movement is
-# built from hours, and step 3 counts the days on which too many were missing.
+# **Gold's own hourly prices have gaps.** PAX Gold is thinly traded on this venue at
+# some hours, and an hour with no trade has no price. The table above counts them.
+# Daily prices are complete, so anything built on days is unaffected. The size of a
+# day's movement is built from hours, so for gold it is measured on Binance's hourly
+# prices of the same coin, which are nearly complete: step 3 counts the days still
+# short of hours after that.
 #
 # ## Step 2. More extreme days than a bell curve allows
 #
@@ -217,4 +219,5 @@ ax.legend(ncol=3);
 # - How the markets move together changes a great deal from one stretch to the next.
 # - Two of the three markets have under six years of prices.
 # - Gold as PAX Gold trades around the clock, which the fund did not, at the cost of
-#   hours with no trade: the last table counts the days that affects.
+#   hours with no trade on its own venue. Its daily movement is measured on a second
+#   source for that reason; its prices are not.

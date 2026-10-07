@@ -11,15 +11,17 @@ from radar.ingest.upsert import bar_row, upsert_bars
 from radar.pipelines import volatility as job
 from tests.pipelines.test_regime_job import ASSET, DAY, DAYS, HOUR, START, seed, wire
 
-SETTINGS = {"min_train": 260, "refit_every": 30}
-
 
 def test_forecasts_are_stored_once_with_their_scores(engine: Engine, session: Session) -> None:
     seed(session)
-    changed = job.forecast(engine, ASSET, **SETTINGS)
+    changed = job.forecast(engine, ASSET, min_train=260, refit_every=30)
     total = session.scalar(select(func.count()).select_from(VolatilityForecast))
     assert changed == total
-    assert job.forecast(engine, ASSET, **SETTINGS) == 0  # nothing new: no work, no rows
+    assert (
+        job.forecast(engine, ASSET, min_train=260, refit_every=30) == 0
+    )  # nothing new: no work, no rows
+    # Asked to work every day out again, it does, and the rows come out the same.
+    assert job.forecast(engine, ASSET, min_train=260, refit_every=30, refit=True) == 0
 
     rows = session.execute(
         select(
@@ -50,7 +52,7 @@ def test_forecasts_are_stored_once_with_their_scores(engine: Engine, session: Se
 
 def test_a_new_day_adds_rows_and_fills_in_outcomes(engine: Engine, session: Session) -> None:
     seed(session)
-    job.forecast(engine, ASSET, **SETTINGS)
+    job.forecast(engine, ASSET, min_train=260, refit_every=30)
     before: dict[tuple[int, str, datetime], float] = {
         (h, m, ts): f
         for h, m, ts, f in session.execute(
@@ -74,7 +76,7 @@ def test_a_new_day_adds_rows_and_fills_in_outcomes(engine: Engine, session: Sess
     session.commit()
 
     # Eight new forecasts (two horizons by four models) and eight outcomes filled in.
-    assert job.forecast(engine, ASSET, **SETTINGS) == 16
+    assert job.forecast(engine, ASSET, min_train=260, refit_every=30) == 16
     session.expire_all()
     after = {
         (h, m, ts): f

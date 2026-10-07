@@ -438,6 +438,24 @@ class Signal(Base):
     __table_args__ = (UniqueConstraint("symbol", "ts", "type"),)
 
 
+class OutsideHour(Base):
+    """An hourly bar of an asset read from a second, public source. Kept apart from
+    `bars` so that every stored bar there still comes from one provider."""
+
+    __tablename__ = "outside_hours"
+
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), primary_key=True)
+    # Where the prices were read, and under what name there: "binance:PAXGUSDT".
+    source: Mapped[str] = mapped_column(Text, primary_key=True)
+    ts: Mapped[datetime] = mapped_column(TZDateTime, primary_key=True)
+    open: Mapped[float] = mapped_column(Double)
+    high: Mapped[float] = mapped_column(Double)
+    low: Mapped[float] = mapped_column(Double)
+    close: Mapped[float] = mapped_column(Double)
+    volume: Mapped[float] = mapped_column(Double)
+    received_at: Mapped[datetime] = mapped_column(TZDateTime, server_default=func.now())
+
+
 class Brief(Base):
     """One day's brief for one subject, kept with the payload it was written from."""
 

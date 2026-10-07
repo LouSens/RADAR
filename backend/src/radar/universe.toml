@@ -66,6 +66,9 @@ history_start = 2021-01-01
 # its own (41 articles in the audit), so the fund's ticker is read for it.
 news_symbols = ["GLD"]
 news_start = 2023-01-01
+# The coin has no trade here in about one hour in twenty-five; Binance trades it in
+# nearly every hour, so how much a day moved is measured there (docs/DECISIONS.md 091).
+hours_from = "PAXGUSDT"
 
 # US stocks. A primary asset because the user holds it (docs/DECISIONS.md 021).
 [[assets]]

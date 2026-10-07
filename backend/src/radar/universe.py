@@ -36,9 +36,14 @@ class Asset(_Config):
     history_start: date
     news_symbols: tuple[str, ...] = ()
     news_start: date | None = None
+    # A Binance pair whose hourly prices the daily movement is built from, for a coin
+    # whose own hours have gaps (decision 091). Prices and returns stay the asset's own.
+    hours_from: str | None = Field(default=None, pattern=r"^[A-Z0-9]{5,20}$")
 
     @model_validator(mode="after")
     def _check(self) -> Self:
+        if self.hours_from is not None and self.asset_class != "crypto":
+            raise ValueError(f"{self.symbol}: hours_from is for crypto assets only")
         if self.news_symbols and self.news_start is None:
             raise ValueError(f"{self.symbol}: news_symbols needs news_start")
         if any("/" in s for s in self.news_symbols):
