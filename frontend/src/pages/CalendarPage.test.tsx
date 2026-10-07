@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -94,53 +94,15 @@ describe("CalendarPage", () => {
   it("lists what is coming, soonest first, each with what past ones have shown", () => {
     const { container } = page("/calendar");
     expect(screen.getByText("US inflation report: in 8 days")).toBeVisible();
-    const fed = screen.getByRole("link", { name: /^Fed interest rate decision/ });
-    expect(fed).toHaveAttribute("href", "/calendar/fed");
-    expect(within(fed).getByText("Gold moved more than usual on these days")).toBeVisible();
-    expect(within(fed).getByText("In 22 days")).toBeVisible();
-    const inflation = screen.getByRole("link", { name: /^US inflation report/ });
-    expect(
-      within(inflation).getByText("No market has moved measurably more on these days"),
-    ).toBeVisible();
-    expect(container.textContent).toMatch(/does not know what figure is expected/);
-  });
-
-  it("shows how each market behaved around one kind of event, against any day", () => {
-    const { container } = page("/calendar/fed");
     expect(screen.getByText("Gold moved more than usual on these days")).toBeVisible();
-    expect(screen.getByText(/No pattern in direction was found/)).toBeVisible();
-    expect(screen.getAllByText(/85 past events, 27 Jan 2016 to 16 Sept? 2026/)).toHaveLength(2);
-    expect(screen.getByText("±0.92%")).toBeVisible();
-    expect(screen.getAllByText("±0.73%")).toHaveLength(2);
-    expect(screen.getByText("Moves more on these days")).toBeVisible();
-    expect(screen.getByText("Moves about as much as any day")).toBeVisible();
-    expect(
-      screen.getAllByRole("img", {
-        name: "Ended higher on the day: 60%, plausibly between 50% and 70%; 54% on any day",
-      }),
-    ).toHaveLength(2);
-    expect(screen.getAllByText("No pattern")).toHaveLength(8);
-    expect(container.textContent).toMatch(/before any result was computed/);
-    expect(container.textContent).toMatch(/36 comparisons of direction and 9 of size/);
+    expect(screen.getByText("In 22 days")).toBeVisible();
+    expect(screen.getByText("No market has moved measurably more on these days")).toBeVisible();
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
+    expect(container.textContent).toMatch(/does not know what figure is expected/);
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 
-  it("says so when a pattern in direction is found", () => {
-    const leaning = structuredClone(CALENDAR) as unknown as {
-      results: { markets: { event_day: unknown }[] }[];
-    };
-    const first = leaning.results[0]?.markets[0];
-    if (first) first.event_day = share(0.75, "leans up");
-    state.calendar = leaning;
-    page("/calendar/fed");
-    expect(screen.getByText(/A pattern in direction was found/)).toBeVisible();
-    expect(screen.getByText("More often up")).toBeVisible();
-  });
-
-  it("handles an unknown address and a calendar not yet worked out", () => {
-    page("/calendar/elections");
-    expect(screen.getByText("Coming up", { selector: "h2" })).toBeVisible();
-    cleanup();
+  it("says so when the calendar is not yet worked out", () => {
     state.calendar = null;
     page("/calendar");
     expect(screen.getByText("The calendar has not been worked out yet.")).toBeVisible();

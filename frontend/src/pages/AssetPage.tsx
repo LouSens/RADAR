@@ -3,7 +3,6 @@ import { Navigate, useParams } from "react-router-dom";
 
 import { useMarket } from "../api/market";
 import { useAssets, useSummary } from "../api/queries";
-import { DriversPanel } from "../components/DriversPanel";
 import { MarketStage } from "../components/MarketStage";
 import { NewsPanel } from "../components/NewsPanel";
 import { OutlookPanel } from "../components/OutlookPanel";
@@ -12,7 +11,6 @@ import { RiskPanel } from "../components/RiskPanel";
 import { SummaryCard } from "../components/SummaryCard";
 import { PageSkeleton } from "../components/Skeleton";
 import { SectionMenu, Tabs } from "../components/Tabs";
-import { TrackRecordPanel } from "../components/TrackRecordPanel";
 import { VolatilityPanel } from "../components/VolatilityPanel";
 import { Change, Message, RangeBar, StatRow, assetColorVar, shortName } from "../components/ui";
 import { formatPrice } from "../lib/format";
@@ -106,9 +104,7 @@ export function AssetPage() {
           {section === "outlook" && <OutlookPanel asset={asset} trust={trust?.outlook} />}
           {section === "swings" && <VolatilityPanel asset={asset} trust={trust?.swings} />}
           {section === "risk" && <RiskPanel asset={asset} trust={trust?.risk} />}
-          {section === "drivers" && <DriversPanel asset={asset} />}
           {section === "news" && <NewsPanel asset={asset} trust={trust?.news} />}
-          {section === "record" && <TrackRecordPanel asset={asset} />}
         </div>
       )}
     </div>

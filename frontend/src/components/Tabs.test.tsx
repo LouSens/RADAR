@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { PORTFOLIO_SECTIONS } from "../lib/portfolio";
 import { SECTIONS } from "../lib/sections";
 import { SIGNAL_PAGES } from "../lib/signals";
-import { TOGETHER_SECTIONS } from "../lib/together";
 import { SectionMenu, Tabs } from "./Tabs";
 
 const at = (path: string, node: React.ReactNode) =>
@@ -62,7 +61,7 @@ describe("SectionMenu", () => {
   });
 
   it("every page of every subject says what it is for, briefly", () => {
-    for (const pages of [SECTIONS, PORTFOLIO_SECTIONS, TOGETHER_SECTIONS, SIGNAL_PAGES]) {
+    for (const pages of [SECTIONS, PORTFOLIO_SECTIONS, SIGNAL_PAGES]) {
       for (const page of pages) {
         if (page.path === "") continue;
         expect(page.hint.length, page.label).toBeGreaterThan(10);

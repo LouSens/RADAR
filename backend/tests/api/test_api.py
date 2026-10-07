@@ -226,11 +226,9 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/assets/{symbol}/volatility",
         "/api/v1/assets/{symbol}/risk",
         "/api/v1/assets/{symbol}/sentiment",
-        "/api/v1/assets/{symbol}/event-study",
         "/api/v1/assets/{symbol}/track-record",
         "/api/v1/assets/{symbol}/summary",
         "/api/v1/assets/{symbol}/drivers",
-        "/api/v1/assets/{symbol}/news-and-swings",
         "/api/v1/relationships",
         "/api/v1/signals",
         "/api/v1/briefs/latest",
@@ -240,7 +238,6 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/portfolio/import",
         "/api/v1/portfolio/binance",
         "/api/v1/portfolio/target",
-        "/api/v1/portfolio/tags",
         "/api/v1/portfolio/what-if",
         "/api/v1/portfolio/regular-buying",
         "/api/v1/portfolio/lookup",
@@ -271,12 +268,10 @@ def test_api_has_no_trading_routes(client: TestClient) -> None:
         "/api/v1/portfolio/regular-buying",
         "/api/v1/portfolio/lookup",
     ]
-    # The second PUT sets what the portfolio is compared with and the third tags holdings
-    # as core or satellite. Neither trades anything.
+    # The second PUT sets what the portfolio is compared with. It trades nothing.
     assert [p for p, item in routes.items() if "put" in item] == [
         "/api/v1/portfolio",
         "/api/v1/portfolio/target",
-        "/api/v1/portfolio/tags",
     ]
     assert not [p for p, item in routes.items() if "delete" in item or "patch" in item]
 
@@ -729,48 +724,6 @@ def test_sentiment_route_serves_tone_articles_and_accuracy(
     assert body["accuracy"]["baseline"]["accuracy"] == 0.5
     assert body["accuracy"]["labelled_by"] == ["claude"]
     assert len(client.get("/api/v1/assets/btc-usd/sentiment?days=1").json()["daily"]) == 1
-
-
-def test_event_study_route_serves_the_stored_verdict(client: TestClient, session: Session) -> None:
-    from radar.analytics import event_study
-    from radar.db.models import ModelRegistry
-
-    seed(session)
-    assert client.get("/api/v1/assets/gld/event-study").status_code == 404
-
-    empty = event_study.average_path(__import__("numpy").empty((0, 5))).model_dump()
-    session.add(
-        ModelRegistry(
-            name="event_study",
-            symbol="GLD",
-            version="event-study-1",
-            train_start=datetime(2023, 1, 3, tzinfo=UTC).date(),
-            train_end=datetime(2026, 10, 2, tzinfo=UTC).date(),
-            is_current=True,
-            params={"min_events": 30},
-            metrics={
-                "verdict": "not enough events",
-                "n_events": 12,
-                "n_positive": 5,
-                "n_negative": 7,
-                "n_days": 610,
-                "days_with_news": 610,
-                "first_day": "2023-01-03",
-                "last_day": "2026-10-02",
-                "positive": empty,
-                "negative": empty,
-                "baseline": empty,
-                "lags": [{"lag": 1, "correlation": 0.02, "n": 600, "significant": False}],
-            },
-        )
-    )
-    session.commit()
-    body = client.get("/api/v1/assets/gld/event-study").json()
-    assert body["verdict"] == "not enough events"
-    assert body["n_events"] == 12
-    assert body["min_events"] == 30
-    assert body["lags"] == [{"lag": 1, "correlation": 0.02, "n": 600, "significant": False}]
-    assert body["positive"]["n"] == 0
 
 
 def test_summary_answers_in_brief_with_a_trust_grade_for_every_claim(

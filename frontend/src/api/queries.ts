@@ -8,22 +8,17 @@ import {
   type Asset,
   type Bars,
   type Calibration,
-  type Drivers,
-  type EventStudy,
   type Health,
   type Holding,
   type LevelAnswer,
-  type NewsTest,
   type Portfolio,
   type PortfolioAnalysis,
   type Regime,
-  type Relationships,
   type Risk,
   type Sentiment,
   type Simulation,
   type Summary,
   type Timeframe,
-  type TrackRecord,
   type Volatility,
   type Brief,
   type Calendar,
@@ -158,26 +153,6 @@ export function useSentiment(slug: string | undefined, days = 90) {
   });
 }
 
-/** Whether news tone has led price, followed it, or neither. */
-export function useEventStudy(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["event-study", slug],
-    queryFn: () => orNull(() => getJson<EventStudy>(`/assets/${slug}/event-study`)),
-    enabled: slug !== undefined,
-    staleTime: 60 * 60_000,
-  });
-}
-
-/** Forecasts logged on the day they were made, and how they have turned out. */
-export function useTrackRecord(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["track-record", slug],
-    queryFn: () => orNull(() => getJson<TrackRecord>(`/assets/${slug}/track-record`)),
-    enabled: slug !== undefined,
-    refetchInterval: 10 * 60_000,
-  });
-}
-
 /** The answers in brief for a market, what changed this week, and a trust grade per claim. */
 export function useSummary(slug: string | undefined) {
   return useQuery({
@@ -267,35 +242,6 @@ export function useSignalRecords(type: string) {
   });
 }
 
-/** How the markets move together: correlations, risk transmission, weekend gaps. */
-export function useRelationships() {
-  return useQuery({
-    queryKey: ["relationships"],
-    queryFn: () => orNull(() => getJson<Relationships>("/relationships")),
-    refetchInterval: 10 * 60_000,
-  });
-}
-
-/** Which outside forces a market has been moving with. */
-export function useDrivers(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["drivers", slug],
-    queryFn: () => orNull(() => getJson<Drivers>(`/assets/${slug}/drivers`)),
-    enabled: slug !== undefined,
-    refetchInterval: 10 * 60_000,
-  });
-}
-
-/** Whether adding news improved the forecast of a market's daily movement. */
-export function useNewsTest(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["news-and-swings", slug],
-    queryFn: () => orNull(() => getJson<NewsTest>(`/assets/${slug}/news-and-swings`)),
-    enabled: slug !== undefined,
-    staleTime: 60 * 60_000,
-  });
-}
-
 /** Choose, change, or clear the risk level and split the portfolio is compared with. */
 export function useSetTarget() {
   const client = useQueryClient();
@@ -307,19 +253,6 @@ export function useSetTarget() {
     ) => putJson<PortfolioAnalysis>("/portfolio/target", input),
     onSuccess: (analysis) => {
       client.setQueryData(["portfolio", "analysis"], analysis);
-    },
-  });
-}
-
-/** Tag holdings as core or satellite, or clear a tag with null. */
-export function useSetTags() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { tags: Record<string, "core" | "satellite" | null> }) =>
-      putJson<PortfolioAnalysis>("/portfolio/tags", input),
-    onSuccess: (analysis) => {
-      client.setQueryData(["portfolio", "analysis"], analysis);
-      void client.invalidateQueries({ queryKey: ["portfolio"], exact: true });
     },
   });
 }

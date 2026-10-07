@@ -1,14 +1,10 @@
 import { useState } from "react";
 
 import type { PortfolioAnalysis } from "../api/client";
-import { useSetTags } from "../api/queries";
 import { formatChange, formatCount, formatMoney, formatShare } from "../lib/format";
 import { fanShape } from "../lib/outlook";
-import { formatDate } from "../lib/time";
 import { Caption, Evidence, Message, Panel, Segmented } from "./ui";
-import { Bars, Legend, StackBar, type Part } from "./viz";
 
-const CASH = "USD";
 const HORIZONS = [
   { value: "30", label: "30 trading days" },
   { value: "90", label: "90 trading days" },
@@ -289,148 +285,6 @@ export function RangeAheadPanel({ analysis }: { analysis: PortfolioAnalysis }) {
           ? " The simulation is shown because it assumes no bell curve and also gives the dips along the way, not because its range has proved more accurate."
           : ""}
       </Caption>
-    </Panel>
-  );
-}
-
-const GROUP_NAME: Record<string, string> = {
-  core: "Core",
-  satellite: "Satellite",
-  untagged: "Not tagged",
-  cash: "Cash",
-};
-const GROUP_COLOUR: Record<string, string> = {
-  core: "var(--stock)",
-  satellite: "var(--btc)",
-  untagged: "rgba(255,255,255,0.35)",
-  cash: "var(--calm)",
-};
-type Tags = Record<string, "core" | "satellite" | null>;
-const TAGS = [
-  { value: "core", label: "Core" },
-  { value: "satellite", label: "Satellite" },
-  { value: "none", label: "Neither" },
-] as const;
-
-export function SleevesPanel({ analysis }: { analysis: PortfolioAnalysis }) {
-  const setTags = useSetTags();
-  const report = analysis.sleeves;
-  const held = analysis.positions.filter((p) => p.symbol !== CASH);
-  const short = (name: string) => name.split(" (")[0] ?? name;
-  const satellite = report?.sleeves.find((s) => s.group === "satellite");
-  const parts = (pick: (s: NonNullable<typeof report>["sleeves"][number]) => number): Part[] =>
-    (report?.sleeves ?? []).map((sleeve) => ({
-      key: sleeve.group,
-      name: GROUP_NAME[sleeve.group] ?? sleeve.group,
-      share: pick(sleeve),
-      colour: GROUP_COLOUR[sleeve.group] ?? "var(--accent)",
-    }));
-  const money = analysis.covered_value;
-  return (
-    <Panel
-      id="sleeves"
-      title="Core and satellite"
-      trust={report ? analysis.trust.xray : undefined}
-      headline={
-        satellite
-          ? `Satellite holdings are ${formatShare(satellite.weight, 0)} of your money and ${formatShare(satellite.risk_share, 0)} of your risk`
-          : "Tag your holdings to see what each group carries"
-      }
-    >
-      <div>
-        <h3 className="font-medium">Your tags</h3>
-        <p className="mt-1 text-sm text-muted">
-          Core is what you mean to hold steadily. Satellite is the smaller, more adventurous part.
-        </p>
-        <ul className="mt-3 flex flex-col">
-          {held.map((position) => (
-            <li
-              key={position.symbol}
-              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line py-2.5 first:border-t-0"
-            >
-              <span className="text-sm">
-                {short(position.name)}{" "}
-                <span className="num text-muted">{formatShare(position.weight, 0)}</span>
-              </span>
-              <Segmented
-                options={TAGS}
-                value={position.tag ?? "none"}
-                label={`${short(position.name)} is`}
-                onChange={(tag) =>
-                  setTags.mutate({
-                    tags: { [position.symbol]: tag === "none" ? null : tag } as Tags,
-                  })
-                }
-              />
-            </li>
-          ))}
-        </ul>
-        {setTags.isError && (
-          <p className="mt-2 text-sm text-[var(--alert)]">That tag could not be saved.</p>
-        )}
-      </div>
-
-      {report && (
-        <>
-          <div className="flex flex-col gap-4">
-            <div>
-              <p className="label mb-2">Share of your money</p>
-              <StackBar parts={parts((s) => s.weight)} label="Share of your money" />
-            </div>
-            <div>
-              <p className="label mb-2">Share of your risk</p>
-              <StackBar parts={parts((s) => s.risk_share)} label="Share of your risk" />
-            </div>
-            <Legend parts={parts((s) => s.weight)} />
-          </div>
-          <div>
-            <h3 className="font-medium">
-              What each group added over the last {formatCount(report.n_days)} trading days
-            </h3>
-            <div className="mt-3">
-              <Bars
-                rows={report.sleeves
-                  .filter((s) => s.group !== "cash")
-                  .map((sleeve) => ({
-                    key: sleeve.group,
-                    name: GROUP_NAME[sleeve.group] ?? sleeve.group,
-                    value: sleeve.contribution,
-                    colour: sleeve.contribution < 0 ? "var(--alert)" : GROUP_COLOUR[sleeve.group],
-                  }))}
-                format={(value) => `${formatChange(value)} · ${formatMoney(value * money)}`}
-              />
-            </div>
-            <p className="num mt-3 text-sm text-muted">
-              All together {formatChange(report.total_return)}
-            </p>
-          </div>
-          <Caption
-            facts={[
-              { label: "Risk shares", value: "From the Risk by holding page; they add up to 100%" },
-              {
-                label: "Amounts added",
-                value: "Each holding's share of your money times the sum of its daily changes",
-              },
-              {
-                label: "Window",
-                value: `${formatDate(report.first_day)} to ${formatDate(report.last_day)}, at today's proportions`,
-              },
-              { label: "Money figures", value: `For ${formatMoney(money)} at today's value` },
-              ...(report.short.length > 0
-                ? [
-                    {
-                      label: "Shorter record",
-                      value: `${report.short.map((s) => short(analysis.positions.find((p) => p.symbol === s)?.name ?? s)).join(", ")}: its part covers only the days it has`,
-                    },
-                  ]
-                : []),
-            ]}
-          >
-            That is how today&apos;s mix would have done, not what you earned; RADAR does not know
-            when you bought.
-          </Caption>
-        </>
-      )}
     </Panel>
   );
 }

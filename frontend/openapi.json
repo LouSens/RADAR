@@ -920,51 +920,6 @@
         "title": "Drivers",
         "type": "object"
       },
-      "EventPathOut": {
-        "properties": {
-          "high": {
-            "items": {
-              "type": "number"
-            },
-            "title": "High",
-            "type": "array"
-          },
-          "low": {
-            "items": {
-              "type": "number"
-            },
-            "title": "Low",
-            "type": "array"
-          },
-          "mean": {
-            "items": {
-              "type": "number"
-            },
-            "title": "Mean",
-            "type": "array"
-          },
-          "n": {
-            "title": "N",
-            "type": "integer"
-          },
-          "offsets": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Offsets",
-            "type": "array"
-          }
-        },
-        "required": [
-          "n",
-          "offsets",
-          "mean",
-          "low",
-          "high"
-        ],
-        "title": "EventPathOut",
-        "type": "object"
-      },
       "EventResult": {
         "properties": {
           "key": {
@@ -989,120 +944,6 @@
           "markets"
         ],
         "title": "EventResult",
-        "type": "object"
-      },
-      "EventStudyOut": {
-        "properties": {
-          "baseline": {
-            "$ref": "#/components/schemas/EventPathOut"
-          },
-          "by_topic": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/TopicVerdict"
-            },
-            "title": "By Topic",
-            "type": "array"
-          },
-          "computed_at": {
-            "format": "date-time",
-            "title": "Computed At",
-            "type": "string"
-          },
-          "days_with_news": {
-            "title": "Days With News",
-            "type": "integer"
-          },
-          "first_day": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Day"
-          },
-          "lags": {
-            "items": {
-              "$ref": "#/components/schemas/LagOut"
-            },
-            "title": "Lags",
-            "type": "array"
-          },
-          "last_day": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Day"
-          },
-          "min_events": {
-            "title": "Min Events",
-            "type": "integer"
-          },
-          "n_events": {
-            "title": "N Events",
-            "type": "integer"
-          },
-          "n_negative": {
-            "title": "N Negative",
-            "type": "integer"
-          },
-          "n_positive": {
-            "title": "N Positive",
-            "type": "integer"
-          },
-          "negative": {
-            "$ref": "#/components/schemas/EventPathOut"
-          },
-          "positive": {
-            "$ref": "#/components/schemas/EventPathOut"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          },
-          "tests_in_family": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tests In Family"
-          },
-          "verdict": {
-            "title": "Verdict",
-            "type": "string"
-          }
-        },
-        "required": [
-          "symbol",
-          "computed_at",
-          "verdict",
-          "n_events",
-          "n_positive",
-          "n_negative",
-          "min_events",
-          "days_with_news",
-          "first_day",
-          "last_day",
-          "positive",
-          "negative",
-          "baseline",
-          "lags"
-        ],
-        "title": "EventStudyOut",
         "type": "object"
       },
       "Fall": {
@@ -1461,49 +1302,6 @@
         "title": "HorizonRecord",
         "type": "object"
       },
-      "HorizonResult": {
-        "properties": {
-          "first_day": {
-            "format": "date",
-            "title": "First Day",
-            "type": "string"
-          },
-          "horizon_days": {
-            "title": "Horizon Days",
-            "type": "integer"
-          },
-          "last_day": {
-            "format": "date",
-            "title": "Last Day",
-            "type": "string"
-          },
-          "n": {
-            "title": "N",
-            "type": "integer"
-          },
-          "pairs": {
-            "items": {
-              "$ref": "#/components/schemas/PairResult"
-            },
-            "title": "Pairs",
-            "type": "array"
-          },
-          "steps": {
-            "title": "Steps",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "steps",
-          "horizon_days",
-          "n",
-          "first_day",
-          "last_day",
-          "pairs"
-        ],
-        "title": "HorizonResult",
-        "type": "object"
-      },
       "HorizonSummary": {
         "description": "The outcome distribution at one horizon, as prices.",
         "properties": {
@@ -1581,34 +1379,6 @@
           "high"
         ],
         "title": "Interval",
-        "type": "object"
-      },
-      "LagOut": {
-        "properties": {
-          "correlation": {
-            "title": "Correlation",
-            "type": "number"
-          },
-          "lag": {
-            "title": "Lag",
-            "type": "integer"
-          },
-          "n": {
-            "title": "N",
-            "type": "integer"
-          },
-          "significant": {
-            "title": "Significant",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "lag",
-          "correlation",
-          "n",
-          "significant"
-        ],
-        "title": "LagOut",
         "type": "object"
       },
       "LevelIn": {
@@ -2085,55 +1855,6 @@
         "title": "Move",
         "type": "object"
       },
-      "NewsTest": {
-        "description": "Whether news improved the swings forecast for one market, as stored.",
-        "properties": {
-          "comparisons": {
-            "title": "Comparisons",
-            "type": "integer"
-          },
-          "computed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Computed At"
-          },
-          "horizons": {
-            "items": {
-              "$ref": "#/components/schemas/HorizonResult"
-            },
-            "title": "Horizons",
-            "type": "array"
-          },
-          "model_version": {
-            "title": "Model Version",
-            "type": "string"
-          },
-          "news_helps": {
-            "title": "News Helps",
-            "type": "boolean"
-          },
-          "symbol": {
-            "title": "Symbol",
-            "type": "string"
-          }
-        },
-        "required": [
-          "symbol",
-          "model_version",
-          "comparisons",
-          "horizons",
-          "news_helps"
-        ],
-        "title": "NewsTest",
-        "type": "object"
-      },
       "OutOfSample": {
         "description": "Fit on a window, predict the next sessions, repeat. Scored on every prediction.",
         "properties": {
@@ -2538,83 +2259,6 @@
           "weighted"
         ],
         "title": "PairPoint",
-        "type": "object"
-      },
-      "PairResult": {
-        "description": "One model with news against the same model without it.",
-        "properties": {
-          "dm_p_adjusted": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dm P Adjusted"
-          },
-          "dm_p_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dm P Value"
-          },
-          "dm_statistic": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Dm Statistic"
-          },
-          "family": {
-            "enum": [
-              "har",
-              "gbt"
-            ],
-            "title": "Family",
-            "type": "string"
-          },
-          "improvement": {
-            "title": "Improvement",
-            "type": "number"
-          },
-          "qlike_with": {
-            "title": "Qlike With",
-            "type": "number"
-          },
-          "qlike_without": {
-            "title": "Qlike Without",
-            "type": "number"
-          },
-          "verdict": {
-            "default": "no measurable gain",
-            "enum": [
-              "news helps",
-              "no measurable gain"
-            ],
-            "title": "Verdict",
-            "type": "string"
-          }
-        },
-        "required": [
-          "family",
-          "qlike_without",
-          "qlike_with",
-          "improvement",
-          "dm_statistic",
-          "dm_p_value"
-        ],
-        "title": "PairResult",
         "type": "object"
       },
       "Plan": {
@@ -5192,34 +4836,6 @@
         "title": "SupportedAsset",
         "type": "object"
       },
-      "TagsIn": {
-        "properties": {
-          "tags": {
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "core",
-                    "satellite"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "maxProperties": 200,
-            "title": "Tags",
-            "type": "object"
-          }
-        },
-        "required": [
-          "tags"
-        ],
-        "title": "TagsIn",
-        "type": "object"
-      },
       "Target": {
         "description": "What the user chose to hold the portfolio against: either a risk level with a way\nof splitting the holdings, or a mix of their own with a share for every holding.",
         "properties": {
@@ -5351,34 +4967,6 @@
           "score_mean"
         ],
         "title": "TopicSummary",
-        "type": "object"
-      },
-      "TopicVerdict": {
-        "properties": {
-          "days_with_news": {
-            "title": "Days With News",
-            "type": "integer"
-          },
-          "n_events": {
-            "title": "N Events",
-            "type": "integer"
-          },
-          "topic": {
-            "title": "Topic",
-            "type": "string"
-          },
-          "verdict": {
-            "title": "Verdict",
-            "type": "string"
-          }
-        },
-        "required": [
-          "topic",
-          "verdict",
-          "n_events",
-          "days_with_news"
-        ],
-        "title": "TopicVerdict",
         "type": "object"
       },
       "TrackRecordOut": {
@@ -6750,86 +6338,6 @@
         "summary": "Get Drivers"
       }
     },
-    "/api/v1/assets/{symbol}/event-study": {
-      "get": {
-        "description": "Whether news tone has led price, followed it, or neither, with the evidence.",
-        "operationId": "get_event_study_api_v1_assets__symbol__event_study_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "symbol",
-            "required": true,
-            "schema": {
-              "title": "Symbol",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EventStudyOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Event Study"
-      }
-    },
-    "/api/v1/assets/{symbol}/news-and-swings": {
-      "get": {
-        "description": "Whether adding news improved the forecast of this market's daily swings.",
-        "operationId": "get_news_test_api_v1_assets__symbol__news_and_swings_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "symbol",
-            "required": true,
-            "schema": {
-              "title": "Symbol",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NewsTest"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get News Test"
-      }
-    },
     "/api/v1/assets/{symbol}/regime": {
       "get": {
         "description": "The current market regime, its history, and how the model has measured.",
@@ -7462,45 +6970,6 @@
           }
         },
         "summary": "Post Regular Buying"
-      }
-    },
-    "/api/v1/portfolio/tags": {
-      "put": {
-        "description": "Tag holdings as core or satellite. The tags are kept by symbol, so reading the\nholdings again does not lose them. Nothing is traded.",
-        "operationId": "put_tags_api_v1_portfolio_tags_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TagsIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Analysis"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Tags"
       }
     },
     "/api/v1/portfolio/target": {

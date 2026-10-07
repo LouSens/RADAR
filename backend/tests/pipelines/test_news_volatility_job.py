@@ -2,11 +2,9 @@
 
 import numpy as np
 import pandas as pd
-from fastapi.testclient import TestClient
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
-from radar.api.app import create_app
 from radar.db.models import ModelRegistry, SentimentAggregate
 from radar.pipelines import news_volatility as job
 from tests.pipelines.test_regime_job import DAY, DAYS, START, UNIVERSE, seed
@@ -31,13 +29,17 @@ def seed_news(session: Session) -> None:
     session.commit()
 
 
-def test_the_comparison_is_stored_and_served(engine: Engine, session: Session) -> None:
+def test_the_comparison_is_stored(engine: Engine, session: Session) -> None:
     seed(session)
     seed_news(session)
-    with TestClient(create_app(engine, UNIVERSE)) as client:
-        assert client.get("/api/v1/assets/btc-usd/news-and-swings").status_code == 404
-        assert job.run(engine, UNIVERSE) == 1
-        body = client.get("/api/v1/assets/btc-usd/news-and-swings").json()
+    assert job.current(session, "BTC/USD") is None
+    assert job.run(engine, UNIVERSE) == 1
+    session.expire_all()
+    stored = job.current(session, "BTC/USD")
+    assert stored is not None
+    body = job.NewsTest.model_validate(
+        {**stored.metrics, "computed_at": stored.trained_at}
+    ).model_dump()
 
     assert body["symbol"] == "BTC/USD"
     assert body["comparisons"] == 4  # two horizons, two model families

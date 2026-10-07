@@ -7,6 +7,9 @@ returns, day by day, what the person has and what they paid.
 
 Pure functions. Every decision on a day uses that day's close and earlier closes only,
 and trades at that close.
+
+The last part asks a narrower question (decision 070): a payment goes in this month
+whatever happens, so does waiting for a reading get a lower price than the scheduled day?
 """
 
 import numpy as np
@@ -134,3 +137,52 @@ def outcome(replay: pd.DataFrame, trades: int = 0) -> Outcome:
         cash_share=float(np.mean(replay["cash"] / replay["value"])),
         trades=trades,
     )
+
+
+# ---------- When in the month to pay (decision 070) -------------------------------------
+
+
+def month_starts(days: int, every: int = EVERY, warm_up: int = 0) -> np.ndarray:
+    """The first row of each full block of `every` days after `warm_up`."""
+    starts: np.ndarray = np.arange(warm_up, days - every + 1, every)
+    return starts
+
+
+def day_paid(on: np.ndarray, starts: np.ndarray, every: int = EVERY) -> np.ndarray:
+    """For each month, how many days after its first the payment goes in: the first day
+    the reading is on, or the last day when it never is."""
+    waits = np.full(len(starts), every - 1)
+    for i, start in enumerate(starts):
+        hit = np.flatnonzero(on[start : start + every])
+        if len(hit):
+            waits[i] = int(hit[0])
+    return waits
+
+
+def saving_table(close: np.ndarray, starts: np.ndarray, every: int = EVERY) -> np.ndarray:
+    """For each month and each day of it, one minus that day's close over the first
+    day's: what paying that day saved against paying on schedule. Shape (months, every)."""
+    block = close[starts[:, None] + np.arange(every)[None, :]]
+    table: np.ndarray = 1 - block / block[:, :1]
+    return table
+
+
+def savings(table: np.ndarray, waits: np.ndarray) -> np.ndarray:
+    """What each month's payment saved, given the day it went in."""
+    result: np.ndarray = table[np.arange(len(waits)), waits]
+    return result
+
+
+def shuffled_waits(
+    table: np.ndarray, waits: np.ndarray, draws: int = 2000, seed: int = 7
+) -> np.ndarray:
+    """Total saving when the same waits are put on the wrong months, once per draw.
+
+    A rule that waits gets a different price just by waiting. Keeping its waits and
+    shuffling which month each belongs to shows what waiting alone was worth; the rule
+    picked its days only if it did better than these.
+    """
+    rng = np.random.default_rng(seed)
+    rows = np.arange(len(waits))
+    totals: np.ndarray = np.array([table[rows, rng.permutation(waits)].sum() for _ in range(draws)])
+    return totals

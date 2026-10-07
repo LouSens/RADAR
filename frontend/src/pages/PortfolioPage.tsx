@@ -2,11 +2,10 @@ import { Fragment, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from "../api/client";
-import { usePortfolio, usePortfolioAnalysis, useRelationships } from "../api/queries";
-import { RangeAheadPanel, SleevesPanel } from "../components/AheadPanels";
-import { DriverEvidence, driverHeadline } from "../components/DriversPanel";
+import { usePortfolio, usePortfolioAnalysis } from "../api/queries";
+import { RangeAheadPanel } from "../components/AheadPanels";
 import { HoldingsEditor } from "../components/HoldingsEditor";
-import { LevelsPanel, MixesPanel, targetSummary } from "../components/PlanPanels";
+import { LevelsPanel, targetSummary } from "../components/PlanPanels";
 import { badLabel } from "../components/RiskPanel";
 import { RegularBuyingPanel } from "../components/RegularBuyingPanel";
 import { PageSkeleton } from "../components/Skeleton";
@@ -62,7 +61,6 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
     analysis.limits.find((h) => h.horizon_days === 1),
     0.95,
   );
-  const names = analysis.driver_names as Record<string, string>;
   const name = (symbol: string) =>
     (analysis.positions.find((p) => p.symbol === symbol)?.name ?? symbol).split(" (")[0] ?? symbol;
   const parts = (pick: (h: (typeof xray.holdings)[number]) => number): Part[] =>
@@ -79,25 +77,6 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
   const month = analysis.simulation?.horizons.find((h) => h.summary.steps === 30)?.summary;
   const eighty = month?.intervals.find((i) => i.level === 0.8);
   const ends = (month?.quantiles ?? {}) as Record<string, number>;
-
-  // While stock markets are shut: what Bitcoin's move has meant for a held market's open.
-  const together = useRelationships().data;
-  const linked = together?.weekends.find(
-    (row) =>
-      row.verdict === "moves with" &&
-      row.slope != null &&
-      analysis.positions.some((p) => p.symbol === row.symbol),
-  );
-  const held = analysis.positions.find((p) => p.symbol === linked?.symbol);
-  const weekend =
-    together?.weekend_now && linked?.slope != null && held
-      ? {
-          move: Math.expm1(together.weekend_now.bitcoin_move),
-          slope: linked.slope,
-          name: name(held.symbol),
-          value: held.value,
-        }
-      : undefined;
 
   return (
     <section aria-label="In brief" className="flex flex-col gap-3 @xl:gap-4">
@@ -271,7 +250,7 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
         {analysis.states.length > 0 && (
           <Tile
             label="Your markets right now"
-            to="/together"
+            to="/markets"
             figure={rough > 0 ? `${formatShare(rough, 0)} in turbulence` : "None in turbulence"}
             note="share of your money"
           >
@@ -281,51 +260,6 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
                   <span className="text-ink">{name(state.symbol)}</span>
                 </StateChip>
               ))}
-            </span>
-          </Tile>
-        )}
-
-        {analysis.drivers && (
-          <Tile
-            label="What it moves with"
-            to={`${BASE}/forces`}
-            trust={trust.drivers ?? undefined}
-            figure={formatShare(analysis.drivers.r_squared, 0)}
-            note="of daily moves they account for"
-          >
-            <span className="flex flex-col gap-1.5 text-xs">
-              {analysis.drivers.drivers
-                .filter((d) => d.verdict !== "no measurable link")
-                .map((d) => (
-                  <span key={d.symbol} className="flex items-center justify-between gap-3">
-                    <span className="truncate text-muted">{names[d.symbol] ?? d.symbol}</span>
-                    <span className={d.verdict === "moves with" ? "text-calm" : "text-alert"}>
-                      {d.verdict === "moves with" ? "▲ with" : "▼ against"}
-                    </span>
-                  </span>
-                ))}
-              {analysis.drivers.strongest == null && (
-                <span className="text-muted">None measurable right now</span>
-              )}
-            </span>
-          </Tile>
-        )}
-
-        {weekend && (
-          <Tile
-            label="While stocks are shut"
-            to="/together/weekends"
-            figure={formatChange(weekend.move)}
-            note="Bitcoin since the last close"
-          >
-            <span className="text-xs leading-relaxed text-muted">
-              {weekend.name} has opened by about {formatShare(Math.abs(weekend.slope), 0)} of such a
-              move:{" "}
-              <span className="num text-ink">
-                {formatMoney(Math.abs(weekend.slope * weekend.move * weekend.value))}{" "}
-                {weekend.slope * weekend.move >= 0 ? "up" : "down"}
-              </span>{" "}
-              on your holding.
             </span>
           </Tile>
         )}
@@ -722,23 +656,6 @@ function Episodes({ analysis }: { analysis: PortfolioAnalysis }) {
   );
 }
 
-function Forces({ analysis }: { analysis: PortfolioAnalysis }) {
-  if (!analysis.drivers) {
-    return <Message>There is not enough shared history to measure this yet.</Message>;
-  }
-  const names = analysis.driver_names as Record<string, string>;
-  return (
-    <Panel
-      id="forces"
-      title="What it moves with"
-      trust={analysis.trust.drivers ?? undefined}
-      headline={driverHeadline(analysis.drivers, names)}
-    >
-      <DriverEvidence window={analysis.drivers} names={names} subject="your mix" />
-    </Panel>
-  );
-}
-
 /** A gap smaller than this share is put down to prices moving since the last close. */
 const GAP_TOLERANCE = 0.03;
 
@@ -889,9 +806,6 @@ export function PortfolioPage() {
       {portfolio.data &&
         section === "try" &&
         (analysis ? <LevelsPanel analysis={analysis} /> : needsHoldings)}
-      {portfolio.data &&
-        section === "mixes" &&
-        (analysis ? <MixesPanel analysis={analysis} /> : needsHoldings)}
       {portfolio.data && section === "buying" && (
         // Remounted once the holdings arrive, so the plan starts from what is held.
         <RegularBuyingPanel
@@ -909,12 +823,6 @@ export function PortfolioPage() {
       {portfolio.data &&
         section === "ahead" &&
         (analysis ? <RangeAheadPanel analysis={analysis} /> : needsHoldings)}
-      {portfolio.data &&
-        section === "sleeves" &&
-        (analysis ? <SleevesPanel analysis={analysis} /> : needsHoldings)}
-      {portfolio.data &&
-        section === "forces" &&
-        (analysis ? <Forces analysis={analysis} /> : needsHoldings)}
       {portfolio.data &&
         section === "episodes" &&
         (analysis ? <Episodes analysis={analysis} /> : needsHoldings)}

@@ -8,7 +8,7 @@ import random
 import re
 import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from types import TracebackType
 from typing import Any, Literal, Self
 
@@ -26,10 +26,14 @@ from radar.providers.rate_limit import TokenBucket
 from radar.providers.schemas import (
     Bar,
     BarsPage,
+    CorporateActionsPage,
+    CryptoSnapshots,
     LatestBars,
     LatestQuotes,
     LatestTrades,
     NewsPage,
+    OptionSnapshotsPage,
+    Snapshot,
 )
 
 log = get_logger(__name__)
@@ -255,6 +259,11 @@ class AlpacaDataClient:
         path = self._crypto_path(loc, "latest/trades")
         return LatestTrades.model_validate(self.get_json(path, {"symbols": ",".join(symbols)}))
 
+    def get_crypto_snapshots(self, symbols: Sequence[str], *, loc: str = "us") -> CryptoSnapshots:
+        """Where each crypto pair stands now: today so far, yesterday, latest quote."""
+        path = self._crypto_path(loc, "snapshots")
+        return CryptoSnapshots.model_validate(self.get_json(path, {"symbols": ",".join(symbols)}))
+
     # --- stocks --------------------------------------------------------------------
 
     def iter_stock_bar_pages(
@@ -283,6 +292,65 @@ class AlpacaDataClient:
         }
         for page in self._pages("/v2/stocks/bars", params, max_pages):
             yield BarsPage.model_validate(page)
+
+    def get_stock_snapshots(
+        self, symbols: Sequence[str], *, feed: Literal["iex", "sip"] | None = "iex"
+    ) -> dict[str, Snapshot]:
+        """Where each stock or fund stands now: today so far, yesterday, latest quote."""
+        body = self.get_json("/v2/stocks/snapshots", {"symbols": ",".join(symbols), "feed": feed})
+        return {symbol: Snapshot.model_validate(part) for symbol, part in body.items()}
+
+    def iter_corporate_action_pages(
+        self,
+        symbols: Sequence[str],
+        start: date,
+        end: date,
+        *,
+        types: Sequence[str] = ("cash_dividend", "forward_split", "reverse_split"),
+        limit: int = 1000,
+        max_pages: int | None = None,
+    ) -> Iterator[CorporateActionsPage]:
+        """Dividends and splits with an ex-date from `start` to `end`. Announcements
+        only: this reads what companies declared, nothing about any account."""
+        params: dict[str, Param] = {
+            "symbols": ",".join(symbols),
+            "types": ",".join(types),
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "limit": limit,
+        }
+        for page in self._pages("/v1/corporate-actions", params, max_pages):
+            yield CorporateActionsPage.model_validate(page)
+
+    # --- options (quotes and implied volatility only) ------------------------------
+
+    def iter_option_snapshot_pages(
+        self,
+        underlying: str,
+        *,
+        expires_from: date | None = None,
+        expires_to: date | None = None,
+        strike_from: float | None = None,
+        strike_to: float | None = None,
+        kind: Literal["call", "put"] | None = None,
+        limit: int = 1000,
+        max_pages: int | None = None,
+    ) -> Iterator[OptionSnapshotsPage]:
+        """Option contracts on `underlying` with their implied volatility. Used to read
+        how large a swing the options market expects; nothing here can trade one."""
+        if not re.fullmatch(r"[A-Z.]{1,6}", underlying):
+            raise ValueError(f"Invalid underlying symbol: {underlying!r}")
+        params: dict[str, Param] = {
+            "feed": "indicative",
+            "type": kind,
+            "expiration_date_gte": expires_from.isoformat() if expires_from else None,
+            "expiration_date_lte": expires_to.isoformat() if expires_to else None,
+            "strike_price_gte": None if strike_from is None else str(strike_from),
+            "strike_price_lte": None if strike_to is None else str(strike_to),
+            "limit": limit,
+        }
+        for page in self._pages(f"/v1beta1/options/snapshots/{underlying}", params, max_pages):
+            yield OptionSnapshotsPage.model_validate(page)
 
     # --- news ----------------------------------------------------------------------
 

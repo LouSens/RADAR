@@ -2597,3 +2597,259 @@ compare mixes, core and satellite. Nothing is deleted without the user's say.
 
 **Not changed.** RADAR never places a trade. Every figure carries its record. Direction
 is not forecast, because nothing tested can (decisions 061, 063, 065, 068).
+
+## 070. When in the month to pay in, and the chance of a dip: the tests, written before running (2026-10-07)
+
+Step 1 of decision 069. The user confirmed "RSI (5,3,3)" is the stochastic oscillator,
+asked for moving averages of 9 and 13 days (exponential) and left the others to me, and
+asked that the machine learning be done properly: an ensemble that votes with
+probabilities, a correct method, the right data, and proper charts.
+
+**The question.** A payment is going in this month whatever happens. Does waiting for a
+technical reading get a lower price than paying on the scheduled day? This has not been
+tested. It is close to the direction question that decisions 061 to 068 closed, but it
+is not the same test: the money always goes in within 21 trading days, and what is
+measured is the price paid. It is the last form of that question to be tried; if it
+fails, it is closed with the others.
+
+**Markets and months.** The 27 markets of decision 067, daily bars from 2016 where they
+exist, markets with under 750 days left out. After a 252-day warm-up, each market's
+days are cut into consecutive blocks of 21 trading days ("months"). Day 0 is the
+scheduled day. A rule pays at the close of the first day its reading is on, and at the
+close of day 20 if it never is. **Saving** = 1 - price paid / close of day 0.
+
+**Part A. What there is to gain** (described, no pass mark): how far below day 0 the
+lowest close of the month is, and the average close of the month against day 0.
+
+**Part B. Eight readings, settings fixed here and not fitted.**
+1. Stochastic (5,3,3): fast line crosses above slow with both under 20 the day before.
+2. RSI (14) under 30.
+3. The 9-day exponential average crosses above the 13-day.
+4. The day's low reaches the 13-day exponential average while the 9-day is above it.
+5. The day's low reaches the 50-day exponential average while the close is above the
+   200-day.
+6. First return into an upward fair value gap (as in decision 060).
+7. First return into an upward order block (as in decision 060).
+8. Fibonacci 61.8%: with H the highest high of the last 60 days and L the lowest low of
+   the 60 days before that high, the day's low reaches H - 0.618 x (H - L) and the
+   close is still above L.
+
+A plain reference with no indicator in it: pay at the first close below day 0's close.
+
+*A reading passes only if all five hold:*
+1. average saving over all months of all markets is at least 0.5%;
+2. its average saving is above zero in more markets than not, by a signed-rank test
+   across markets at 5% after Benjamini-Hochberg over the eight;
+3. it beats its own waits put on the wrong months: keep how long it waited each month,
+   shuffle which month each wait belongs to within the market, 2,000 times; under 5% of
+   shuffles may do as well, after the same correction. (A rule that waits gets a
+   different price just by waiting; this asks whether it picked the day.)
+4. its average saving is above zero in both halves of the period;
+5. it saves more than the plain reference.
+
+Also shown, because it will look better than it is: the share of months with a lower
+price, and the worst months. Waiting for a dip wins small and often and loses large and
+seldom, so a share of months is not a pass mark.
+
+**Part C. An ensemble on the same question.**
+- *Answer to learn*, for each day of a month but the last: is today's close below the
+  average close of the days left in the month?
+- *Inputs*, all known at that day's close, with returns divided by the market's own
+  usual swing so that markets can be pooled: returns over 1, 5, 20 and 60 days; RSI;
+  stochastic fast and slow; gaps to the 9, 13, 50 and 200-day exponential averages;
+  where the close sits in the last 20 days' range; fall from the 60-day high; distance
+  to the Fibonacci level; days since a return to a fair value gap and to an order
+  block; 20-day swing and its ratio to the 60-day; day's range; volume against usual;
+  run of falling days; days left in the month; days to the next Fed, jobs or inflation
+  release; the US stock fund's 20-day return and swing, the long bond fund's 20-day
+  return, and high-yield bonds against Treasuries over 20 days; the market's group.
+- *Models*: logistic regression, a random forest, boosted trees and a small neural
+  network, each turned into a calibrated chance on a validation year, then averaged
+  (soft voting). All markets are trained together: about 60,000 days instead of 2,500.
+- *Time order*: for each test year from 2020, fit on days more than 35 days before the
+  year starts; the last 365 days of those are the validation year (calibration, and the
+  one threshold below); test on the year. Nothing is shuffled.
+- *Planted pattern first* (decision 061): made-up answers with a known rule in two
+  inputs. Model settings are chosen on that only. A member that cannot find it is left
+  out and said so.
+- *The rule tested*: pay on the first day the ensemble's chance is above a threshold,
+  chosen from 0.50, 0.55, 0.60, 0.65, 0.70 on the validation year by average saving.
+- *Pass*: the five conditions of part B, on test years only. Reported beside it: how
+  often the ensemble is right against always giving the commoner answer, with the
+  uncertainty measured by resampling whole calendar months (all markets together,
+  because markets fall on the same days).
+
+**Part D. The chance of a dip.** A forecast of risk, not of direction, which is the
+kind that has held up before (notebook 4).
+- *Answer to learn*: is there a close at least 5% below today's within the next 21
+  trading days?
+- Same inputs (less days left in the month), same four models and vote, same time order.
+- *Two baselines*: the market's own share of such days so far; and a logistic
+  regression on the 20-day swing and group alone.
+- *Pass*: Brier score at least 5% better than the first baseline, with under 5% of
+  month-resamples showing no gain; and in every band of stated chance holding 200 days
+  or more, what happened is within 5 points of what was stated. If the ensemble does
+  not also beat the second baseline, the simpler one is what would be used.
+- If it passes, the assistant may state "chance of a close 5% lower within a month"
+  with its record. It is a warning. It is not a reason to wait: part B and C decide that.
+
+**My guesses.** B: no reading passes; most will show a lower price in over half the
+months and an average saving near zero or below. C: the members find the planted
+pattern; the rule does not pass. D: passes against the market's own share; the ensemble
+is at most a little ahead of the swing alone.
+
+**Done when.** Notebook 15 shows every table and chart with the verdict per part; the
+result is recorded here as 071; lint and tests pass. Files: `analytics/technical.py`
+(exponential average, Fibonacci level, the new readings), `analytics/buying.py` (months,
+day paid, savings, shuffled waits), new `models/payin.py` (inputs, answers, ensemble,
+yearly walk-forward, scoring), their tests, `notebooks/src/15_when_to_pay_in.py`.
+
+## 071. The product, restated by the user: explain, protect, size, and show the work (2026-10-07)
+
+Decision 069 called RADAR a portfolio assistant and I then described it as a planner
+for a passive monthly investor. The user corrected that. In their words they want to
+know what is going on and why their assets move; how to prevent large losses (cut-loss
+and take-profit ranges with conditions, a stop moved to break-even before a profit
+turns into a loss, adding and reducing without going all in or out); analytics for each
+asset they own; and an app that demos well and shows a full machine learning pipeline
+and full-stack work. They have no rules of their own: the app is to propose rules whose
+parameters they can edit to see different results. They also find the app unfocused and
+the notebooks hard to read.
+
+**Decided.**
+- The product is defined in `PROJECT_SPEC.md` section 0: three jobs (explain, protect,
+  size), features F11 to F15, five places, and build plan A to I. It replaces the
+  one-sentence product of 069 and its order of work.
+- What leaves the app is listed in `AUDIT.md` section 5. Nothing is deleted without the
+  user's say.
+- News and indicators have a use after all: explaining a move, and as readings on a
+  chart. Decision 045 stands (news drives no forecast).
+- Decision 061 said never to show a level as a place to add or reduce. Revised at the
+  user's request: a level may be drawn on a chart as a reading, and may trigger a rule
+  the user has switched on, shown with that rule's record. It is still never RADAR's
+  own call.
+- Trial and error on rule settings is allowed only with a guard: search on the earlier
+  part of the record, judge on the later part and on other markets, and state how many
+  settings were tried.
+- Direction research ends with notebook 15, whose result is still to be recorded.
+
+**Corrected.** The first audit said the analysis jobs are run by hand. The worker
+schedules all sixteen.
+
+## 072. What Alpaca and Binance can give, measured, and what to use it for (2026-10-07)
+
+The user asked that RADAR use everything its two sources can give, to protect their
+portfolio. Their other answers the same day: start the cut; gain and loss in US dollars;
+purchases by manual entry first; fundamental news means headlines only.
+
+**Measured on this Alpaca plan** (market-data host only; shapes read, nothing stored):
+
+| Data | Answers | Use in RADAR | Decision |
+|---|---|---|---|
+| Daily and hourly bars, stocks from 2016, crypto from 2021 | yes | in use | keep |
+| 1-minute bars, stocks and crypto | yes | a sharper measure of each day's swing | later, as a written test of whether it improves the swing forecast |
+| Snapshots (today so far, yesterday, latest quote) | yes | "today" for every holding on Home and the holding page | **use**; client method added |
+| Dividends and splits | yes | real return of stock holdings; ex-dividend days in "why it moved" and Calendar | **use**; client method added |
+| Option quotes with implied volatility and greeks (indicative feed) | yes, for SPY, QQQ, GLD, IBIT and other optionable names | the options market's own forecast of swings: an input to the risk forecast and to cut-loss and take-profit ranges | **use**; client method added. No history is served, so readings are collected from now on |
+| News with full article text | yes | better choice of headlines for "why it moved" | use headlines and summaries only, as the user chose; text is never committed |
+| Top movers, most active | yes | market colour | not used: about the market, not the holdings |
+| Order book, individual trades | yes | very short-term trading | not used |
+| Auctions, exchange codes | yes | none | not used |
+| Currency rates, logos, fixed income | refused by the plan | | not available; gain and loss stay in US dollars |
+| Crypto perpetuals | no such endpoint on this host | | not available here (Binance has it) |
+| Stock bars before 2016 | empty | | not available |
+
+**Binance, public and keyless** (already approved in 066 and 067 for research): hourly
+and daily bars back to 2017 for every pair, and funding rates. Proposed new use: price
+history for coins the user holds, where Alpaca's starts in 2021 or does not list the
+coin at all. This would double the crypto record. Same endpoints, new purpose, so it is
+put to the user here before being built.
+
+**Binance, with the user's read-only key.** In use: balances in spot, margin, funding,
+earn and futures, and wallet totals. Not in use, each needing the user's agreement and a
+test before it is added:
+
+| Read | Endpoint | What it would give |
+|---|---|---|
+| Trade history | `GET /api/v3/myTrades` | What was paid for each coin: cost, break-even, real gain. The user chose manual entry first, so this waits |
+| Daily account snapshots | `GET /sapi/v1/accountSnapshot` | The account's value day by day (last 30 days), so a history builds up |
+| Deposits and withdrawals | `GET /sapi/v1/capital/deposit/hisrec`, `GET /sapi/v1/capital/withdraw/history` | Money in and out, needed to tell earnings from top-ups |
+| Convert and card purchases | `GET /sapi/v1/convert/tradeFlow`, `GET /sapi/v1/fiat/payments` | Purchases that never appear as trades |
+| Earn rewards | `GET /sapi/v1/asset/assetDividend` | Interest and rewards received |
+| Futures income | `GET /fapi/v1/income` | Realised gain, loss and funding paid on futures |
+
+Not proposed: any read of open or past orders. The user's rule is no order endpoints.
+
+**What this can and cannot raise.** More data makes three things more accurate: the
+record of what the user paid and earned, the estimate of how rough the coming days will
+be, and the explanation of a move. It does not make direction forecastable; decisions
+061 to 068 stand.
+
+**Built now.** Typed, tested client methods for snapshots, dividends and splits, and
+option snapshots (`providers/alpaca_rest.py`, `providers/schemas.py`), with invented
+fixtures. Nothing stores or shows them yet; that comes with steps C to G of the build
+plan.
+
+## 073. More reads from Binance, the cut, and the result of the pay-in test (2026-10-07)
+
+**Agreed by the user today.** Binance's public price history may be used for the coins
+they hold, not only for research. The six further reads of decision 072 may be added
+with their read-only key. Gain and loss in US dollars; purchases by manual entry first;
+headlines only.
+
+**Account history, read-only** (`providers/binance_history.py`). Eight endpoints, every
+one a GET that lists past events: fills (`/api/v3/myTrades`), daily balances
+(`/sapi/v1/accountSnapshot`), coins arriving (`/sapi/v1/capital/deposit/hisrec`) and
+leaving (`/sapi/v1/capital/withdraw/history`), conversions
+(`/sapi/v1/convert/tradeFlow`), card purchases (`/sapi/v1/fiat/payments`), rewards
+(`/sapi/v1/asset/assetDividend`), futures income (`/fapi/v1/income`). Kept in a module
+of its own so that the guard on `binance.py` stays as strict as it was. Tests assert the
+list is exactly these, that every request is a signed GET with no body, and that orders,
+quotes, applications and transfers are refused before anything is sent. Open and past
+orders are not read at all. All eight answered against the user's account (row counts
+looked at, no values). Nothing stores or shows them yet: that is step C.
+
+**Not built yet: Binance public history for held coins.** The bars table can hold a
+second venue per symbol, but every reader would have to learn to join two venues, and a
+dollar price would be spliced to a USDT one. It is step D's first task, with a test that
+the join leaves no jump.
+
+**The cut.** Out of the screens: markets together; what it moves with (market and
+portfolio); forecast accuracy per market; compare mixes; core and satellite; the weekend
+tile; tone versus price and the subject breakdown in News; the news test in Daily
+movement; the page per kind of event. Out of the API: the routes for tone versus price,
+news and swings, and tags. About 3,000 lines removed; 112 frontend tests and all backend
+tests pass.
+
+Kept on purpose, to be decided at steps E and G: the `/relationships`, `/drivers` and
+`/track-record` routes and every scheduled job, because "why it moved" needs the
+drivers and the Models page needs the forecast records. The tone study is still
+computed because the summary card reads it. Signals stays a place until rule alerts
+replace it. Research code stays inside the app package until the notebooks are rebuilt
+(step H), since the built notebooks import it by its present path.
+
+**The pay-in test (decision 070), run once. Notebook 15 shows every table.**
+- A. Knowing the month's lowest close in advance is worth 1.5% (bonds) to 10% (crypto)
+  of one payment. A day picked at random costs about 0.4%.
+- B. 0 of 8 readings pass. Over 2,911 months all eight paid more than the scheduled
+  day, by 0.2% to 0.8%; none was ahead in more than 7 of 27 markets; none did better
+  than its own waits on the wrong months. Paying at the first lower close got a lower
+  price in 85% of months and still paid 0.3% more on average.
+- C. The ensemble recovered 74% to 91% of a planted pattern. On real answers it was
+  right on 53.5% of 43,840 test days against 54.3% for the commoner answer, and its
+  rule paid 0.6% more than the scheduled day. It does not pass.
+- D. As designed, the ensemble's chance of a 5% dip scored about 10% worse than the
+  market's own share so far, and no forecast was true to its chances. The design was at
+  fault: the models were not given the market's own share, and each year's models
+  stopped learning over a year before it and had seen no coin before 2024.
+- Guesses: right on B and C, wrong on D.
+
+**Decided.** Pay in on the scheduled day: no reading is shown as a time to pay in.
+Direction and timing research is closed. Part D is redone once, as the app's large-fall
+forecast (step G), with the market's own share as an input, models refitted on
+everything up to the gap, and the change written down before it is run.
+
+**On the notebook itself.** Its numbers stand and it is committed as the record of this
+test. As a document it is not good enough: cells of 70 lines, lines 300 characters wide,
+nine functions written in the notebook, jargon column names. It is rebuilt with the
+others in step H and is not the model for them.

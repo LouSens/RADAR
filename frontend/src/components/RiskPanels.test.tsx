@@ -8,11 +8,9 @@ import { linePaths, VolatilityPanel } from "./VolatilityPanel";
 const state = vi.hoisted(() => ({
   volatility: null as unknown,
   risk: null as unknown,
-  newsTest: null as unknown,
 }));
 vi.mock("../api/queries", () => ({
   useVolatility: () => ({ data: state.volatility }),
-  useNewsTest: () => ({ data: state.newsTest }),
   useRisk: () => ({ data: state.risk }),
 }));
 
@@ -117,55 +115,6 @@ describe("VolatilityPanel", () => {
   afterEach(cleanup);
   beforeEach(() => {
     state.volatility = VOLATILITY;
-    state.newsTest = null;
-  });
-
-  it("says plainly when news did not improve the forecast, with both errors shown", () => {
-    const pair = (family: "har" | "gbt", without: number, withNews: number, helps: boolean) => ({
-      family,
-      qlike_without: without,
-      qlike_with: withNews,
-      improvement: (without - withNews) / without,
-      dm_statistic: -1,
-      dm_p_value: helps ? 0.001 : 0.4,
-      dm_p_adjusted: helps ? 0.01 : 0.7,
-      verdict: helps ? ("news helps" as const) : ("no measurable gain" as const),
-    });
-    const horizon = (days: number, helps: boolean) => ({
-      steps: days === 1 ? 1 : 5,
-      horizon_days: days,
-      n: 668,
-      first_day: "2024-02-02",
-      last_day: "2026-10-01",
-      pairs: [pair("har", 0.728, helps ? 0.6 : 0.731, helps), pair("gbt", 1.002, 1.021, false)],
-    });
-    state.newsTest = {
-      symbol: "GLD",
-      model_version: "news-volatility-1",
-      comparisons: 12,
-      horizons: [horizon(1, false)],
-      news_helps: false,
-    };
-    render(<VolatilityPanel asset={GOLD} />);
-    expect(screen.getByText("Does news improve this forecast?")).toBeInTheDocument();
-    expect(screen.getByText("No measurable gain")).toBeInTheDocument();
-    expect(screen.getByText("0.728")).toBeInTheDocument();
-    expect(screen.getByText("0.731")).toBeInTheDocument();
-    expect(screen.getByText(/Error higher by 0.4%, within chance/)).toBeInTheDocument();
-    expect(screen.getByText(/before the test was run/)).toBeInTheDocument();
-    expect(screen.getByText(/12 comparisons across all markets/)).toBeInTheDocument();
-    // When the rule is met for the horizon in view, it says so.
-    cleanup();
-    state.newsTest = {
-      symbol: "GLD",
-      model_version: "news-volatility-1",
-      comparisons: 12,
-      horizons: [horizon(1, true)],
-      news_helps: true,
-    };
-    render(<VolatilityPanel asset={GOLD} />);
-    expect(screen.getByText("Yes, measurably")).toBeInTheDocument();
-    expect(screen.getByText(/Error lower by 17.6%, more than chance/)).toBeInTheDocument();
   });
 
   it("shows nothing until a forecast is stored", () => {

@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -99,6 +99,77 @@ def test_latest_crypto_endpoints_parse(
     assert quotes["BTC/USD"].ask_price >= quotes["BTC/USD"].bid_price > 0
     assert trades["PAXG/USD"].price > 0
     assert quotes["BTC/USD"].timestamp.utcoffset() is not None
+
+
+def test_snapshots_parse_and_allow_missing_parts(
+    client: AlpacaDataClient, api: respx.MockRouter, load: Load
+) -> None:
+    stocks = api.get("/v2/stocks/snapshots").respond(json=load("stock_snapshots.json"))
+    api.get("/v1beta3/crypto/us-1/snapshots").respond(json=load("crypto_snapshots.json"))
+
+    found = client.get_stock_snapshots(["AAA", "BBB"])
+    coins = client.get_crypto_snapshots(["BTC/USD"], loc="us-1").snapshots
+
+    assert stocks.calls.last.request.url.params["feed"] == "iex"
+    full = found["AAA"]
+    assert full.daily_bar is not None
+    assert full.previous_daily_bar is not None
+    assert full.daily_bar.close / full.previous_daily_bar.close - 1 == pytest.approx(
+        500.5 / 495 - 1
+    )
+    assert full.latest_quote is not None
+    assert full.latest_quote.timestamp.utcoffset() is not None
+    assert found["BBB"].daily_bar is None
+    assert found["BBB"].latest_quote is None
+    assert coins["BTC/USD"].latest_trade is not None
+    assert coins["BTC/USD"].latest_trade.price == 86000.0
+
+
+def test_dividends_and_splits_parse_and_are_asked_for_by_ex_date(
+    client: AlpacaDataClient, api: respx.MockRouter, load: Load
+) -> None:
+    route = api.get("/v1/corporate-actions").respond(json=load("corporate_actions.json"))
+
+    pages = list(client.iter_corporate_action_pages(["AAA"], date(2024, 1, 1), date(2024, 12, 31)))
+
+    sent = route.calls.last.request.url.params
+    assert sent["start"] == "2024-01-01"
+    assert sent["end"] == "2024-12-31"
+    assert sent["types"] == "cash_dividend,forward_split,reverse_split"
+    actions = pages[0].corporate_actions
+    assert actions.cash_dividends[0].ex_date == date(2024, 3, 5)
+    assert actions.cash_dividends[0].rate == 0.04
+    assert (actions.forward_splits[0].new_rate, actions.forward_splits[0].old_rate) == (10, 1)
+    assert actions.reverse_splits == []
+
+
+def test_option_snapshots_carry_implied_volatility_where_there_is_one(
+    client: AlpacaDataClient, api: respx.MockRouter, load: Load
+) -> None:
+    route = api.get("/v1beta1/options/snapshots/AAA").respond(json=load("option_snapshots.json"))
+
+    pages = list(
+        client.iter_option_snapshot_pages(
+            "AAA", expires_from=date(2026, 11, 1), expires_to=date(2026, 11, 30), kind="call"
+        )
+    )
+
+    sent = route.calls.last.request.url.params
+    assert sent["feed"] == "indicative"
+    assert sent["expiration_date_gte"] == "2026-11-01"
+    assert sent["type"] == "call"
+    quoted = pages[0].snapshots["AAA261113C00500000"]
+    assert quoted.implied_volatility == 0.1538
+    assert quoted.greeks is not None
+    assert quoted.greeks.delta == 0.52
+    assert pages[0].snapshots["AAA261113C00900000"].implied_volatility is None
+
+
+def test_an_option_underlying_that_is_not_a_plain_symbol_is_rejected(
+    client: AlpacaDataClient,
+) -> None:
+    with pytest.raises(ValueError, match="underlying"):
+        next(client.iter_option_snapshot_pages("../v2/orders"))
 
 
 def test_news_parses_and_uses_provider_symbol_format(

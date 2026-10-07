@@ -580,9 +580,9 @@ def get_sentiment(
     )
 
 
-@router.get("/assets/{symbol:path}/event-study", response_model=EventStudyOut)
 def get_event_study(symbol: str, universe: UniverseDep, session: SessionDep) -> EventStudyOut:
-    """Whether news tone has led price, followed it, or neither, with the evidence."""
+    """Whether news tone has led price, followed it, or neither. Read by the summary
+    only; it is no longer a route of its own."""
     asset = find_asset(universe, symbol)
     stored = event_study_job.current(session, asset.symbol)
     if stored is None:

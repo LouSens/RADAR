@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PortfolioAnalysis, PortfolioPlan } from "../api/client";
 import { levelMix, levelNow, signalText } from "../lib/plan";
-import { LevelsPanel, MixesPanel, targetSummary } from "./PlanPanels";
+import { LevelsPanel, targetSummary } from "./PlanPanels";
 
 function must<T>(value: T | null | undefined): T {
   if (value == null) throw new Error("missing");
@@ -308,42 +308,6 @@ describe("LevelsPanel", () => {
     ).toBeVisible();
     expect(screen.getByText("Within your target on every measure.")).toBeVisible();
     expect(targetSummary(own.plan).note).toBe("Target: a mix of your own");
-  });
-});
-
-describe("MixesPanel", () => {
-  beforeEach(() => {
-    state.mutate = vi.fn();
-  });
-  afterEach(cleanup);
-
-  it("compares the mixes on movement and deepest fall, with the split of each", () => {
-    render(<MixesPanel analysis={ANALYSIS} />);
-    expect(screen.getByText("Smallest movement moved least: ±0.19% a day")).toBeVisible();
-    expect(screen.getAllByText("As it is now").length).toBeGreaterThan(1);
-    expect(screen.getByText("-9.4%")).toBeVisible();
-    expect(
-      screen.getByRole("img", { name: /^Smallest movement split: Bitcoin 10%, US stocks 90%$/ }),
-    ).toBeVisible();
-    expect(screen.getByText("Bitcoin 10% · US stocks 90%")).toBeVisible();
-    // Without a target there is nothing to apply a split to.
-    expect(screen.getByText(/These splits apply to a risk-level target/)).toBeVisible();
-    for (const button of screen.getAllByRole("button", { name: /Use for my target|In use/ })) {
-      expect(button).toBeDisabled();
-    }
-  });
-
-  it("applies a split to the chosen target and never to anything else", () => {
-    render(<MixesPanel analysis={withTarget({})} />);
-    expect(screen.getByRole("button", { name: "In use" })).toBeDisabled();
-    fireEvent.click(must(screen.getAllByRole("button", { name: "Use for my target" })[1]));
-    expect(state.mutate).toHaveBeenCalledWith({ level: "moderate", split: "min_variance" });
-  });
-
-  it("explains itself when there is nothing to compare", () => {
-    const single = { ...ANALYSIS, plan: { ...PLAN, mixes: [] } } as unknown as PortfolioAnalysis;
-    render(<MixesPanel analysis={single} />);
-    expect(screen.getByText(/needs at least two holdings/)).toBeVisible();
   });
 });
 
