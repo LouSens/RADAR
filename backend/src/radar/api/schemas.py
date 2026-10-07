@@ -18,6 +18,8 @@ class AssetOut(BaseModel):
     name: str
     asset_class: Literal["crypto", "stock"]
     is_primary: bool
+    # "stocks", "gold" or "bitcoin" for the long-run holdings; null for anything else.
+    kind: str | None = None
     history_start: date
     news_start: date | None
     # False for assets that only trade during US market hours.

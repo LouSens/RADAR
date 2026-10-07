@@ -6,6 +6,7 @@ import { formatChange, formatCount, formatShare } from "../lib/format";
 import { stepsLabel } from "../lib/outlook";
 import { formatDate } from "../lib/time";
 import { Caption, Evidence, Panel, Segmented, StatRow, assetColorVar, type PanelProps } from "./ui";
+import { CardSkeleton } from "./Skeleton";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -104,8 +105,10 @@ function verdict(pValue: number | null | undefined, worse: boolean): string {
 }
 
 export function VolatilityPanel({ asset, trust }: PanelProps) {
-  const volatility = useVolatility(asset.slug).data;
+  const query = useVolatility(asset.slug);
+  const volatility = query.data;
   const [key, setKey] = useState<HorizonKey>("1");
+  if (query.isPending) return <CardSkeleton lines={4} />;
   if (!volatility) return null;
   const horizon =
     volatility.horizons.find((h) => String(h.horizon_days) === key) ?? volatility.horizons[0];

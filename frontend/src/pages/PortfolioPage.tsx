@@ -4,6 +4,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from "../api/client";
 import {
   useAccountRecord,
+  useAssets,
   usePortfolio,
   usePortfolioAnalysis,
   useSetLostCoins,
@@ -409,8 +410,8 @@ function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
       </div>
 
       {xray.symbols.length > 1 && (
-        <div className="border-t border-line pt-5">
-          <h3 className="text-sm font-semibold tracking-tight">How closely they move together</h3>
+        <details className="about">
+          <summary>How closely they move together</summary>
           <div className="mt-3">
             <table className="w-full text-sm">
               <thead>
@@ -451,7 +452,7 @@ function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
               },
             ]}
           />
-        </div>
+        </details>
       )}
     </Panel>
   );
@@ -476,23 +477,42 @@ function LimitCard({
 }) {
   const test = limit.backtest;
   const unit = steps === 1 ? "days" : "weeks";
+  const one = Math.round(1 / (1 - level));
   return (
-    <div className="well p-4">
-      <p className="label">{badLabel(level, steps)}</p>
-      <p className="price-lg mt-2">{formatMoney(value * limit.var)}</p>
-      <p className="num mt-1 text-sm text-muted">{formatShare(limit.var, 1)} of your portfolio</p>
-      <p className="mt-2 text-sm leading-relaxed text-muted">
-        Beyond that, losses have averaged{" "}
-        <span className="num text-ink">{formatMoney(value * limit.expected_shortfall)}</span> (
-        <span className="num">{formatShare(limit.expected_shortfall, 1)}</span>).
-      </p>
-      <p className="mt-2 text-sm leading-relaxed text-muted">
-        Passed <span className="num text-ink">{formatCount(test.breaches)}</span> times in{" "}
-        <span className="num text-ink">{formatCount(test.n)}</span> past {unit}; about{" "}
-        <span className="num text-ink">{expected(test.expected_breaches)}</span> expected.
-      </p>
+    <div className="well flex flex-col gap-3 p-4">
+      <div>
+        <p className="label">{badLabel(level, steps)}</p>
+        <p className="price-lg mt-2 text-alert">−{formatMoney(value * limit.var)}</p>
+        <p className="num mt-1 text-sm text-muted">{formatShare(limit.var, 1)} of your portfolio</p>
+      </div>
+      {one <= 100 && (
+        <div>
+          <OneIn lit={1} of={one} label={`About 1 of every ${one} ${unit} is worse than this`} />
+          <p className="mt-1.5 text-xs text-muted">
+            About 1 of every {one} {unit} is worse
+          </p>
+        </div>
+      )}
+      <dl className="grid grid-cols-2 gap-3 border-t border-line pt-3 text-sm">
+        <div>
+          <dt className="label">When it is worse</dt>
+          <dd className="num mt-1">
+            −{formatMoney(value * limit.expected_shortfall)}{" "}
+            <span className="text-muted">on average</span>
+          </dd>
+        </div>
+        <div>
+          <dt className="label">In the past</dt>
+          <dd className="num mt-1">
+            {formatCount(test.breaches)} of {formatCount(test.n)} {unit}{" "}
+            <span className="hidden text-muted @md:inline">
+              (about {expected(test.expected_breaches)} expected)
+            </span>
+          </dd>
+        </div>
+      </dl>
       {!test.reliable && (
-        <p className="mt-2 text-sm text-alert">
+        <p className="text-sm text-alert">
           This figure has not held up in the past. Treat it as rough.
         </p>
       )}
@@ -569,6 +589,8 @@ function Episodes({ analysis }: { analysis: PortfolioAnalysis }) {
   const worst = worstEpisode(analysis.stress);
   const name = (symbol: string) =>
     analysis.positions.find((p) => p.symbol === symbol)?.name ?? symbol;
+  // Bars are drawn against the largest move, so they can be compared at a glance.
+  const deepest = Math.max(...analysis.stress.map((e) => Math.abs(e.change ?? 0)), 0.0001);
   return (
     <Panel
       id="episodes"
@@ -578,75 +600,90 @@ function Episodes({ analysis }: { analysis: PortfolioAnalysis }) {
         worst?.change != null ? `${formatChange(worst.change)} through ${worst.name}` : undefined
       }
     >
-      <ul className="flex flex-col">
-        {analysis.stress.map((episode) => (
-          <li key={episode.name} className="border-t border-line py-5 first:border-t-0 first:pt-0">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h3 className="font-medium">{episode.name}</h3>
-              <p className="num text-sm text-muted">
-                {formatDate(episode.start)} to {formatDate(episode.end)}
-              </p>
-            </div>
-            {!episode.available || episode.change == null ? (
-              <p className="mt-2 text-sm text-muted">
-                Not replayed: none of the holdings has prices for these dates.
-              </p>
-            ) : (
-              <>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
+      <ul className="flex flex-col gap-4">
+        {analysis.stress.map((episode) => {
+          const shown = episode.available && episode.change != null;
+          const change = episode.change ?? 0;
+          const money = analysis.covered_value * episode.covered_weight * change;
+          return (
+            <li key={episode.name}>
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="min-w-0 text-sm font-medium">{episode.name}</h3>
+                {shown && (
                   <span
-                    className={`num text-lg font-semibold ${episode.change < 0 ? "text-alert" : "text-calm"}`}
+                    className={`num shrink-0 text-sm font-semibold ${change < 0 ? "text-alert" : "text-calm"}`}
                   >
-                    {formatChange(episode.change)}
-                  </span>{" "}
-                  from first day to last, or{" "}
-                  <span className="num text-ink">
-                    {formatMoney(
-                      Math.abs(analysis.covered_value * episode.covered_weight * episode.change),
-                    )}
-                  </span>{" "}
-                  on today&apos;s value.
-                  {episode.deepest_fall != null && (
-                    <>
-                      {" "}
-                      Deepest fall on the way{" "}
-                      <span className="num text-ink">{formatShare(episode.deepest_fall, 1)}</span>.
-                    </>
-                  )}
-                  {episode.worst_day && episode.worst_day_change != null && (
-                    <>
-                      {" "}
-                      Worst day {formatDate(episode.worst_day)}:{" "}
-                      <span className="num text-ink">{formatChange(episode.worst_day_change)}</span>
-                      .
-                    </>
-                  )}
-                </p>
-                <ul className="mt-3 grid grid-cols-1 gap-x-8 @xl:grid-cols-2">
-                  {episode.parts.map((part) => (
-                    <li
-                      key={part.symbol}
-                      className="flex items-baseline justify-between gap-4 border-t border-line py-2 text-sm"
-                    >
-                      <span>{name(part.symbol)}</span>
-                      <span className="num text-muted">
-                        itself {formatChange(part.change)} · added{" "}
-                        <span className="text-ink">{formatChange(part.contribution)}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {episode.missing.length > 0 && (
-                  <p className="mt-3 text-sm text-alert">
-                    Partial: no prices for {episode.missing.map(name).join(", ")} in this period.
-                    The figures cover the other {formatShare(episode.covered_weight, 0)} of the
-                    portfolio. Nothing was substituted.
-                  </p>
+                    {formatChange(change)}{" "}
+                    <span className="font-normal text-muted">
+                      {change < 0 ? "−" : "+"}
+                      {formatMoney(Math.abs(money))}
+                    </span>
+                  </span>
                 )}
-              </>
-            )}
-          </li>
-        ))}
+              </div>
+              {shown ? (
+                <div
+                  className="mt-2 h-2 rounded-full bg-line"
+                  role="img"
+                  aria-label={`${episode.name}: ${formatChange(change)}`}
+                >
+                  <div
+                    className={`h-full rounded-full ${change < 0 ? "bg-alert" : "bg-calm"}`}
+                    style={{ width: `${Math.max((Math.abs(change) / deepest) * 100, 2)}%` }}
+                  />
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-muted">
+                  Not replayed: none of the holdings has prices for these dates.
+                </p>
+              )}
+              {shown && (
+                <details className="about mt-2">
+                  <summary>Details</summary>
+                  <dl className="facts mt-3">
+                    <div>
+                      <dt className="label">When</dt>
+                      <dd>
+                        {formatDate(episode.start)} to {formatDate(episode.end)}
+                      </dd>
+                    </div>
+                    {episode.deepest_fall != null && (
+                      <div>
+                        <dt className="label">Deepest fall on the way</dt>
+                        <dd className="num">{formatShare(episode.deepest_fall, 1)}</dd>
+                      </div>
+                    )}
+                    {episode.worst_day && episode.worst_day_change != null && (
+                      <div>
+                        <dt className="label">Worst day</dt>
+                        <dd className="num">
+                          {formatChange(episode.worst_day_change)} on{" "}
+                          {formatDate(episode.worst_day)}
+                        </dd>
+                      </div>
+                    )}
+                    {episode.parts.map((part) => (
+                      <div key={part.symbol}>
+                        <dt className="label">{name(part.symbol)}</dt>
+                        <dd className="num">
+                          itself {formatChange(part.change)}, added{" "}
+                          {formatChange(part.contribution)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {episode.missing.length > 0 && (
+                    <p className="mt-3 text-sm text-alert">
+                      Partial: no prices for {episode.missing.map(name).join(", ")} in this period.
+                      The figures cover the other {formatShare(episode.covered_weight, 0)} of the
+                      portfolio. Nothing was substituted.
+                    </p>
+                  )}
+                </details>
+              )}
+            </li>
+          );
+        })}
       </ul>
       <Caption
         facts={[
@@ -741,6 +778,7 @@ export function PortfolioPage() {
   const record = useAccountRecord().data;
   const setLost = useSetLostCoins();
   const steps = useSteps().data;
+  const kinds = Object.fromEntries((useAssets().data ?? []).map((a) => [a.symbol, a.kind]));
 
   if (!isPortfolioSection(section)) return <Navigate to={BASE} replace />;
   const empty = portfolio.data !== undefined && portfolio.data.holdings.length === 0;
@@ -811,10 +849,17 @@ export function PortfolioPage() {
           suggestions={[
             ...new Set([
               ...(record?.assets ?? []).filter((a) => a.held).map((a) => a.asset),
-              "BTC",
-              "PAXG",
-              "ETH",
-              "SOL",
+              // Then the coins traded most, so the list follows the account.
+              ...[...(record?.assets ?? [])]
+                .sort(
+                  (x, y) =>
+                    y.standing.purchases +
+                    y.standing.sales -
+                    x.standing.purchases -
+                    x.standing.sales,
+                )
+                .slice(0, 5)
+                .map((a) => a.asset),
             ]),
           ]}
         />
@@ -834,7 +879,7 @@ export function PortfolioPage() {
 
       {portfolio.data &&
         section === "try" &&
-        (analysis ? <PlanPanel analysis={analysis} /> : needsHoldings)}
+        (analysis ? <PlanPanel analysis={analysis} kinds={kinds} /> : needsHoldings)}
       {portfolio.data && section === "try" && (
         <Link to={`${BASE}/buying`} className="menu-row">
           <span className="min-w-0">

@@ -13,6 +13,7 @@ import {
 } from "../lib/outlook";
 import { formatDate } from "../lib/time";
 import { Evidence, Caption, Panel, Segmented, StatRow, assetColorVar, type PanelProps } from "./ui";
+import { CardSkeleton } from "./Skeleton";
 
 const HORIZONS = [
   { value: "1", label: "1 day" },
@@ -283,9 +284,11 @@ function TrackRecord({
 }
 
 export function OutlookPanel({ asset, trust }: PanelProps) {
-  const simulation = useSimulation(asset.slug).data;
+  const query = useSimulation(asset.slug);
+  const simulation = query.data;
   const calibration = useCalibration(asset.slug).data;
   const [key, setKey] = useState<HorizonKey>("7");
+  if (query.isPending) return <CardSkeleton lines={5} />;
   if (!simulation) return null;
   const horizon =
     simulation.horizons.find((h) => String(h.horizon_days) === key) ?? simulation.horizons[0];

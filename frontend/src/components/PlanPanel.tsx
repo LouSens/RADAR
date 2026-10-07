@@ -2,42 +2,77 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import type { PortfolioAnalysis } from "../api/client";
-import { useSetTarget, useWhatIf } from "../api/queries";
+import { useMixRisk, useSetTarget, useWhatIf } from "../api/queries";
 import { formatMoney } from "../lib/format";
+import { Skeleton } from "./Skeleton";
 import { Caption, Panel } from "./ui";
 import { StackBar, holdingColour, type Part } from "./viz";
 
 const CASH = "USD";
-/** The long-run holdings. Anything else is a small bet, capped. */
-const MAIN = new Set(["SPY", "GLD", "PAXG/USD", "BTC/USD"]);
+/** The most of the account that anything outside the long-run holdings may take. */
 const SMALL_BET_CAP = 1;
 const shortName = (name: string) => name.split(" (")[0] ?? name;
 
+/** What each holding is, by symbol: "stocks", "gold", "bitcoin", or nothing. */
+export type Kinds = Record<string, string | null | undefined>;
+
 /** Three starting points. Shares of the whole account, in percent; cash is the rest. */
 export const STARTS = [
-  { key: "careful", label: "Careful", stocks: 25, gold: 20, bitcoin: 7, fell: 16 },
-  { key: "middle", label: "Middle", stocks: 37, gold: 20, bitcoin: 15, fell: 27 },
-  { key: "bolder", label: "Bolder", stocks: 43, gold: 17, bitcoin: 28, fell: 39 },
+  { key: "careful", label: "Careful", stocks: 25, gold: 20, bitcoin: 7 },
+  { key: "middle", label: "Middle", stocks: 37, gold: 20, bitcoin: 15 },
+  { key: "bolder", label: "Bolder", stocks: 43, gold: 17, bitcoin: 28 },
 ] as const;
+type Start = (typeof STARTS)[number];
 
 type Shares = Record<string, number>;
 
-/** A starting point turned into shares for the holdings the account really has. */
-export function sharesFor(start: (typeof STARTS)[number], symbols: string[], now: Shares): Shares {
-  const kind = (symbol: string) =>
-    symbol === "SPY"
-      ? start.stocks
-      : symbol === "BTC/USD"
-        ? start.bitcoin
-        : symbol === "PAXG/USD" || symbol === "GLD"
-          ? start.gold
-          : undefined;
+/**
+ * A starting point turned into shares for the holdings the account really has. Each kind
+ * of long-run holding takes its share; where two holdings are the same kind they split
+ * it; anything else keeps what it has, up to the cap for a small bet.
+ */
+export function sharesFor(start: Start, symbols: string[], now: Shares, kinds: Kinds): Shares {
+  const count = (kind: string) => symbols.filter((s) => kinds[s] === kind).length;
   return Object.fromEntries(
-    symbols.map((s) => [s, kind(s) ?? Math.min(now[s] ?? 0, SMALL_BET_CAP)]),
+    symbols.map((s) => {
+      const kind = kinds[s];
+      if (kind === "stocks" || kind === "gold" || kind === "bitcoin") {
+        return [s, Math.round(start[kind] / count(kind))];
+      }
+      return [s, Math.min(now[s] ?? 0, SMALL_BET_CAP)];
+    }),
   );
 }
 
-export function PlanPanel({ analysis }: { analysis: PortfolioAnalysis }) {
+/** One starting point, with how far that mix of these holdings has fallen before. */
+function StartButton({
+  start,
+  shares,
+  onPick,
+}: {
+  start: Start;
+  shares: Shares;
+  onPick: () => void;
+}) {
+  const weights = Object.fromEntries(Object.entries(shares).map(([s, v]) => [s, v / 100]));
+  const risk = useMixRisk(weights);
+  return (
+    <button type="button" className="well press p-3 text-left" onClick={onPick}>
+      <span className="block text-sm font-semibold">{start.label}</span>
+      <span className="mt-0.5 block text-xs text-muted">
+        {risk.data ? (
+          `fell up to ${Math.abs(risk.data.deepest_fall * 100).toFixed(0)}%`
+        ) : risk.isPending ? (
+          <Skeleton className="h-3 w-16" />
+        ) : (
+          "past fall not known"
+        )}
+      </span>
+    </button>
+  );
+}
+
+export function PlanPanel({ analysis, kinds }: { analysis: PortfolioAnalysis; kinds: Kinds }) {
   const holdings = analysis.positions.filter((p) => p.symbol !== CASH);
   const symbols = holdings.map((p) => p.symbol);
   const now: Shares = Object.fromEntries(
@@ -72,7 +107,7 @@ export function PlanPanel({ analysis }: { analysis: PortfolioAnalysis }) {
 
   const set = (symbol: string, value: number) => {
     const others = invested - (shares[symbol] ?? 0);
-    const cap = MAIN.has(symbol) ? 100 : SMALL_BET_CAP;
+    const cap = kinds[symbol] ? 100 : SMALL_BET_CAP;
     setShares({ ...shares, [symbol]: Math.max(0, Math.min(value, cap, 100 - others)) });
     setTouched(true);
   };
@@ -93,20 +128,20 @@ export function PlanPanel({ analysis }: { analysis: PortfolioAnalysis }) {
       <div>
         <p className="label mb-2">Start from</p>
         <div className="grid grid-cols-3 gap-2 @xl:gap-3">
-          {STARTS.map((start) => (
-            <button
-              key={start.key}
-              type="button"
-              className="well press p-3 text-left"
-              onClick={() => {
-                setShares(sharesFor(start, symbols, now));
-                setTouched(true);
-              }}
-            >
-              <span className="block text-sm font-semibold">{start.label}</span>
-              <span className="mt-0.5 block text-xs text-muted">fell up to {start.fell}%</span>
-            </button>
-          ))}
+          {STARTS.map((start) => {
+            const picked = sharesFor(start, symbols, now, kinds);
+            return (
+              <StartButton
+                key={start.key}
+                start={start}
+                shares={picked}
+                onPick={() => {
+                  setShares(picked);
+                  setTouched(true);
+                }}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -123,7 +158,7 @@ export function PlanPanel({ analysis }: { analysis: PortfolioAnalysis }) {
                     aria-hidden="true"
                   />
                   <span className="truncate font-medium">{shortName(p.name)}</span>
-                  {!MAIN.has(p.symbol) && (
+                  {!kinds[p.symbol] && (
                     <span className="shrink-0 text-xs text-muted">small bet, 1% at most</span>
                   )}
                 </span>
@@ -137,7 +172,7 @@ export function PlanPanel({ analysis }: { analysis: PortfolioAnalysis }) {
               <input
                 type="range"
                 min={0}
-                max={MAIN.has(p.symbol) ? 100 : SMALL_BET_CAP}
+                max={kinds[p.symbol] ? 100 : SMALL_BET_CAP}
                 step={1}
                 value={shares[p.symbol] ?? 0}
                 onChange={(event) => set(p.symbol, Number(event.target.value))}

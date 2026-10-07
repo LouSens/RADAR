@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type { Asset, Brief } from "../api/client";
 import { useBrief } from "../api/queries";
 import { assetColorVar } from "./ui";
+import { CardSkeleton } from "./Skeleton";
 
 const PORTFOLIO = "PORTFOLIO";
 const ASSET_PAGE: Record<string, string> = {
@@ -35,8 +36,10 @@ export function sentenceLink(
  * sentence leads to the page that backs it.
  */
 export function BriefCard({ assets }: { assets: Asset[] }) {
-  const brief = useBrief().data;
+  const query = useBrief();
+  const brief = query.data;
   const [open, setOpen] = useState(false);
+  if (query.isPending) return <CardSkeleton lines={3} />;
   if (!brief) return null;
   return (
     <section className="glass p-4 @xl:p-7" aria-labelledby="brief-title">

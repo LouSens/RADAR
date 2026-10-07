@@ -5,10 +5,13 @@ import { useSignals } from "../api/queries";
 import { DIRECTION_WORDS, SIZE_WORDS, isFinding, kindName, type SignalType } from "../lib/signals";
 import { formatDate } from "../lib/time";
 import { assetColorVar, shortName } from "./ui";
+import { CardSkeleton } from "./Skeleton";
 
 /** The few newest signals on the Overview, each leading to its track record. */
 export function LatestSignals({ assets }: { assets: Asset[] }) {
-  const data = useSignals({ limit: 3 }).data;
+  const query = useSignals({ limit: 3 });
+  const data = query.data;
+  if (query.isPending) return <CardSkeleton lines={3} />;
   if (!data || data.signals.length === 0) return null;
   return (
     <section className="glass p-4 @xl:p-7" aria-labelledby="latest-signals-title">

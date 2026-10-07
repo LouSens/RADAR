@@ -716,6 +716,8 @@ export interface components {
             history_start: string;
             /** Is Primary */
             is_primary: boolean;
+            /** Kind */
+            kind?: string | null;
             /** Name */
             name: string;
             /** News Start */

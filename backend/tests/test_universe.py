@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from radar.universe import Universe, load_universe
+from radar.universe import Universe, get_universe, load_universe
 
 MINIMAL = """
 crypto_location = "us-1"
@@ -93,3 +93,12 @@ def test_universe_is_immutable() -> None:
     universe: Universe = load_universe()
     with pytest.raises(ValidationError):
         universe.crypto_location = "us"  # type: ignore[misc]
+
+
+def test_the_long_run_holdings_say_what_they_are_and_nothing_else_does() -> None:
+    kinds = {asset.symbol: asset.kind for asset in get_universe().assets}
+    assert kinds["SPY"] == "stocks"
+    assert kinds["BTC/USD"] == "bitcoin"
+    # Gold can be held as the fund or as the coin backed by it: both are gold.
+    assert kinds["GLD"] == kinds["PAXG/USD"] == "gold"
+    assert kinds["ETH/USD"] is None

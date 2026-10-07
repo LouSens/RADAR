@@ -3,6 +3,7 @@ import { useRegime } from "../api/queries";
 import { formatCount, formatShare } from "../lib/format";
 import { formatDate, formatDateTime, zoneLabel } from "../lib/time";
 import { Panel, type PanelProps } from "./ui";
+import { CardSkeleton } from "./Skeleton";
 
 const TONE: Record<string, string> = {
   calm: "var(--calm)",
@@ -61,7 +62,8 @@ function Timeline({ regime }: { regime: Regime }) {
 export function RegimePanel({ asset, trust }: PanelProps) {
   const query = useRegime(asset.slug);
   const regime = query.data;
-  if (query.isPending || query.isError || !regime) return null;
+  if (query.isPending) return <CardSkeleton lines={5} />;
+  if (query.isError || !regime) return null;
 
   const current = regime.states.find((s) => s.label === regime.label);
   const evaluation = regime.evaluation;

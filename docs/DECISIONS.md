@@ -3182,3 +3182,51 @@ counting.
 **Still owed:** the portfolio's risk pages as pictures; the market pages beyond their
 footers; stock screening by the user's rules, from the regulator's filings (he agreed to
 that source on this date); the notebooks 01 to 05.
+
+## 083. Stocks by the user's rules: asked for, then cancelled for want of a source (2026-10-07)
+
+The user asked that an individual stock be suggested only if the company was profitable
+five years running, has low debt, turns profit into cash and has a gross margin over
+30%. That needs company accounts. Alpaca's market data has none. The official free
+source, the US regulator's filings, serves them only to a program that gives a contact
+email, and the user chose not to give one. He cancelled the feature.
+
+The reader and the rules were written and tested on branch `stock-screen`, which is not
+merged and can be picked up if a source is ever agreed. Nothing of it is in the app.
+Stocks are therefore held only through the broad US stock fund in the plan, and no
+individual stock is suggested.
+
+## 084. The portfolio's risk pages as pictures (2026-10-07)
+
+- **Possible loss**: each figure is the loss in red with a row of dots under it, one lit
+  ("about 1 of every 20 days is worse"), and two small figures: what it averages when
+  worse, and how often it was passed in the past against how often expected. The two
+  paragraphs it replaced said the same in sentences.
+- **Past crashes**: one bar per episode, drawn against the largest, with the change and
+  the money beside the name. Dates, the deepest fall, the worst day and each holding's
+  part are behind "Details".
+- **Risk by holding**: the table of how closely the holdings move together is folded
+  behind a tap; the bars of money against risk stay in view.
+
+## 085. Nothing on a screen knows a ticker by name; every card holds its place while it loads (2026-10-07)
+
+The user asked that nothing be hardcoded and that no card appear from nowhere.
+
+- **What an asset is** now lives in the universe file (`kind`: stocks, gold or bitcoin)
+  and is served with each asset. The plan page, the three starting points and the gold
+  card on Home read it. No screen names SPY, GLD, PAXG or BTC any more: gold's card
+  shows the price of whichever other asset is also gold, and anything with no kind is a
+  small bet, capped.
+- **The three starting points** show how far each has fallen on the user's own holdings,
+  worked out when the page opens, in place of three fixed figures from a one-off run.
+- **The coins offered in "Before you buy"** are the ones held and the ones traded most.
+- **Skeletons**: every card that waits for data (the brief, coming events, signals, a
+  market's summary and each of its pages, the sidebar's account) draws a placeholder of
+  its own shape until the data lands.
+- **Narrow screens**: where a row holds a result and a count, the result stays and the
+  count steps aside.
+
+**Still fixed in code, on purpose, and said here:** the shares of the three starting
+points; the thresholds of the to-do list (2% or 5 dollars spare, 5 points over); the
+list of common coins asked about when Binance's own list cannot be read; and one
+sentence stating the result of the test of decision 079.
