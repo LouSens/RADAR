@@ -156,6 +156,31 @@ def test_support_resistance_new_highs_and_volume_are_found_where_expected() -> N
     assert technical.high_volume_cases(close, volume, rising=False) == []
 
 
+def test_the_stochastic_is_100_at_the_top_of_its_range_and_0_at_the_bottom() -> None:
+    close = pd.Series(np.arange(1.0, 21.0), index=days(20))
+    fast, slow = technical.stochastic(close + 0.0, close - 1.0, close)
+    assert fast.iloc[-1] == pytest.approx(100.0)
+    assert slow.iloc[-1] == pytest.approx(100.0)
+    falling = close[::-1].set_axis(days(20))
+    fast, _ = technical.stochastic(falling + 1.0, falling + 0.0, falling)
+    assert fast.iloc[-1] == pytest.approx(0.0)
+    assert fast.iloc[:6].isna().all()
+
+
+def test_a_stochastic_case_is_an_upward_cross_from_under_20() -> None:
+    close = pd.Series([20.0, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 14, 18, 22], index=days(14))
+    cases = technical.stochastic_cases(close + 0.5, close - 0.5, close)
+    assert cases == [days(14)[11]]
+
+
+def test_a_trigger_puts_the_cash_back_for_a_few_days_only_when_some_is_held() -> None:
+    core = pd.Series([1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0, 1.0], index=days(8))
+    weight = technical.hold_with_reentry(core, [days(8)[2], days(8)[7]], days=2)
+    assert weight.tolist() == [1.0, 0.5, 1.0, 1.0, 0.5, 0.5, 1.0, 1.0]
+    # A trigger on a day when everything is already held changes nothing.
+    assert technical.hold_with_reentry(core, [days(8)[0]], days=2).equals(core)
+
+
 Cases = Callable[[pd.DataFrame], object]
 RULES: dict[str, Cases] = {
     "swings": lambda f: technical.hold_by_swings(f["close"].pct_change()),
@@ -164,6 +189,11 @@ RULES: dict[str, Cases] = {
     "direction": lambda f: technical.hold_on_direction(f["close"]),
     "features": lambda f: technical.features(f, [date(2024, 6, 1), date(2025, 3, 1)]),
     "rsi": lambda f: technical.rsi_cases(f["close"], below=True),
+    "stochastic": lambda f: technical.stochastic_cases(f["high"], f["low"], f["close"]),
+    "reentry": lambda f: technical.hold_with_reentry(
+        technical.hold_above_average(f["close"]),
+        technical.stochastic_cases(f["high"], f["low"], f["close"]),
+    ),
     "gap": lambda f: technical.fair_value_gap_cases(f["high"], f["low"], up=True),
     "block": lambda f: technical.order_block_cases(f, up=True),
     "support": lambda f: technical.support_cases(f["low"]),

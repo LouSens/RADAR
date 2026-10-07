@@ -65,6 +65,18 @@ def swing(returns: pd.Series, window: int = 20) -> pd.Series:
     return returns.rolling(window).std()
 
 
+def stochastic(
+    high: pd.Series, low: pd.Series, close: pd.Series, k: int = 5, slowing: int = 3, d: int = 3
+) -> tuple[pd.Series, pd.Series]:
+    """The stochastic oscillator: where the close sits in the last `k` days' range (0 at
+    the low, 100 at the high), averaged over `slowing` days, and that line's own
+    `d`-day average. Returns the fast line and the slow line."""
+    lowest, highest = low.rolling(k).min(), high.rolling(k).max()
+    span = (highest - lowest).where(highest > lowest)
+    fast = (100 * (close - lowest) / span).rolling(slowing).mean()
+    return fast, fast.rolling(d).mean()
+
+
 # ---------- Rules that set how much to hold --------------------------------------------
 
 
@@ -112,6 +124,20 @@ def hold_through_events(index: pd.DatetimeIndex, dates: list[date]) -> pd.Series
     held[rows] = 0.5
     held[rows[rows > 0] - 1] = 0.5
     return pd.Series(held, index=index).shift(-1).fillna(1.0)
+
+
+def hold_with_reentry(core: pd.Series, triggers: list[pd.Timestamp], days: int = 5) -> pd.Series:
+    """The core share, except that a trigger on a day when the core share is below
+    everything means holding everything for that day and the `days - 1` after it.
+
+    The trigger is known at its day's close, like the core share, so the result is also
+    a share decided at the close and held over the next day.
+    """
+    fired = pd.Series(0.0, index=core.index)
+    fired.loc[[d for d in triggers if d in core.index]] = 1.0
+    fired = fired.where(core < 1.0, 0.0)
+    active = fired.rolling(days, min_periods=1).max() > 0
+    return core.where(~active, 1.0).where(core.notna())
 
 
 def backtest(returns: pd.Series, weight: pd.Series, cost: float = COST) -> pd.Series:
@@ -182,6 +208,17 @@ def rsi_cases(close: pd.Series, below: bool, window: int = 14) -> list[pd.Timest
     reading = rsi(close, window)
     hit = reading < RSI_LOW if below else reading > RSI_HIGH
     return _days(close.index, np.flatnonzero(hit.to_numpy()))
+
+
+def stochastic_cases(
+    high: pd.Series, low: pd.Series, close: pd.Series, under: float = 20.0
+) -> list[pd.Timestamp]:
+    """Days the stochastic's fast line crossed above its slow line with both under
+    `under` the day before: the textbook "oversold" turn."""
+    fast, slow = stochastic(high, low, close)
+    crossed = (fast > slow) & (fast.shift(1) <= slow.shift(1))
+    low_enough = (fast.shift(1) < under) & (slow.shift(1) < under)
+    return _days(close.index, np.flatnonzero((crossed & low_enough).to_numpy()))
 
 
 def fair_value_gap_cases(
