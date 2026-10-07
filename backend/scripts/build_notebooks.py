@@ -8,9 +8,9 @@ The notebooks import the same modules the app runs, so what they show cannot dri
 what the app does. Run with:
 
     uv run python backend/scripts/build_notebooks.py            # all of them
-    uv run python backend/scripts/build_notebooks.py 02_regime  # one
+    uv run python backend/scripts/build_notebooks.py 03_swings_and_loss  # one
 
-Needs the database running and filled. The news notebooks also need `uv sync --extra nlp`.
+Needs the database running and filled. `04_news` also needs `uv sync --extra nlp`.
 """
 
 import sys

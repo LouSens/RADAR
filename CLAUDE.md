@@ -96,8 +96,8 @@ uv run radar brief          # write today's brief from stored results (run after
 uv run radar quality    # check stored data, set flags, write data quality reports
 uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
 uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md
-uv run python backend/scripts/build_notebook.py   # rebuild notebooks/01_exploration.ipynb
-uv run python backend/scripts/build_notebooks.py  # rebuild notebooks 02 to 07 from notebooks/src/
+uv run python backend/scripts/build_notebooks.py  # rebuild the notebooks from notebooks/src/ (name one
+                                                  # to build only it; 04_news needs the nlp extra)
 ```
 
 ## Code conventions
