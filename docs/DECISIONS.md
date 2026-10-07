@@ -2534,3 +2534,66 @@ settings until one passes. No "buy now" or "sell now" suggestion is built.
    and what it saved.
 Each is a statement about size or risk with a tested record, which is what decision 062
 allows.
+
+## 069. One product: a personal portfolio assistant (2026-10-07)
+
+The user's review: the work has spread out and lost sight of what the app is for. Asked
+whether the app is a broad market dashboard or about the portfolio, they chose the
+portfolio, and described what they want in their own words: something that watches over
+their portfolio, the news, macro events and technical readings; tells them the possible
+outcomes (Monte Carlo or similar); projects the portfolio if they keep paying in; and
+helps them know when to pay in, using order blocks, fair value gaps, RSI, moving
+averages, Fibonacci levels and the like. Their aim is to gain where they can and above
+all not to lose the money, so that they can keep paying in over the long run.
+
+**The product, in one sentence.** RADAR is a personal portfolio assistant: it watches
+what the user holds, says what has changed and what could happen, and helps them decide
+how much to hold and how to keep paying in. Markets, news, the calendar and signals are
+inputs to that, not places of their own.
+
+**What the assistant does, and what each part rests on.**
+1. *Watch*: the portfolio's value, risk and drift; states of the markets it holds; news
+   about its holdings; the next scheduled events. All built already; to be gathered on
+   one screen about the user's holdings.
+2. *What could happen*: the range of outcomes for the portfolio as it is (built,
+   decision 050), and for the portfolio if they keep paying in (built for a plan,
+   decision 053; to be tied to the real holdings).
+3. *How much to hold*: for any share in cash, how far this mix fell and what it earned
+   (decision 065: this is what decides the outcome).
+4. *How to pay in*: on schedule, with a break-even exit, or waiting for dips, on their
+   own assets, with what each cost and saved (decision 068).
+5. *Warnings about risk*: a rougher week ahead (the swings forecast), a holding that has
+   drifted, a market that has turned turbulent, an event day coming.
+6. *Technical readings on what they hold*: RSI, moving averages, order blocks, fair
+   value gaps, Fibonacci levels, shown as what they are today.
+
+**The one place the user's wish and the evidence pull apart.** The user wants the
+technical readings to say when to pay in. Decisions 061 and 065 tested them as calls on
+direction and as triggers for putting cash back, and they did not hold; the rule of
+decision 062 is that a rule which failed its test is not turned into a suggestion. That
+rule stays. Two things are still open to them, and both are honest:
+- The readings can be *shown* on each holding with their record beside them ("RSI is 28.
+  After readings like this the next week rose no more often than usual"). Showing a
+  reading is not suggesting a trade.
+- A question that has not been tested, and is the one the user is really asking: *given
+  that I am going to pay in this month anyway, does waiting for one of these readings
+  within the month get a better price than paying in on the fixed day?* The cash waits
+  a month at most, so the cost of being wrong is small. This is to be written down and
+  tested (EMA, RSI oversold, order block, fair value gap, Fibonacci 61.8% retracement).
+  If a trigger passes, the assistant may say "your payment this month: this level has
+  given a better price in N of M months"; if none does, the readings stay as context.
+
+**What is folded away.** Kept and reachable, but out of the main path: the news tone
+studies, what a market moves with, markets together, the per-signal track-record pages,
+compare mixes, core and satellite. Nothing is deleted without the user's say.
+
+**Order of work.**
+1. The within-the-month test above, written down first, in a notebook.
+2. The assistant's home: the portfolio first, what changed, what could happen, the next
+   thing worth knowing. One screen, checked at 375 px.
+3. "How much to hold" and "ways of paying in" on the user's own holdings.
+4. Technical readings per holding, with their record, and whatever step 1 allows.
+5. Warnings, then Phase 7.
+
+**Not changed.** RADAR never places a trade. Every figure carries its record. Direction
+is not forecast, because nothing tested can (decisions 061, 063, 065, 068).
