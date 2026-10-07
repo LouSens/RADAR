@@ -2853,3 +2853,48 @@ everything up to the gap, and the change written down before it is run.
 test. As a document it is not good enough: cells of 70 lines, lines 300 characters wide,
 nine functions written in the notebook, jargon column names. It is rebuilt with the
 others in step H and is not the model for them.
+
+## 074. The account record, what a notebook is for, and fifteen notebooks become seven (2026-10-07)
+
+**What a notebook is for** (the user's words, 2026-10-07): the playground where
+something is tried. It is not where a feature lives. What holds up there becomes tested
+code and a screen in the same piece of work; a result that only sits in a notebook is a
+failure. The repository is public, so no notebook ever holds the user's real trades or
+holdings: experiments on real data are run in the gitignored `data/private/`, and the
+committed notebook shows the method on invented traders.
+
+**The account record** (step C, from Binance history; the user chose this over manual
+entry). `models/ledger.py`: average cost, break-even, realised gain, round trips, and
+trading set beside putting the same new money in at the same times and never selling.
+`analytics/trading.py`: for each purchase and sale, what the price had done in the day
+and week before, where the trade sat in the week's range, and what followed; a habit is
+named only when it is outside what the same number of random hours would give, on ten
+trades or more. `pipelines/account.py` reads the whole history once a day and stores
+one result; `GET /portfolio/record` serves it; Portfolio has a "Your record" page.
+Hourly prices come from Binance's public data, kept in the gitignored `data/account/`.
+
+Two stated assumptions: coins that arrived from outside take that day's market price
+as their cost, and rewards are units at no cost. One thing still to do: units rebuilt
+from history differ from units held by a few per cent for some assets, and the cause is
+not yet traced; the page does not yet show that gap.
+
+The page describes what happened. It names no action, and what followed past trades is
+shown as a record, not a forecast.
+
+**Fifteen notebooks become seven** (`notebooks/README.md` has the table).
+- `02_state_and_range` is the old 02 and 03; `03_swings_and_loss` the old 04;
+  `04_news` the old 05 and 06 without the subject breakdown and the tone-against-price
+  study; `05_portfolio_and_paying_in` the old 07 and 09 without the comparison of
+  mixes and core and satellite.
+- `06_trading_record` is new: two invented traders on real prices, one who chases and
+  one who trades at random. The method flags the first and not the second.
+- `07_what_we_tested` is a one-page summary of the research that did not pass. The
+  full notebooks (old 08, 10, 11 to 15) are in `notebooks/archive/`; decisions that
+  cite them by number mean those.
+- The merge moved built cells with their outputs and ran nothing again, so no figure
+  changed. Notebooks 01 to 05 still need the rework listed in the README; 06 is the
+  pattern.
+
+**Routing.** A link on Home still pointed at the removed page per kind of event. Fixed;
+the addresses of removed pages now lead to the nearest page that exists, and a test
+walks every address the app links to.

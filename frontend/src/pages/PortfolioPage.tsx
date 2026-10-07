@@ -2,10 +2,11 @@ import { Fragment, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from "../api/client";
-import { usePortfolio, usePortfolioAnalysis } from "../api/queries";
+import { useAccountRecord, usePortfolio, usePortfolioAnalysis } from "../api/queries";
 import { RangeAheadPanel } from "../components/AheadPanels";
 import { HoldingsEditor } from "../components/HoldingsEditor";
 import { LevelsPanel, targetSummary } from "../components/PlanPanels";
+import { RecordPanel } from "../components/RecordPanel";
 import { badLabel } from "../components/RiskPanel";
 import { RegularBuyingPanel } from "../components/RegularBuyingPanel";
 import { PageSkeleton } from "../components/Skeleton";
@@ -727,6 +728,7 @@ export function PortfolioPage() {
   const { section } = useParams();
   const portfolio = usePortfolio();
   const analysis = usePortfolioAnalysis().data ?? undefined;
+  const record = useAccountRecord().data;
 
   if (!isPortfolioSection(section)) return <Navigate to={BASE} replace />;
   const empty = portfolio.data !== undefined && portfolio.data.holdings.length === 0;
@@ -802,6 +804,17 @@ export function PortfolioPage() {
           <HoldingsEditor portfolio={portfolio.data} />
         </section>
       )}
+
+      {section === "record" &&
+        (record ? (
+          <RecordPanel record={record} />
+        ) : (
+          <Message>
+            {record === null
+              ? "There is no record yet. It is built once a day from a Binance history, when a read-only key is set."
+              : "Loading your record…"}
+          </Message>
+        ))}
 
       {portfolio.data &&
         section === "try" &&

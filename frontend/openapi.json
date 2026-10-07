@@ -264,6 +264,148 @@
         "title": "AssetOut",
         "type": "object"
       },
+      "AssetRecord": {
+        "properties": {
+          "asset": {
+            "title": "Asset",
+            "type": "string"
+          },
+          "buys": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Habit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "buys_unusual": {
+            "title": "Buys Unusual",
+            "type": "boolean"
+          },
+          "compared": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Compared"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "held_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Held Units"
+          },
+          "missing_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Share"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "sells": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Habit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sells_unusual": {
+            "title": "Sells Unusual",
+            "type": "boolean"
+          },
+          "standing": {
+            "$ref": "#/components/schemas/Standing"
+          },
+          "trips": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Trips"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unrealised": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealised"
+          },
+          "usual": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Usual"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "asset",
+          "standing",
+          "price",
+          "value",
+          "unrealised",
+          "compared",
+          "trips",
+          "buys",
+          "sells",
+          "usual",
+          "buys_unusual",
+          "sells_unusual",
+          "held_units",
+          "missing_share"
+        ],
+        "title": "AssetRecord",
+        "type": "object"
+      },
       "BarOut": {
         "properties": {
           "close": {
@@ -700,6 +842,40 @@
         "title": "ClassifierScoreOut",
         "type": "object"
       },
+      "Compared": {
+        "description": "Trading as it was done, beside putting the same new money in and never selling.",
+        "properties": {
+          "as_traded": {
+            "title": "As Traded",
+            "type": "number"
+          },
+          "asset": {
+            "title": "Asset",
+            "type": "string"
+          },
+          "difference": {
+            "title": "Difference",
+            "type": "number"
+          },
+          "if_held": {
+            "title": "If Held",
+            "type": "number"
+          },
+          "put_in": {
+            "title": "Put In",
+            "type": "number"
+          }
+        },
+        "required": [
+          "asset",
+          "put_in",
+          "as_traded",
+          "if_held",
+          "difference"
+        ],
+        "title": "Compared",
+        "type": "object"
+      },
       "Coverage": {
         "description": "How often past ranges of one stated level held what happened.",
         "properties": {
@@ -1027,6 +1203,64 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Habit": {
+        "description": "What the price was doing around one kind of trade, weighted by the money in each.\n\n`place` is where the trade's price sat in the range of the week before it: 0 at the\nweek's low, 1 at its high. The moves are fractions (0.01 is 1%).",
+        "properties": {
+          "after_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Day"
+          },
+          "after_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Week"
+          },
+          "before_day": {
+            "title": "Before Day",
+            "type": "number"
+          },
+          "before_week": {
+            "title": "Before Week",
+            "type": "number"
+          },
+          "dollars": {
+            "title": "Dollars",
+            "type": "number"
+          },
+          "place": {
+            "title": "Place",
+            "type": "number"
+          },
+          "trades": {
+            "title": "Trades",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "trades",
+          "dollars",
+          "before_day",
+          "before_week",
+          "place",
+          "after_day",
+          "after_week"
+        ],
+        "title": "Habit",
         "type": "object"
       },
       "HealthOut": {
@@ -1821,6 +2055,34 @@
         "title": "MarketResult",
         "type": "object"
       },
+      "Month": {
+        "properties": {
+          "bought": {
+            "title": "Bought",
+            "type": "number"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "sold": {
+            "title": "Sold",
+            "type": "number"
+          },
+          "trades": {
+            "title": "Trades",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "bought",
+          "sold",
+          "trades"
+        ],
+        "title": "Month",
+        "type": "object"
+      },
       "Move": {
         "description": "How far one holding sits from its target share of the whole.",
         "properties": {
@@ -2518,6 +2780,94 @@
           "failures"
         ],
         "title": "QualitySummary",
+        "type": "object"
+      },
+      "Record": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "as_traded": {
+            "title": "As Traded",
+            "type": "number"
+          },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/AssetRecord"
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "fees": {
+            "title": "Fees",
+            "type": "number"
+          },
+          "first_trade": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Trade"
+          },
+          "if_held": {
+            "title": "If Held",
+            "type": "number"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "months": {
+            "items": {
+              "$ref": "#/components/schemas/Month"
+            },
+            "title": "Months",
+            "type": "array"
+          },
+          "priced_at_market": {
+            "title": "Priced At Market",
+            "type": "integer"
+          },
+          "put_in": {
+            "title": "Put In",
+            "type": "number"
+          },
+          "realised": {
+            "title": "Realised",
+            "type": "number"
+          },
+          "trades": {
+            "title": "Trades",
+            "type": "integer"
+          },
+          "unrealised": {
+            "title": "Unrealised",
+            "type": "number"
+          }
+        },
+        "required": [
+          "as_of",
+          "model_version",
+          "first_trade",
+          "trades",
+          "realised",
+          "unrealised",
+          "fees",
+          "put_in",
+          "as_traded",
+          "if_held",
+          "assets",
+          "months",
+          "priced_at_market"
+        ],
+        "title": "Record",
         "type": "object"
       },
       "RecordSummary": {
@@ -4434,6 +4784,100 @@
         "title": "Spread",
         "type": "object"
       },
+      "Standing": {
+        "description": "Where one asset stands after all its entries.",
+        "properties": {
+          "asset": {
+            "title": "Asset",
+            "type": "string"
+          },
+          "average_cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Cost"
+          },
+          "bought": {
+            "title": "Bought",
+            "type": "number"
+          },
+          "cost": {
+            "title": "Cost",
+            "type": "number"
+          },
+          "fees": {
+            "title": "Fees",
+            "type": "number"
+          },
+          "first": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First"
+          },
+          "priced_at_market": {
+            "title": "Priced At Market",
+            "type": "integer"
+          },
+          "purchases": {
+            "title": "Purchases",
+            "type": "integer"
+          },
+          "realised": {
+            "title": "Realised",
+            "type": "number"
+          },
+          "reward_units": {
+            "title": "Reward Units",
+            "type": "number"
+          },
+          "sales": {
+            "title": "Sales",
+            "type": "integer"
+          },
+          "sold": {
+            "title": "Sold",
+            "type": "number"
+          },
+          "units": {
+            "title": "Units",
+            "type": "number"
+          },
+          "unpriced": {
+            "title": "Unpriced",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "asset",
+          "units",
+          "cost",
+          "average_cost",
+          "realised",
+          "bought",
+          "sold",
+          "fees",
+          "reward_units",
+          "purchases",
+          "sales",
+          "first",
+          "priced_at_market",
+          "unpriced"
+        ],
+        "title": "Standing",
+        "type": "object"
+      },
       "StressPart": {
         "properties": {
           "change": {
@@ -5131,6 +5575,78 @@
         "title": "TrackRecordRow",
         "type": "object"
       },
+      "Trips": {
+        "description": "Round trips in one asset: from holding none, to some, to none again.",
+        "properties": {
+          "average_gain": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Gain"
+          },
+          "average_loss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Loss"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "days_when_down": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days When Down"
+          },
+          "days_when_up": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days When Up"
+          },
+          "ended_up": {
+            "title": "Ended Up",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "number"
+          }
+        },
+        "required": [
+          "count",
+          "ended_up",
+          "average_gain",
+          "average_loss",
+          "days_when_up",
+          "days_when_down",
+          "total"
+        ],
+        "title": "Trips",
+        "type": "object"
+      },
       "Trust": {
         "properties": {
           "grade": {
@@ -5291,6 +5807,45 @@
           "days_until"
         ],
         "title": "Upcoming",
+        "type": "object"
+      },
+      "Usual": {
+        "description": "The same figures for any hour of the period: what a habit is set beside.",
+        "properties": {
+          "after_day": {
+            "title": "After Day",
+            "type": "number"
+          },
+          "after_week": {
+            "title": "After Week",
+            "type": "number"
+          },
+          "before_day": {
+            "title": "Before Day",
+            "type": "number"
+          },
+          "before_week": {
+            "title": "Before Week",
+            "type": "number"
+          },
+          "hours": {
+            "title": "Hours",
+            "type": "integer"
+          },
+          "place": {
+            "title": "Place",
+            "type": "number"
+          }
+        },
+        "required": [
+          "hours",
+          "before_day",
+          "before_week",
+          "place",
+          "after_day",
+          "after_week"
+        ],
+        "title": "Usual",
         "type": "object"
       },
       "ValidationError": {
@@ -6931,6 +7486,25 @@
           }
         },
         "summary": "Post Lookup"
+      }
+    },
+    "/api/v1/portfolio/record": {
+      "get": {
+        "description": "What the holdings cost, what was made, and how the trades were timed, from the\nexchange's own history. Read from the stored result; nothing is fetched here.",
+        "operationId": "get_record_api_v1_portfolio_record_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Record"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Record"
       }
     },
     "/api/v1/portfolio/regular-buying": {

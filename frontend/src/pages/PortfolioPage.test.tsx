@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
 vi.mock("../api/queries", () => ({
   usePortfolio: () => ({ data: state.portfolio, isPending: false, isError: false }),
   usePortfolioAnalysis: () => ({ data: state.analysis }),
+  useAccountRecord: () => ({ data: null }),
   useRelationships: () => ({ data: state.together }),
   useSetTarget: () => ({ mutate: state.setTarget, isPending: false, isError: false }),
   useSavePortfolio: () => ({
