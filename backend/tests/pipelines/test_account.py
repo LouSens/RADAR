@@ -134,7 +134,7 @@ class FakeHistory:
 
 def test_collecting_follows_the_accounts_own_swaps_to_find_what_to_ask_for() -> None:
     history = FakeHistory()
-    entries = account.collect(history, ["SOL"], NOW)  # type: ignore[arg-type]
+    entries = account.collect(history, ["SOL"], NOW, pause=0)  # type: ignore[arg-type]
 
     assert [(e.asset, e.kind, e.units, e.dollars) for e in entries] == [
         ("SOL", "buy", 1.0, 100.1),
@@ -144,3 +144,8 @@ def test_collecting_follows_the_accounts_own_swaps_to_find_what_to_ask_for() -> 
     assert "PURRUSDT" in history.asked
     assert "SOLUSDT" in history.asked
     assert not any(pair.startswith(("USDT", "USDC")) for pair in history.asked)
+    # A coin the account points to is asked about against every dollar; one that is
+    # only on the common list is dropped after the first, when it has no trades there.
+    assert {"SOLUSDT", "SOLUSDC", "SOLFDUSD"} <= set(history.asked)
+    assert "MANTAUSDT" in history.asked
+    assert "MANTAUSDC" not in history.asked

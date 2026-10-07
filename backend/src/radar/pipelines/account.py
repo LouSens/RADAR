@@ -10,6 +10,7 @@ updated, and running twice gives the same result. Hourly prices come from Binanc
 public market data and are kept in the gitignored `data/account/`, extended each run.
 """
 
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -40,13 +41,169 @@ VERSION = "account-1"
 STORE = Path("data/account")
 SINCE = datetime(2017, 8, 1, tzinfo=UTC)
 WINDOW = timedelta(days=30)
-# Looked for even when nothing else points to them; the rest are found from the
-# account's own swaps, rewards and holdings.
-COMMON = ("BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "PAXG")
+# Binance has no list of everything an account ever traded, so each coin has to be asked
+# about by name. These widely traded coins are always asked about; others are found
+# from the account's own swaps, rewards and holdings. A coin outside both is missed.
+COMMON = (
+    "BTC",
+    "ETH",
+    "SOL",
+    "BNB",
+    "XRP",
+    "DOGE",
+    "PAXG",
+    "MANTA",
+    "ADA",
+    "AVAX",
+    "LINK",
+    "DOT",
+    "MATIC",
+    "POL",
+    "LTC",
+    "TRX",
+    "SHIB",
+    "PEPE",
+    "WIF",
+    "BONK",
+    "FLOKI",
+    "ARB",
+    "OP",
+    "SUI",
+    "APT",
+    "SEI",
+    "TIA",
+    "INJ",
+    "NEAR",
+    "ATOM",
+    "FIL",
+    "ICP",
+    "ETC",
+    "XLM",
+    "HBAR",
+    "VET",
+    "ALGO",
+    "AAVE",
+    "UNI",
+    "MKR",
+    "CRV",
+    "LDO",
+    "SNX",
+    "COMP",
+    "SUSHI",
+    "CAKE",
+    "RUNE",
+    "GRT",
+    "FET",
+    "RNDR",
+    "RENDER",
+    "TAO",
+    "WLD",
+    "JUP",
+    "PYTH",
+    "JTO",
+    "STRK",
+    "ZK",
+    "ZRO",
+    "EIGEN",
+    "ENA",
+    "ETHFI",
+    "PENDLE",
+    "ONDO",
+    "W",
+    "ALT",
+    "PIXEL",
+    "PORTAL",
+    "AEVO",
+    "DYM",
+    "XAI",
+    "ACE",
+    "NFP",
+    "AI",
+    "SAGA",
+    "OMNI",
+    "REZ",
+    "BB",
+    "NOT",
+    "IO",
+    "LISTA",
+    "BANANA",
+    "TON",
+    "DOGS",
+    "HMSTR",
+    "CATI",
+    "NEIRO",
+    "SCR",
+    "MOVE",
+    "ME",
+    "PENGU",
+    "TRUMP",
+    "MELANIA",
+    "BERA",
+    "LAYER",
+    "KAITO",
+    "XVG",
+    "OM",
+    "PHB",
+    "ZEC",
+    "BCH",
+    "EOS",
+    "XMR",
+    "DASH",
+    "NEO",
+    "IOTA",
+    "QTUM",
+    "ZIL",
+    "ENJ",
+    "SAND",
+    "MANA",
+    "AXS",
+    "GALA",
+    "APE",
+    "CHZ",
+    "FTM",
+    "S",
+    "KAS",
+    "ORDI",
+    "SATS",
+    "1000SATS",
+    "BOME",
+    "MEME",
+    "PEOPLE",
+    "LUNC",
+    "LUNA",
+    "USTC",
+    "GMT",
+    "GMX",
+    "DYDX",
+    "BLUR",
+    "IMX",
+    "STX",
+    "MINA",
+    "ROSE",
+    "KAVA",
+    "CFX",
+    "ID",
+    "MAGIC",
+    "HOOK",
+    "EDU",
+    "MAV",
+    "ARKM",
+    "CYBER",
+    "NTRN",
+    "TURBO",
+    "WBETH",
+    "PURR",
+    "HYPE",
+    "VIRTUAL",
+    "AIXBT",
+    "ANIME",
+)
 QUOTES = ("USDT", "USDC", "FDUSD")
 # Windows with nothing in them, in a row, after which looking further back stops.
 QUIET_WINDOWS = 12
 HOUR_MS = 3_600_000
+# Seconds between requests for fills.
+PAUSE = 0.2
 
 Prices = Callable[[str, datetime, datetime], pd.DataFrame]
 
@@ -105,11 +262,15 @@ class Record(BaseModel):
     priced_at_market: int
 
 
-def collect(history: BinanceHistory, assets: list[str], now: datetime) -> list[Entry]:
-    """Every entry the account's history gives, for `assets` and whatever else its
-    swaps and rewards mention."""
+def collect(
+    history: BinanceHistory, assets: list[str], now: datetime, pause: float = PAUSE
+) -> list[Entry]:
+    """Every entry the account's history gives, for `assets`, the common coins, and
+    whatever else its swaps and rewards mention. `pause` is the wait between requests,
+    which keeps a long scan inside the exchange's limits."""
     entries: list[Entry] = []
-    names = set(assets) | set(COMMON)
+    likely = set(assets)
+    names = likely | set(COMMON)
     quiet, end = 0, now
     while end > SINCE and quiet < QUIET_WINDOWS:
         start = end - WINDOW
@@ -119,6 +280,7 @@ def collect(history: BinanceHistory, assets: list[str], now: datetime) -> list[E
                 swap.at, swap.from_asset, swap.from_quantity, swap.to_asset, swap.to_quantity
             )
             names |= {swap.from_asset, swap.to_asset}
+            likely |= {swap.from_asset, swap.to_asset}
             found += 1
         for move in history.movements(start, end):
             entries.append(
@@ -135,6 +297,7 @@ def collect(history: BinanceHistory, assets: list[str], now: datetime) -> list[E
                 Entry(at=reward.at, asset=reward.asset, kind="reward", units=reward.quantity)
             )
             names.add(reward.asset)
+            likely.add(reward.asset)
             found += 1
         quiet = 0 if found else quiet + 1
         end = start
@@ -143,7 +306,8 @@ def collect(history: BinanceHistory, assets: list[str], now: datetime) -> list[E
             try:
                 fills = history.fills(asset + quote)
             except BinanceError:
-                continue  # no such pair
+                fills = []  # no such pair
+            time.sleep(pause)
             for fill in fills:
                 entry = ledger.from_fill(
                     fill.pair,
@@ -156,6 +320,10 @@ def collect(history: BinanceHistory, assets: list[str], now: datetime) -> list[E
                 )
                 if entry is not None:
                     entries.append(entry)
+            # Nearly every trade is against USDT: a coin never traded there is not asked
+            # about against the other dollars, unless the account itself points to it.
+            if quote == QUOTES[0] and not fills and asset not in likely:
+                break
     return sorted(entries, key=lambda e: e.at)
 
 
