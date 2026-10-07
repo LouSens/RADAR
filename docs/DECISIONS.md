@@ -3008,3 +3008,50 @@ altcoin he holds 1%, the rest cash.
 **Still to build from his list of 2026-10-07:** the check before buying; the test of
 coins low against high in their range, across every listed coin; then a review of
 routing, wording, the home page and the look on phone and desktop.
+
+## 078. Before you buy; and coins low against high in their range: the test, written before running (2026-10-07)
+
+**Before you buy** (built): `pipelines/check.py`, `GET /portfolio/check/{coin}`, a page
+on Portfolio. For any coin Binance lists it shows where the price sits between the
+lowest and highest of the last week, month and three months, in plain words ("high",
+"middle", "low": the week and month averaged, at or above 0.65 and at or below 0.35),
+beside the user's own record: where his purchases usually sat, what followed the ones
+near the top and near the bottom, and his result on that coin. It describes; it does not
+say what comes next. Gold on Home is now shown at the PAX Gold price, the one he holds.
+
+**The question still open.** The user wants a screener that says an altcoin is "low and
+might be good". Earlier tests asked whether one market's own readings tell its own
+direction, on six coins. Not asked yet: *across all coins in the same week, did the ones
+low in their range do better afterwards than the ones high in it?* That is a comparison
+between coins, on hundreds of them, and it is the claim a screener would make.
+
+**The test.**
+- *Coins*: every coin Binance lists against USDT today, without dollar coins, wrapped
+  copies of other coins and leveraged tokens. Daily bars from 2019 or the coin's first
+  day. A coin counts in a week only with 60 days of history and a median daily traded
+  value over the last 30 days of at least 1 million dollars.
+- *Each Monday*: "low" and "high" exactly as the app's check defines them (week and
+  month places averaged; 0.35 and 0.65).
+- *What followed*: the coin's return over the next 7 days, and over the next 28, less
+  the middle coin's return over the same days, so that a week when everything fell does
+  not count against either group.
+- *The figure*: each week, the average for the low coins less the average for the high
+  coins. Weeks with fewer than 10 coins in either group are left out. For 28 days only
+  every fourth week is used, so periods do not overlap.
+- *Pass, for each of the two periods*: low ahead of high by at least 0.5 points over 7
+  days (2 points over 28); under 5% of resamples of weeks show no advantage; ahead in
+  both halves of the record; and ahead in at least 6 calendar years of every 10.
+- Also reported, not part of the mark: how often a low coin was up at all a week later,
+  and the same for the largest 30 coins only.
+
+**A known weakness, stated first.** Coins Binance has delisted are not in today's list.
+Many of them fell and never came back, and they would have been "low" on the way down.
+Leaving them out flatters "low". A pass here is therefore an upper bound.
+
+**My guess.** Low is ahead of high over 7 days by a little, less than the mark or not
+steadily across years; nothing over 28 days.
+
+**If it passes**, the check may say "coins this low in their range did better than coins
+near their highs, by X on average, in N weeks of M", with the weeks it failed, and the
+1% cap stays. **If it does not**, the check stays as it is: a description, with no coin
+called a good buy.
