@@ -2735,3 +2735,57 @@ the notebooks hard to read.
 
 **Corrected.** The first audit said the analysis jobs are run by hand. The worker
 schedules all sixteen.
+
+## 072. What Alpaca and Binance can give, measured, and what to use it for (2026-10-07)
+
+The user asked that RADAR use everything its two sources can give, to protect their
+portfolio. Their other answers the same day: start the cut; gain and loss in US dollars;
+purchases by manual entry first; fundamental news means headlines only.
+
+**Measured on this Alpaca plan** (market-data host only; shapes read, nothing stored):
+
+| Data | Answers | Use in RADAR | Decision |
+|---|---|---|---|
+| Daily and hourly bars, stocks from 2016, crypto from 2021 | yes | in use | keep |
+| 1-minute bars, stocks and crypto | yes | a sharper measure of each day's swing | later, as a written test of whether it improves the swing forecast |
+| Snapshots (today so far, yesterday, latest quote) | yes | "today" for every holding on Home and the holding page | **use**; client method added |
+| Dividends and splits | yes | real return of stock holdings; ex-dividend days in "why it moved" and Calendar | **use**; client method added |
+| Option quotes with implied volatility and greeks (indicative feed) | yes, for SPY, QQQ, GLD, IBIT and other optionable names | the options market's own forecast of swings: an input to the risk forecast and to cut-loss and take-profit ranges | **use**; client method added. No history is served, so readings are collected from now on |
+| News with full article text | yes | better choice of headlines for "why it moved" | use headlines and summaries only, as the user chose; text is never committed |
+| Top movers, most active | yes | market colour | not used: about the market, not the holdings |
+| Order book, individual trades | yes | very short-term trading | not used |
+| Auctions, exchange codes | yes | none | not used |
+| Currency rates, logos, fixed income | refused by the plan | | not available; gain and loss stay in US dollars |
+| Crypto perpetuals | no such endpoint on this host | | not available here (Binance has it) |
+| Stock bars before 2016 | empty | | not available |
+
+**Binance, public and keyless** (already approved in 066 and 067 for research): hourly
+and daily bars back to 2017 for every pair, and funding rates. Proposed new use: price
+history for coins the user holds, where Alpaca's starts in 2021 or does not list the
+coin at all. This would double the crypto record. Same endpoints, new purpose, so it is
+put to the user here before being built.
+
+**Binance, with the user's read-only key.** In use: balances in spot, margin, funding,
+earn and futures, and wallet totals. Not in use, each needing the user's agreement and a
+test before it is added:
+
+| Read | Endpoint | What it would give |
+|---|---|---|
+| Trade history | `GET /api/v3/myTrades` | What was paid for each coin: cost, break-even, real gain. The user chose manual entry first, so this waits |
+| Daily account snapshots | `GET /sapi/v1/accountSnapshot` | The account's value day by day (last 30 days), so a history builds up |
+| Deposits and withdrawals | `GET /sapi/v1/capital/deposit/hisrec`, `GET /sapi/v1/capital/withdraw/history` | Money in and out, needed to tell earnings from top-ups |
+| Convert and card purchases | `GET /sapi/v1/convert/tradeFlow`, `GET /sapi/v1/fiat/payments` | Purchases that never appear as trades |
+| Earn rewards | `GET /sapi/v1/asset/assetDividend` | Interest and rewards received |
+| Futures income | `GET /fapi/v1/income` | Realised gain, loss and funding paid on futures |
+
+Not proposed: any read of open or past orders. The user's rule is no order endpoints.
+
+**What this can and cannot raise.** More data makes three things more accurate: the
+record of what the user paid and earned, the estimate of how rough the coming days will
+be, and the explanation of a move. It does not make direction forecastable; decisions
+061 to 068 stand.
+
+**Built now.** Typed, tested client methods for snapshots, dividends and splits, and
+option snapshots (`providers/alpaca_rest.py`, `providers/schemas.py`), with invented
+fixtures. Nothing stores or shows them yet; that comes with steps C to G of the build
+plan.
