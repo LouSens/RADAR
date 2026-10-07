@@ -249,6 +249,19 @@ class AssetRecord(BaseModel):
     written_off: float = 0.0
 
 
+class Outcome(BaseModel):
+    """What followed the purchases made in one part of the week's range."""
+
+    # "high": in the top two fifths of the week before the purchase; "low": the bottom
+    # two fifths; "middle": between.
+    where: str
+    trades: int
+    # The price a week later against the price paid, averaged by the money in each.
+    after_week: float
+    # The share of them that were lower a week later.
+    fell_share: float
+
+
 class Month(BaseModel):
     month: str
     bought: float
@@ -271,6 +284,8 @@ class Record(BaseModel):
     months: list[Month]
     # Entries whose cost was taken from the market price of the day.
     priced_at_market: int
+    # Purchases grouped by where in the week they were made, with what followed.
+    buy_outcomes: list[Outcome] = []
     # Cost of coins that left without a sale on record, over all coins.
     moved_out_cost: float = 0.0
     written_off: float = 0.0
@@ -391,6 +406,29 @@ def _trips(entries: list[Entry], asset: str) -> Trips | None:
     )
 
 
+def _outcomes(bought: list[pd.DataFrame]) -> list[Outcome]:
+    """Purchases with a week of prices after them, grouped by where they were made."""
+    frames = [frame for frame in bought if len(frame)]
+    if not frames:
+        return []
+    table = pd.concat(frames, ignore_index=True).dropna(subset=["after_week"])
+    groups = {
+        "high": table[table["place"] >= 0.6],
+        "middle": table[(table["place"] > 0.4) & (table["place"] < 0.6)],
+        "low": table[table["place"] <= 0.4],
+    }
+    return [
+        Outcome(
+            where=name,
+            trades=len(part),
+            after_week=float(np.average(part["after_week"], weights=part["dollars"])),
+            fell_share=float((part["after_week"] < 0).mean()),
+        )
+        for name, part in groups.items()
+        if len(part)
+    ]
+
+
 def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: datetime) -> Record:
     """The record from entries, hourly prices and the units held now."""
     traded = sorted({e.asset for e in entries if e.kind == "buy" and e.asset not in ledger.CASH})
@@ -411,6 +449,7 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
 
     standings = ledger.standing(entries, price_at)
     assets: list[AssetRecord] = []
+    bought: list[pd.DataFrame] = []
     for asset in traded:
         from_history = standings[asset]
         now_standing, moved_out = (
@@ -425,6 +464,7 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
             price = float(frame["close"].iloc[-1])
             context = trading.context(entries, frame, asset)
             buys, sells = trading.habit(context, "buy"), trading.habit(context, "sell")
+            bought.append(context[context["kind"] == "buy"])
             if now_standing.first is not None:
                 typical = trading.usual(frame, pd.Timestamp(now_standing.first))
             buys_unusual = trading.place_is_unusual(context, "buy", frame)
@@ -481,6 +521,7 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
         assets=assets,
         months=[by_month[key] for key in sorted(by_month)],
         priced_at_market=sum(a.standing.priced_at_market for a in assets),
+        buy_outcomes=_outcomes(bought),
         moved_out_cost=sum(a.moved_out_cost for a in assets),
     )
 

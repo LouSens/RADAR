@@ -5,6 +5,7 @@ runs inside a request: the analysis is recomputed and stored there, so that ever
 read is only a read.
 """
 
+import re
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
@@ -25,12 +26,15 @@ from radar.models.holdings import (
     Unsupported,
 )
 from radar.pipelines import account as account_job
+from radar.pipelines import check as check_job
 from radar.pipelines import discover, rebalance
 from radar.pipelines import portfolio as job
 from radar.pipelines import steps as steps_job
 from radar.pipelines.datasets import build_mixed_panel
 from radar.pipelines.signals import daily_close
+from radar.providers import binance_public
 from radar.providers.binance import BinanceError, Leveraged, Wallet
+from radar.providers.public import PublicDataError
 from radar.universe import Universe
 
 router = APIRouter(prefix="/api/v1/portfolio")
@@ -177,6 +181,23 @@ def get_steps(universe: UniverseDep, session: SessionDep) -> steps_job.Steps:
         if asset.symbol in wanted
     }
     return steps_job.build(analysis, weights, closes, datetime.now(UTC))
+
+
+@router.get("/check/{coin}", response_model=check_job.Check)
+def get_check(coin: str, session: SessionDep) -> check_job.Check:
+    """Whether a coin's price is high or low against its own last week, month and three
+    months, beside the user's own record. Reads public prices; nothing is traded."""
+    name = coin.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{2,12}", name):
+        raise HTTPException(status_code=422, detail="That is not a coin name.")
+    try:
+        with binance_public.reader() as source:
+            bars = check_job.fetch(source, name)
+    except PublicDataError:
+        raise HTTPException(status_code=404, detail=f"No prices for {name}.") from None
+    if len(bars) < check_job.WEEK + 1:
+        raise HTTPException(status_code=404, detail=f"No prices for {name}.")
+    return check_job.build(name, bars, account_job.stored(session), datetime.now(UTC))
 
 
 @router.put("/record/lost", response_model=account_job.Record)

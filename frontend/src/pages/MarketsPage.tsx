@@ -51,6 +51,7 @@ function CompareRow({ asset }: { asset: Asset }) {
 export function MarketsPage() {
   const assets = useAssets();
   const primary = assets.data?.filter((a) => a.is_primary) ?? [];
+  const paxg = assets.data?.find((a) => a.symbol === "PAXG/USD");
   return (
     <div className="flex flex-col gap-4 @xl:gap-6">
       <header>
@@ -59,7 +60,11 @@ export function MarketsPage() {
       {assets.isError && <Message>Markets are unavailable right now.</Message>}
       <div className="grid grid-cols-3 gap-2 @xl:gap-4">
         {primary.map((asset) => (
-          <MarketCard key={asset.slug} asset={asset} />
+          <MarketCard
+            key={asset.slug}
+            asset={asset}
+            priced={asset.symbol === "GLD" ? paxg : undefined}
+          />
         ))}
       </div>
 
