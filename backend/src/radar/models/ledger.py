@@ -231,3 +231,68 @@ def missing_share(from_history: float, held: float) -> float | None:
     if abs(held) <= DUST:
         return None
     return (from_history - held) / held
+
+
+# ---------- Entries from an exchange's history -----------------------------------------
+
+
+def split_pair(pair: str) -> tuple[str, str] | None:
+    """A pair such as `SOLUSDT` as (asset, cash), when it trades against dollars."""
+    for cash in sorted(CASH, key=len, reverse=True):
+        if pair.endswith(cash) and len(pair) > len(cash):
+            return pair[: -len(cash)], cash
+    return None
+
+
+def from_fill(
+    pair: str,
+    at: datetime,
+    bought: bool,
+    quantity: float,
+    amount: float,
+    fee: float,
+    fee_asset: str,
+) -> Entry | None:
+    """One purchase or sale against dollars. A fee taken in the asset reduces what was
+    received; a fee taken in dollars adds to what was paid or comes off what was got.
+    A fee in a third asset is left out of the cost. Pairs between two coins are skipped."""
+    parts = split_pair(pair)
+    if parts is None or quantity <= 0:
+        return None
+    asset, _ = parts
+    price = amount / quantity
+    units, dollars, cost_of_fee = quantity, amount, 0.0
+    if fee_asset == asset:
+        cost_of_fee = fee * price
+        units = quantity - fee if bought else quantity
+        dollars = amount if bought else amount - cost_of_fee
+    elif fee_asset in CASH:
+        cost_of_fee = fee
+        dollars = amount + fee if bought else amount - fee
+    return Entry(
+        at=at,
+        asset=asset,
+        kind="buy" if bought else "sell",
+        units=units if bought else -units,
+        dollars=dollars,
+        fee=cost_of_fee,
+    )
+
+
+def from_conversion(
+    at: datetime, from_asset: str, from_quantity: float, to_asset: str, to_quantity: float
+) -> list[Entry]:
+    """A swap. Dollars to a coin is a purchase and a coin to dollars a sale; a swap
+    between two coins is one leaving and one arriving, to be priced at the market."""
+    if from_asset in CASH and to_asset in CASH:
+        return []
+    if from_asset in CASH:
+        return [Entry(at=at, asset=to_asset, kind="buy", units=to_quantity, dollars=from_quantity)]
+    if to_asset in CASH:
+        return [
+            Entry(at=at, asset=from_asset, kind="sell", units=-from_quantity, dollars=to_quantity)
+        ]
+    return [
+        Entry(at=at, asset=from_asset, kind="left", units=-from_quantity),
+        Entry(at=at, asset=to_asset, kind="arrived", units=to_quantity),
+    ]

@@ -131,3 +131,41 @@ def test_the_gap_between_history_and_what_is_held_is_a_share_of_what_is_held() -
     assert ledger.missing_share(1.05, 1.0) == pytest.approx(0.05)
     assert ledger.missing_share(0.9, 1.0) == pytest.approx(-0.1)
     assert ledger.missing_share(0.5, 0.0) is None
+
+
+def test_a_pair_is_split_only_when_it_trades_against_dollars() -> None:
+    assert ledger.split_pair("SOLUSDT") == ("SOL", "USDT")
+    assert ledger.split_pair("PAXGFDUSD") == ("PAXG", "FDUSD")
+    assert ledger.split_pair("ETHBTC") is None
+    assert ledger.split_pair("USDT") is None
+
+
+def test_a_fee_in_the_asset_reduces_what_was_received_and_one_in_dollars_adds_to_cost() -> None:
+    in_asset = ledger.from_fill("SOLUSDT", T0, True, 2.0, 300.0, 0.002, "SOL")
+    assert in_asset is not None
+    assert in_asset.units == pytest.approx(1.998)
+    assert in_asset.dollars == 300.0
+    assert in_asset.fee == pytest.approx(0.3)
+
+    in_dollars = ledger.from_fill("SOLUSDT", T0, False, 0.5, 90.0, 0.09, "USDT")
+    assert in_dollars is not None
+    assert (in_dollars.kind, in_dollars.units) == ("sell", -0.5)
+    assert in_dollars.dollars == pytest.approx(89.91)
+
+    elsewhere = ledger.from_fill("SOLUSDT", T0, True, 1.0, 150.0, 0.0001, "BNB")
+    assert elsewhere is not None
+    assert (elsewhere.units, elsewhere.dollars, elsewhere.fee) == (1.0, 150.0, 0.0)
+    assert ledger.from_fill("ETHBTC", T0, True, 1.0, 0.05, 0.0, "BNB") is None
+
+
+def test_a_swap_is_a_purchase_a_sale_or_one_coin_for_another() -> None:
+    bought = ledger.from_conversion(T0, "USDT", 200.0, "BTC", 0.002)
+    assert [(e.kind, e.asset, e.units, e.dollars) for e in bought] == [("buy", "BTC", 0.002, 200.0)]
+    sold = ledger.from_conversion(T0, "BTC", 0.002, "USDC", 210.0)
+    assert [(e.kind, e.asset, e.units, e.dollars) for e in sold] == [("sell", "BTC", -0.002, 210.0)]
+    swapped = ledger.from_conversion(T0, "ETH", 1.0, "SOL", 20.0)
+    assert [(e.kind, e.asset, e.units, e.dollars) for e in swapped] == [
+        ("left", "ETH", -1.0, None),
+        ("arrived", "SOL", 20.0, None),
+    ]
+    assert ledger.from_conversion(T0, "USDT", 5.0, "USDC", 5.0) == []
