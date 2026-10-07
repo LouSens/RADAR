@@ -330,7 +330,28 @@ Fit = Callable[[np.ndarray, np.ndarray], Callable[[np.ndarray], np.ndarray]]
 
 
 def fit_trees(x: np.ndarray, y: np.ndarray) -> Callable[[np.ndarray], np.ndarray]:
-    """Gradient-boosted trees: the chance that the next week ends higher."""
+    """Gradient-boosted trees: the chance that the next week ends higher.
+
+    Kept small on purpose: few, shallow trees with large leaves. These settings were
+    chosen on a planted pattern only (decision 061), never on real outcomes: they
+    recover it, where the first settings (`fit_trees_heavy`) did not.
+    """
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    model = HistGradientBoostingClassifier(
+        max_depth=2,
+        max_iter=60,
+        learning_rate=0.05,
+        min_samples_leaf=50,
+        l2_regularization=1.0,
+        random_state=0,
+    ).fit(x, y)
+    return lambda rows: np.asarray(model.predict_proba(rows)[:, 1], dtype=float)
+
+
+def fit_trees_heavy(x: np.ndarray, y: np.ndarray) -> Callable[[np.ndarray], np.ndarray]:
+    """The first settings tried. With a few thousand days they fit noise and miss even a
+    planted pattern; kept so the notebook can show that."""
     from sklearn.ensemble import HistGradientBoostingClassifier
 
     model = HistGradientBoostingClassifier(

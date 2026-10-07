@@ -2077,3 +2077,58 @@ will be right about as often as "always up".
 
 **After the result.** What is built is decided with the user. Whatever it is, the app
 never says "buy" or "sell"; a level or a size is shown with its record.
+
+## 061. Indicators, levels, sizing rules and models: the result (2026-10-07)
+
+The tests of decision 060, run once. Notebook 11 shows every table.
+
+**Sizing rules (24 comparisons, return per unit of risk after costs).** None did better
+than holding. One did worse: holding half around scheduled events, in gold. On the
+deepest fall, which was reported but not judged: the 200-day rule took Bitcoin's from
+about 77% to 36%, and sizing by swings took US stocks' from about 34% to 14% at a cost of
+about 4 points of return a year; in gold the trend rules made the fall deeper and every
+rule earned less.
+
+**Models.** The gradient-boosted trees did not beat always saying "up" in any market
+(Bitcoin 54% against 53%, US stocks 60% against 61%, gold 53% against 59%).
+
+**Patterns and levels (33 comparisons).** On direction, one stood out by the written
+rule: US stocks after RSI under 30 (85% of 41 days against 62%). Those 41 days were 15
+separate sell-offs; counted once each it is 11 of 15, with a range that covers 62%. It
+is treated as not shown. Fair value gaps, order blocks, support, resistance, new highs
+and volume showed nothing on direction. On the size of the move, 12 stood out, mostly in
+US stocks: larger moves after falls (support, down-gaps, RSI under 30, heavy volume on a
+falling day), smaller near highs. That is the known link between falls and rougher
+markets, which the swings forecast already carries.
+
+**Two departures from 060, both made in the open.**
+1. *The model settings.* 060 did not fix them. The first ones (200 rounds, depth 3)
+   recovered about an eighth of a pattern planted in made-up answers; they were fitting
+   noise. Smaller ones (60 rounds, depth 2, leaves of 50, some shrinkage) recovered
+   nearly all of it. They were chosen on the planted pattern only, never on real
+   outcomes, and the real test was then run with them. The small neural network could
+   not recover the planted pattern in any setting tried, so its result on real data is
+   reported and given no weight.
+2. *Counting runs once.* The check on RSI under 30 was added after the result. 060
+   should have said "the first day of each run" for every pattern that comes in runs.
+   Future tests of this kind must.
+
+**What the planted pattern settles.** The user asked whether "no measurable difference"
+everywhere means the method is wrong or the models badly trained. In part it did: the
+first model settings could not learn. The tests themselves find a planted pattern. What
+they cannot see is a small one: with 100 cases, under about 10 points; with 400, under
+about 5. "No measurable difference" means "smaller than this data can show", not "none".
+
+**My guess in 060, checked.** Right that sizing and trend rules cut the deepest fall
+without a gain that survives, for Bitcoin and US stocks; wrong for gold. Right in
+substance that no pattern holds on direction, though the rule as written let one
+through. Right about volume and larger moves. Right about the trees; I did not expect
+the first settings to be unable to learn at all.
+
+**Not to be done.** Do not rerun these tests with other parameters until something
+passes. Do not show a level as a place to add or reduce: that was tested and did not
+hold.
+
+**Open, for the user.** What could be built from this: a sizing guide shown as a
+trade-off (shallower falls for less return, and not in gold), and levels shown as places
+where moves get larger rather than where price turns.
