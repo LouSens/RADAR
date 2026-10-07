@@ -9,10 +9,9 @@ type Habit = NonNullable<AssetRecord["buys"]>;
 const signed = (value: number) => `${value >= 0 ? "+" : "−"}${formatMoney(Math.abs(value))}`;
 const tone = (value: number) =>
   value > 0.005 ? "text-calm" : value < -0.005 ? "text-alert" : "text-ink";
-const percent = (fraction: number) =>
-  `${fraction >= 0 ? "+" : "−"}${Math.abs(fraction * 100).toFixed(1)}%`;
+const percent = (fraction: number) => `${Math.abs(fraction * 100).toFixed(1)}%`;
 
-/** Money-weighted average of one figure over every asset that has it. */
+/** Money-weighted average of one figure over every coin that has it. */
 export function overall(
   assets: AssetRecord[],
   kind: "buys" | "sells",
@@ -29,12 +28,20 @@ export function overall(
   return weight > 0 ? total / weight : undefined;
 }
 
-/** Where a kind of trade sat in the week's range, in words. */
+/** What one coin has made or lost in all: what was sold, plus what is still held. */
+export const totalOf = (asset: AssetRecord) => asset.standing.realised + (asset.unrealised ?? 0);
+
+/** Where a price sat in its week, in plain words. */
 export function placeWords(place: number): string {
-  if (place >= 0.6) return "in the upper part of the week's range";
-  if (place <= 0.4) return "in the lower part of the week's range";
-  return "around the middle of the week's range";
+  if (place >= 0.6) return "near the highest price of that week";
+  if (place <= 0.4) return "near the lowest price of that week";
+  return "around the middle of that week's prices";
 }
+
+const moved = (fraction: number) =>
+  Math.abs(fraction) < 0.002
+    ? "had barely moved"
+    : `had ${fraction > 0 ? "risen" : "fallen"} ${percent(fraction)}`;
 
 function Figure({ label, value, note }: { label: string; value: number; note: string }) {
   return (
@@ -48,18 +55,15 @@ function Figure({ label, value, note }: { label: string; value: number; note: st
   );
 }
 
-/** A 0 to 1 track with a marker for the trades and a tick for any hour. */
+/** A line from the week's cheapest price to its dearest, with a dot where you traded. */
 function PlaceBar({ label, place, usual }: { label: string; place: number; usual?: number }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-3 text-sm">
-        <span className="text-muted">{label}</span>
-        <span className="num text-ink">{Math.round(place * 100)}%</span>
-      </div>
+      <p className="text-sm text-muted">{label}</p>
       <div
-        className="relative mt-1.5 h-2 rounded-full bg-line"
+        className="relative mt-2 h-2 rounded-full bg-line"
         role="img"
-        aria-label={`${label}: ${Math.round(place * 100)}% of the way from the week's low to its high`}
+        aria-label={`${label}: ${Math.round(place * 100)} out of 100, where 0 is the week's cheapest price and 100 its most expensive`}
       >
         {usual !== undefined && (
           <span
@@ -71,6 +75,10 @@ function PlaceBar({ label, place, usual }: { label: string; place: number; usual
           className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent"
           style={{ left: `${place * 100}%` }}
         />
+      </div>
+      <div className="mt-1 flex justify-between text-xs text-faint">
+        <span>Cheapest that week</span>
+        <span>Most expensive</span>
       </div>
     </div>
   );
@@ -85,96 +93,131 @@ function Timing({ record }: { record: AccountRecord }) {
   if (buys === undefined || sells === undefined) return null;
   return (
     <div className="border-t border-line pt-5">
-      <h3 className="text-sm font-semibold tracking-tight">When you bought and sold</h3>
-      <p className="mt-1 text-sm text-muted">
-        Your purchases were made {placeWords(buys)}
-        {buysBefore !== undefined && `, after a day that had moved ${percent(buysBefore)}`}. Your
-        sales were made {placeWords(sells)}
-        {sellsBefore !== undefined && `, after a day that had moved ${percent(sellsBefore)}`}.
-      </p>
-      <div className="mt-4 grid grid-cols-1 gap-4 @xl:grid-cols-2">
-        <PlaceBar label="Purchases" place={buys} usual={usual} />
-        <PlaceBar label="Sales" place={sells} usual={usual} />
+      <h3 className="text-sm font-semibold tracking-tight">When you usually buy and sell</h3>
+      <div className="mt-3 grid grid-cols-1 gap-5 @xl:grid-cols-2">
+        <div>
+          <p className="text-sm">
+            You usually bought {placeWords(buys)}
+            {buysBefore !== undefined && `, when the price ${moved(buysBefore)} in the day before`}.
+          </p>
+          <div className="mt-3">
+            <PlaceBar label="The price you paid" place={buys} usual={usual} />
+          </div>
+        </div>
+        <div>
+          <p className="text-sm">
+            You usually sold {placeWords(sells)}
+            {sellsBefore !== undefined &&
+              `, when the price ${moved(sellsBefore)} in the day before`}
+            .
+          </p>
+          <div className="mt-3">
+            <PlaceBar label="The price you got" place={sells} usual={usual} />
+          </div>
+        </div>
       </div>
-      <p className="mt-2 text-xs text-faint">
-        0% is the lowest price of the week before the trade, 100% the highest. The thin line is any
-        hour.
-      </p>
+      {buys > sells + 0.1 && (
+        <p className="mt-4 text-sm text-muted">
+          Buying nearer the top and selling nearer the bottom is how trades end in a loss.
+        </p>
+      )}
     </div>
   );
 }
 
 function AssetCard({ asset }: { asset: AssetRecord }) {
   const now = asset.standing;
-  const flags = [
-    asset.buys_unusual && asset.buys && `Bought ${placeWords(asset.buys.place)}`,
-    asset.sells_unusual && asset.sells && `Sold ${placeWords(asset.sells.place)}`,
-  ].filter(Boolean);
+  // Crumbs left by fees are not a holding worth a line.
+  const holding = now.average_cost != null && (asset.value ?? 0) >= 0.01;
+  const total = totalOf(asset);
+  const habits = [
+    asset.buys_unusual && asset.buys && `You usually bought it ${placeWords(asset.buys.place)}.`,
+    asset.sells_unusual && asset.sells && `You usually sold it ${placeWords(asset.sells.place)}.`,
+  ].filter((line) => line && !line.includes("middle"));
   return (
     <article className="well p-4">
       <header className="flex items-baseline justify-between gap-3">
         <h4 className="font-semibold tracking-tight">{asset.asset}</h4>
-        <span className="num text-sm text-muted">
-          {formatCount(now.purchases)} bought · {formatCount(now.sales)} sold
-        </span>
+        <span className={`num font-semibold ${tone(total)}`}>{signed(total)}</span>
       </header>
+      <p className="text-xs text-muted">
+        Bought {formatCount(now.purchases)} {now.purchases === 1 ? "time" : "times"}, sold{" "}
+        {formatCount(now.sales)}
+      </p>
       <dl className="mt-2">
-        {now.average_cost != null && now.units > 0 && (
-          <StatRow label="Break-even price">{formatPrice(now.average_cost)}</StatRow>
-        )}
-        {asset.price != null && <StatRow label="Price now">{formatPrice(asset.price)}</StatRow>}
-        <StatRow label="Gain taken by selling">
+        <StatRow label="On what you sold">
           <span className={tone(now.realised)}>{signed(now.realised)}</span>
         </StatRow>
-        {asset.unrealised != null && now.units > 0 && (
-          <StatRow label="Gain on what you hold">
+        {holding && asset.unrealised != null && (
+          <StatRow label="On what you still have">
             <span className={tone(asset.unrealised)}>{signed(asset.unrealised)}</span>
           </StatRow>
         )}
-        {asset.compared && (
-          <StatRow label="Against holding">
-            <span className={tone(asset.compared.difference)}>
-              {signed(asset.compared.difference)}
-            </span>
-          </StatRow>
+        {holding && now.average_cost != null && (
+          <StatRow label="You are back to zero at">{formatPrice(now.average_cost)}</StatRow>
+        )}
+        {holding && asset.price != null && (
+          <StatRow label="Price now">{formatPrice(asset.price)}</StatRow>
         )}
       </dl>
-      {flags.length > 0 && (
-        <p className="mt-2 text-xs text-muted">{flags.join(" · ")}, more than chance would give.</p>
-      )}
+      {habits.length > 0 && <p className="mt-2 text-xs text-muted">{habits.join(" ")}</p>}
     </article>
   );
 }
 
-/** What the holdings cost, what was made, and how the trades were timed. */
-export function RecordPanel({ record }: { record: AccountRecord }) {
+/** What your trades have made or lost so far, and when you tend to buy and sell. */
+export function RecordPanel({ record, worth }: { record: AccountRecord; worth?: number }) {
+  const total = record.realised + record.unrealised;
   const difference = record.as_traded - record.if_held;
-  const shown = record.assets.filter((a) => a.standing.purchases + a.standing.sales >= 2);
+  const coins = [...record.assets].sort((a, b) => totalOf(a) - totalOf(b));
+  const climb = worth && worth > 0 && total < 0 ? -total / worth : undefined;
   return (
     <Panel
       id="record"
-      title="Your record"
-      headline={`${formatCount(record.trades)} trades${
-        record.first_trade ? ` since ${formatDate(record.first_trade)}` : ""
-      }`}
+      title="Your trades so far"
+      headline={
+        total < 0
+          ? `You are down ${formatMoney(-total)} in total`
+          : `You are up ${formatMoney(total)} in total`
+      }
     >
+      <p className="text-sm text-muted">
+        From {formatCount(record.trades)} trades
+        {record.first_trade ? ` since ${formatDate(record.first_trade)}` : ""}.
+        {climb !== undefined &&
+          ` To get it back from growth alone, everything you hold (${formatMoney(worth ?? 0)}) would have to rise ${percent(climb)}.`}
+      </p>
+
       <div className="grid grid-cols-2 gap-3 @4xl:grid-cols-4">
-        <Figure label="Gain taken" value={record.realised} note="from what you sold" />
-        <Figure label="Gain still open" value={record.unrealised} note="on what you hold now" />
         <Figure
-          label="Against holding"
-          value={difference}
-          note="same money, same days, never sold"
+          label="On coins you sold"
+          value={record.realised}
+          note="Final: these trades are closed"
         />
-        <Figure label="Fees" value={-record.fees} note="paid on trades" />
+        <Figure
+          label="On coins you still have"
+          value={record.unrealised}
+          note="Changes as prices move"
+        />
+        <Figure label="Fees you paid" value={-record.fees} note="Already counted in the totals" />
+        <Figure
+          label="Versus buying and keeping"
+          value={difference}
+          note={
+            difference >= 0
+              ? "Your selling left you better off than never selling"
+              : "Never selling would have left you better off"
+          }
+        />
       </div>
 
       <Timing record={record} />
 
       <div className="border-t border-line pt-5">
-        <h3 className="text-sm font-semibold tracking-tight">Asset by asset</h3>
+        <h3 className="text-sm font-semibold tracking-tight">Coin by coin</h3>
+        <p className="mt-1 text-sm text-muted">Biggest loss first.</p>
         <div className="mt-3 grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-3">
-          {shown.map((asset) => (
+          {coins.map((asset) => (
             <AssetCard key={asset.asset} asset={asset} />
           ))}
         </div>
@@ -182,22 +225,29 @@ export function RecordPanel({ record }: { record: AccountRecord }) {
 
       <Caption
         facts={[
-          { label: "From", value: "Your Binance history, read with a read-only key" },
-          { label: "Cost method", value: "Average of what was paid for the units still held" },
+          { label: "Where this comes from", value: "Your Binance trade history, read-only" },
           {
-            label: "Against holding",
-            value: "New money put in at the same times and never sold, at today's price",
+            label: "Back to zero at",
+            value: "The average price you paid for the coins you still have",
           },
           {
-            label: "Priced at the market",
-            value: `${formatCount(record.priced_at_market)} entries with no recorded price, such as coins sent in`,
+            label: "Versus buying and keeping",
+            value: "The same money put in on the same days and never sold, at today's prices",
+          },
+          {
+            label: "Coins sent in from elsewhere",
+            value: `Counted at that day's price, ${formatCount(record.priced_at_market)} times`,
+          },
+          {
+            label: "A coin is missing?",
+            value:
+              "Only coins found in your swaps, rewards, holdings and a short list are searched",
           },
           { label: "Updated", value: `${formatDate(record.as_of)}, once a day` },
         ]}
       >
-        This describes what happened. A habit is named only when it is further from any hour than
-        chance would give, on ten trades or more. What prices did after past trades says nothing
-        about the next one.
+        This shows what has happened. It does not tell you what to do next, and what prices did
+        after your past trades says nothing about the next one.
       </Caption>
     </Panel>
   );

@@ -807,12 +807,12 @@ export function PortfolioPage() {
 
       {section === "record" &&
         (record ? (
-          <RecordPanel record={record} />
+          <RecordPanel record={record} worth={analysis?.value} />
         ) : (
           <Message>
             {record === null
-              ? "There is no record yet. It is built once a day from a Binance history, when a read-only key is set."
-              : "Loading your record…"}
+              ? "Nothing here yet. This is filled in once a day from your Binance trade history, when a read-only key is set."
+              : "Loading your trades…"}
           </Message>
         ))}
 

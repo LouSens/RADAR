@@ -60,6 +60,25 @@ describe("App routes", () => {
     expect(lands("/status")).toBe("system");
   });
 
+  it("no screen still links to a page that was removed", () => {
+    const sources = import.meta.glob("./**/*.tsx", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    });
+    const removed = [
+      /path: "together"/,
+      /\/together/,
+      /\/calendar\/\$\{/,
+      /\/(mixes|sleeves|forces|drivers)\b/,
+    ];
+    for (const [file, text] of Object.entries(sources)) {
+      if (file.includes(".test.") || file.endsWith("/App.tsx")) continue;
+      for (const pattern of removed)
+        expect(String(text), `${file} ${pattern}`).not.toMatch(pattern);
+    }
+  });
+
   it("says so for an address that was never a page", () => {
     render(
       <MemoryRouter initialEntries={["/nowhere"]}>

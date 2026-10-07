@@ -4,7 +4,6 @@ import type { Asset } from "../api/client";
 import { useMarket } from "../api/market";
 import { useAssets } from "../api/queries";
 import { MarketCard } from "../components/MarketCard";
-import { SectionMenu } from "../components/Tabs";
 import { Caption, Change, Message, RangeBar, assetColorVar, shortName } from "../components/ui";
 import { formatPrice } from "../lib/format";
 
@@ -48,7 +47,7 @@ function CompareRow({ asset }: { asset: Asset }) {
   );
 }
 
-/** The three markets, how they compare, and the way into how they move together. */
+/** The three markets and how they compare. */
 export function MarketsPage() {
   const assets = useAssets();
   const primary = assets.data?.filter((a) => a.is_primary) ?? [];
@@ -92,17 +91,6 @@ export function MarketsPage() {
           />
         </section>
       )}
-
-      <SectionMenu
-        base=""
-        items={[
-          {
-            path: "together",
-            label: "Market connections",
-            hint: "When one moves, do the others follow",
-          },
-        ]}
-      />
     </div>
   );
 }
