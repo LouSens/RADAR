@@ -2361,3 +2361,77 @@ is a statement about risk with a record behind it, not a call on direction.
 futures data (funding rates, buy-side volume) and the CFTC's weekly positioning report.
 New hosts, read-only market data, no account access; the test is to be written down
 first, with a fixed-share comparison in it.
+
+## 066. Outside data, and adding versus cutting: the tests, written before running (2026-10-07)
+
+The user agreed to testing free outside data, and added a question of their own: when a
+holding falls, is it better to keep adding on a schedule, or to sell before the position
+turns from a gain into a loss and buy back later, accepting that timing sometimes misses
+the turn? Nothing below has been run.
+
+**What could not be reached.** On this network the names `api.binance.com` and
+`fapi.binance.com` do not resolve: the network's own DNS answers that they do not exist.
+That looks like a deliberate block, so it is left alone. No funding-rate or order-flow
+data is fetched, by any route, until the user says how they want that handled. One
+probe request did succeed against Binance's separate public-data host
+(`data-api.binance.vision`) before this was understood; nothing was kept from it and it
+is not used. So of the outside data agreed to, only the US regulator's positioning
+report is tested here.
+
+**Part A. Positioning (CFTC Commitments of Traders, weekly, public).** New host:
+`publicreporting.cftc.gov`, read without a key through `providers/cftc.py`, which
+refuses any other host or path; a test asserts that.
+
+- Markets and who is counted: gold, managed money (contract 088691); S&P 500 E-mini,
+  leveraged funds (13874A); CME Bitcoin, leveraged funds (133741). Set against GLD, SPY
+  and BTC/USD.
+- Reading: (long minus short) over open interest, then how unusual it is against the 156
+  weeks before (a z-score). "Crowded long" is 1.5 or more; "crowded short" is minus 1.5
+  or less.
+- No lookahead: a report describes a Tuesday and is published the Friday after. It is
+  treated as known from the close of the first trading day on or after the following
+  Monday, six days after its date.
+- *What followed.* A case is the first known day of each run of crowded weeks, so a run
+  counts once (the lesson of decision 061). Whether the price was higher 20 trading days
+  later (28 days for Bitcoin) is set against all days by the method of decision 051: at
+  least 30 cases, a range that leaves out the all-days share, Benjamini-Hochberg at 5%
+  across the 6 comparisons. Size of the move is reported the same way.
+- *As a rule for how much to hold.* Hold half while crowded long, everything otherwise.
+  Judged, as decision 065 requires, against a fixed share equal to the rule's own
+  average as well as against holding everything: it passes in a market only if its
+  return per unit of risk is above the fixed share's with a p-value (paired block
+  resampling, decision 060) that survives across the 3 markets, and its deepest fall is
+  not deeper.
+- Known weakness: runs counted once will be few, probably under 30 in ten years. Then
+  the verdict is "not enough cases", and that is the honest result.
+
+**Part B. Adding versus cutting.** 27 markets: the 24 of decision 064 and BTC/USD, GLD,
+SPY. A person pays in the same amount every 21 trading days, starting after the 252-day
+warm-up. Trades cost 0.1%. Cash earns nothing. Three ways of behaving:
+
+1. *On schedule.* Each payment is invested the day it is made.
+2. *Cut when a gain turns into a loss.* As 1, but once the holding has been worth at
+   least 5% more than was paid for it, the first close at which it is worth less than
+   was paid for it sells everything. Payments wait in cash while out. Everything is
+   bought back at the first close above the highest close of the 20 days before.
+3. *Wait for dips.* Payments wait in cash and are all invested at the first close 10%
+   or more below the highest close of the 60 days before.
+
+Measured at the end: value over total paid in. Also the worst point: the lowest that
+ratio reached. And the average share of the money that sat in cash.
+
+An alternative passes only if all hold: it ends higher than the schedule in at least 70%
+of markets; a Wilcoxon signed-rank p-value under 5% after Benjamini-Hochberg across the
+two alternatives; its worst point is not lower in the median market; and it also ends
+higher, in at least 70% of markets, than a schedule that simply keeps the same average
+share in cash all the time (decision 065).
+
+**My guess.** Part A: too few runs to judge in any market; the sizing rule will not beat
+its fixed share. Part B: neither alternative passes. Cutting at break-even will end
+lower in most markets, because it sells after a fall and buys back higher; its worst
+point will be better in some. Waiting for dips will end lower in rising markets because
+of the time spent in cash, and about level in the ones that fell hardest.
+
+**After.** Whatever passes can become a suggestion under decision 062 with its record.
+What does not pass is not built. The crypto funding and order-flow test stays open until
+the user decides about the blocked hosts.
