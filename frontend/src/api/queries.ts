@@ -8,11 +8,9 @@ import {
   type Asset,
   type Bars,
   type Calibration,
-  type EventStudy,
   type Health,
   type Holding,
   type LevelAnswer,
-  type NewsTest,
   type Portfolio,
   type PortfolioAnalysis,
   type Regime,
@@ -155,16 +153,6 @@ export function useSentiment(slug: string | undefined, days = 90) {
   });
 }
 
-/** Whether news tone has led price, followed it, or neither. */
-export function useEventStudy(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["event-study", slug],
-    queryFn: () => orNull(() => getJson<EventStudy>(`/assets/${slug}/event-study`)),
-    enabled: slug !== undefined,
-    staleTime: 60 * 60_000,
-  });
-}
-
 /** The answers in brief for a market, what changed this week, and a trust grade per claim. */
 export function useSummary(slug: string | undefined) {
   return useQuery({
@@ -251,16 +239,6 @@ export function useSignalRecords(type: string) {
     queryKey: ["signals", "records", type],
     queryFn: () => orNull(() => getJson<SignalRecords>(`/signals/track-records/${type}`)),
     placeholderData: keepPreviousData,
-  });
-}
-
-/** Whether adding news improved the forecast of a market's daily movement. */
-export function useNewsTest(slug: string | undefined) {
-  return useQuery({
-    queryKey: ["news-and-swings", slug],
-    queryFn: () => orNull(() => getJson<NewsTest>(`/assets/${slug}/news-and-swings`)),
-    enabled: slug !== undefined,
-    staleTime: 60 * 60_000,
   });
 }
 

@@ -22,7 +22,6 @@ export type Risk = components["schemas"]["RiskOut"];
 export type RiskHorizon = components["schemas"]["RiskHorizonOut"];
 export type RiskMethod = components["schemas"]["RiskMethodOut"];
 export type Sentiment = components["schemas"]["SentimentOut"];
-export type EventStudy = components["schemas"]["EventStudyOut"];
 export type TrackRecord = components["schemas"]["TrackRecordOut"];
 export type Summary = components["schemas"]["SummaryOut"];
 export type Trust = components["schemas"]["TrustOut"];
@@ -41,7 +40,6 @@ export type Spillover = components["schemas"]["Spillover"];
 export type WeekendGap = components["schemas"]["WeekendGap"];
 export type Drivers = components["schemas"]["Drivers"];
 export type DriverWindow = components["schemas"]["WindowResult"];
-export type NewsTest = components["schemas"]["NewsTest"];
 export type PortfolioPlan = components["schemas"]["Plan"];
 export type WhatIf = components["schemas"]["WhatIf"];
 export type RegularBuying = components["schemas"]["RegularBuying"];
@@ -97,9 +95,7 @@ async function sendJson<T>(method: "POST" | "PUT", path: string, body: unknown):
       .catch(() => undefined);
     throw new ApiError(
       response.status,
-      typeof detail === "string"
-        ? detail
-        : `The server answered ${response.status} for ${path}`,
+      typeof detail === "string" ? detail : `The server answered ${response.status} for ${path}`,
     );
   }
   return (await response.json()) as T;

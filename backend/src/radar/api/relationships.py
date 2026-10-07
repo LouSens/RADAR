@@ -3,7 +3,6 @@
 from fastapi import APIRouter, HTTPException
 
 from radar.api.routes import SessionDep, UniverseDep, find_asset
-from radar.pipelines import news_volatility as news_job
 from radar.pipelines import relationships as job
 
 router = APIRouter(prefix="/api/v1")
@@ -26,13 +25,3 @@ def get_drivers(symbol: str, universe: UniverseDep, session: SessionDep) -> job.
     if stored is None:
         raise HTTPException(status_code=404, detail=f"No driver results for {asset.symbol} yet")
     return job.Drivers.model_validate(stored.metrics)
-
-
-@router.get("/assets/{symbol:path}/news-and-swings", response_model=news_job.NewsTest)
-def get_news_test(symbol: str, universe: UniverseDep, session: SessionDep) -> news_job.NewsTest:
-    """Whether adding news improved the forecast of this market's daily swings."""
-    asset = find_asset(universe, symbol)
-    stored = news_job.current(session, asset.symbol)
-    if stored is None:
-        raise HTTPException(status_code=404, detail=f"No news test for {asset.symbol} yet")
-    return news_job.NewsTest.model_validate({**stored.metrics, "computed_at": stored.trained_at})

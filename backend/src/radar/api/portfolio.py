@@ -78,11 +78,6 @@ class WhatIfIn(BaseModel):
     weights: dict[str, float] = Field(max_length=50)
 
 
-class TagsIn(BaseModel):
-    # Core or satellite by symbol; null clears a tag. Holdings not named keep theirs.
-    tags: dict[str, Literal["core", "satellite"] | None] = Field(max_length=200)
-
-
 class RegularBuyingIn(BaseModel):
     # How each purchase is split among assets; the shares are scaled to add up to 100%.
     weights: dict[str, float] = Field(max_length=20)
@@ -309,20 +304,6 @@ def put_target(body: TargetIn, universe: UniverseDep, session: SessionDep) -> jo
         )
     )
     if not job.set_target(session, target):
-        raise HTTPException(status_code=409, detail="There are no holdings yet.")
-    problem = job.refresh(session, universe)
-    session.commit()
-    analysis = job.stored_analysis(session)
-    if problem or analysis is None:
-        raise HTTPException(status_code=409, detail=problem or "No portfolio analysis yet")
-    return analysis
-
-
-@router.put("/tags", response_model=job.Analysis)
-def put_tags(body: TagsIn, universe: UniverseDep, session: SessionDep) -> job.Analysis:
-    """Tag holdings as core or satellite. The tags are kept by symbol, so reading the
-    holdings again does not lose them. Nothing is traded."""
-    if not job.set_tags(session, dict(body.tags)):
         raise HTTPException(status_code=409, detail="There are no holdings yet.")
     problem = job.refresh(session, universe)
     session.commit()

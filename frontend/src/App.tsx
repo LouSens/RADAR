@@ -21,7 +21,7 @@ export function App() {
         <Route path="asset/:slug/:section?" element={<AssetPage />} />
         <Route path="portfolio/:section?" element={<PortfolioPage />} />
         <Route path="signals/:type?" element={<SignalsPage />} />
-        <Route path="calendar/:event?" element={<CalendarPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
         <Route path="system" element={<SystemPage />} />
         <Route path="status" element={<Navigate to="/system" replace />} />
         <Route path="*" element={<Message>That page does not exist.</Message>} />

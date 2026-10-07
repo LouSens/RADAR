@@ -84,46 +84,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/assets/{symbol}/event-study": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Event Study
-         * @description Whether news tone has led price, followed it, or neither, with the evidence.
-         */
-        get: operations["get_event_study_api_v1_assets__symbol__event_study_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/assets/{symbol}/news-and-swings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get News Test
-         * @description Whether adding news improved the forecast of this market's daily swings.
-         */
-        get: operations["get_news_test_api_v1_assets__symbol__news_and_swings_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/assets/{symbol}/regime": {
         parameters: {
             query?: never;
@@ -470,27 +430,6 @@ export interface paths {
          *     at once. A simulation only: nothing is saved and nothing is bought.
          */
         post: operations["post_regular_buying_api_v1_portfolio_regular_buying_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/portfolio/tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Tags
-         * @description Tag holdings as core or satellite. The tags are kept by symbol, so reading the
-         *     holdings again does not lose them. Nothing is traded.
-         */
-        put: operations["put_tags_api_v1_portfolio_tags_put"];
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -962,19 +901,6 @@ export interface components {
             /** Windows */
             windows: components["schemas"]["WindowResult"][];
         };
-        /** EventPathOut */
-        EventPathOut: {
-            /** High */
-            high: number[];
-            /** Low */
-            low: number[];
-            /** Mean */
-            mean: number[];
-            /** N */
-            n: number;
-            /** Offsets */
-            offsets: number[];
-        };
         /** EventResult */
         EventResult: {
             /** Key */
@@ -983,44 +909,6 @@ export interface components {
             markets: components["schemas"]["MarketResult"][];
             /** Name */
             name: string;
-        };
-        /** EventStudyOut */
-        EventStudyOut: {
-            baseline: components["schemas"]["EventPathOut"];
-            /**
-             * By Topic
-             * @default []
-             */
-            by_topic: components["schemas"]["TopicVerdict"][];
-            /**
-             * Computed At
-             * Format: date-time
-             */
-            computed_at: string;
-            /** Days With News */
-            days_with_news: number;
-            /** First Day */
-            first_day: string | null;
-            /** Lags */
-            lags: components["schemas"]["LagOut"][];
-            /** Last Day */
-            last_day: string | null;
-            /** Min Events */
-            min_events: number;
-            /** N Events */
-            n_events: number;
-            /** N Negative */
-            n_negative: number;
-            /** N Positive */
-            n_positive: number;
-            negative: components["schemas"]["EventPathOut"];
-            positive: components["schemas"]["EventPathOut"];
-            /** Symbol */
-            symbol: string;
-            /** Tests In Family */
-            tests_in_family?: number | null;
-            /** Verdict */
-            verdict: string;
         };
         /** Fall */
         Fall: {
@@ -1162,27 +1050,6 @@ export interface components {
              */
             verdict: "followed by rises more often" | "followed by falls more often" | "no measurable edge" | "not enough occurrences";
         };
-        /** HorizonResult */
-        HorizonResult: {
-            /**
-             * First Day
-             * Format: date
-             */
-            first_day: string;
-            /** Horizon Days */
-            horizon_days: number;
-            /**
-             * Last Day
-             * Format: date
-             */
-            last_day: string;
-            /** N */
-            n: number;
-            /** Pairs */
-            pairs: components["schemas"]["PairResult"][];
-            /** Steps */
-            steps: number;
-        };
         /**
          * HorizonSummary
          * @description The outcome distribution at one horizon, as prices.
@@ -1213,17 +1080,6 @@ export interface components {
             level: number;
             /** Low */
             low: number;
-        };
-        /** LagOut */
-        LagOut: {
-            /** Correlation */
-            correlation: number;
-            /** Lag */
-            lag: number;
-            /** N */
-            n: number;
-            /** Significant */
-            significant: boolean;
         };
         /** LevelIn */
         LevelIn: {
@@ -1424,24 +1280,6 @@ export interface components {
             target_weight: number;
         };
         /**
-         * NewsTest
-         * @description Whether news improved the swings forecast for one market, as stored.
-         */
-        NewsTest: {
-            /** Comparisons */
-            comparisons: number;
-            /** Computed At */
-            computed_at?: string | null;
-            /** Horizons */
-            horizons: components["schemas"]["HorizonResult"][];
-            /** Model Version */
-            model_version: string;
-            /** News Helps */
-            news_helps: boolean;
-            /** Symbol */
-            symbol: string;
-        };
-        /**
          * OutOfSample
          * @description Fit on a window, predict the next sessions, repeat. Scored on every prediction.
          */
@@ -1575,35 +1413,6 @@ export interface components {
             rolling_90: number | null;
             /** Weighted */
             weighted: number | null;
-        };
-        /**
-         * PairResult
-         * @description One model with news against the same model without it.
-         */
-        PairResult: {
-            /** Dm P Adjusted */
-            dm_p_adjusted?: number | null;
-            /** Dm P Value */
-            dm_p_value: number | null;
-            /** Dm Statistic */
-            dm_statistic: number | null;
-            /**
-             * Family
-             * @enum {string}
-             */
-            family: "har" | "gbt";
-            /** Improvement */
-            improvement: number;
-            /** Qlike With */
-            qlike_with: number;
-            /** Qlike Without */
-            qlike_without: number;
-            /**
-             * Verdict
-             * @default no measurable gain
-             * @enum {string}
-             */
-            verdict: "news helps" | "no measurable gain";
         };
         /** Plan */
         Plan: {
@@ -2524,13 +2333,6 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
-        /** TagsIn */
-        TagsIn: {
-            /** Tags */
-            tags: {
-                [key: string]: ("core" | "satellite") | null;
-            };
-        };
         /**
          * Target
          * @description What the user chose to hold the portfolio against: either a risk level with a way
@@ -2575,17 +2377,6 @@ export interface components {
             score_mean: number;
             /** Topic */
             topic: string;
-        };
-        /** TopicVerdict */
-        TopicVerdict: {
-            /** Days With News */
-            days_with_news: number;
-            /** N Events */
-            n_events: number;
-            /** Topic */
-            topic: string;
-            /** Verdict */
-            verdict: string;
         };
         /**
          * TrackRecordOut
@@ -3150,68 +2941,6 @@ export interface operations {
             };
         };
     };
-    get_event_study_api_v1_assets__symbol__event_study_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                symbol: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EventStudyOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_news_test_api_v1_assets__symbol__news_and_swings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                symbol: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NewsTest"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_regime_api_v1_assets__symbol__regime_get: {
         parameters: {
             query?: {
@@ -3709,39 +3438,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RegularBuying"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_tags_api_v1_portfolio_tags_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TagsIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Analysis"];
                 };
             };
             /** @description Validation Error */

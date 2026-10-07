@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import type { NewsTest, VolatilityHorizon } from "../api/client";
-import { useNewsTest, useVolatility } from "../api/queries";
+import type { VolatilityHorizon } from "../api/client";
+import { useVolatility } from "../api/queries";
 import { formatChange, formatCount, formatShare } from "../lib/format";
 import { stepsLabel } from "../lib/outlook";
 import { formatDate } from "../lib/time";
@@ -103,85 +103,8 @@ function verdict(pValue: number | null | undefined, worse: boolean): string {
   return worse ? "Measurably worse" : "Measurably better";
 }
 
-const FAMILY: Record<string, string> = {
-  har: "The method shown",
-  gbt: "The detailed method",
-};
-
-/** Forecast error with and without news, side by side, with the verdict in words. */
-export function NewsCheck({ test, horizonDays }: { test: NewsTest; horizonDays: number }) {
-  const horizon = test.horizons.find((h) => h.horizon_days === horizonDays) ?? test.horizons[0];
-  if (!horizon) return null;
-  const reach = Math.max(...horizon.pairs.flatMap((p) => [p.qlike_without, p.qlike_with]), 1e-9);
-  const helped = horizon.pairs.some((pair) => pair.verdict === "news helps");
-  return (
-    <div className="border-t border-line pt-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="text-sm font-semibold tracking-tight">Does news improve this forecast?</h3>
-        <p className={`text-sm font-medium ${helped ? "text-calm" : "text-muted"}`}>
-          {helped ? "Yes, measurably" : "No measurable gain"}
-        </p>
-      </div>
-      <div className="mt-4 grid grid-cols-1 gap-x-10 gap-y-5 @xl:grid-cols-2">
-        {horizon.pairs.map((pair) => (
-          <div key={pair.family}>
-            <p className="label">{FAMILY[pair.family] ?? pair.family}</p>
-            {[
-              { name: "Without news", value: pair.qlike_without, colour: "var(--muted)" },
-              { name: "With news", value: pair.qlike_with, colour: "var(--accent)" },
-            ].map((row) => (
-              <div
-                key={row.name}
-                className="mt-2 grid grid-cols-[6rem_minmax(0,1fr)_auto] items-center gap-x-3 text-sm"
-              >
-                <span className="text-muted">{row.name}</span>
-                <span className="block h-1.5 rounded-full bg-white/8">
-                  <span
-                    className="block h-full rounded-full"
-                    style={{ width: `${(row.value / reach) * 100}%`, background: row.colour }}
-                  />
-                </span>
-                <span className="num font-medium">{row.value.toFixed(3)}</span>
-              </div>
-            ))}
-            <p className="num mt-2 text-xs text-faint">
-              {pair.improvement >= 0 ? "Error lower by " : "Error higher by "}
-              {formatShare(Math.abs(pair.improvement), 1)}
-              {pair.verdict === "news helps" ? ", more than chance" : ", within chance"}
-            </p>
-          </div>
-        ))}
-      </div>
-      <Caption
-        facts={[
-          {
-            label: "Shows",
-            value:
-              "The same forecast made twice on each day: from past movement alone, and also knowing the news",
-          },
-          {
-            label: "The news added",
-            value: "How many articles that day, how unusual that number was, and their tone",
-          },
-          {
-            label: "Window",
-            value: `${formatCount(horizon.n)} days, ${formatDate(horizon.first_day)} to ${formatDate(horizon.last_day)}`,
-          },
-          { label: "Shorter bars", value: "Smaller error" },
-          {
-            label: "Counts as better",
-            value: `Only beyond chance, allowing for ${test.comparisons} comparisons across all markets`,
-          },
-          { label: "Written down first", value: "This rule, before the test was run" },
-        ]}
-      />
-    </div>
-  );
-}
-
 export function VolatilityPanel({ asset, trust }: PanelProps) {
   const volatility = useVolatility(asset.slug).data;
-  const newsTest = useNewsTest(asset.slug).data;
   const [key, setKey] = useState<HorizonKey>("1");
   if (!volatility) return null;
   const horizon =
@@ -275,7 +198,6 @@ export function VolatilityPanel({ asset, trust }: PanelProps) {
             ))}
           </tbody>
         </table>
-        {newsTest && <NewsCheck test={newsTest} horizonDays={horizon.horizon_days} />}
       </Evidence>
     </Panel>
   );

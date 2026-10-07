@@ -1,13 +1,12 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Asset, EventStudy, Sentiment } from "../api/client";
+import type { Asset, Sentiment } from "../api/client";
 import { NewsPanel, toneWord } from "./NewsPanel";
 
-const state = vi.hoisted(() => ({ sentiment: null as unknown, study: null as unknown }));
+const state = vi.hoisted(() => ({ sentiment: null as unknown }));
 vi.mock("../api/queries", () => ({
   useSentiment: () => ({ data: state.sentiment }),
-  useEventStudy: () => ({ data: state.study }),
 }));
 
 const BITCOIN: Asset = {
@@ -62,42 +61,10 @@ const SENTIMENT: Sentiment = {
   },
 };
 
-const path = (n: number, mean: number[]) => ({
-  n,
-  offsets: [-1, 0, 1, 2, 3],
-  mean,
-  low: mean.map((v) => v - 0.01),
-  high: mean.map((v) => v + 0.01),
-});
-
-const STUDY: EventStudy = {
-  symbol: "BTC/USD",
-  computed_at: "2026-10-05T16:20:00Z",
-  verdict: "price leads sentiment",
-  n_events: 96,
-  n_positive: 41,
-  n_negative: 55,
-  min_events: 30,
-  days_with_news: 1730,
-  first_day: "2022-01-01",
-  last_day: "2026-10-04",
-  positive: path(41, [0.01, 0.03, 0.03, 0.02, 0.02]),
-  negative: path(55, [-0.01, -0.04, -0.04, -0.03, -0.03]),
-  baseline: path(96, [0, 0, 0.001, 0, 0]),
-  by_topic: [],
-  lags: [-2, -1, 0, 1, 2].map((lag) => ({
-    lag,
-    correlation: lag === -1 ? 0.14 : 0.01,
-    n: 1700,
-    significant: lag === -1,
-  })),
-};
-
 describe("NewsPanel", () => {
   afterEach(cleanup);
   beforeEach(() => {
     state.sentiment = SENTIMENT;
-    state.study = STUDY;
   });
 
   it("shows nothing until news tone is stored", () => {
@@ -107,7 +74,7 @@ describe("NewsPanel", () => {
 
   it("shows the current tone in words, with how much news there is", () => {
     render(<NewsPanel asset={BITCOIN} />);
-    expect(screen.getByText("Mostly negative")).toBeInTheDocument();
+    expect(screen.getAllByText("Mostly negative")).toHaveLength(2);
     expect(screen.getByText("−0.31")).toBeInTheDocument();
     expect(screen.getByText("88")).toBeInTheDocument();
     expect(screen.getByText(/1,040 articles on 89 of the last 3 days/)).toBeInTheDocument();
@@ -123,14 +90,6 @@ describe("NewsPanel", () => {
     expect(screen.getByText(/not coloured by tone/)).toBeInTheDocument();
   });
 
-  it("folds the subject breakdown away and marks it rough", () => {
-    render(<NewsPanel asset={BITCOIN} />);
-    const summary = screen.getByText("What the news is about");
-    expect(summary.closest("details")).not.toHaveAttribute("open");
-    expect(screen.getByText("(a rough guide)")).toBeInTheDocument();
-    expect(screen.getByText("Hacks, fraud, and failures")).toBeInTheDocument();
-  });
-
   it("opens with the claim, its trust grade, and the reason for the grade", () => {
     render(
       <NewsPanel
@@ -140,27 +99,9 @@ describe("NewsPanel", () => {
     );
     expect(screen.getByRole("heading", { name: "News" })).toBeInTheDocument();
     expect(screen.getByText("Rough")).toBeInTheDocument();
-    expect(screen.getByText("Mostly negative · Price moved first")).toBeInTheDocument();
+    expect(screen.getAllByText("Mostly negative")).toHaveLength(2);
     expect(screen.getByText("Why rough")).toBeInTheDocument();
     expect(screen.getByText("Tone of recent news")).toBeInTheDocument();
-  });
-
-  it("states the verdict with its event count", () => {
-    render(<NewsPanel asset={BITCOIN} />);
-    expect(
-      screen.getByText("Price has tended to move first, with news tone following it."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("96")).toBeInTheDocument();
-    expect(screen.getByText(/41 days of unusually positive news/)).toBeInTheDocument();
-  });
-
-  it("says so when there is too little news to judge, and draws no charts for it", () => {
-    state.study = { ...STUDY, verdict: "not enough events", n_events: 12 };
-    render(<NewsPanel asset={BITCOIN} />);
-    expect(
-      screen.getByText("There is too little news coverage of this asset to measure an effect."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/unusually positive news \(green\)/)).toBeNull();
   });
 
   it("shows how the tone model was checked, with ranges and who labelled the sample", () => {
@@ -172,19 +113,6 @@ describe("NewsPanel", () => {
     expect(screen.getByText("52%")).toBeInTheDocument();
     expect(screen.getByText(/An AI model \(Claude\), not a person/)).toBeInTheDocument();
     expect(screen.getByText(/Calling a mild article neutral/)).toBeInTheDocument();
-  });
-
-  it("gives each subject its own verdict", () => {
-    state.study = {
-      ...STUDY,
-      by_topic: [
-        { topic: "price", verdict: "price leads sentiment", n_events: 80, days_with_news: 1500 },
-        { topic: "security", verdict: "not enough events", n_events: 6, days_with_news: 120 },
-      ],
-    };
-    render(<NewsPanel asset={BITCOIN} />);
-    expect(screen.getByText(/Price moved first ·/)).toBeInTheDocument();
-    expect(screen.getByText(/Too little news ·/)).toBeInTheDocument();
   });
 
   it("puts tone into plain words", () => {

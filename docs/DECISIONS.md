@@ -2789,3 +2789,67 @@ be, and the explanation of a move. It does not make direction forecastable; deci
 option snapshots (`providers/alpaca_rest.py`, `providers/schemas.py`), with invented
 fixtures. Nothing stores or shows them yet; that comes with steps C to G of the build
 plan.
+
+## 073. More reads from Binance, the cut, and the result of the pay-in test (2026-10-07)
+
+**Agreed by the user today.** Binance's public price history may be used for the coins
+they hold, not only for research. The six further reads of decision 072 may be added
+with their read-only key. Gain and loss in US dollars; purchases by manual entry first;
+headlines only.
+
+**Account history, read-only** (`providers/binance_history.py`). Eight endpoints, every
+one a GET that lists past events: fills (`/api/v3/myTrades`), daily balances
+(`/sapi/v1/accountSnapshot`), coins arriving (`/sapi/v1/capital/deposit/hisrec`) and
+leaving (`/sapi/v1/capital/withdraw/history`), conversions
+(`/sapi/v1/convert/tradeFlow`), card purchases (`/sapi/v1/fiat/payments`), rewards
+(`/sapi/v1/asset/assetDividend`), futures income (`/fapi/v1/income`). Kept in a module
+of its own so that the guard on `binance.py` stays as strict as it was. Tests assert the
+list is exactly these, that every request is a signed GET with no body, and that orders,
+quotes, applications and transfers are refused before anything is sent. Open and past
+orders are not read at all. All eight answered against the user's account (row counts
+looked at, no values). Nothing stores or shows them yet: that is step C.
+
+**Not built yet: Binance public history for held coins.** The bars table can hold a
+second venue per symbol, but every reader would have to learn to join two venues, and a
+dollar price would be spliced to a USDT one. It is step D's first task, with a test that
+the join leaves no jump.
+
+**The cut.** Out of the screens: markets together; what it moves with (market and
+portfolio); forecast accuracy per market; compare mixes; core and satellite; the weekend
+tile; tone versus price and the subject breakdown in News; the news test in Daily
+movement; the page per kind of event. Out of the API: the routes for tone versus price,
+news and swings, and tags. About 3,000 lines removed; 112 frontend tests and all backend
+tests pass.
+
+Kept on purpose, to be decided at steps E and G: the `/relationships`, `/drivers` and
+`/track-record` routes and every scheduled job, because "why it moved" needs the
+drivers and the Models page needs the forecast records. The tone study is still
+computed because the summary card reads it. Signals stays a place until rule alerts
+replace it. Research code stays inside the app package until the notebooks are rebuilt
+(step H), since the built notebooks import it by its present path.
+
+**The pay-in test (decision 070), run once. Notebook 15 shows every table.**
+- A. Knowing the month's lowest close in advance is worth 1.5% (bonds) to 10% (crypto)
+  of one payment. A day picked at random costs about 0.4%.
+- B. 0 of 8 readings pass. Over 2,911 months all eight paid more than the scheduled
+  day, by 0.2% to 0.8%; none was ahead in more than 7 of 27 markets; none did better
+  than its own waits on the wrong months. Paying at the first lower close got a lower
+  price in 85% of months and still paid 0.3% more on average.
+- C. The ensemble recovered 74% to 91% of a planted pattern. On real answers it was
+  right on 53.5% of 43,840 test days against 54.3% for the commoner answer, and its
+  rule paid 0.6% more than the scheduled day. It does not pass.
+- D. As designed, the ensemble's chance of a 5% dip scored about 10% worse than the
+  market's own share so far, and no forecast was true to its chances. The design was at
+  fault: the models were not given the market's own share, and each year's models
+  stopped learning over a year before it and had seen no coin before 2024.
+- Guesses: right on B and C, wrong on D.
+
+**Decided.** Pay in on the scheduled day: no reading is shown as a time to pay in.
+Direction and timing research is closed. Part D is redone once, as the app's large-fall
+forecast (step G), with the market's own share as an input, models refitted on
+everything up to the gap, and the change written down before it is run.
+
+**On the notebook itself.** Its numbers stand and it is committed as the record of this
+test. As a document it is not good enough: cells of 70 lines, lines 300 characters wide,
+nine functions written in the notebook, jargon column names. It is rebuilt with the
+others in step H and is not the model for them.

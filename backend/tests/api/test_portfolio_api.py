@@ -526,55 +526,6 @@ def test_the_range_ahead_is_stored_with_how_often_past_ranges_held(client: TestC
     assert f"{eighty['inside']} of {eighty['n']} past 30-session forecasts" in trust["reason"]
 
 
-def test_tags_are_kept_by_symbol_through_a_new_read_of_holdings(
-    client: TestClient, session: Session
-) -> None:
-    assert client.put("/api/v1/portfolio/tags", json={"tags": {"GLD": "core"}}).status_code == 409
-    holdings = {
-        "holdings": [
-            {"symbol": "BTC", "quantity": 0.01},
-            {"symbol": "GLD", "quantity": 10},
-            {"symbol": "USD", "quantity": 500},
-        ]
-    }
-    client.put("/api/v1/portfolio", json=holdings)
-    assert client.get("/api/v1/portfolio/analysis").json()["sleeves"] is None
-
-    tagged = client.put(
-        "/api/v1/portfolio/tags", json={"tags": {"GLD": "core", "BTC/USD": "satellite"}}
-    )
-    assert tagged.status_code == 200
-    report = tagged.json()["sleeves"]
-    found = {s["group"]: s for s in report["sleeves"]}
-    assert list(found) == ["core", "satellite", "cash"]
-    assert found["core"]["symbols"] == ["GLD"]
-    # Bitcoin swings eight times as much as gold: more of the risk than of the money.
-    assert found["satellite"]["risk_share"] > found["satellite"]["weight"]
-    assert sum(s["weight"] for s in report["sleeves"]) == pytest.approx(1.0)
-    assert sum(s["risk_share"] for s in report["sleeves"]) == pytest.approx(1.0)
-    assert report["n_days"] == 250
-
-    # The same holdings arrive again with no tags, as they do from an exchange.
-    again = client.put("/api/v1/portfolio", json=holdings).json()
-    assert {h["symbol"]: h["tag"] for h in again["holdings"]} == {
-        "BTC/USD": "satellite",
-        "GLD": "core",
-        "USD": None,
-    }
-    assert client.get("/api/v1/portfolio/analysis").json()["sleeves"] is not None
-
-    # One tag is cleared; the other is left as it was.
-    cleared = client.put("/api/v1/portfolio/tags", json={"tags": {"BTC/USD": None}}).json()
-    assert [s["group"] for s in cleared["sleeves"]["sleeves"]] == ["core", "untagged", "cash"]
-    session.expire_all()
-    assert {h.symbol: h.tag for h in job.stored_holdings(session)[1]} == {
-        "BTC/USD": None,
-        "GLD": "core",
-        "USD": None,
-    }
-    assert client.put("/api/v1/portfolio/tags", json={"tags": {"GLD": "main"}}).status_code == 422
-
-
 def test_a_plan_of_regular_purchases_is_simulated_without_saving_anything(
     client: TestClient, session: Session
 ) -> None:

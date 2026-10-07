@@ -1,32 +1,8 @@
-import type { EventStudy, Sentiment } from "../api/client";
-import { useEventStudy, useSentiment } from "../api/queries";
-import { formatChange, formatCount, formatShare } from "../lib/format";
+import type { Sentiment } from "../api/client";
+import { useSentiment } from "../api/queries";
+import { formatCount, formatShare } from "../lib/format";
 import { formatDate, formatDateTime, zoneLabel } from "../lib/time";
 import { Evidence, Caption, Panel, StatRow, type PanelProps } from "./ui";
-
-const TOPIC: Record<string, string> = {
-  regulation: "Regulation and courts",
-  funds_flows: "Funds and large investors",
-  security: "Hacks, fraud, and failures",
-  macro: "Economy and geopolitics",
-  adoption: "Companies and adoption",
-  price: "Price commentary",
-  other: "Other",
-};
-
-const VERDICT: Record<string, string> = {
-  "sentiment leads price": "News tone has tended to move before price.",
-  "price leads sentiment": "Price has tended to move first, with news tone following it.",
-  "no measurable relationship": "No measurable link between news tone and later price moves.",
-  "not enough events": "There is too little news coverage of this asset to measure an effect.",
-};
-
-const VERDICT_SHORT: Record<string, string> = {
-  "sentiment leads price": "News moved first",
-  "price leads sentiment": "Price moved first",
-  "no measurable relationship": "No measurable link",
-  "not enough events": "Too little news",
-};
 
 /** A plain word for a tone score between -1 and +1. */
 export function toneWord(score: number | null | undefined): string {
@@ -133,221 +109,6 @@ function Headlines({ articles }: { articles: Sentiment["recent"] }) {
   );
 }
 
-const OFFSET_LABEL: Record<number, string> = {
-  [-1]: "Day before",
-  0: "News day",
-  1: "+1 day",
-  2: "+2 days",
-  3: "+3 days",
-};
-
-function Paths({ study }: { study: EventStudy }) {
-  const width = 600;
-  const height = 150;
-  const lines = [
-    { path: study.baseline, color: "var(--muted)", dash: "5 5", band: false },
-    { path: study.negative, color: "var(--alert)", dash: undefined, band: true },
-    { path: study.positive, color: "var(--calm)", dash: undefined, band: true },
-  ].filter((line) => line.path.n > 0);
-  if (!lines.length) return null;
-  const extreme = Math.max(
-    ...lines.flatMap((l) => [...l.path.low, ...l.path.high, ...l.path.mean].map(Math.abs)),
-    1e-6,
-  );
-  const offsets = study.positive.offsets;
-  const x = (i: number) => (i / (offsets.length - 1)) * width;
-  const y = (value: number) => height / 2 - (value / extreme) * (height / 2 - 4);
-  const line = (values: number[]) =>
-    values.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-  return (
-    <div>
-      <div className="flex gap-3">
-        <div className="num flex flex-col justify-between text-right text-xs text-faint">
-          <span>{formatChange(extreme)}</span>
-          <span>{formatChange(0)}</span>
-          <span>{formatChange(-extreme)}</span>
-        </div>
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          preserveAspectRatio="none"
-          className="h-40 min-w-0 flex-1"
-          role="img"
-          aria-label="Average price path around days with unusually positive or negative news"
-        >
-          <line x1="0" x2={width} y1={height / 2} y2={height / 2} stroke="var(--line-strong)" />
-          {lines.map((l, i) => (
-            <g key={i}>
-              {l.band && (
-                <path
-                  d={`${line(l.path.high)} ${[...l.path.low]
-                    .map((v, j) => `L${x(j).toFixed(1)},${y(v).toFixed(1)}`)
-                    .reverse()
-                    .join(" ")} Z`}
-                  fill={l.color}
-                  opacity="0.12"
-                />
-              )}
-              <path
-                d={line(l.path.mean)}
-                fill="none"
-                stroke={l.color}
-                strokeWidth="2"
-                strokeDasharray={l.dash}
-                vectorEffect="non-scaling-stroke"
-              />
-            </g>
-          ))}
-        </svg>
-      </div>
-      <div className="mt-2 flex justify-between pl-14 text-xs text-faint">
-        {offsets.map((offset) => (
-          <span key={offset}>{OFFSET_LABEL[offset] ?? offset}</span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Lags({ study }: { study: EventStudy }) {
-  const width = 600;
-  const height = 110;
-  const extreme = Math.max(...study.lags.map((l) => Math.abs(l.correlation)), 0.05);
-  const step = width / study.lags.length;
-  return (
-    <div>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        className="h-28 w-full"
-        role="img"
-        aria-label="Correlation between news tone and price moves a few days apart"
-      >
-        <line x1="0" x2={width} y1={height / 2} y2={height / 2} stroke="var(--line-strong)" />
-        {study.lags.map((lag, i) => {
-          const bar = (Math.abs(lag.correlation) / extreme) * (height / 2 - 4);
-          return (
-            <rect
-              key={lag.lag}
-              x={i * step + step * 0.2}
-              width={step * 0.6}
-              y={lag.correlation >= 0 ? height / 2 - bar : height / 2}
-              height={Math.max(bar, 0.6)}
-              rx="2"
-              fill={lag.significant ? "var(--accent)" : "var(--muted)"}
-              opacity={lag.significant ? 0.95 : 0.4}
-            />
-          );
-        })}
-      </svg>
-      <div className="mt-2 flex justify-between text-xs text-faint">
-        <span>Price moved first (up to 5 days)</span>
-        <span>Same day</span>
-        <span>News came first (up to 5 days)</span>
-      </div>
-    </div>
-  );
-}
-
-function Study({ study }: { study: EventStudy }) {
-  const enough = study.verdict !== "not enough events";
-  const strongest = [...study.lags].sort(
-    (a, b) => Math.abs(b.correlation) - Math.abs(a.correlation),
-  )[0];
-  return (
-    <div className="border-t border-line pt-5">
-      <h3 className="text-sm font-semibold tracking-tight">Does the news move the price?</h3>
-      <p className="mt-2 text-base leading-relaxed">{VERDICT[study.verdict] ?? study.verdict}</p>
-      <p className="mt-1 text-sm text-muted">
-        <span className="num text-ink">{formatCount(study.n_events)}</span> days with unusually
-        strong tone were found
-        {study.first_day && study.last_day
-          ? ` between ${formatDate(study.first_day)} and ${formatDate(study.last_day)}`
-          : ""}
-        ; at least <span className="num text-ink">{study.min_events}</span> are needed for a
-        verdict.
-      </p>
-      {enough && (
-        <div className="mt-5 grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-2">
-          <div>
-            <Paths study={study} />
-            <Caption
-              facts={[
-                {
-                  label: "Shows",
-                  value: "Average price move around unusual news, beyond the usual drift",
-                },
-                {
-                  label: "Green",
-                  value: `${formatCount(study.positive.n)} days of unusually positive news`,
-                },
-                {
-                  label: "Red",
-                  value: `${formatCount(study.negative.n)} days of unusually negative news`,
-                },
-                {
-                  label: "Dashed line",
-                  value: `The same measure on ${formatCount(study.baseline.n)} ordinary days in similar states`,
-                },
-                { label: "Shaded bands", value: "The uncertainty" },
-              ]}
-            />
-          </div>
-          <div>
-            <Lags study={study} />
-            <Caption
-              facts={[
-                {
-                  label: "Shows",
-                  value:
-                    "How closely a day's news tone tracks the price move a few days earlier or later",
-                },
-                { label: "Window", value: `${formatCount(strongest?.n ?? 0)} days` },
-                {
-                  label: "Bright bars",
-                  value: `Larger than chance would give${
-                    study.tests_in_family
-                      ? `, allowing for the ${study.tests_in_family} tests run on this market's news`
-                      : ""
-                  }`,
-                },
-                { label: "Same-day bar", value: "Cannot show which came first" },
-              ]}
-            />
-          </div>
-        </div>
-      )}
-      {study.by_topic && study.by_topic.length > 0 && (
-        <div className="mt-6">
-          <h4 className="label">By subject</h4>
-          <ul className="mt-2">
-            {study.by_topic.map((topic) => (
-              <li
-                key={topic.topic}
-                className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-line py-2 text-sm first:border-t-0"
-              >
-                <span>{TOPIC[topic.topic] ?? topic.topic}</span>
-                <span className="text-muted">
-                  {VERDICT_SHORT[topic.verdict] ?? topic.verdict} ·{" "}
-                  <span className="num">{formatCount(topic.n_events)}</span> strong-tone days
-                </span>
-              </li>
-            ))}
-          </ul>
-          <Caption
-            facts={[
-              { label: "Tested on", value: "Each subject's own articles only" },
-              {
-                label: "No verdict",
-                value: `Under ${study.min_events} strong-tone days is too little news`,
-              },
-            ]}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
 const range = (low: number | null | undefined, high: number | null | undefined) =>
   low == null || high == null ? "" : ` (${formatShare(low, 0)} to ${formatShare(high, 0)})`;
 
@@ -419,19 +180,11 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
 
 export function NewsPanel({ asset, trust }: PanelProps) {
   const sentiment = useSentiment(asset.slug).data;
-  const study = useEventStudy(asset.slug).data;
   if (!sentiment) return null;
   const accuracy = sentiment.accuracy;
 
   return (
-    <Panel
-      id="news"
-      title="News"
-      trust={trust}
-      headline={[toneWord(sentiment.current), study ? VERDICT_SHORT[study.verdict] : undefined]
-        .filter(Boolean)
-        .join(" · ")}
-    >
+    <Panel id="news" title="News" trust={trust} headline={toneWord(sentiment.current)}>
       <div className="grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
         <div>
           <p className="label">Tone of recent news</p>
@@ -474,40 +227,7 @@ export function NewsPanel({ asset, trust }: PanelProps) {
         </div>
       </div>
 
-      {study && <Study study={study} />}
-
       <Headlines articles={sentiment.recent} />
-
-      {sentiment.topics.length > 0 && (
-        <details className="border-t border-line pt-5">
-          <summary className="cursor-pointer text-sm font-semibold tracking-tight">
-            What the news is about <span className="font-normal text-muted">(a rough guide)</span>
-          </summary>
-          <dl className="mt-3 grid grid-cols-1 gap-x-12 @xl:grid-cols-2">
-            {sentiment.topics.map((topic) => (
-              <StatRow key={topic.topic} label={TOPIC[topic.topic] ?? topic.topic}>
-                {formatCount(topic.article_count)}{" "}
-                <span className="text-muted">{signed(topic.score_mean)}</span>
-              </StatRow>
-            ))}
-          </dl>
-          <Caption
-            facts={[
-              {
-                label: "Shows",
-                value: "Articles on each subject over the same period, and their average tone",
-              },
-              {
-                label: "Subjects assigned by",
-                value: `A model that matched labelled headlines${
-                  accuracy?.topics ? ` ${formatShare(accuracy.topics.accuracy, 0)}` : " part"
-                } of the time`,
-              },
-              { label: "Treat as", value: "A rough guide" },
-            ]}
-          />
-        </details>
-      )}
 
       {accuracy && (
         <Evidence summary="How the tone reading was checked">

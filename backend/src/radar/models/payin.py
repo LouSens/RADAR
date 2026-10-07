@@ -289,8 +289,8 @@ def members(seed: int = 0) -> dict[str, Any]:
             StandardScaler(),
             MLPClassifier(
                 hidden_layer_sizes=(32, 16),
-                alpha=1e-2,
-                max_iter=60,
+                alpha=1.0,
+                max_iter=200,
                 early_stopping=False,
                 random_state=seed,
             ),
