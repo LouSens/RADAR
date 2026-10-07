@@ -3055,3 +3055,40 @@ steadily across years; nothing over 28 days.
 near their highs, by X on average, in N weeks of M", with the weeks it failed, and the
 1% cap stays. **If it does not**, the check stays as it is: a description, with no coin
 called a good buy.
+
+## 079. Coins low against high in their range: the result (2026-10-07)
+
+The test of decision 078, run once, on 617 coins with 90 days or more of daily bars
+(686 listed against USDT), Mondays from 2020 to October 2026.
+
+| Period | Coins | Weeks | Low ahead of high | Resamples with no lead | Years ahead | Passes |
+|---|---|---|---|---|---|---|
+| 7 days | all | 183 | -0.45 points | 82% | 3 of 7 | no |
+| 7 days | largest 30 | 100 | -2.65 points | 100% | 1 of 8 | no |
+| 28 days | all | 44 | -4.61 points | 97% | 1 of 7 | no |
+| 28 days | largest 30 | 23 | -6.68 points | 96% | 3 of 8 | no |
+
+A coin low in its range was up at all a week later 42% of the time. (For the largest
+30 the groups hold 7 to 9 coins, under the 10 the rule asks; shown as written, not part
+of the mark.)
+
+**It does not pass, and it points the other way.** Coins low in their range did worse
+afterwards than coins high in it, in most years, and by more among the large coins. This
+is with delisted coins left out, which flatters "low". So "it is low, it might be good"
+is not something RADAR can say about an altcoin.
+
+**My guess** was a small lead for low over 7 days. Wrong: there was none.
+
+**Not to be turned round.** That high did better than low was not the question written
+down, so it is not a finding to act on. If it is ever to be used it needs its own test,
+written first, on data kept apart.
+
+**The user's own record says something different, and both are true.** Over his 414
+purchases with a week of prices after them: the 266 made near the week's top were down
+2.9% a week later on average, the 87 made near the bottom up 0.5%. That is about the
+moments he chose (after a jump), not about coins in general. The check before buying
+shows him his own figures, which are his; it does not colour "low" as good, and it now
+states what the test across all coins found.
+
+**Decided.** No screener calls a coin a good buy. The check before buying stays a
+description. Altcoins stay at 1% each.

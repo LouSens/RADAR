@@ -56,8 +56,6 @@ const moved = (fraction: number) =>
     : `is ${fraction > 0 ? "up" : "down"} ${percent(fraction)}`;
 
 export function CheckResult({ check }: { check: BuyCheck }) {
-  const tone =
-    check.where === "high" ? "text-alert" : check.where === "low" ? "text-calm" : "text-ink";
   const outcomes = check.outcomes.filter((o) => o.trades >= 5);
   return (
     <div className="flex flex-col gap-5">
@@ -65,9 +63,7 @@ export function CheckResult({ check }: { check: BuyCheck }) {
         <p className="num text-sm text-muted">
           {check.coin} · {formatPrice(check.price)}
         </p>
-        <p className={`mt-1 text-xl font-semibold tracking-tight ${tone}`}>
-          {HEADLINE[check.where]}
-        </p>
+        <p className="mt-1 text-xl font-semibold tracking-tight">{HEADLINE[check.where]}</p>
         <p className="mt-1 text-sm text-muted">
           {DETAIL[check.where]} It {moved(check.move_day)} since yesterday and{" "}
           {moved(check.move_week)} over the week
@@ -189,6 +185,11 @@ export function CheckPanel({ suggestions }: { suggestions: string[] }) {
           },
           { label: "Prices from", value: "Binance, hour by hour, read when you ask" },
           { label: "Your record", value: "Your own past purchases on Binance" },
+          {
+            label: "Does low mean a good buy?",
+            value:
+              "Tested on 617 coins since 2020: coins low in their range did no better over the next week or month than coins high in it",
+          },
         ]}
       >
         A low price can go lower and a high price can go higher: RADAR cannot tell which way it goes
