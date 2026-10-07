@@ -22,6 +22,9 @@ export function App() {
         <Route path="portfolio/:section?" element={<PortfolioPage />} />
         <Route path="signals/:type?" element={<SignalsPage />} />
         <Route path="calendar" element={<CalendarPage />} />
+        {/* Addresses of pages that were removed: send them to the nearest page that exists. */}
+        <Route path="calendar/*" element={<Navigate to="/calendar" replace />} />
+        <Route path="together/*" element={<Navigate to="/markets" replace />} />
         <Route path="system" element={<SystemPage />} />
         <Route path="status" element={<Navigate to="/system" replace />} />
         <Route path="*" element={<Message>That page does not exist.</Message>} />

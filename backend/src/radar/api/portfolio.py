@@ -24,6 +24,7 @@ from radar.models.holdings import (
     ManualSource,
     Unsupported,
 )
+from radar.pipelines import account as account_job
 from radar.pipelines import discover, rebalance
 from radar.pipelines import portfolio as job
 from radar.pipelines.datasets import build_mixed_panel
@@ -140,6 +141,16 @@ def _finish(session: Session, universe: Universe, read: Holdings, *, binance: bo
         leveraged=[Leveraged.model_validate(p) for p in job.stored_leveraged(session)],
         wallets=[Wallet.model_validate(w) for w in job.stored_wallets(session)],
     )
+
+
+@router.get("/record", response_model=account_job.Record)
+def get_record(session: SessionDep) -> account_job.Record:
+    """What the holdings cost, what was made, and how the trades were timed, from the
+    exchange's own history. Read from the stored result; nothing is fetched here."""
+    record = account_job.stored(session)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No account record yet")
+    return record
 
 
 @router.get("", response_model=PortfolioOut)

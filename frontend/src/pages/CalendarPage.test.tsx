@@ -79,7 +79,7 @@ function page(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="calendar/:event?" element={<CalendarPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
       </Routes>
     </MemoryRouter>,
   );
