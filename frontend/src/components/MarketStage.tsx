@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 import type { Asset, Timeframe } from "../api/client";
 import { useMarket } from "../api/market";
-import { useBarsSince } from "../api/queries";
+import { useBars, useBarsSince } from "../api/queries";
 import { formatCount, formatPrice } from "../lib/format";
 import { formatDate, zoneLabel } from "../lib/time";
 import { Freshness } from "./PriceLine";
@@ -11,6 +11,9 @@ import { PriceChart } from "./PriceChart";
 import { ChangeChip, Segmented, assetColorVar, shortName } from "./ui";
 
 const RANGES = [
+  // A day is the latest 24 hourly prices, not the last 24 hours on the clock, so a
+  // market that is closed still shows its last day of trading.
+  { value: "1D", label: "1D", timeframe: "1Hour", days: 1, latest: 24, words: "Hourly" },
   { value: "1W", label: "1W", timeframe: "1Hour", days: 7, words: "Hourly" },
   { value: "1M", label: "1M", timeframe: "1Hour", days: 30, words: "Hourly" },
   { value: "3M", label: "3M", timeframe: "1Day", days: 92, words: "Daily" },
@@ -21,6 +24,7 @@ const RANGES = [
   label: string;
   timeframe: Timeframe;
   days: number;
+  latest?: number;
   words: string;
 }[];
 
@@ -48,7 +52,18 @@ export function MarketStage({
   const [rangeKey, setRangeKey] = useState<RangeKey>("1W");
   const [kind, setKind] = useState<Kind>("area");
   const range = RANGES.find((r) => r.value === rangeKey) ?? RANGES[0];
-  const bars = useBarsSince(asset.slug, range.timeframe, range.days);
+  const latest = "latest" in range ? range.latest : undefined;
+  const since = useBarsSince(
+    latest === undefined ? asset.slug : undefined,
+    range.timeframe,
+    range.days,
+  );
+  const newest = useBars(
+    latest === undefined ? undefined : asset.slug,
+    range.timeframe,
+    latest ?? 1,
+  );
+  const bars = latest === undefined ? since : newest;
   const market = useMarket(asset);
   const rows = bars.data?.bars ?? [];
   const first = rows[0];
