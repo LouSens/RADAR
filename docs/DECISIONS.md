@@ -1984,3 +1984,616 @@ load, when there is genuinely nothing to show.
 utility class. The shared material rule sets no `position` and no `border-radius` for
 that reason: a first version did, and took `fixed` and `rounded-3xl` off the desktop
 sidebar.
+
+## 060. Technical indicators, levels, sizing rules and machine learning: the tests, written before running (2026-10-06)
+
+The user's view: the app is weak where it matters to them. They want it to help with
+when to resize, and around which prices to add or reduce, using what traders use:
+volatility, volume, moving averages, RSI, support and resistance, order blocks, fair
+value gaps, upcoming news, and machine learning. They asked for one notebook that tests
+whether these work on our data before anything is built, with the research behind them.
+
+Nothing below has been run. The rules, parameters and pass marks are fixed here first so
+they cannot be tuned to the result. Parameters are the textbook ones, not chosen by us.
+
+**What the research says (read before testing).**
+- Sizing down when swings are high: Moreira and Muir (2017) found it raised return per
+  unit of risk; Cederburg and others (2020) found that versions usable in real time
+  generally did not beat leaving the portfolio alone.
+- Trend: Moskowitz, Ooi and Pedersen (2012) found the past 12 months' direction tends to
+  continue across many futures markets; Huang and others (2020) found little evidence
+  market by market. Brock, Lakonishok and LeBaron (1992) found moving-average and
+  range-break rules worked on 90 years of the Dow; Sullivan, Timmermann and White (1999)
+  found the best rules did not hold up out of sample once the number of rules tried was
+  allowed for. Park and Irwin (2007): 56 of 95 studies positive, most open to that same
+  problem.
+- Support and resistance: Osler (2000) found published levels did mark where intraday
+  currency trends paused more often than chance.
+- Events: Lucca and Moench (2015) found US stocks rose in the day before Fed decisions;
+  Kurov and others found this had gone after 2015.
+- Machine learning: Gu, Kelly and Xiu (2020), with 900 inputs and 30,000 stocks, found a
+  predictable part of about 0.3% to 0.4% of monthly movement. Real, and very small.
+- Order blocks and fair value gaps: no peer-reviewed test found.
+- Bailey and Lopez de Prado (2014): try enough rules and one looks good by luck; allow
+  for how many were tried.
+
+**Data.** Daily bars for Bitcoin (from 2021), gold (GLD) and US stocks (SPY) (from 2016).
+A position decided from data up to a day's close is held over the next day. Changing a
+position costs 0.1% of the amount traded. Cash earns nothing. The first 252 days are
+warm-up. A week is 7 days for Bitcoin and 5 for the others.
+
+**Family S: rules that set how much to hold (between nothing and everything).**
+1. Swings: hold min(1, usual swing / current swing), current = last 20 days, usual = the
+   median of that up to the day.
+2. 200-day average: hold when the close is above it.
+3. 50 over 200: hold when the 50-day average is above the 200-day.
+4. 12-month direction: hold when the close is above the close 252 days earlier.
+5. Event caution: hold half on the day before and the day of a Fed decision, jobs
+   report, or inflation report.
+6. Gradient-boosted trees and 7. a small neural network: hold when the model's chance of
+   a rise over the next week is above half. Inputs known at the close: returns over 1,
+   5, 20, 60, 252 days; RSI; distance from the 50 and 200-day averages; swing over 20
+   days and against 60; volume against its 20-day average; distance from the 252-day
+   high and low; days to the next scheduled event. Refit every 63 days on all earlier
+   days whose outcome was already known; first forecast after 750 days. Both come from
+   scikit-learn, already a dependency.
+8. Rules 1 and 2 together.
+
+Judged against holding throughout, on return per unit of risk (Sharpe ratio) after
+costs. A rule "does better" only if the difference is above zero with a two-sided
+p-value, from 5,000 resamples of 20-day blocks of both return series together, that
+survives Benjamini-Hochberg at 5% across all 24 comparisons (8 rules, 3 markets). The
+deepest fall, return, and share of time held are reported beside it but not judged. For
+6 and 7, accuracy against always saying "up" is reported on weeks that do not overlap.
+
+**Family P: patterns and levels, judged on what followed.**
+1. RSI(14) under 30. 2. RSI(14) over 70.
+3. Fair value gap, up: a day's low above the high two days before. The gap is between
+   them. The case is the first day in the next 20 whose low reaches into the gap.
+4. Fair value gap, down: the mirror.
+5. Order block, up: a close above the highest high of the 20 days before. The block is
+   the last falling day among the 5 days before it, low to high. The case is the first
+   day in the next 60 whose low reaches the block. 6. Order block, down: the mirror.
+7. Support: the low comes within 0.5% of the lowest low of the 60 days before, or under.
+8. Resistance: the high comes within 0.5% of the highest high of the 60 days before, or
+   over.
+9. A close at a new 252-day high.
+10. Volume over twice its 20-day average on a rising day. 11. The same on a falling day.
+
+For each, the share of cases followed by a rise over the next week is set against the
+same share for all days, by the method of decision 051 (`signals/track.py`): at least 30
+cases, a range for the share that excludes the all-days share, and a p-value that
+survives Benjamini-Hochberg at 5% across all 33 comparisons. Whether the move that
+followed was larger than usual is reported the same way, as a second question.
+
+**Known weakness, stated now.** Six to eleven years of one market is little data. A rule
+that fails here is "not detectable on this data", not "proved useless". A rule that
+passes has passed once and is provisional.
+
+**My guess, to be checked against the result.** Sizing by swings and the trend rules
+will cut the deepest fall without a Sharpe gain that survives. No pattern in family P
+will survive on direction; high volume may be followed by larger moves. Both models
+will be right about as often as "always up".
+
+**After the result.** What is built is decided with the user. Whatever it is, the app
+never says "buy" or "sell"; a level or a size is shown with its record.
+
+## 061. Indicators, levels, sizing rules and models: the result (2026-10-07)
+
+The tests of decision 060, run once. Notebook 11 shows every table.
+
+**Sizing rules (24 comparisons, return per unit of risk after costs).** None did better
+than holding. One did worse: holding half around scheduled events, in gold. On the
+deepest fall, which was reported but not judged: the 200-day rule took Bitcoin's from
+about 77% to 36%, and sizing by swings took US stocks' from about 34% to 14% at a cost of
+about 4 points of return a year; in gold the trend rules made the fall deeper and every
+rule earned less.
+
+**Models.** The gradient-boosted trees did not beat always saying "up" in any market
+(Bitcoin 54% against 53%, US stocks 60% against 61%, gold 53% against 59%).
+
+**Patterns and levels (33 comparisons).** On direction, one stood out by the written
+rule: US stocks after RSI under 30 (85% of 41 days against 62%). Those 41 days were 15
+separate sell-offs; counted once each it is 11 of 15, with a range that covers 62%. It
+is treated as not shown. Fair value gaps, order blocks, support, resistance, new highs
+and volume showed nothing on direction. On the size of the move, 12 stood out, mostly in
+US stocks: larger moves after falls (support, down-gaps, RSI under 30, heavy volume on a
+falling day), smaller near highs. That is the known link between falls and rougher
+markets, which the swings forecast already carries.
+
+**Two departures from 060, both made in the open.**
+1. *The model settings.* 060 did not fix them. The first ones (200 rounds, depth 3)
+   recovered about an eighth of a pattern planted in made-up answers; they were fitting
+   noise. Smaller ones (60 rounds, depth 2, leaves of 50, some shrinkage) recovered
+   nearly all of it. They were chosen on the planted pattern only, never on real
+   outcomes, and the real test was then run with them. The small neural network could
+   not recover the planted pattern in any setting tried, so its result on real data is
+   reported and given no weight.
+2. *Counting runs once.* The check on RSI under 30 was added after the result. 060
+   should have said "the first day of each run" for every pattern that comes in runs.
+   Future tests of this kind must.
+
+**What the planted pattern settles.** The user asked whether "no measurable difference"
+everywhere means the method is wrong or the models badly trained. In part it did: the
+first model settings could not learn. The tests themselves find a planted pattern. What
+they cannot see is a small one: with 100 cases, under about 10 points; with 400, under
+about 5. "No measurable difference" means "smaller than this data can show", not "none".
+
+**My guess in 060, checked.** Right that sizing and trend rules cut the deepest fall
+without a gain that survives, for Bitcoin and US stocks; wrong for gold. Right in
+substance that no pattern holds on direction, though the rule as written let one
+through. Right about volume and larger moves. Right about the trees; I did not expect
+the first settings to be unable to learn at all.
+
+**Not to be done.** Do not rerun these tests with other parameters until something
+passes. Do not show a level as a place to add or reduce: that was tested and did not
+hold.
+
+**Open, for the user.** What could be built from this: a sizing guide shown as a
+trade-off (shallower falls for less return, and not in gold), and levels shown as places
+where moves get larger rather than where price turns.
+
+## 062. Suggestions are allowed with their basis; and the LSTM test, written before running (2026-10-07)
+
+**The wording rule, changed by the user.** Until now the app could never write "buy",
+"sell" or "you should". The user's decision on 2026-10-07: RADAR still never places a
+trade, but it may give alerts, forecasts and suggestions about adding and reducing,
+provided each one states the rule or theory it rests on and its justification. So:
+
+- A suggestion names its rule ("the close is below its 200-day average"), what following
+  that rule did in the past, over what period and how many cases, and where it failed.
+- A suggestion is only made from a rule that has passed a test written down beforehand.
+  A rule that was tested and did not hold (decision 061: levels as places to add or
+  reduce, direction from RSI, gaps, blocks) is not turned into a suggestion.
+- Nothing is executed, and nothing is worded as a certainty or a promise.
+
+If RADAR is later opened to other people, suggestions about buying and selling may count
+as financial advice where they live. That is a question to settle before opening it, not
+now.
+
+**The LSTM test.** The user asked for an LSTM, or anything that might work, trained,
+validated and tested properly. Nothing below has been run.
+
+*Why hourly bars.* Decision 061 showed a neural network cannot learn even a planted
+pattern from a few thousand days. Hourly bars give about 50,000 examples for Bitcoin and
+about 42,000 each for gold and US stocks.
+
+*Question.* At each hour: will the close one day later (24 bars for Bitcoin, 16 for the
+others, which trade 16 hourly bars a day with extended hours) be higher than now?
+
+*Inputs.* For the LSTM, the last 48 bars, each as: its return, its high-to-low range,
+its volume against the average of the 168 bars before, and the hour of day. For the two
+simpler models, summaries known at the bar: returns over 1, 6, 24, 72 and 168 bars, the
+spread of the last 24 and 168 returns, the volume figure, RSI over 14 bars, and the hour.
+Everything is scaled with the averages of the training part only.
+
+*Split, in time order.* First 60% to train, next 20% to validate (choose when to stop),
+last 20% to test, looked at once. A gap of one horizon plus 48 bars is left out between
+parts so no answer in one part depends on prices in the next.
+
+*Models.* (1) LSTM: one layer of 32 units, dropout 0.2, Adam at 0.001, batches of 256,
+at most 30 passes, stopping when the validation loss has not improved for 5; three
+seeds, averaged. (2) Gradient-boosted trees with the small settings of decision 061.
+(3) Logistic regression. Against: always giving the answer that was more common in the
+training part.
+
+*First, the planted pattern.* Before any real answer is used, each model is run on
+made-up answers (higher 65% of the time when the last 24 bars rose, 40% when they fell).
+A model that recovers less than half of the possible gain on the test part "cannot learn
+here" and its real result carries no weight. If the LSTM fails, its size (16, 32 or 64
+units) and learning rate (0.0003, 0.001, 0.003) may be chosen on the planted validation
+part, never on real answers.
+
+*Pass mark, for "accurate enough to build alerts on".* On test cases one horizon apart
+(so they do not overlap), a model passes in a market only if all of these hold:
+1. it is right at least 3 points more often than the always-one-answer baseline;
+2. the binomial p-value against that baseline survives Benjamini-Hochberg at 5% across
+   the 9 comparisons (3 models, 3 markets);
+3. it is ahead of the baseline in both halves of the test part.
+Reported beside it, not judged: holding only when the model says "higher", decided once
+a day, after 0.1% costs, against holding throughout.
+
+*Known limit.* The test part holds roughly 400 separate days per market, where an edge
+under about 5 points cannot be seen. A model can fail here and still have a small edge;
+an edge that small is not one to send alerts on.
+
+*My guess.* The LSTM will pass the planted check on hourly data. No model will pass the
+mark on real answers; accuracy will sit within 2 points of the baseline.
+
+*After.* If a model passes, alerts are built on it with its record shown. If none does,
+the alerts that remain possible are the damage-side rules of decision 061, which rest on
+how far the portfolio fell, not on calling direction.
+
+## 063. The LSTM test: the result (2026-10-07)
+
+The test of decision 062, run once. Notebook 12 shows every table.
+
+**Planted pattern.** On hourly bars all three models found it in all three markets: the
+LSTM recovered 65% to 82% of the possible gain, the small trees all of it, the logistic
+regression 55% to 92%. The LSTM passed with the settings written down, so nothing was
+adjusted.
+
+**Real answers.** None of the 9 comparisons passed the mark. The best was the LSTM on
+Bitcoin: right on 53.2% of 417 separate test days against 51.1% for the usual answer,
+ahead in both halves, but under the 3-point mark and with a p-value of 0.20. On US
+stocks the LSTM said "higher" on every test day. In gold all three were level with the
+baseline. Used as a rule after costs, none beat holding.
+
+**Reading.** Unlike decision 061's network, these models were shown able to learn, so
+this is a real "no" for anything of the size the test can see (about 5 points). Three
+kinds of model agree. The limit is what daily and hourly prices of one market contain,
+not the model.
+
+**My guess, checked.** Right on the planted check and on no model passing; I said within
+2 points of the baseline and the best was 2.2.
+
+**So.** No alert or suggestion about direction is built: nothing passed. Do not rerun
+this with other settings until something passes. What could change the answer is other
+information (many markets pooled; positioning, funding, order flow), each of which needs
+the user's agreement and its own written test.
+
+**Noted for a future test, not acted on.** The small trees' most confident fifth of test
+days ended higher more often than their least confident fifth in Bitcoin and US stocks.
+Seen after the fact, on about 100 days a group.
+
+**Open.** The damage-side rules of decision 061 (hold less when swings are high; step
+aside below the 200-day average) made the deepest fall shallower in two markets of
+three. That was reported, not tested as a claim. Under decision 062 it needs its own
+written test, on markets it has not been run on, before it becomes a suggestion.
+
+## 064. When to hold more cash, how much, and when to put it back: the test, written before running (2026-10-07)
+
+What the user wants from RADAR, in their words: know when to switch to cash-heavy and
+what percentage, know when to buy using the cash, and know how to rebalance, taking
+account of macro and Fed news and of indicators such as RSI (5,3,3), fair value gaps and
+order blocks. They also agreed to adding free outside data (funding rates, order flow,
+positioning); that is a separate test, to follow this one.
+
+Decisions 061 and 063 found no way to call direction. They also *reported* that two
+rules made the deepest fall much shallower in Bitcoin and US stocks. That was seen, not
+tested, and on the same three markets every rule here has been looked at on. This entry
+tests it as a claim, on markets none of these rules has been run on. Nothing below has
+been run.
+
+"RSI (5,3,3)" is taken to mean the stochastic oscillator with periods 5, 3 and 3, which
+is what those three numbers usually set. If the user meant something else, the add-on
+test is rerun once with their definition and both are reported.
+
+**Markets (fixed now, none used before).** Daily bars from Alpaca's data API, from 2016
+for funds and from each coin's first full year. Four groups:
+- stocks: QQQ, IWM, EFA, EEM, XLE, XLF, XLK, XLV, XLU, VNQ
+- bonds: TLT, IEF, LQD, HYG
+- commodities: SLV, USO, DBC, DBA
+- crypto: ETH/USD, SOL/USD, LTC/USD, LINK/USD, AVAX/USD, DOGE/USD
+A market with fewer than 750 days is left out and named. The bars are kept in the
+gitignored `data/research/`, not in the app's tables.
+
+**The rules, each giving the share to hold; the rest is cash.** As in decision 060: a
+share decided at a day's close is held over the next day, a change costs 0.1% of what is
+traded, cash earns nothing, the first 252 days are warm-up.
+1. *Swings*: min(1, usual swing / current swing), 20-day, usual = median so far.
+2. *200-day*: everything above the 200-day average, nothing below.
+3. *Core*: 1 times 2. This is the answer to "when to hold more cash, and how much".
+
+**Claim 1: the core rule makes the deepest fall shallower.** For each market, the rule's
+deepest fall minus holding's. It passes only if all three hold: shallower in at least
+70% of markets; a Wilcoxon signed-rank p-value under 5% after Benjamini-Hochberg across
+the three rules; and shallower in the median market of at least 3 of the 4 groups. The
+cost is reported beside it and not hidden: the difference in yearly return and in
+return per unit of risk.
+
+**Claim 2: news and indicators improve on the core rule.** Four add-ons, each compared
+with the core rule alone:
+- *Events*: half of the core share on the day before and the day of a Fed decision, jobs
+  report or inflation report.
+- *Stochastic (5,3,3)*, *fair value gap*, *order block* as "when to put the cash back":
+  when the core share is below everything and the trigger fires, hold everything for the
+  next 5 days, then return to the core share. Triggers: the stochastic's fast line
+  crossing above its slow line with both under 20; the first return to an up-gap; the
+  first return to an up-block (gaps and blocks as defined in decision 060).
+An add-on passes only if its return per unit of risk is higher than the core rule's in
+at least 70% of markets with a Wilcoxon p-value under 5% after Benjamini-Hochberg across
+the four, and its deepest fall is not deeper in the median market.
+
+**Claim 3: it works on a portfolio.** All the markets in equal parts, put back to equal
+parts every 21 days, against the same portfolio with each market's part scaled by the
+core rule. Passes if the deepest fall is shallower and the return per unit of risk is
+not lower by more than chance (two-sided p above 5% or higher), by the paired block
+resampling of decision 060. Reported: return a year for both.
+
+**Known weaknesses.** Markets move together, so 24 markets are fewer than 24 separate
+pieces of evidence; the group condition is there for that. All of them share the same
+ten years. A deepest fall is one event per market.
+
+**My guess.** Claim 1 passes: shallower falls in most markets, clearest in crypto and
+stocks, weakest in bonds, with a lower return in most. No add-on in claim 2 passes.
+Claim 3 passes on the fall and gives up some return.
+
+**After.** If claim 1 and claim 3 pass, the app can show "share to hold today" for each
+holding and for the portfolio as a suggestion under decision 062, with this record. An
+add-on that does not pass is not used, whatever its reputation.
+
+## 065. When to hold more cash and when to put it back: the result (2026-10-07)
+
+The test of decision 064, run once on 24 markets none of these rules had been run on.
+Notebook 13 shows every table.
+
+**Claim 1, as written: passed.** The core rule (swings times the 200-day average) had a
+shallower deepest fall than holding everything in 23 of 24 markets, by 15 points in the
+median market, in all four groups. It gave up about 3 points of return a year in the
+median market and had a lower return per unit of risk in three markets of four.
+
+**Claim 2: no add-on passed.** Halving around scheduled events and the stochastic
+(5,3,3) re-entry both made return per unit of risk measurably worse. Fair value gaps
+and order blocks as re-entry triggers changed it by nothing measurable and made the
+deepest fall 3 to 11 points deeper, because all they do is raise the share held.
+
+**Claim 3, as written: passed.** On 24 markets in equal parts the deepest fall went
+from 26% to 14%, with return a year going from about 22% to about 9%.
+
+**The check that was not in the plan, and that changes the reading.** The rule holds
+about half on average. Against a fixed share of that same size, held all the time: the
+rule's deepest fall was shallower in only 10 of 24 markets; it earned less in 20 of 24,
+by about 2 points a year in the median market (p = 0.013); and on the portfolio the
+fixed shares fell 11% and earned 10% a year against the rule's 14% and 9%. The
+protection came from how much was held, not from when.
+
+**My mistake in 064.** Comparing with "hold everything" lets any rule that holds less
+look good. The comparison should have been a fixed share of the same size. From now on
+a rule that changes how much is held is judged against a fixed share equal to its own
+average, as well as against holding everything.
+
+**My guess, checked.** Right that claim 1 would pass at a cost in return and that no
+add-on would. Wrong that it would be clearest in crypto: against a fixed share, crypto
+is where the rule did worst. I did not foresee that the timing would add nothing.
+
+**So.** No "move to cash now" or "put the cash back now" suggestion is built. Under
+decision 062 a suggestion needs a rule that passed its test; this one passed a test that
+was too easy and fails the fair one. Do not rerun with other averages, windows or
+triggers until one passes.
+
+**What can be built from it, if the user wants.** "How much" is answerable: for any
+share held, how far this mix fell and what it earned. That belongs with Try a mix. And
+the swings forecast can say when the next week is likely to be rougher than usual, which
+is a statement about risk with a record behind it, not a call on direction.
+
+**Still to do, agreed by the user.** Test the free outside data: Binance's public
+futures data (funding rates, buy-side volume) and the CFTC's weekly positioning report.
+New hosts, read-only market data, no account access; the test is to be written down
+first, with a fixed-share comparison in it.
+
+## 066. Outside data, and adding versus cutting: the tests, written before running (2026-10-07)
+
+The user agreed to testing free outside data, and added a question of their own: when a
+holding falls, is it better to keep adding on a schedule, or to sell before the position
+turns from a gain into a loss and buy back later, accepting that timing sometimes misses
+the turn? Nothing below has been run.
+
+**What could not be reached.** On this network the names `api.binance.com` and
+`fapi.binance.com` do not resolve: the network's own DNS answers that they do not exist.
+That looks like a deliberate block, so it is left alone. No funding-rate or order-flow
+data is fetched, by any route, until the user says how they want that handled. One
+probe request did succeed against Binance's separate public-data host
+(`data-api.binance.vision`) before this was understood; nothing was kept from it and it
+is not used. So of the outside data agreed to, only the US regulator's positioning
+report is tested here.
+
+**Part A. Positioning (CFTC Commitments of Traders, weekly, public).** New host:
+`publicreporting.cftc.gov`, read without a key through `providers/cftc.py`, which
+refuses any other host or path; a test asserts that.
+
+- Markets and who is counted: gold, managed money (contract 088691); S&P 500 E-mini,
+  leveraged funds (13874A); CME Bitcoin, leveraged funds (133741). Set against GLD, SPY
+  and BTC/USD.
+- Reading: (long minus short) over open interest, then how unusual it is against the 156
+  weeks before (a z-score). "Crowded long" is 1.5 or more; "crowded short" is minus 1.5
+  or less.
+- No lookahead: a report describes a Tuesday and is published the Friday after. It is
+  treated as known from the close of the first trading day on or after the following
+  Monday, six days after its date.
+- *What followed.* A case is the first known day of each run of crowded weeks, so a run
+  counts once (the lesson of decision 061). Whether the price was higher 20 trading days
+  later (28 days for Bitcoin) is set against all days by the method of decision 051: at
+  least 30 cases, a range that leaves out the all-days share, Benjamini-Hochberg at 5%
+  across the 6 comparisons. Size of the move is reported the same way.
+- *As a rule for how much to hold.* Hold half while crowded long, everything otherwise.
+  Judged, as decision 065 requires, against a fixed share equal to the rule's own
+  average as well as against holding everything: it passes in a market only if its
+  return per unit of risk is above the fixed share's with a p-value (paired block
+  resampling, decision 060) that survives across the 3 markets, and its deepest fall is
+  not deeper.
+- Known weakness: runs counted once will be few, probably under 30 in ten years. Then
+  the verdict is "not enough cases", and that is the honest result.
+
+**Part B. Adding versus cutting.** 27 markets: the 24 of decision 064 and BTC/USD, GLD,
+SPY. A person pays in the same amount every 21 trading days, starting after the 252-day
+warm-up. Trades cost 0.1%. Cash earns nothing. Three ways of behaving:
+
+1. *On schedule.* Each payment is invested the day it is made.
+2. *Cut when a gain turns into a loss.* As 1, but once the holding has been worth at
+   least 5% more than was paid for it, the first close at which it is worth less than
+   was paid for it sells everything. Payments wait in cash while out. Everything is
+   bought back at the first close above the highest close of the 20 days before.
+3. *Wait for dips.* Payments wait in cash and are all invested at the first close 10%
+   or more below the highest close of the 60 days before.
+
+Measured at the end: value over total paid in. Also the worst point: the lowest that
+ratio reached. And the average share of the money that sat in cash.
+
+An alternative passes only if all hold: it ends higher than the schedule in at least 70%
+of markets; a Wilcoxon signed-rank p-value under 5% after Benjamini-Hochberg across the
+two alternatives; its worst point is not lower in the median market; and it also ends
+higher, in at least 70% of markets, than a schedule that simply keeps the same average
+share in cash all the time (decision 065).
+
+**My guess.** Part A: too few runs to judge in any market; the sizing rule will not beat
+its fixed share. Part B: neither alternative passes. Cutting at break-even will end
+lower in most markets, because it sells after a fall and buys back higher; its worst
+point will be better in some. Waiting for dips will end lower in rising markets because
+of the time spent in cash, and about level in the ones that fell hardest.
+
+**After.** Whatever passes can become a suggestion under decision 062 with its record.
+What does not pass is not built. The crypto funding and order-flow test stays open until
+the user decides about the blocked hosts.
+
+## 067. Crypto funding rates and buy-side volume: the test, written before running (2026-10-07)
+
+Decision 066 left this out because Binance's hosts did not resolve. The user reported
+the same day that they are reachable again, and they are. This entry adds the crypto
+half of the outside-data test. Nothing below has been run.
+
+**New reads, both public and sent without any key**, through a separate client
+`providers/binance_public.py` that refuses every other host, path and method (a test
+asserts it), so the signed account reader of decision 038 does not grow:
+- `GET api.binance.com/api/v3/klines`: hourly bars, which carry the volume bought by
+  takers as well as the total;
+- `GET fapi.binance.com/fapi/v1/fundingRate`: the funding rate paid every 8 hours on
+  the perpetual contract.
+Kept in the gitignored `data/research/binance/`, not in the app's tables.
+
+**Markets.** BTCUSDT, ETHUSDT, SOLUSDT, hourly, from 2020 or the contract's first day.
+
+**Question.** As decision 062: will the close 24 bars from now be higher?
+
+**Inputs.** *Price only*: the summaries of decision 062. *With outside data*: those,
+plus the share of volume bought by takers over the last 1, 24 and 168 bars; the latest
+funding rate; its average over the last 21 payments (7 days); and how unusual the latest
+rate is against the 270 payments before (90 days). A funding rate is known from its
+payment time. The LSTM gets the same two things bar by bar.
+
+**Models, split, planted check.** As decision 062: LSTM, small trees, logistic
+regression; first 60% train, next 20% validate, last 20% test, with gaps; the planted
+pattern first, and a model that recovers under half of it carries no weight.
+
+**Pass mark.** That of decision 062, for the models *with* outside data: at least 3
+points above always giving the usual answer on test days that do not overlap; a p-value
+that survives Benjamini-Hochberg across the 9 comparisons; ahead in both halves.
+Reported beside it: the same models on price only, and how often the two disagree and
+which was right (McNemar's test), to say whether the outside data added anything. If a
+model passes, it is then judged as a rule against a fixed share of its own average
+(decision 065) before anything is built.
+
+**Crowded funding, as a pattern.** A funding rate 2 or more above its usual (z-score
+over 270 payments) is "crowded long"; minus 2 or less, "crowded short". A case is the
+first payment of each run. Whether the price was higher 1 day and 7 days later is set
+against all hours by the method of decision 051: at least 30 cases, Benjamini-Hochberg
+across the 12 comparisons. Size of the move reported the same way.
+
+**Known weakness.** About 470 separate test days per market; an edge under about 5
+points cannot be seen.
+
+**My guess.** The outside inputs add less than a point. No model passes. Crowded
+funding is followed by larger moves, not by a reliable direction.
+
+## 068. Outside data, and adding versus cutting: the result (2026-10-07)
+
+The tests of decisions 066 and 067, run once. Notebook 14 shows every table.
+
+**A. Positioning (CFTC).** Counting each run of crowded weeks once gives 6 to 25 runs
+per market and side in ten years, under the 30 required, so nothing is judged. Holding
+half while crowded long did not beat a fixed share of the same size in gold, US stocks
+or Bitcoin. Noted and not acted on: in US stocks the four weeks after a crowded reading
+on either side ended higher about 40% of the time against 70% for any day, on 25 and 22
+runs.
+
+**B. Adding versus cutting, 27 markets.** Neither alternative passed.
+- Cutting when a gain turns into a loss ended with less than paying in on schedule in
+  20 of 27 markets (p about 0.10), and had a better worst point in 21 of 27. Where the
+  crash was deepest it was far better and ended with more (the oil fund: worst point
+  18% under paid-in instead of 81% under). It is insurance with a price.
+- Waiting for dips ended with less in 21 of 27 markets, more than chance. It did beat
+  leaving the same cash idle, in 24 of 27.
+
+**C. Funding rates and buy-side volume (Binance, three coins, hourly).** All three
+models found the planted pattern. None of 9 passed with the outside data added. Nearest:
+small trees on Bitcoin, 53.5% of 490 test days against 50.0%, with a p-value of 0.07
+before correction and no advantage in the second half. What the outside data added
+ranged from 2.7 points worse to 2.0 better, none distinguishable from chance. Crowded
+funding showed nothing measurable in direction or size in 12 comparisons.
+
+**My guesses, checked.** Right on too few positioning runs, on the sizing rule, on
+neither behaviour passing, and on no model passing. I said cutting would improve the
+worst point in some markets and it did in most. I expected larger moves after crowded
+funding and there were none.
+
+**On the network.** `api.binance.com` and `fapi.binance.com` did not resolve when
+decision 066 was written and did an hour later, when the user said so. Nothing was done
+to get round it in between.
+
+**Where this leaves direction.** Decisions 061, 063, 065 and this one have now tested
+indicators, levels, daily and hourly models, timing rules for cash, positioning, funding
+and buy-side volume. None calls direction. Do not rerun any of them with changed
+settings until one passes. No "buy now" or "sell now" suggestion is built.
+
+**What can be built honestly, for the user to choose from.**
+1. *How much to hold*: for any share of the user's mix, how far it fell and what it
+   earned (belongs with Try a mix).
+2. *A rougher-week warning* from the swings forecast, with its record.
+3. *Paying in*: the regular-buying page can show the three behaviours side by side on
+   the user's own assets, with the break-even exit presented as insurance: what it cost
+   and what it saved.
+Each is a statement about size or risk with a tested record, which is what decision 062
+allows.
+
+## 069. One product: a personal portfolio assistant (2026-10-07)
+
+The user's review: the work has spread out and lost sight of what the app is for. Asked
+whether the app is a broad market dashboard or about the portfolio, they chose the
+portfolio, and described what they want in their own words: something that watches over
+their portfolio, the news, macro events and technical readings; tells them the possible
+outcomes (Monte Carlo or similar); projects the portfolio if they keep paying in; and
+helps them know when to pay in, using order blocks, fair value gaps, RSI, moving
+averages, Fibonacci levels and the like. Their aim is to gain where they can and above
+all not to lose the money, so that they can keep paying in over the long run.
+
+**The product, in one sentence.** RADAR is a personal portfolio assistant: it watches
+what the user holds, says what has changed and what could happen, and helps them decide
+how much to hold and how to keep paying in. Markets, news, the calendar and signals are
+inputs to that, not places of their own.
+
+**What the assistant does, and what each part rests on.**
+1. *Watch*: the portfolio's value, risk and drift; states of the markets it holds; news
+   about its holdings; the next scheduled events. All built already; to be gathered on
+   one screen about the user's holdings.
+2. *What could happen*: the range of outcomes for the portfolio as it is (built,
+   decision 050), and for the portfolio if they keep paying in (built for a plan,
+   decision 053; to be tied to the real holdings).
+3. *How much to hold*: for any share in cash, how far this mix fell and what it earned
+   (decision 065: this is what decides the outcome).
+4. *How to pay in*: on schedule, with a break-even exit, or waiting for dips, on their
+   own assets, with what each cost and saved (decision 068).
+5. *Warnings about risk*: a rougher week ahead (the swings forecast), a holding that has
+   drifted, a market that has turned turbulent, an event day coming.
+6. *Technical readings on what they hold*: RSI, moving averages, order blocks, fair
+   value gaps, Fibonacci levels, shown as what they are today.
+
+**The one place the user's wish and the evidence pull apart.** The user wants the
+technical readings to say when to pay in. Decisions 061 and 065 tested them as calls on
+direction and as triggers for putting cash back, and they did not hold; the rule of
+decision 062 is that a rule which failed its test is not turned into a suggestion. That
+rule stays. Two things are still open to them, and both are honest:
+- The readings can be *shown* on each holding with their record beside them ("RSI is 28.
+  After readings like this the next week rose no more often than usual"). Showing a
+  reading is not suggesting a trade.
+- A question that has not been tested, and is the one the user is really asking: *given
+  that I am going to pay in this month anyway, does waiting for one of these readings
+  within the month get a better price than paying in on the fixed day?* The cash waits
+  a month at most, so the cost of being wrong is small. This is to be written down and
+  tested (EMA, RSI oversold, order block, fair value gap, Fibonacci 61.8% retracement).
+  If a trigger passes, the assistant may say "your payment this month: this level has
+  given a better price in N of M months"; if none does, the readings stay as context.
+
+**What is folded away.** Kept and reachable, but out of the main path: the news tone
+studies, what a market moves with, markets together, the per-signal track-record pages,
+compare mixes, core and satellite. Nothing is deleted without the user's say.
+
+**Order of work.**
+1. The within-the-month test above, written down first, in a notebook.
+2. The assistant's home: the portfolio first, what changed, what could happen, the next
+   thing worth knowing. One screen, checked at 375 px.
+3. "How much to hold" and "ways of paying in" on the user's own holdings.
+4. Technical readings per holding, with their record, and whatever step 1 allows.
+5. Warnings, then Phase 7.
+
+**Not changed.** RADAR never places a trade. Every figure carries its record. Direction
+is not forecast, because nothing tested can (decisions 061, 063, 065, 068).
