@@ -3153,3 +3153,32 @@ and motion were not reworked beyond the above. A new typeface would be a new
 dependency, so it waits for the user's choice. Desktop was checked by measuring the
 layout, because the preview pane is phone-width: the user's own look at it is the real
 check.
+
+## 082. A plan page that can be read at a glance, calmer entrances, the Earn bonus, a plainer mark, and a walk of every link (2026-10-07)
+
+After the user's next review: the plan page was ambiguous, cards hopped on reload, the
+mark did not suit a finance app, and Binance Earn pays a bonus tier the app was not
+counting.
+
+- **My plan** (`PlanPanel`) replaces "Try a mix" on its page: three starting points with
+  how far each fell, one slider per holding with its share and dollars, cash as whatever
+  is left, anything outside US stocks, gold and Bitcoin capped at 1%, three figures that
+  follow the sliders (a usual day, the worst fall so far, the risk level), and one
+  button to save. The old builder stays in the code, unused by any screen.
+- **Entrances** fade and do not move, and the new pages show skeletons while they load.
+  Sliding each card up as its data landed made the page hop.
+- **Earn**: the rate now counts Binance's bonus tier on the part of the balance it
+  covers (`tierAnnualPercentageRate`), from the same read as before, and the screen says
+  the bonus can change. The user's figure of about 6% was right: 2.6% plus 4% on the
+  first 1,000 dollars.
+- **Mark**: a rising line leaving a ring, in one colour on a plain dark badge, with the
+  name in spaced capitals. No gradient.
+- **Long footers** on the market pages (state, range, news) are folded behind "How this
+  works".
+- **Every link walked** in the running app: 37 addresses reached by following links from
+  Home, none missing, none leading back to where it started. Pages no longer in a menu
+  are all still reached from inside another page.
+
+**Still owed:** the portfolio's risk pages as pictures; the market pages beyond their
+footers; stock screening by the user's rules, from the regulator's filings (he agreed to
+that source on this date); the notebooks 01 to 05.

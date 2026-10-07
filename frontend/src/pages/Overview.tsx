@@ -16,7 +16,7 @@ import { RadarMark, Wordmark } from "../components/Layout";
 import { StepsCard } from "../components/StepsPanel";
 import { LatestSignals } from "../components/LatestSignals";
 import { MarketCard } from "../components/MarketCard";
-import { Skeleton } from "../components/Skeleton";
+import { CardSkeleton, Skeleton } from "../components/Skeleton";
 import { Message } from "../components/ui";
 import { levelColour } from "../components/viz";
 import { formatMoney } from "../lib/format";
@@ -251,7 +251,13 @@ export function Overview() {
         <div className="home-pane @4xl:col-span-7">
           <Hero />
         </div>
-        <div className="@4xl:col-span-5">{steps.data && <StepsCard steps={steps.data} />}</div>
+        <div className="@4xl:col-span-5">
+          {steps.data ? (
+            <StepsCard steps={steps.data} />
+          ) : steps.isPending ? (
+            <CardSkeleton lines={3} />
+          ) : null}
+        </div>
       </div>
 
       {assets.isError && <Message>Markets are unavailable right now.</Message>}

@@ -800,10 +800,10 @@ export function PortfolioPage() {
       {section === "todo" &&
         (steps ? (
           <StepsPanel steps={steps} />
+        ) : steps === null ? (
+          <Message>Add your holdings first, then pick a plan.</Message>
         ) : (
-          <Message>
-            {steps === null ? "Add your holdings first, then pick a plan." : "Working it out…"}
-          </Message>
+          <PageSkeleton cards={2} />
         ))}
 
       {section === "check" && (
@@ -823,12 +823,13 @@ export function PortfolioPage() {
       {section === "record" &&
         (record ? (
           <RecordPanel record={record} worth={analysis?.value} onLost={setLost.mutate} />
-        ) : (
+        ) : record === null ? (
           <Message>
-            {record === null
-              ? "Nothing here yet. This is filled in once a day from your Binance trade history, when a read-only key is set."
-              : "Loading your trades…"}
+            Nothing here yet. This is filled in once a day from your Binance trade history, when a
+            read-only key is set.
           </Message>
+        ) : (
+          <PageSkeleton cards={3} />
         ))}
 
       {portfolio.data &&

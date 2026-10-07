@@ -274,6 +274,9 @@ figcaption {
 .glass {
   position: relative;
   border-radius: var(--radius-card);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 20px 44px -28px rgba(0, 0, 0, 0.75);
 }
 
 /* The thin highlight along a card's top edge. */
@@ -483,6 +486,63 @@ figcaption {
   }
 }
 
+/* A slider for a share: a thin track and a thumb large enough for a thumb. */
+.slider {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 1.75rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: transform var(--fast) var(--ease);
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+/* The door's icon warms up under a cursor, so the tile reads as something to open. */
+@media (hover: hover) and (pointer: fine) {
+  .door:hover .door-icon {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+}
+
+.door-icon {
+  transition: background var(--mid) ease;
+}
+
 /* A page of a subject as a tile: an icon, its name, and what it answers. */
 .door {
   display: flex;
@@ -532,6 +592,7 @@ figcaption {
    card that will not let go. */
 @media (hover: hover) and (pointer: fine) {
   .tile:hover,
+  .door:hover,
   .menu-row:hover {
     --lift: -2px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
@@ -882,6 +943,7 @@ figcaption {
 
   @media (hover: hover) and (pointer: fine) {
     .tile:hover,
+    .door:hover,
     .menu-row:hover,
     .glass-lift:hover {
       --lift: 0px;

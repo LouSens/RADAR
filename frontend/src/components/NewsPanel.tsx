@@ -235,12 +235,15 @@ export function NewsPanel({ asset, trust }: PanelProps) {
         </Evidence>
       )}
 
-      <p className="border-t border-line pt-4 text-xs leading-relaxed text-faint">
-        Tone is scored by a language model trained on financial text
-        {accuracy?.fine_tuned ? " and then fine-tuned on headlines like these" : ""}, from each
-        article&apos;s headline and summary. All articles come from one provider. Such models
-        misread sarcasm, negation, and headlines that only describe a price move.
-      </p>
+      <details className="about">
+        <summary>How this works</summary>
+        <p className="prose mt-3 text-xs leading-relaxed text-muted">
+          Tone is scored by a language model trained on financial text
+          {accuracy?.fine_tuned ? " and then fine-tuned on headlines like these" : ""}, from each
+          article&apos;s headline and summary. All articles come from one provider. Such models
+          misread sarcasm, negation, and headlines that only describe a price move.
+        </p>
+      </details>
     </Panel>
   );
 }

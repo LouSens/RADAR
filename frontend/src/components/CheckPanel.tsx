@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { BuyCheck } from "../api/client";
 import { useBuyCheck } from "../api/queries";
 import { formatCount, formatMoney, formatPrice } from "../lib/format";
+import { Skeleton } from "./Skeleton";
 import { Caption, Message, Panel } from "./ui";
 
 const percent = (fraction: number) => `${Math.abs(fraction * 100).toFixed(1)}%`;
@@ -173,7 +174,15 @@ export function CheckPanel({ suggestions }: { suggestions: string[] }) {
         ))}
       </div>
 
-      {check.isPending && <Message>Looking at {coin}…</Message>}
+      {check.isPending && (
+        <div role="status" aria-label={`Looking at ${coin}`} className="flex flex-col gap-3">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-6 w-3/5" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-2 w-full" />
+          <Skeleton className="h-2 w-full" />
+        </div>
+      )}
       {check.data === null && (
         <Message>Binance has no price for {coin} against USDT. Check the spelling.</Message>
       )}
