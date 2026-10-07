@@ -60,6 +60,34 @@ def rsi(close: pd.Series, window: int = 14) -> pd.Series:
     return (100 - 100 / (1 + gain / loss)).where(loss > 0, 100.0).where(gain.notna())
 
 
+def ema(close: pd.Series, span: int) -> pd.Series:
+    """The exponential average: like `sma`, but each day back counts for less. Missing
+    until `span` days have been seen."""
+    return close.ewm(span=span, adjust=False, min_periods=span).mean()
+
+
+def fibonacci_level(
+    high: pd.Series, low: pd.Series, window: int = 60, share: float = 0.618
+) -> pd.DataFrame:
+    """The retracement level of the latest rise, and the rise's starting low.
+
+    For each day: H is the highest high of the last `window` days, L the lowest low of
+    the `window` days before the day of that high. `level` is H less `share` of the
+    rise, `floor` is L. Missing until there are `window` days before the high.
+    """
+    highs, lows = high.to_numpy(dtype=float), low.to_numpy(dtype=float)
+    level, floor = np.full(len(highs), np.nan), np.full(len(highs), np.nan)
+    for t in range(window - 1, len(highs)):
+        start = t - window + 1
+        top = start + int(np.argmax(highs[start : t + 1]))
+        if top < window:
+            continue
+        bottom = lows[top - window : top].min()
+        floor[t] = bottom
+        level[t] = highs[top] - share * (highs[top] - bottom)
+    return pd.DataFrame({"level": level, "floor": floor}, index=high.index)
+
+
 def swing(returns: pd.Series, window: int = 20) -> pd.Series:
     """The spread of the last `window` daily returns."""
     return returns.rolling(window).std()
@@ -281,6 +309,48 @@ def order_block_cases(
         if len(later):
             cases.add(t + 1 + int(later[0]))
     return _days(frame.index, cases)
+
+
+def ema_cross_cases(close: pd.Series, fast: int = 9, slow: int = 13) -> list[pd.Timestamp]:
+    """Days the `fast` exponential average closed above the `slow` one, having been at
+    or under it the day before."""
+    quick, steady = ema(close, fast), ema(close, slow)
+    crossed = (quick > steady) & (quick.shift(1) <= steady.shift(1))
+    return _days(close.index, np.flatnonzero(crossed.to_numpy()))
+
+
+def short_pullback_cases(
+    low: pd.Series, close: pd.Series, fast: int = 9, slow: int = 13
+) -> list[pd.Timestamp]:
+    """Days whose low reached the `slow` exponential average while the `fast` one was
+    above it: a dip inside a short rise."""
+    quick, steady = ema(close, fast), ema(close, slow)
+    return _days(close.index, np.flatnonzero(((low <= steady) & (quick > steady)).to_numpy()))
+
+
+def trend_pullback_cases(
+    low: pd.Series, close: pd.Series, near: int = 50, trend: int = 200
+) -> list[pd.Timestamp]:
+    """Days whose low reached the `near` exponential average while the close stayed
+    above the `trend` one: a dip inside a long rise."""
+    hit = (low <= ema(close, near)) & (close > ema(close, trend))
+    return _days(close.index, np.flatnonzero(hit.to_numpy()))
+
+
+def fibonacci_cases(
+    high: pd.Series, low: pd.Series, close: pd.Series, window: int = 60, share: float = 0.618
+) -> list[pd.Timestamp]:
+    """Days whose low reached the retracement level of the latest rise while the close
+    stayed above where the rise began."""
+    levels = fibonacci_level(high, low, window, share)
+    hit = (low <= levels["level"]) & (close > levels["floor"])
+    return _days(close.index, np.flatnonzero(hit.to_numpy()))
+
+
+def flags(index: pd.Index, cases: list[pd.Timestamp]) -> np.ndarray:
+    """The days of `cases` as a true-or-false value per day of `index`."""
+    result: np.ndarray = index.isin(cases)
+    return result
 
 
 def support_cases(low: pd.Series, window: int = 60, near: float = 0.005) -> list[pd.Timestamp]:
