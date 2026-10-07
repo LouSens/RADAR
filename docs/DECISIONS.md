@@ -2942,3 +2942,36 @@ release means for his holdings. He places every trade himself.
 - One total for every coin and all time, then coins held now, then coins no longer
   held. The comparison with buying and keeping is off the screen until it is verified.
 - Plain words throughout; no statistical phrase is shown (the check is still applied).
+
+## 076. Every traded coin found, coins that left counted as lost on the user's word, and the plan he chose (2026-10-07)
+
+**Agreed by the user.** One more public read from Binance, the list of pairs
+(`GET /api/v3/exchangeInfo`, no key): `binance_public.dollar_pairs`. With it the record
+asks about every coin listed against USDT, USDC or FDUSD, on the pairs it really has;
+the built-in list stays for coins since delisted. A full run is several hundred
+requests and takes about a quarter of an hour, once a day.
+
+**Coins that left without a sale.** The user says which were lost for good
+(`PUT /portfolio/record/lost`; a button on the trades page). What was paid for them then
+counts as a loss. It is applied when the record is read, so the stored record is the
+history as the exchange gives it. He has said so for ETH and SOL (sent to another wallet
+and lost there).
+
+**A fault found and fixed.** A tokenised US stock held on Binance was shown as having
+left, because its name in the trade history (ticker plus `B`) was not matched to the
+holding.
+
+**The user's plan.** Careful: mainly cash, US stocks, gold and Bitcoin. No altcoins for
+now; one may be added later, at most 1% each and 10% in all. He adds about 25 dollars a
+month. Starting shares, his to change: cash 48%, US stocks 25%, gold 20%, Bitcoin 7%.
+Over December 2021 to October 2026 a mix close to this (with 3% in large altcoins) grew
+about 9% a year and fell 16.5% at its deepest; those years favoured gold and US stocks.
+
+**What he asks for that is still not possible.** A signal to buy altcoins low and sell
+high from order flow, open interest, liquidation maps and price levels. Order blocks,
+fair value gaps, Fibonacci levels, funding and buy-side volume were tested and did not
+tell direction (061, 068, 073); liquidation maps are not in any source RADAR may read.
+Two things are offered instead: a check before buying that says where the price sits in
+its week and month, since his own record shows he bought near the top; and one test not
+yet run, across every coin Binance lists, of whether coins low in their range did better
+afterwards than coins high in it. Its rules are to be written down before it is run.
