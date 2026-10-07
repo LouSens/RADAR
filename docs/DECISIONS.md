@@ -2203,3 +2203,40 @@ mark on real answers; accuracy will sit within 2 points of the baseline.
 *After.* If a model passes, alerts are built on it with its record shown. If none does,
 the alerts that remain possible are the damage-side rules of decision 061, which rest on
 how far the portfolio fell, not on calling direction.
+
+## 063. The LSTM test: the result (2026-10-07)
+
+The test of decision 062, run once. Notebook 12 shows every table.
+
+**Planted pattern.** On hourly bars all three models found it in all three markets: the
+LSTM recovered 65% to 82% of the possible gain, the small trees all of it, the logistic
+regression 55% to 92%. The LSTM passed with the settings written down, so nothing was
+adjusted.
+
+**Real answers.** None of the 9 comparisons passed the mark. The best was the LSTM on
+Bitcoin: right on 53.2% of 417 separate test days against 51.1% for the usual answer,
+ahead in both halves, but under the 3-point mark and with a p-value of 0.20. On US
+stocks the LSTM said "higher" on every test day. In gold all three were level with the
+baseline. Used as a rule after costs, none beat holding.
+
+**Reading.** Unlike decision 061's network, these models were shown able to learn, so
+this is a real "no" for anything of the size the test can see (about 5 points). Three
+kinds of model agree. The limit is what daily and hourly prices of one market contain,
+not the model.
+
+**My guess, checked.** Right on the planted check and on no model passing; I said within
+2 points of the baseline and the best was 2.2.
+
+**So.** No alert or suggestion about direction is built: nothing passed. Do not rerun
+this with other settings until something passes. What could change the answer is other
+information (many markets pooled; positioning, funding, order flow), each of which needs
+the user's agreement and its own written test.
+
+**Noted for a future test, not acted on.** The small trees' most confident fifth of test
+days ended higher more often than their least confident fifth in Bitcoin and US stocks.
+Seen after the fact, on about 100 days a group.
+
+**Open.** The damage-side rules of decision 061 (hold less when swings are high; step
+aside below the 200-day average) made the deepest fall shallower in two markets of
+three. That was reported, not tested as a claim. Under decision 062 it needs its own
+written test, on markets it has not been run on, before it becomes a suggestion.
