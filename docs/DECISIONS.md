@@ -2240,3 +2240,75 @@ Seen after the fact, on about 100 days a group.
 aside below the 200-day average) made the deepest fall shallower in two markets of
 three. That was reported, not tested as a claim. Under decision 062 it needs its own
 written test, on markets it has not been run on, before it becomes a suggestion.
+
+## 064. When to hold more cash, how much, and when to put it back: the test, written before running (2026-10-07)
+
+What the user wants from RADAR, in their words: know when to switch to cash-heavy and
+what percentage, know when to buy using the cash, and know how to rebalance, taking
+account of macro and Fed news and of indicators such as RSI (5,3,3), fair value gaps and
+order blocks. They also agreed to adding free outside data (funding rates, order flow,
+positioning); that is a separate test, to follow this one.
+
+Decisions 061 and 063 found no way to call direction. They also *reported* that two
+rules made the deepest fall much shallower in Bitcoin and US stocks. That was seen, not
+tested, and on the same three markets every rule here has been looked at on. This entry
+tests it as a claim, on markets none of these rules has been run on. Nothing below has
+been run.
+
+"RSI (5,3,3)" is taken to mean the stochastic oscillator with periods 5, 3 and 3, which
+is what those three numbers usually set. If the user meant something else, the add-on
+test is rerun once with their definition and both are reported.
+
+**Markets (fixed now, none used before).** Daily bars from Alpaca's data API, from 2016
+for funds and from each coin's first full year. Four groups:
+- stocks: QQQ, IWM, EFA, EEM, XLE, XLF, XLK, XLV, XLU, VNQ
+- bonds: TLT, IEF, LQD, HYG
+- commodities: SLV, USO, DBC, DBA
+- crypto: ETH/USD, SOL/USD, LTC/USD, LINK/USD, AVAX/USD, DOGE/USD
+A market with fewer than 750 days is left out and named. The bars are kept in the
+gitignored `data/research/`, not in the app's tables.
+
+**The rules, each giving the share to hold; the rest is cash.** As in decision 060: a
+share decided at a day's close is held over the next day, a change costs 0.1% of what is
+traded, cash earns nothing, the first 252 days are warm-up.
+1. *Swings*: min(1, usual swing / current swing), 20-day, usual = median so far.
+2. *200-day*: everything above the 200-day average, nothing below.
+3. *Core*: 1 times 2. This is the answer to "when to hold more cash, and how much".
+
+**Claim 1: the core rule makes the deepest fall shallower.** For each market, the rule's
+deepest fall minus holding's. It passes only if all three hold: shallower in at least
+70% of markets; a Wilcoxon signed-rank p-value under 5% after Benjamini-Hochberg across
+the three rules; and shallower in the median market of at least 3 of the 4 groups. The
+cost is reported beside it and not hidden: the difference in yearly return and in
+return per unit of risk.
+
+**Claim 2: news and indicators improve on the core rule.** Four add-ons, each compared
+with the core rule alone:
+- *Events*: half of the core share on the day before and the day of a Fed decision, jobs
+  report or inflation report.
+- *Stochastic (5,3,3)*, *fair value gap*, *order block* as "when to put the cash back":
+  when the core share is below everything and the trigger fires, hold everything for the
+  next 5 days, then return to the core share. Triggers: the stochastic's fast line
+  crossing above its slow line with both under 20; the first return to an up-gap; the
+  first return to an up-block (gaps and blocks as defined in decision 060).
+An add-on passes only if its return per unit of risk is higher than the core rule's in
+at least 70% of markets with a Wilcoxon p-value under 5% after Benjamini-Hochberg across
+the four, and its deepest fall is not deeper in the median market.
+
+**Claim 3: it works on a portfolio.** All the markets in equal parts, put back to equal
+parts every 21 days, against the same portfolio with each market's part scaled by the
+core rule. Passes if the deepest fall is shallower and the return per unit of risk is
+not lower by more than chance (two-sided p above 5% or higher), by the paired block
+resampling of decision 060. Reported: return a year for both.
+
+**Known weaknesses.** Markets move together, so 24 markets are fewer than 24 separate
+pieces of evidence; the group condition is there for that. All of them share the same
+ten years. A deepest fall is one event per market.
+
+**My guess.** Claim 1 passes: shallower falls in most markets, clearest in crypto and
+stocks, weakest in bonds, with a lower return in most. No add-on in claim 2 passes.
+Claim 3 passes on the fall and gives up some return.
+
+**After.** If claim 1 and claim 3 pass, the app can show "share to hold today" for each
+holding and for the portfolio as a suggestion under decision 062, with this record. An
+add-on that does not pass is not used, whatever its reputation.
