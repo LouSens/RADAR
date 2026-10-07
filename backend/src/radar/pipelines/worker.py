@@ -22,7 +22,9 @@ from radar.pipelines import brief as brief_job
 from radar.pipelines import discover
 from radar.pipelines import event_study as event_study_job
 from radar.pipelines import events as events_job
+from radar.pipelines import outside_hours as outside_hours_job
 from radar.pipelines import portfolio as portfolio_job
+from radar.pipelines import prices as prices_job
 from radar.pipelines import regime as regime_job
 from radar.pipelines import relationships as relationships_job
 from radar.pipelines import risk as risk_job
@@ -56,6 +58,21 @@ def stream_specs(universe: Universe) -> list[StreamSpec]:
     if universe.news_symbols:
         specs.append(StreamSpec("news", NEWS_STREAM_URL, {"news": list(universe.news_symbols)}))
     return specs
+
+
+# How late a scheduled job may start and still run. Hourly work that starts a few
+# minutes late is still wanted; work an hour late is covered by the next run.
+MISFIRE_GRACE_SECONDS = 900
+
+
+def make_scheduler() -> BlockingScheduler:
+    """A scheduler whose late jobs still run. The library's own default drops a job
+    that is more than one second late, and on a busy or sleeping machine every job is
+    a few seconds late: the hourly work then silently never happens."""
+    return BlockingScheduler(
+        timezone="UTC",
+        job_defaults={"misfire_grace_time": MISFIRE_GRACE_SECONDS, "coalesce": True},
+    )
 
 
 def run_worker(settings: Settings | None = None, universe: Universe | None = None) -> int:
@@ -101,7 +118,7 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             thread.start()
             threads.append(thread)
 
-        scheduler = BlockingScheduler(timezone="UTC")
+        scheduler = make_scheduler()
 
         # One minute past each hour: the hour that just ended is now a finished bar.
         def sync_everything() -> None:
@@ -118,6 +135,15 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=10,
             id="quality",
+            max_instances=1,
+            coalesce=True,
+        )
+        # Hours from a second source, before anything that measures a day's movement.
+        scheduler.add_job(
+            partial(outside_hours_job.run, engine, universe),
+            "cron",
+            minute=3,
+            id="outside-hours",
             max_instances=1,
             coalesce=True,
         )
@@ -235,7 +261,7 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
         # The brief: rewritten each hour from whatever is stored, so the day's brief
         # follows the day. It only reads results, so it is cheap.
         scheduler.add_job(
-            partial(brief_job.run, engine, universe),
+            partial(brief_job.run, engine, universe, live=prices_job.live),
             "cron",
             minute=58,
             id="brief",
