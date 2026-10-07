@@ -2853,3 +2853,92 @@ everything up to the gap, and the change written down before it is run.
 test. As a document it is not good enough: cells of 70 lines, lines 300 characters wide,
 nine functions written in the notebook, jargon column names. It is rebuilt with the
 others in step H and is not the model for them.
+
+## 074. The account record, what a notebook is for, and fifteen notebooks become seven (2026-10-07)
+
+**What a notebook is for** (the user's words, 2026-10-07): the playground where
+something is tried. It is not where a feature lives. What holds up there becomes tested
+code and a screen in the same piece of work; a result that only sits in a notebook is a
+failure. The repository is public, so no notebook ever holds the user's real trades or
+holdings: experiments on real data are run in the gitignored `data/private/`, and the
+committed notebook shows the method on invented traders.
+
+**The account record** (step C, from Binance history; the user chose this over manual
+entry). `models/ledger.py`: average cost, break-even, realised gain, round trips, and
+trading set beside putting the same new money in at the same times and never selling.
+`analytics/trading.py`: for each purchase and sale, what the price had done in the day
+and week before, where the trade sat in the week's range, and what followed; a habit is
+named only when it is outside what the same number of random hours would give, on ten
+trades or more. `pipelines/account.py` reads the whole history once a day and stores
+one result; `GET /portfolio/record` serves it; Portfolio has a "Your record" page.
+Hourly prices come from Binance's public data, kept in the gitignored `data/account/`.
+
+Two stated assumptions: coins that arrived from outside take that day's market price
+as their cost, and rewards are units at no cost. One thing still to do: units rebuilt
+from history differ from units held by a few per cent for some assets, and the cause is
+not yet traced; the page does not yet show that gap.
+
+The page describes what happened. It names no action, and what followed past trades is
+shown as a record, not a forecast.
+
+**Fifteen notebooks become seven** (`notebooks/README.md` has the table).
+- `02_state_and_range` is the old 02 and 03; `03_swings_and_loss` the old 04;
+  `04_news` the old 05 and 06 without the subject breakdown and the tone-against-price
+  study; `05_portfolio_and_paying_in` the old 07 and 09 without the comparison of
+  mixes and core and satellite.
+- `06_trading_record` is new: two invented traders on real prices, one who chases and
+  one who trades at random. The method flags the first and not the second.
+- `07_what_we_tested` is a one-page summary of the research that did not pass. The
+  full notebooks (old 08, 10, 11 to 15) are in `notebooks/archive/`; decisions that
+  cite them by number mean those.
+- The merge moved built cells with their outputs and ran nothing again, so no figure
+  changed. Notebooks 01 to 05 still need the rework listed in the README; 06 is the
+  pattern.
+
+**Routing.** A link on Home still pointed at the removed page per kind of event. Fixed;
+the addresses of removed pages now lead to the nearest page that exists, and a test
+walks every address the app links to.
+
+## 075. What the user wants the assistant to do, in his own terms; and the trades page corrected (2026-10-07)
+
+**The user, restated.** A passive investor. He adds cash to Binance weekly or monthly
+and trades once in each period. Bitcoin, gold and US stocks are held for the long run.
+Altcoins are speculation: at most 1% of the account in any one, at most ten of them,
+so at most 10% in all. He has lost money on past trades and wants to climb back to a
+gain slowly, without losing more. He wants the app to be an analyst, guardian and
+manager that cannot trade: it tells him what to hold, when to rebalance, add or take
+profit, where and how much, which news to be careful about, and what a Fed or data
+release means for his holdings. He places every trade himself.
+
+**What can be built honestly from this, and what cannot.**
+- *A plan*: target shares for cash, Bitcoin, gold and US stocks, with the altcoin caps
+  (1% each, 10% together) enforced. Can be built.
+- *This period's to-do*: given the cash just added and what is held, the purchases that
+  bring the account back to the plan, and sales only where a holding has grown past its
+  share by a set margin. This is arithmetic against a plan the user chose. It is the
+  form "when to take profit" and "when to add" take: a holding above its share is
+  trimmed, one below it is topped up. Can be built.
+- *Alerts*: a holding outside its share; an altcoin above its cap; rougher days
+  forecast; a market turned turbulent; a scheduled release inside the coming period.
+  Can be built from what exists.
+- *Releases*: RADAR has no figure for what is expected, and decision 056 stands: tested
+  over ten years, no release showed a lean in direction. What was found is size: gold
+  moves more on Fed days, US stocks on jobs days. So the assistant can say "a release
+  falls on your buying day; prices usually move more that day, in either direction" and
+  offer to shift the purchase by a day. It cannot say "if the number is high, sell".
+- *Buying and selling at the right time*: not something any tested reading can do
+  (decisions 061 to 073). The to-do list keeps him to his plan; it does not time
+  the market.
+
+**The trades page, corrected after the user's review.**
+- Coins traded long ago and no longer held were missing (MANTA, his largest loss, and
+  TAO among them), because the account no longer pointed to them. About 150 common
+  coins are now always asked about. A complete answer needs Binance's public list of
+  pairs, which is one more endpoint and awaits the user's yes.
+- What the account really holds is the truth. Units that history still shows but the
+  account does not have left at cost, counted neither as gain nor loss, and their cost
+  is shown as money whose fate the record does not know (`ledger.reconcile`).
+- A coin is "held" only when what is held is worth a dollar or more.
+- One total for every coin and all time, then coins held now, then coins no longer
+  held. The comparison with buying and keeping is off the screen until it is verified.
+- Plain words throughout; no statistical phrase is shown (the check is still applied).

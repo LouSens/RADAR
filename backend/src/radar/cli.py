@@ -271,6 +271,16 @@ def portfolio() -> int:
     return 0
 
 
+def record() -> int:
+    """Read the Binance account's history again and store what it cost and made."""
+    from radar.db.session import make_engine
+    from radar.pipelines import account as job
+
+    stored = job.run(make_engine())
+    log.info("record_done", stored=stored)
+    return 0
+
+
 def relationships() -> int:
     """Recompute how the markets move together, and each market's macro drivers."""
     from radar.db.session import make_engine
@@ -353,6 +363,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "finetune": (finetune, "fine-tune the sentiment model and test it on held-out headlines"),
     "track": (track, "log today's forecasts and score those that have come due"),
     "portfolio": (portfolio, "recompute the portfolio analysis with the latest prices"),
+    "record": (record, "rebuild the account record from the Binance history"),
     "relationships": (relationships, "recompute how the markets move together"),
     "news-swings": (news_swings, "test whether news improves the swings forecast"),
     "signals": (signals, "detect signals and recompute what followed them in the past"),

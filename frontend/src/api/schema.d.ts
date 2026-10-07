@@ -415,6 +415,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Record
+         * @description What the holdings cost, what was made, and how the trades were timed, from the
+         *     exchange's own history. Read from the stored result; nothing is fetched here.
+         */
+        get: operations["get_record_api_v1_portfolio_record_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/regular-buying": {
         parameters: {
             query?: never;
@@ -643,6 +664,41 @@ export interface components {
             /** Trades Continuously */
             trades_continuously: boolean;
         };
+        /** AssetRecord */
+        AssetRecord: {
+            /** Asset */
+            asset: string;
+            buys: components["schemas"]["Habit"] | null;
+            /** Buys Unusual */
+            buys_unusual: boolean;
+            compared: components["schemas"]["Compared"] | null;
+            /**
+             * Held
+             * @default false
+             */
+            held: boolean;
+            /** Held Units */
+            held_units: number | null;
+            /** Missing Share */
+            missing_share: number | null;
+            /**
+             * Moved Out Cost
+             * @default 0
+             */
+            moved_out_cost: number;
+            /** Price */
+            price: number | null;
+            sells: components["schemas"]["Habit"] | null;
+            /** Sells Unusual */
+            sells_unusual: boolean;
+            standing: components["schemas"]["Standing"];
+            trips: components["schemas"]["Trips"] | null;
+            /** Unrealised */
+            unrealised: number | null;
+            usual: components["schemas"]["Usual"] | null;
+            /** Value */
+            value: number | null;
+        };
         /** BarOut */
         BarOut: {
             /** Close */
@@ -810,6 +866,22 @@ export interface components {
             n: number;
         };
         /**
+         * Compared
+         * @description Trading as it was done, beside putting the same new money in and never selling.
+         */
+        Compared: {
+            /** As Traded */
+            as_traded: number;
+            /** Asset */
+            asset: string;
+            /** Difference */
+            difference: number;
+            /** If Held */
+            if_held: number;
+            /** Put In */
+            put_in: number;
+        };
+        /**
          * Coverage
          * @description How often past ranges of one stated level held what happened.
          */
@@ -951,6 +1023,29 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * Habit
+         * @description What the price was doing around one kind of trade, weighted by the money in each.
+         *
+         *     `place` is where the trade's price sat in the range of the week before it: 0 at the
+         *     week's low, 1 at its high. The moves are fractions (0.01 is 1%).
+         */
+        Habit: {
+            /** After Day */
+            after_day: number | null;
+            /** After Week */
+            after_week: number | null;
+            /** Before Day */
+            before_day: number;
+            /** Before Week */
+            before_week: number;
+            /** Dollars */
+            dollars: number;
+            /** Place */
+            place: number;
+            /** Trades */
+            trades: number;
         };
         /** HealthOut */
         HealthOut: {
@@ -1263,6 +1358,17 @@ export interface components {
             /** Symbol */
             symbol: string;
         };
+        /** Month */
+        Month: {
+            /** Bought */
+            bought: number;
+            /** Month */
+            month: string;
+            /** Sold */
+            sold: number;
+            /** Trades */
+            trades: number;
+        };
         /**
          * Move
          * @description How far one holding sits from its target share of the whole.
@@ -1500,6 +1606,43 @@ export interface components {
             last_run: string | null;
             /** Warnings */
             warnings: number;
+        };
+        /** Record */
+        Record: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** As Traded */
+            as_traded: number;
+            /** Assets */
+            assets: components["schemas"]["AssetRecord"][];
+            /** Fees */
+            fees: number;
+            /** First Trade */
+            first_trade: string | null;
+            /** If Held */
+            if_held: number;
+            /** Model Version */
+            model_version: string;
+            /** Months */
+            months: components["schemas"]["Month"][];
+            /**
+             * Moved Out Cost
+             * @default 0
+             */
+            moved_out_cost: number;
+            /** Priced At Market */
+            priced_at_market: number;
+            /** Put In */
+            put_in: number;
+            /** Realised */
+            realised: number;
+            /** Trades */
+            trades: number;
+            /** Unrealised */
+            unrealised: number;
         };
         /**
          * RecordSummary
@@ -2199,6 +2342,40 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /**
+         * Standing
+         * @description Where one asset stands after all its entries.
+         */
+        Standing: {
+            /** Asset */
+            asset: string;
+            /** Average Cost */
+            average_cost: number | null;
+            /** Bought */
+            bought: number;
+            /** Cost */
+            cost: number;
+            /** Fees */
+            fees: number;
+            /** First */
+            first: string | null;
+            /** Priced At Market */
+            priced_at_market: number;
+            /** Purchases */
+            purchases: number;
+            /** Realised */
+            realised: number;
+            /** Reward Units */
+            reward_units: number;
+            /** Sales */
+            sales: number;
+            /** Sold */
+            sold: number;
+            /** Units */
+            units: number;
+            /** Unpriced */
+            unpriced: number;
+        };
         /** StressPart */
         StressPart: {
             /** Change */
@@ -2429,6 +2606,26 @@ export interface components {
             /** Resolved */
             resolved: number;
         };
+        /**
+         * Trips
+         * @description Round trips in one asset: from holding none, to some, to none again.
+         */
+        Trips: {
+            /** Average Gain */
+            average_gain: number | null;
+            /** Average Loss */
+            average_loss: number | null;
+            /** Count */
+            count: number;
+            /** Days When Down */
+            days_when_down: number | null;
+            /** Days When Up */
+            days_when_up: number | null;
+            /** Ended Up */
+            ended_up: number;
+            /** Total */
+            total: number;
+        };
         /** Trust */
         Trust: {
             /**
@@ -2491,6 +2688,24 @@ export interface components {
             key: string;
             /** Name */
             name: string;
+        };
+        /**
+         * Usual
+         * @description The same figures for any hour of the period: what a habit is set beside.
+         */
+        Usual: {
+            /** After Day */
+            after_day: number;
+            /** After Week */
+            after_week: number;
+            /** Before Day */
+            before_day: number;
+            /** Before Week */
+            before_week: number;
+            /** Hours */
+            hours: number;
+            /** Place */
+            place: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -3414,6 +3629,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_record_api_v1_portfolio_record_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Record"];
                 };
             };
         };

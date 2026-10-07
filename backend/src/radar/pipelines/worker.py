@@ -17,6 +17,7 @@ from radar.db.session import make_engine
 from radar.ingest.live import BarHandler, LiveConsumer, NewsHandler, StreamSpec, Syncer, notify
 from radar.ingest.raw_store import RawStore
 from radar.logging import get_logger
+from radar.pipelines import account as account_job
 from radar.pipelines import brief as brief_job
 from radar.pipelines import discover
 from radar.pipelines import event_study as event_study_job
@@ -253,6 +254,16 @@ def run_worker(settings: Settings | None = None, universe: Universe | None = Non
             "cron",
             minute=45,
             id="portfolio",
+            max_instances=1,
+            coalesce=True,
+        )
+        # The account's record: its whole history is read again, so once a day is enough.
+        scheduler.add_job(
+            partial(account_job.run, engine),
+            "cron",
+            hour=1,
+            minute=50,
+            id="account-record",
             max_instances=1,
             coalesce=True,
         )

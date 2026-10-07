@@ -1,4 +1,159 @@
 # %% [markdown]
+# # News: scoring the tone of headlines, and fine-tuning the model that does it
+#
+# **In short.** Each article's headline and summary is scored by a language model trained
+# on financial text. Part 1 measures how much news there is and how well the scores agree
+# with labelled headlines. Part 2 fine-tunes the model on headlines like ours and tests it
+# on ones it never saw.
+#
+# Rebuild with `uv run python backend/scripts/build_notebooks.py 04_news`
+# (needs `uv sync --extra nlp`).
+
+# %% [markdown]
+# ---
+#
+# # Part 1. Tone
+
+# %% [markdown]
+# # News: tone, topics, and whether news moves price
+#
+# **The questions.** What is the tone of the news on each market? What is it about?
+# And does a change in tone come before a price move, after it, or neither?
+#
+# **The pipeline.**
+#
+# 1. Every stored article's headline and summary is scored by a language model
+#    (FinBERT), giving the probability that the tone is positive, negative, or neutral.
+#    The article's score is positive minus negative, from -1 to +1.
+# 2. A second model assigns each article one topic from a fixed list.
+# 3. Scores are averaged per day for each market.
+# 4. Days with unusually strong tone are found, and the price around them is examined.
+#
+# No article text appears in this notebook. Notebook 06 covers how the tone model was
+# fine-tuned and tested.
+#
+# Rebuild with `uv run python backend/scripts/build_notebooks.py 05_news`.
+
+# %%
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from sqlalchemy import func, select
+
+from radar.analytics import event_study
+from radar.db.models import ModelRegistry, NewsArticle, NewsSentiment, NewsSymbol, NewsTopic, SentimentAggregate
+from radar.db.session import make_engine, session_scope
+from radar.models import topics
+from radar.pipelines import event_study as study_job
+from radar.pipelines import sentiment as sentiment_job
+from radar.universe import get_universe
+
+plt.rcParams.update({"figure.figsize": (11, 3.4), "axes.grid": True, "grid.alpha": 0.3})
+pd.set_option("display.float_format", lambda v: f"{v:.3f}")
+engine, universe = make_engine(), get_universe()
+symbols = [a.symbol for a in universe.primary]
+version = sentiment_job.active_version(engine)
+topic_version = topics.version_of(topics.MODEL_ID)
+
+with session_scope(engine) as session:
+    scores = pd.read_sql(
+        select(NewsSymbol.symbol, NewsArticle.created_at, NewsSentiment.score, NewsTopic.topic)
+        .join(NewsArticle, NewsArticle.id == NewsSymbol.article_id)
+        .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
+        .outerjoin(NewsTopic, (NewsTopic.article_id == NewsArticle.id) & (NewsTopic.model_version == topic_version))
+        .where(NewsSentiment.model_version == version, NewsArticle.duplicate_of.is_(None)),
+        session.connection(),
+    )
+    daily = pd.read_sql(select(SentimentAggregate).where(SentimentAggregate.bucket == "1Day"), session.connection())
+    accuracy = session.scalars(
+        select(ModelRegistry).where(ModelRegistry.name == sentiment_job.MODEL_NAME, ModelRegistry.is_current)
+    ).first().metrics
+    studies = {s: study_job.current(session, s).metrics for s in symbols}
+    inputs = {a.symbol: study_job.daily_inputs(session, a) for a in universe.primary}
+scores["created_at"] = pd.to_datetime(scores["created_at"], utc=True)
+print(f"tone model in use: {version}; {len(scores):,} article-market links scored")
+
+# %% [markdown]
+# ## 1. How much news there is
+#
+# This decides everything that follows. Bitcoin and US stocks have many articles a day.
+# Gold has one or two, which is too few for some of the analysis, and the app says so.
+
+# %%
+coverage = pd.DataFrame(
+    {
+        a.symbol: {
+            "measured from": a.news_start,
+            "articles": int((scores["symbol"] == a.symbol).sum()),
+            "articles per day": (scores["symbol"] == a.symbol).sum()
+            / max((pd.Timestamp.now(tz="UTC") - pd.Timestamp(a.news_start, tz="UTC")).days, 1),
+        }
+        for a in universe.primary
+    }
+).T
+coverage
+
+# %% [markdown]
+# ## 2. How good is the tone model?
+#
+# Measured on 200 headlines labelled separately, before any model output for them
+# existed. The labels were written by an AI model (Claude), not a person. The rival is
+# counting positive and negative words from a finance word list.
+
+# %%
+table = {"Tone model": accuracy["model"]}
+if "baseline" in accuracy:
+    table["Word counting"] = accuracy["baseline"]
+if "topics" in accuracy:
+    table["Topic model (7 topics)"] = accuracy["topics"]
+print("labelled by:", accuracy["labelled_by"])
+pd.DataFrame({k: {"headlines": v["n"], "accuracy": v["accuracy"], "macro F1": v["macro_f1"]} for k, v in table.items()}).T
+
+# %%
+pd.DataFrame(accuracy["by_symbol"]).T.rename(columns={"n": "headlines"})
+
+# %% [markdown]
+# ## 3. What the scores look like
+
+# %%
+fig, axes = plt.subplots(1, 3, figsize=(13, 3.2), sharey=True)
+for ax, s in zip(axes, symbols):
+    part = scores.loc[scores["symbol"] == s, "score"]
+    ax.hist(part, bins=40, color="tab:blue", alpha=0.8, density=True)
+    ax.set(title=f"{s}: n = {len(part):,}, mean {part.mean():+.2f}", xlabel="tone score")
+
+# %% [markdown]
+# Scores pile up near -1, 0, and +1 because the model is usually confident. That is
+# normal for this kind of model, and is why daily averages are used, not single scores.
+
+# %%
+fig, axes = plt.subplots(3, 1, figsize=(12, 7), sharex=False)
+for ax, s in zip(axes, symbols):
+    part = daily[daily["symbol"] == s].sort_values("ts").set_index("ts")
+    smooth = part["score_mean"].rolling(30, min_periods=10).mean()
+    ax.plot(smooth.index, smooth.values, color="tab:blue")
+    ax.axhline(0, color="black", linewidth=0.6)
+    ax.set(title=f"{s}: daily tone, 30-day average ({int(part['article_count'].sum()):,} articles on {int((part['article_count'] > 0).sum()):,} days)")
+plt.tight_layout()
+
+# %% [markdown]
+# ## What to take from this
+#
+# - The tone model is good enough to say whether recent headlines read as positive or
+#   negative, and not good enough to trust on any single article.
+# - Tone is used to describe the news around a holding. It drives no forecast and no
+#   signal: a separate test found it does not improve the swings forecast, and a study of
+#   tone against price found that news mostly follows the move it describes (both are in
+#   `07_what_we_tested`).
+# - All articles come from one provider, and tone models misread sarcasm, negation, and
+#   headlines that only report a price.
+
+# %% [markdown]
+# ---
+#
+# # Part 2. Fine-tuning
+
+# %% [markdown]
 # # Fine-tuning the news sentiment model
 #
 # **What this notebook shows.** RADAR scores the tone of each news article with FinBERT,

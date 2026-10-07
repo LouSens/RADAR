@@ -5,6 +5,7 @@ import {
   getJson,
   postJson,
   putJson,
+  type AccountRecord,
   type Asset,
   type Bars,
   type Calibration,
@@ -177,6 +178,15 @@ export function usePortfolioAnalysis() {
     queryKey: ["portfolio", "analysis"],
     queryFn: () => orNull(() => getJson<PortfolioAnalysis>("/portfolio/analysis")),
     refetchInterval: 10 * 60_000,
+  });
+}
+
+/** What the holdings cost and made, from the exchange's own history. */
+export function useAccountRecord() {
+  return useQuery({
+    queryKey: ["portfolio", "record"],
+    queryFn: () => orNull(() => getJson<AccountRecord>("/portfolio/record")),
+    staleTime: 60 * 60_000,
   });
 }
 

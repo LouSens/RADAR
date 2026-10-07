@@ -22,7 +22,7 @@ export function ComingUp() {
         {next.map((event) => (
           <li key={`${event.key}-${event.at}`} className="border-t border-line first:border-t-0">
             <Link
-              to={`/calendar/${event.key}`}
+              to="/calendar"
               className="group flex items-baseline justify-between gap-4 py-3 text-sm"
             >
               <span className="min-w-0 truncate font-medium group-hover:text-accent">
