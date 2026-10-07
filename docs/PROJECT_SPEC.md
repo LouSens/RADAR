@@ -505,6 +505,7 @@ All routes are under `/api/v1`. Responses are Pydantic models; the OpenAPI schem
 | `GET /assets/{symbol}/news-and-swings` | whether news improved the F9 forecast (`docs/DECISIONS.md` 044, 045) |
 | `GET /portfolio/allocations` | allocation comparison and backtest summary |
 | `GET /portfolio/simulation` | portfolio outcome distribution |
+| `GET /events` | scheduled economic events: those to come, and how each market has behaved around past ones (`docs/DECISIONS.md` 055, 056) |
 | `GET /signals` | recent signals with track record summaries |
 | `GET /signals/track-records/{type}` | full track record |
 | `GET /briefs/latest` | today's brief |

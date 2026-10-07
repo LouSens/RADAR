@@ -327,6 +327,22 @@ def grade_signals(occurrences: list[int]) -> Trust:
     )
 
 
+def grade_events(counts: list[int]) -> Trust:
+    """Graded on the market with the fewest past events of this kind: 100 for solid, 30
+    for fair."""
+    seen = [n for n in counts if n > 0]
+    if not seen:
+        return Trust(grade="rough", reason="No past events of this kind are in the stored prices.")
+    fewest, most = min(seen), max(seen)
+    span = f"{fewest:,}" if fewest == most else f"{fewest:,} to {most:,}"
+    record = f"Measured on {span} past events per market, from the official release dates"
+    if fewest >= 100:
+        return Trust(grade="solid", reason=record + ".")
+    if fewest >= 30:
+        return Trust(grade="fair", reason=record + ". Under 100 is a modest sample.")
+    return Trust(grade="rough", reason=record + ". Under 30 is too few to judge.")
+
+
 def grade_news(accuracy: dict[str, object] | None) -> Trust:
     """Graded on the low end of the accuracy range: 80% for solid, 65% for fair."""
     if not accuracy:

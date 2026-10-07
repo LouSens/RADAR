@@ -158,7 +158,7 @@ describe("SignalsPage", () => {
     expect(
       screen.getByText("A holding has drifted more than 5 points from its target share."),
     ).toBeVisible();
-    expect(container.textContent).toMatch(/it is not a forecast of direction/);
+    expect(container.textContent).toMatch(/Not a forecast of direction/);
     expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
   });
 
@@ -182,7 +182,7 @@ describe("SignalsPage", () => {
     ).toHaveLength(2);
     expect(screen.getAllByText("±1.68%")).toHaveLength(2);
     expect(screen.getAllByText("±0.72%")).toHaveLength(2);
-    expect(container.textContent).toMatch(/Because 24 comparisons were looked at together/);
+    expect(container.textContent).toMatch(/24 comparisons looked at together/);
     expect(container.textContent).toMatch(/treat them as provisional/);
   });
 
@@ -242,6 +242,13 @@ describe("BriefCard", () => {
     expect(
       screen.getByRole("link", { name: "Bitcoin: the market is in a calm state." }),
     ).toHaveAttribute("href", "/asset/btc-usd/state");
+    // Only the first sentence of each subject shows until the rest is asked for.
+    expect(screen.queryByRole("link", { name: "No signals in the past 7 days." })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Read all" }));
+    expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
     expect(screen.getByRole("link", { name: "No signals in the past 7 days." })).toHaveAttribute(
       "href",
       "/signals",

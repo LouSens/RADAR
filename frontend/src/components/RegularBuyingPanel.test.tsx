@@ -115,7 +115,7 @@ describe("RegularBuyingPanel", () => {
     expect(screen.getByText("25 purchases of $50.00: $1,250 in all")).toBeVisible();
     expect(screen.getByText(/add up to 120%; they are scaled to 100%/)).toBeVisible();
 
-    fireEvent.click(screen.getByRole("button", { name: "Run the simulation" }));
+    fireEvent.click(screen.getByRole("button", { name: "See where it could end up" }));
     expect(state.simulate).toHaveBeenCalledWith({
       weights: { "BTC/USD": 25, SPY: 75, GLD: 20 },
       amount: 50,
@@ -128,7 +128,7 @@ describe("RegularBuyingPanel", () => {
     render(<RegularBuyingPanel portfolio={PORTFOLIO} />);
     expect(screen.getByLabelText("Bitcoin share of each purchase, percent")).toHaveValue(100);
     fireEvent.change(screen.getByLabelText("Dollars per purchase"), { target: { value: "0" } });
-    expect(screen.getByRole("button", { name: "Run the simulation" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "See where it could end up" })).toBeDisabled();
   });
 
   it("shows the outcome in money beside putting it all in at once", () => {

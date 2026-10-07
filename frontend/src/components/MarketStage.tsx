@@ -86,14 +86,18 @@ export function MarketStage({
       </div>
 
       <div className="stage-chart">
-        {bars.isPending && <div className="grid h-full place-items-center text-sm text-faint">Loading…</div>}
+        {bars.isPending && (
+          <div className="grid h-full place-items-center text-sm text-faint">Loading…</div>
+        )}
         {bars.isError && (
           <div className="grid h-full place-items-center text-sm text-muted">
             Prices are unavailable right now.
           </div>
         )}
         {bars.isSuccess && rows.length === 0 && (
-          <div className="grid h-full place-items-center text-sm text-muted">No prices for this period.</div>
+          <div className="grid h-full place-items-center text-sm text-muted">
+            No prices for this period.
+          </div>
         )}
         {rows.length > 0 && (
           <PriceChart
@@ -126,7 +130,10 @@ export function MarketStage({
           )}
         </p>
         {linkToAsset && (
-          <Link to={`/asset/${asset.slug}`} className="font-medium text-muted transition-colors hover:text-ink">
+          <Link
+            to={`/asset/${asset.slug}`}
+            className="font-medium text-muted transition-colors hover:text-ink"
+          >
             More on {shortName(asset)} <span aria-hidden="true">→</span>
           </Link>
         )}

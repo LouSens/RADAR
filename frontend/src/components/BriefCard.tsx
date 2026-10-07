@@ -1,8 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import type { Asset, Brief } from "../api/client";
 import { useBrief } from "../api/queries";
-import { formatDate } from "../lib/time";
 import { assetColorVar } from "./ui";
 
 const PORTFOLIO = "PORTFOLIO";
@@ -30,33 +30,42 @@ export function sentenceLink(
   return slug ? `/asset/${slug}${ASSET_PAGE[section] ?? ""}` : "/";
 }
 
-/** Today's brief: a few sentences per market, each leading to the page that backs it. */
+/**
+ * Today's brief. Each subject shows its first sentence; the rest opens on request. Every
+ * sentence leads to the page that backs it.
+ */
 export function BriefCard({ assets }: { assets: Asset[] }) {
   const brief = useBrief().data;
+  const [open, setOpen] = useState(false);
   if (!brief) return null;
   return (
-    <section className="glass p-5 @xl:p-7" aria-labelledby="brief-title">
+    <section className="glass p-4 @xl:p-7" aria-labelledby="brief-title">
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="brief-title" className="text-base font-semibold tracking-tight">
           Today in brief
         </h2>
-        <p className="label text-xs">{formatDate(brief.day)}</p>
+        <button
+          type="button"
+          className="press text-sm font-medium text-muted hover:text-ink"
+          aria-expanded={open}
+          onClick={() => setOpen((was) => !was)}
+        >
+          {open ? "Show less" : "Read all"}
+        </button>
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-5 @4xl:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-4 @4xl:grid-cols-2">
         {brief.items.map((item) => {
           const asset = assets.find((a) => a.symbol === item.symbol);
+          const shown = open ? item.sentences : item.sentences.slice(0, 1);
           return (
-            <article key={item.symbol}>
-              <h3 className="flex items-center gap-2 text-sm font-medium">
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: asset ? `var(${assetColorVar(asset)})` : "var(--accent)" }}
-                  aria-hidden="true"
-                />
-                {item.name}
-              </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">
-                {item.sentences.map((sentence, i) => (
+            <article key={item.symbol} className="flex gap-2.5">
+              <span
+                className="mt-[0.45rem] h-2 w-2 shrink-0 rounded-full"
+                style={{ background: asset ? `var(${assetColorVar(asset)})` : "var(--accent)" }}
+                aria-hidden="true"
+              />
+              <p className="text-sm leading-relaxed text-muted">
+                {shown.map((sentence, i) => (
                   <span key={i}>
                     <Link
                       to={sentenceLink(item, sentence.section, assets)}
@@ -71,10 +80,6 @@ export function BriefCard({ assets }: { assets: Asset[] }) {
           );
         })}
       </div>
-      <p className="mt-4 text-xs leading-relaxed text-faint">
-        Written from stored results; every figure is one shown elsewhere in RADAR, and each sentence
-        leads to the page behind it. It describes what is and what has happened, and is not advice.
-      </p>
     </section>
   );
 }

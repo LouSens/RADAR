@@ -70,7 +70,9 @@ suite("TrackRecordPanel", () => {
   it("shows what held against what should have, with the range", () => {
     render(<TrackRecordPanel asset={BITCOIN} />);
     expect(screen.getByText("80% outlook range, 1 week")).toBeInTheDocument();
-    expect(screen.getByText("Held 27 of 33: 82% (66% to 91%); should be about 80%")).toBeInTheDocument();
+    expect(
+      screen.getByText("Held 27 of 33: 82% (66% to 91%); should be about 80%"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/forecasts ran 8% above what happened/)).toBeInTheDocument();
   });
 

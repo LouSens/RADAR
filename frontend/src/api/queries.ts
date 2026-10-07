@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   ApiError,
@@ -26,6 +26,7 @@ import {
   type TrackRecord,
   type Volatility,
   type Brief,
+  type Calendar,
   type RegularBuying,
   type SignalRecords,
   type Signals,
@@ -222,6 +223,15 @@ export function useSavePortfolio() {
   });
 }
 
+/** Scheduled economic events: what is coming and how markets behaved around past ones. */
+export function useCalendar() {
+  return useQuery({
+    queryKey: ["calendar"],
+    queryFn: () => orNull(() => getJson<Calendar>("/events")),
+    refetchInterval: 30 * 60_000,
+  });
+}
+
 /** Today's brief, or null before one has been written. */
 export function useBrief() {
   return useQuery({
@@ -242,6 +252,9 @@ export function useSignals(filter: { symbol?: string; type?: string; limit?: num
         limit: filter.limit ?? 50,
       }),
     refetchInterval: 10 * 60_000,
+    // Changing the market or the kind keeps the list that is already on screen until the
+    // next one arrives, so the card does not empty out and spring back on every tap.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -250,6 +263,7 @@ export function useSignalRecords(type: string) {
   return useQuery({
     queryKey: ["signals", "records", type],
     queryFn: () => orNull(() => getJson<SignalRecords>(`/signals/track-records/${type}`)),
+    placeholderData: keepPreviousData,
   });
 }
 

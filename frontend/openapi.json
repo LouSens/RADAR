@@ -410,6 +410,68 @@
         "title": "BriefOut",
         "type": "object"
       },
+      "Calendar": {
+        "properties": {
+          "computed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed At"
+          },
+          "direction_tests": {
+            "title": "Direction Tests",
+            "type": "integer"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/EventResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "size_tests": {
+            "title": "Size Tests",
+            "type": "integer"
+          },
+          "trust": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Trust"
+            },
+            "title": "Trust",
+            "type": "object"
+          },
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/Upcoming"
+            },
+            "title": "Upcoming",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results",
+          "names",
+          "direction_tests",
+          "size_tests",
+          "trust",
+          "upcoming"
+        ],
+        "title": "Calendar",
+        "type": "object"
+      },
       "CalibrationOut": {
         "properties": {
           "computed_at": {
@@ -901,6 +963,32 @@
           "high"
         ],
         "title": "EventPathOut",
+        "type": "object"
+      },
+      "EventResult": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "markets": {
+            "items": {
+              "$ref": "#/components/schemas/MarketResult"
+            },
+            "title": "Markets",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "markets"
+        ],
+        "title": "EventResult",
         "type": "object"
       },
       "EventStudyOut": {
@@ -1897,6 +1985,70 @@
           "kind"
         ],
         "title": "LookupIn",
+        "type": "object"
+      },
+      "MarketResult": {
+        "properties": {
+          "day_before": {
+            "$ref": "#/components/schemas/Share"
+          },
+          "event_day": {
+            "$ref": "#/components/schemas/Share"
+          },
+          "first_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Day"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Day"
+          },
+          "n_events": {
+            "title": "N Events",
+            "type": "integer"
+          },
+          "next_day": {
+            "$ref": "#/components/schemas/Share"
+          },
+          "next_week": {
+            "$ref": "#/components/schemas/Share"
+          },
+          "size": {
+            "$ref": "#/components/schemas/Size"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "n_events",
+          "first_day",
+          "last_day",
+          "size",
+          "day_before",
+          "event_day",
+          "next_day",
+          "next_week"
+        ],
+        "title": "MarketResult",
         "type": "object"
       },
       "Move": {
@@ -3929,6 +4081,104 @@
         "title": "SeriesStatus",
         "type": "object"
       },
+      "Share": {
+        "description": "Tests 2 to 5: how often something happened around the event, against any day.",
+        "properties": {
+          "baseline": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "leans up",
+                  "leans down",
+                  "no measurable pattern",
+                  "not enough events"
+                ],
+                "type": "string"
+              },
+              {
+                "enum": [
+                  "tends to carry on",
+                  "tends to reverse",
+                  "no measurable pattern",
+                  "not enough events"
+                ],
+                "type": "string"
+              }
+            ],
+            "title": "Verdict"
+          }
+        },
+        "required": [
+          "n",
+          "share",
+          "low",
+          "high",
+          "baseline",
+          "p_value",
+          "verdict"
+        ],
+        "title": "Share",
+        "type": "object"
+      },
       "Signal": {
         "description": "Something that has moved the portfolio away from its target, with its size.",
         "properties": {
@@ -4298,6 +4548,67 @@
           "fan"
         ],
         "title": "SimulationOut",
+        "type": "object"
+      },
+      "Size": {
+        "description": "Test 1: the size of the event day's move against every other day.",
+        "properties": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "on_event": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Event"
+          },
+          "other_days": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Days"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value"
+          },
+          "verdict": {
+            "enum": [
+              "moves more on these days",
+              "moves less on these days",
+              "no measurable difference",
+              "not enough events"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "n",
+          "on_event",
+          "other_days",
+          "p_value",
+          "verdict"
+        ],
+        "title": "Size",
         "type": "object"
       },
       "Sleeve": {
@@ -5363,6 +5674,35 @@
           "reason"
         ],
         "title": "Unsupported",
+        "type": "object"
+      },
+      "Upcoming": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "days_until": {
+            "title": "Days Until",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "at",
+          "days_until"
+        ],
+        "title": "Upcoming",
         "type": "object"
       },
       "ValidationError": {
@@ -6873,6 +7213,25 @@
           }
         },
         "summary": "Get Latest Brief"
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "description": "Scheduled economic events: those still to come, and how each market has behaved\naround past ones.",
+        "operationId": "get_events_api_v1_events_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Calendar"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Events"
       }
     },
     "/api/v1/health": {

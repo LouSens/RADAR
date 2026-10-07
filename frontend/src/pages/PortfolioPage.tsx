@@ -7,9 +7,10 @@ import { RangeAheadPanel, SleevesPanel } from "../components/AheadPanels";
 import { DriverEvidence, driverHeadline } from "../components/DriversPanel";
 import { HoldingsEditor } from "../components/HoldingsEditor";
 import { LevelsPanel, MixesPanel, targetSummary } from "../components/PlanPanels";
-import { oddsLabel } from "../components/RiskPanel";
+import { badLabel } from "../components/RiskPanel";
 import { RegularBuyingPanel } from "../components/RegularBuyingPanel";
-import { Tabs } from "../components/Tabs";
+import { PageSkeleton } from "../components/Skeleton";
+import { SectionMenu, Tabs } from "../components/Tabs";
 import { Caption, Message, Panel, Segmented } from "../components/ui";
 import {
   Bars,
@@ -48,7 +49,6 @@ const REFERENCE_NAME: Record<string, string> = {
   SPY: "US stocks",
   "BTC/USD": "Bitcoin",
 };
-const sessions = (steps: number) => (steps === 1 ? "1 market session" : `${steps} market sessions`);
 const expected = (value: number) => (value < 10 ? value.toFixed(1) : value.toFixed(0));
 const shownLimit = (horizon: LimitHorizon | undefined, level: number) =>
   horizon?.levels.find((l) => l.level === level)?.methods.find((m) => m.method === horizon.shown);
@@ -114,14 +114,12 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
         </p>
       )}
       {analysis.young.length > 0 && (
-        <p className="well px-4 py-3 text-sm text-muted">
-          {analysis.young.map((item) => (
-            <span key={item.symbol}>
-              <span className="font-medium text-ink">{item.name}</span> is a newer holding with{" "}
-              {item.days} days of prices, so its risk is an estimate from a short record.{" "}
-            </span>
-          ))}
-          Loss figures are measured on the other holdings and scaled up for it.
+        <p className="well px-4 py-2.5 text-sm text-muted">
+          <span className="font-medium text-ink">
+            {analysis.young.map((item) => item.name.split(" (")[0]).join(", ")}
+          </span>{" "}
+          is new, with {analysis.young.map((item) => item.days).join(" and ")} days of prices: its
+          risk is a rough estimate.
         </p>
       )}
       <TileGrid>
@@ -419,13 +417,20 @@ function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
           );
         })}
       </ul>
-      <Caption>
-        Share of the risk is each holding&apos;s part of how much the whole mix swings from day to
-        day. It counts both how much the holding moves and how much it moves with the others. The
-        shares add up to 100%. Measured on {formatCount(xray.n_days)} trading days from{" "}
-        {formatDate(xray.first_day)} to {formatDate(xray.last_day)}, the days every holding has
-        prices for.
-      </Caption>
+      <Caption
+        facts={[
+          {
+            label: "Shows",
+            value: "Each holding's part of how much the whole mix swings day to day",
+          },
+          { label: "Counts", value: "How much it moves, and how much it moves with the others" },
+          {
+            label: "Window",
+            value: `${formatCount(xray.n_days)} trading days, ${formatDate(xray.first_day)} to ${formatDate(xray.last_day)}`,
+          },
+          { label: "Measured on", value: "The days every holding has prices for" },
+        ]}
+      />
 
       <div className="border-t border-line pt-5">
         <h3 className="text-sm font-semibold tracking-tight">What holding them together does</h3>
@@ -450,16 +455,18 @@ function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
             </dd>
           </div>
         </dl>
-        <Caption>
-          The deepest fall is for today&apos;s proportions held throughout the same period, from a
-          high to the lowest close after it.
-        </Caption>
+        <Caption
+          facts={[
+            { label: "Shows", value: "The deepest fall, from a high to the lowest close after it" },
+            { label: "Assumes", value: "Today's proportions held throughout the same period" },
+          ]}
+        />
       </div>
 
       {xray.symbols.length > 1 && (
         <div className="border-t border-line pt-5">
           <h3 className="text-sm font-semibold tracking-tight">How closely they move together</h3>
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-3">
             <table className="w-full text-sm">
               <thead>
                 <tr className="label text-left">
@@ -488,11 +495,17 @@ function Sources({ analysis }: { analysis: PortfolioAnalysis }) {
               </tbody>
             </table>
           </div>
-          <Caption>
-            Correlation of daily returns over the same {formatCount(xray.n_days)} days: 1 means they
-            always move together, 0 means no link, below 0 means they tend to move opposite ways.
-            Bitcoin&apos;s weekend move is counted in Monday, beside the markets that were closed.
-          </Caption>
+          <Caption
+            facts={[
+              { label: "Shows", value: "How closely each pair's daily returns moved together" },
+              { label: "Scale", value: "1 always together, 0 no link, below 0 opposite ways" },
+              { label: "Window", value: `The same ${formatCount(xray.n_days)} trading days` },
+              {
+                label: "Weekends",
+                value: "Bitcoin's weekend move counts in Monday, beside the markets that were shut",
+              },
+            ]}
+          />
         </div>
       )}
     </Panel>
@@ -505,43 +518,37 @@ const HORIZONS = [
 ] as const;
 type HorizonKey = (typeof HORIZONS)[number]["value"];
 
-const METHOD: Record<string, string> = {
-  historical: "this mix's past losses as they were",
-  filtered: "this mix's past losses scaled to how much it has been swinging lately",
-};
-
 function LimitCard({
   level,
   limit,
   value,
-  period,
+  steps,
 }: {
   level: number;
   limit: PortfolioLimit;
   value: number;
-  period: string;
+  steps: number;
 }) {
   const test = limit.backtest;
+  const unit = steps === 1 ? "days" : "weeks";
   return (
     <div className="well p-4">
-      <p className="label">
-        Loss limit for {oddsLabel(level)} periods of {period}
-      </p>
-      <p className="price-lg mt-2">{formatShare(limit.var, 1)}</p>
-      <p className="num mt-1 text-sm text-muted">{formatMoney(value * limit.var)}</p>
+      <p className="label">{badLabel(level, steps)}</p>
+      <p className="price-lg mt-2">{formatMoney(value * limit.var)}</p>
+      <p className="num mt-1 text-sm text-muted">{formatShare(limit.var, 1)} of your portfolio</p>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        When the loss has gone past this limit, it has averaged about{" "}
-        <span className="num text-ink">{formatShare(limit.expected_shortfall, 1)}</span>, or{" "}
-        <span className="num text-ink">{formatMoney(value * limit.expected_shortfall)}</span>.
+        Beyond that, losses have averaged{" "}
+        <span className="num text-ink">{formatMoney(value * limit.expected_shortfall)}</span> (
+        <span className="num">{formatShare(limit.expected_shortfall, 1)}</span>).
       </p>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        Broken <span className="num text-ink">{formatCount(test.breaches)}</span> times in{" "}
-        <span className="num text-ink">{formatCount(test.n)}</span> past periods; about{" "}
-        <span className="num text-ink">{expected(test.expected_breaches)}</span> would be expected.
+        Passed <span className="num text-ink">{formatCount(test.breaches)}</span> times in{" "}
+        <span className="num text-ink">{formatCount(test.n)}</span> past {unit}; about{" "}
+        <span className="num text-ink">{expected(test.expected_breaches)}</span> expected.
       </p>
       {!test.reliable && (
         <p className="mt-2 text-sm text-alert">
-          This limit has not held at its stated rate. Treat it as unreliable.
+          This figure has not held up in the past. Treat it as rough.
         </p>
       )}
     </div>
@@ -556,7 +563,6 @@ function Limits({ analysis }: { analysis: PortfolioAnalysis }) {
     0.95,
   );
   if (!horizon) return null;
-  const period = sessions(horizon.steps);
   const sample = shownLimit(horizon, 0.95)?.backtest;
   return (
     <Panel
@@ -564,13 +570,11 @@ function Limits({ analysis }: { analysis: PortfolioAnalysis }) {
       title="Possible loss"
       trust={analysis.trust.risk}
       headline={
-        day
-          ? `${formatShare(day.var, 1)}, or ${formatMoney(analysis.covered_value * day.var)}, one-day loss limit`
-          : undefined
+        day ? `A bad day could cost ${formatMoney(analysis.covered_value * day.var)}` : undefined
       }
     >
       <div className="flex justify-end">
-        <Segmented options={HORIZONS} value={key} onChange={setKey} label="Length of period" />
+        <Segmented options={HORIZONS} value={key} onChange={setKey} label="Over" />
       </div>
       <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2">
         {horizon.levels.map((level) => {
@@ -581,21 +585,37 @@ function Limits({ analysis }: { analysis: PortfolioAnalysis }) {
               level={level.level}
               limit={limit}
               value={analysis.covered_value}
-              period={period}
+              steps={horizon.steps}
             />
           ) : null;
         })}
       </div>
-      <Caption>
-        These limits come from {METHOD[horizon.shown] ?? horizon.shown}, the method whose past
-        limits held closest to their stated rates. Each past limit was set using only what was known
-        that day, then compared with the loss that followed
-        {sample
-          ? `, over ${formatCount(sample.n)} periods of ${period} from ${formatDate(sample.first_day)} to ${formatDate(sample.last_day)}`
-          : ""}
-        . Today&apos;s proportions are assumed throughout. A week is five market sessions, and
-        weekly periods do not overlap.
-      </Caption>
+      <Caption
+        facts={[
+          {
+            label: "Shows",
+            value:
+              "Each figure set on a past day from what was known then, against the loss that followed",
+          },
+          ...(sample
+            ? [
+                {
+                  label: "Checked",
+                  value: `${formatCount(sample.n)} times, ${formatDate(sample.first_day)} to ${formatDate(sample.last_day)}`,
+                },
+              ]
+            : []),
+          { label: "Assumes", value: "Today's mix throughout. A week is five trading days." },
+          ...(analysis.young.length > 0
+            ? [
+                {
+                  label: "Newer holdings",
+                  value: "Measured on the holdings with a long record, then scaled up for these",
+                },
+              ]
+            : []),
+        ]}
+      />
     </Panel>
   );
 }
@@ -683,11 +703,20 @@ function Episodes({ analysis }: { analysis: PortfolioAnalysis }) {
           </li>
         ))}
       </ul>
-      <Caption>
-        Each episode replays today&apos;s proportions through the real prices of that period, as if
-        bought on the first day and left alone. What each holding added is its share at the start
-        times its own change; the parts add up to the total. Past episodes show what has happened,
-        not the worst that can.
+      <Caption
+        facts={[
+          {
+            label: "Shows",
+            value: "Today's proportions replayed through the real prices of each period",
+          },
+          { label: "Assumes", value: "Bought on the first day and left alone" },
+          {
+            label: "Each part",
+            value: "The holding's share at the start times its own change; the parts add up",
+          },
+        ]}
+      >
+        Past episodes show what has happened, not the worst that can.
       </Caption>
     </Panel>
   );
@@ -728,7 +757,7 @@ export function ExchangeCheck({
   const gap = found === undefined ? undefined : total - found;
   const short = gap !== undefined && total > 0 && gap / total > GAP_TOLERANCE;
   return (
-    <section className="glass p-5 @xl:p-7" aria-label="Checked against Binance">
+    <section className="glass p-4 @xl:p-7" aria-label="Checked against Binance">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h2 className="text-base font-semibold tracking-tight">Checked against Binance</h2>
         {gap !== undefined && (
@@ -759,15 +788,20 @@ export function ExchangeCheck({
       </div>
       {short && (
         <p className="mt-4 text-sm leading-relaxed text-alert">
-          RADAR could not find {formatMoney(gap)} of what Binance reports. That money is in none of
-          the figures on the other tabs.
+          RADAR could not find {formatMoney(gap)} of what Binance reports. That money is not in any
+          figure here.
         </p>
       )}
-      <Caption>
-        Binance's figures are its own totals per wallet at the last read. RADAR's figure values what
-        it found at the last US market close, so the two can differ a little while prices move; a
-        difference under {formatShare(GAP_TOLERANCE, 0)} is treated as that.
-      </Caption>
+      <Caption
+        facts={[
+          { label: "Binance's figure", value: "Its own totals per wallet, at the last read" },
+          { label: "RADAR's figure", value: "What it found, valued at the last US market close" },
+          {
+            label: "Treated as equal",
+            value: `A difference under ${formatShare(GAP_TOLERANCE, 0)}, which prices moving can explain`,
+          },
+        ]}
+      />
     </section>
   );
 }
@@ -792,21 +826,21 @@ export function PortfolioPage() {
 
   return (
     <div className="flex flex-col gap-4 @xl:gap-6">
-      <div className="aurora" aria-hidden="true" />
       <header className="flex items-baseline gap-3">
         <h1 className="title">Portfolio</h1>
         {analysis && <span className="label num">{formatMoney(analysis.value)}</span>}
       </header>
       <Tabs base={BASE} items={PORTFOLIO_SECTIONS} label="Portfolio pages" />
 
-      {portfolio.isPending && <Message>Loading…</Message>}
+      {portfolio.isPending && <PageSkeleton cards={3} />}
       {portfolio.isError && <Message>The portfolio is unavailable right now.</Message>}
 
       {portfolio.data && (section === undefined || section === "") && (
         <>
           {analysis ? <Brief analysis={analysis} /> : needsHoldings}
+          <SectionMenu base={BASE} items={PORTFOLIO_SECTIONS} title="Your portfolio" />
           {analysis && (
-            <section className="glass p-5 @xl:p-7">
+            <section className="glass p-4 @xl:p-7">
               <h2 className="text-base font-semibold tracking-tight">What you hold</h2>
               <ul className="mt-3">
                 {analysis.positions.map((position) => (
@@ -827,10 +861,15 @@ export function PortfolioPage() {
                   </li>
                 ))}
               </ul>
-              <Caption>
-                Valued at the market close on {formatDate(analysis.as_of)}. Recalculated every hour
-                as new prices are stored.
-              </Caption>
+              <Caption
+                facts={[
+                  {
+                    label: "Valued at",
+                    value: `The market close on ${formatDate(analysis.as_of)}`,
+                  },
+                  { label: "Updated", value: "Every hour, as new prices are stored" },
+                ]}
+              />
             </section>
           )}
         </>
@@ -841,7 +880,7 @@ export function PortfolioPage() {
       )}
 
       {portfolio.data && section === "holdings" && (
-        <section className="glass p-5 @xl:p-7">
+        <section className="glass p-4 @xl:p-7">
           <h2 className="mb-4 text-base font-semibold tracking-tight">Your holdings</h2>
           <HoldingsEditor portfolio={portfolio.data} />
         </section>

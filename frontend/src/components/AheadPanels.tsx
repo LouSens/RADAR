@@ -5,7 +5,7 @@ import { useSetTags } from "../api/queries";
 import { formatChange, formatCount, formatMoney, formatShare } from "../lib/format";
 import { fanShape } from "../lib/outlook";
 import { formatDate } from "../lib/time";
-import { Caption, Message, Panel, Segmented } from "./ui";
+import { Caption, Evidence, Message, Panel, Segmented } from "./ui";
 import { Bars, Legend, StackBar, type Part } from "./viz";
 
 const CASH = "USD";
@@ -152,8 +152,7 @@ function ChanceCheck({ horizon, value }: { horizon: Horizon; value: number }) {
 function Record({ horizon }: { horizon: Horizon }) {
   return (
     <div>
-      <h3 className="font-medium">How often past ranges held</h3>
-      <ul className="mt-3 flex flex-col gap-3">
+      <ul className="flex flex-col gap-3">
         {horizon.coverage.map((row) => {
           const held = row.n > 0 ? row.inside / row.n : 0;
           return (
@@ -247,21 +246,48 @@ export function RangeAheadPanel({ analysis }: { analysis: PortfolioAnalysis }) {
         />
       </div>
       <ChanceCheck horizon={horizon} value={simulation.start_value} />
-      <Record horizon={horizon} />
-      <Caption>
-        Each of {formatCount(simulation.n_paths)} simulated futures is made by joining runs of{" "}
-        {simulation.block} real trading days in a row, taken from the last{" "}
-        {formatCount(simulation.n_days)} days and for every holding at once, so holdings that fell
-        together in the past fall together here. Your holdings are left as they are throughout and
-        cash does not move. This shows what the past would allow, not what will happen: a future
-        unlike anything in those {formatCount(simulation.n_days)} days is not in it.
-        {simulation.scale > 1.0001 &&
-          ` ${young || "A newer holding"} has too short a record to be drawn from, so every outcome is widened by ${formatShare(simulation.scale - 1, 0)} to allow for it.`}{" "}
-        To check the method, a range was drawn at past dates from earlier days only and compared
-        with what followed; the dates are a full {summary.steps} days apart so that no two share a
-        day.
-        {plain &&
-          ` A much simpler method, a bell curve with the average and spread of the earlier days, was checked on the same dates: its 80% range held ${plain.inside} of ${plain.n}, against ${ours?.inside ?? 0} of ${ours?.n ?? 0} for the simulation. The simulation is shown because it does not assume a bell curve and also gives the dips on the way, not because its range has proved more accurate.`}
+      <Evidence summary="How often past ranges held">
+        <Record horizon={horizon} />
+      </Evidence>
+      <Caption
+        facts={[
+          {
+            label: "Shows",
+            value: `${formatCount(simulation.n_paths)} simulated futures for today's holdings`,
+          },
+          {
+            label: "Built from",
+            value: `Runs of ${simulation.block} real trading days in a row, every holding at once, so holdings that fell together then fall together here`,
+          },
+          { label: "Drawn from", value: `The last ${formatCount(simulation.n_days)} trading days` },
+          { label: "Assumes", value: "Holdings left as they are throughout; cash does not move" },
+          ...(simulation.scale > 1.0001
+            ? [
+                {
+                  label: "Widened",
+                  value: `By ${formatShare(simulation.scale - 1, 0)}: ${young || "a newer holding"} has too short a record to draw from`,
+                },
+              ]
+            : []),
+          {
+            label: "Checked",
+            value: `Ranges drawn at past dates from earlier days only, ${summary.steps} days apart so no two share a day`,
+          },
+          ...(plain
+            ? [
+                {
+                  label: "Against a bell curve",
+                  value: `Its 80% range held ${plain.inside} of ${plain.n}; this one ${ours?.inside ?? 0} of ${ours?.n ?? 0}`,
+                },
+              ]
+            : []),
+        ]}
+      >
+        This shows what the past would allow, not what will happen: a future unlike anything in
+        those days is not in it.
+        {plain
+          ? " The simulation is shown because it assumes no bell curve and also gives the dips along the way, not because its range has proved more accurate."
+          : ""}
       </Caption>
     </Panel>
   );
@@ -378,15 +404,30 @@ export function SleevesPanel({ analysis }: { analysis: PortfolioAnalysis }) {
               All together {formatChange(report.total_return)}
             </p>
           </div>
-          <Caption>
-            Risk shares are from the Risk by holding page and add up to 100%. The amounts added are
-            for today&apos;s proportions held from {formatDate(report.first_day)} to{" "}
-            {formatDate(report.last_day)}: each holding&apos;s share of your money times the sum of
-            its daily changes. That is how today&apos;s mix would have done, not what you earned;
-            RADAR does not know when you bought. Money figures are for {formatMoney(money)} at
-            today&apos;s value.
-            {report.short.length > 0 &&
-              ` ${report.short.map((s) => short(analysis.positions.find((p) => p.symbol === s)?.name ?? s)).join(", ")} has fewer days of prices, so its part covers only the days it has.`}
+          <Caption
+            facts={[
+              { label: "Risk shares", value: "From the Risk by holding page; they add up to 100%" },
+              {
+                label: "Amounts added",
+                value: "Each holding's share of your money times the sum of its daily changes",
+              },
+              {
+                label: "Window",
+                value: `${formatDate(report.first_day)} to ${formatDate(report.last_day)}, at today's proportions`,
+              },
+              { label: "Money figures", value: `For ${formatMoney(money)} at today's value` },
+              ...(report.short.length > 0
+                ? [
+                    {
+                      label: "Shorter record",
+                      value: `${report.short.map((s) => short(analysis.positions.find((p) => p.symbol === s)?.name ?? s)).join(", ")}: its part covers only the days it has`,
+                    },
+                  ]
+                : []),
+            ]}
+          >
+            That is how today&apos;s mix would have done, not what you earned; RADAR does not know
+            when you bought.
           </Caption>
         </>
       )}

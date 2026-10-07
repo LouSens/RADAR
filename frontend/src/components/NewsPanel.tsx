@@ -2,7 +2,7 @@ import type { EventStudy, Sentiment } from "../api/client";
 import { useEventStudy, useSentiment } from "../api/queries";
 import { formatChange, formatCount, formatShare } from "../lib/format";
 import { formatDate, formatDateTime, zoneLabel } from "../lib/time";
-import { Caption, Panel, StatRow, type PanelProps } from "./ui";
+import { Evidence, Caption, Panel, StatRow, type PanelProps } from "./ui";
 
 const TOPIC: Record<string, string> = {
   regulation: "Regulation and courts",
@@ -120,10 +120,15 @@ function Headlines({ articles }: { articles: Sentiment["recent"] }) {
           ))}
         </ul>
       )}
-      <Caption>
-        The latest {articles.length} articles, newest first. They are not ranked or coloured by
-        tone, because the tone of any single article is too often wrong.
-      </Caption>
+      <Caption
+        facts={[
+          { label: "Shows", value: `The latest ${articles.length} articles, newest first` },
+          {
+            label: "Not ranked",
+            value: "And not coloured by tone: the tone of any single article is too often wrong",
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -265,31 +270,55 @@ function Study({ study }: { study: EventStudy }) {
         <div className="mt-5 grid grid-cols-1 gap-x-12 gap-y-7 @4xl:grid-cols-2">
           <div>
             <Paths study={study} />
-            <Caption>
-              Average price move, beyond the usual drift, around {formatCount(study.positive.n)}{" "}
-              days of unusually positive news (green) and {formatCount(study.negative.n)} of
-              unusually negative news (red). Shaded bands show the uncertainty. The dashed line is
-              the same measure on {formatCount(study.baseline.n)} ordinary days in similar market
-              states.
-            </Caption>
+            <Caption
+              facts={[
+                {
+                  label: "Shows",
+                  value: "Average price move around unusual news, beyond the usual drift",
+                },
+                {
+                  label: "Green",
+                  value: `${formatCount(study.positive.n)} days of unusually positive news`,
+                },
+                {
+                  label: "Red",
+                  value: `${formatCount(study.negative.n)} days of unusually negative news`,
+                },
+                {
+                  label: "Dashed line",
+                  value: `The same measure on ${formatCount(study.baseline.n)} ordinary days in similar states`,
+                },
+                { label: "Shaded bands", value: "The uncertainty" },
+              ]}
+            />
           </div>
           <div>
             <Lags study={study} />
-            <Caption>
-              How closely a day&apos;s news tone tracks the price move a few days earlier or later,
-              over {formatCount(strongest?.n ?? 0)} days. Bright bars are larger than chance would
-              give
-              {study.tests_in_family
-                ? `, allowing for the ${study.tests_in_family} tests run on this market's news`
-                : ""}
-              ; grey bars are not. The same-day bar cannot show which came first.
-            </Caption>
+            <Caption
+              facts={[
+                {
+                  label: "Shows",
+                  value:
+                    "How closely a day's news tone tracks the price move a few days earlier or later",
+                },
+                { label: "Window", value: `${formatCount(strongest?.n ?? 0)} days` },
+                {
+                  label: "Bright bars",
+                  value: `Larger than chance would give${
+                    study.tests_in_family
+                      ? `, allowing for the ${study.tests_in_family} tests run on this market's news`
+                      : ""
+                  }`,
+                },
+                { label: "Same-day bar", value: "Cannot show which came first" },
+              ]}
+            />
           </div>
         </div>
       )}
       {study.by_topic && study.by_topic.length > 0 && (
         <div className="mt-6">
-          <h4 className="label">The same question, one subject at a time</h4>
+          <h4 className="label">By subject</h4>
           <ul className="mt-2">
             {study.by_topic.map((topic) => (
               <li
@@ -304,10 +333,15 @@ function Study({ study }: { study: EventStudy }) {
               </li>
             ))}
           </ul>
-          <Caption>
-            Each subject is tested on its own articles only. A subject with fewer than{" "}
-            {study.min_events} strong-tone days has too little news for a verdict.
-          </Caption>
+          <Caption
+            facts={[
+              { label: "Tested on", value: "Each subject's own articles only" },
+              {
+                label: "No verdict",
+                value: `Under ${study.min_events} strong-tone days is too little news`,
+              },
+            ]}
+          />
         </div>
       )}
     </div>
@@ -322,7 +356,6 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
   const byAi = accuracy.labelled_by.includes("claude");
   return (
     <div className="well p-4">
-      <h3 className="text-sm font-semibold tracking-tight">How the tone model was checked</h3>
       <dl className="mt-2">
         <StatRow label={`Agreed with the label, on ${formatCount(model.n)} headlines`}>
           {formatShare(model.accuracy, 0)}
@@ -334,7 +367,7 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
           </StatRow>
         )}
         {accuracy.original && (
-          <StatRow label="The model before fine-tuning, same headlines">
+          <StatRow label="An earlier version, same headlines">
             {formatShare(accuracy.original.accuracy, 0)}
           </StatRow>
         )}
@@ -352,18 +385,34 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
           </StatRow>
         )}
       </dl>
-      <Caption>
-        A single article&apos;s tone is often wrong, most often by calling a mild article neutral or
-        the reverse. The daily figures above average many articles, which is steadier than any one
-        of them.{" "}
-        {accuracy.held_out
-          ? "These headlines are all newer than anything the model was trained on."
-          : "These headlines were labelled before the model scored them."}{" "}
-        {byAi
-          ? "The labels were written by an AI model (Claude), not a person, so this measures agreement with that labeller."
-          : ""}{" "}
-        The range in brackets is where the true figure plausibly lies given the sample size.
-      </Caption>
+      <Caption
+        facts={[
+          { label: "Most common error", value: "Calling a mild article neutral, or the reverse" },
+          {
+            label: "Daily figures",
+            value: "Average many articles, which is steadier than any one of them",
+          },
+          {
+            label: "These headlines",
+            value: accuracy.held_out
+              ? "Are all newer than anything the model was trained on"
+              : "Were labelled before the model scored them",
+          },
+          ...(byAi
+            ? [
+                {
+                  label: "Labelled by",
+                  value:
+                    "An AI model (Claude), not a person, so this measures agreement with that labeller",
+                },
+              ]
+            : []),
+          {
+            label: "Brackets",
+            value: "Where the true figure plausibly lies, given the sample size",
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -389,7 +438,7 @@ export function NewsPanel({ asset, trust }: PanelProps) {
           <p className="price-lg mt-2">{toneWord(sentiment.current)}</p>
           <dl className="mt-4">
             {sentiment.current != null && (
-              <StatRow label="Tone score, from −1 to +1">{signed(sentiment.current)}</StatRow>
+              <StatRow label="Tone, from −1 to +1">{signed(sentiment.current)}</StatRow>
             )}
             <StatRow label="Articles in the last 24 hours">
               {formatCount(sentiment.articles_24h)}
@@ -405,13 +454,23 @@ export function NewsPanel({ asset, trust }: PanelProps) {
         </div>
         <div>
           <ToneChart sentiment={sentiment} />
-          <Caption>
-            Average tone of each day&apos;s articles (green positive, red negative) with the number
-            of articles beneath. {formatCount(sentiment.articles_in_window)} articles on{" "}
-            {formatCount(sentiment.days_with_news)} of the last{" "}
-            {formatCount(sentiment.daily.length)} days. News for this market is measured from{" "}
-            {formatDate(sentiment.news_start)}; before that there is too little of it.
-          </Caption>
+          <Caption
+            facts={[
+              {
+                label: "Shows",
+                value: "Average tone of each day's articles, green positive, red negative",
+              },
+              { label: "Beneath", value: "How many articles that day" },
+              {
+                label: "Sample",
+                value: `${formatCount(sentiment.articles_in_window)} articles on ${formatCount(sentiment.days_with_news)} of the last ${formatCount(sentiment.daily.length)} days`,
+              },
+              {
+                label: "News starts",
+                value: `${formatDate(sentiment.news_start)}; before that there is too little of it`,
+              },
+            ]}
+          />
         </div>
       </div>
 
@@ -422,7 +481,7 @@ export function NewsPanel({ asset, trust }: PanelProps) {
       {sentiment.topics.length > 0 && (
         <details className="border-t border-line pt-5">
           <summary className="cursor-pointer text-sm font-semibold tracking-tight">
-            What the news is about <span className="font-normal text-muted">(rough)</span>
+            What the news is about <span className="font-normal text-muted">(a rough guide)</span>
           </summary>
           <dl className="mt-3 grid grid-cols-1 gap-x-12 @xl:grid-cols-2">
             {sentiment.topics.map((topic) => (
@@ -432,16 +491,29 @@ export function NewsPanel({ asset, trust }: PanelProps) {
               </StatRow>
             ))}
           </dl>
-          <Caption>
-            Articles on each subject over the same period, and their average tone. Subjects are
-            assigned by a model that matched labelled headlines only
-            {accuracy?.topics ? ` ${formatShare(accuracy.topics.accuracy, 0)}` : " part"} of the
-            time, so treat this as a rough guide.
-          </Caption>
+          <Caption
+            facts={[
+              {
+                label: "Shows",
+                value: "Articles on each subject over the same period, and their average tone",
+              },
+              {
+                label: "Subjects assigned by",
+                value: `A model that matched labelled headlines${
+                  accuracy?.topics ? ` ${formatShare(accuracy.topics.accuracy, 0)}` : " part"
+                } of the time`,
+              },
+              { label: "Treat as", value: "A rough guide" },
+            ]}
+          />
         </details>
       )}
 
-      {accuracy && <Trust accuracy={accuracy} />}
+      {accuracy && (
+        <Evidence summary="How the tone reading was checked">
+          <Trust accuracy={accuracy} />
+        </Evidence>
+      )}
 
       <p className="border-t border-line pt-4 text-xs leading-relaxed text-faint">
         Tone is scored by a language model trained on financial text

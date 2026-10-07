@@ -272,9 +272,12 @@ describe("PortfolioPage", () => {
       young: [{ symbol: "PURR", name: "PURR", weight: 0.01, days: 208 }],
     };
     show("/portfolio");
-    expect(screen.getByText(/is a newer holding with/)).toBeVisible();
-    expect(screen.getByText(/208 days of prices/)).toBeVisible();
-    expect(screen.getByText(/scaled up for it/)).toBeVisible();
+    expect(
+      screen.getByText(/is new, with 208 days of prices: its risk is a rough estimate/),
+    ).toBeVisible();
+    cleanup();
+    show("/portfolio/limits");
+    expect(screen.getByText(/scaled up for these/)).toBeInTheDocument();
   });
 
   it("ties the holdings to the state of their markets and to the weekend", () => {
@@ -344,17 +347,15 @@ describe("PortfolioPage", () => {
     expect(screen.getByText("Why solid")).toBeInTheDocument();
     expect(screen.getAllByText("0.31", { selector: "td" })).toHaveLength(2);
     expect(screen.getByText("-42.0%")).toBeInTheDocument();
-    expect(screen.getByText(/Measured on 1,443 trading days/)).toBeInTheDocument();
+    expect(screen.getByText(/1,443 trading days,/)).toBeInTheDocument();
   });
 
   it("marks a loss limit that did not hold as unreliable", () => {
     show("/portfolio/limits");
-    expect(
-      screen.getByText("Loss limit for 19 in 20 periods of 1 market session"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("4.5%")).toBeInTheDocument();
-    expect(screen.getAllByText(/Treat it as unreliable/)).toHaveLength(1);
-    expect(screen.getByText(/over 1,172 periods of 1 market session/)).toBeInTheDocument();
+    expect(screen.getByText("A bad day (about 1 in 20)")).toBeInTheDocument();
+    expect(screen.getByText(/4\.5% of your portfolio/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Treat it as rough/)).toHaveLength(1);
+    expect(screen.getByText(/1,172 times/)).toBeInTheDocument();
   });
 
   it("names missing holdings in a partial episode and says when one could not be replayed", () => {
@@ -409,7 +410,7 @@ describe("PortfolioPage", () => {
     expect(screen.getAllByText("$363.24")).toHaveLength(2); // the page header, and what RADAR found
     expect(screen.getByText("Earn wallet")).toBeVisible();
     expect(screen.getByText("$37.61 not found")).toBeVisible();
-    expect(screen.getByText(/That money is in none of\s+the figures/)).toBeVisible();
+    expect(screen.getByText(/That money is not in\s+any figure here/)).toBeVisible();
 
     // A small difference is prices moving, not missing money.
     cleanup();

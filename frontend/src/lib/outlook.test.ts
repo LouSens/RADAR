@@ -73,8 +73,8 @@ describe("outlook geometry", () => {
 
   it("names steps by how the market trades", () => {
     expect(stepsLabel(7, true)).toBe("7 days");
-    expect(stepsLabel(5, false)).toBe("5 market sessions");
-    expect(stepsLabel(1, false)).toBe("1 market session");
+    expect(stepsLabel(5, false)).toBe("5 trading days");
+    expect(stepsLabel(1, false)).toBe("1 trading day");
   });
 
   it("compares forecast error with the baseline", () => {

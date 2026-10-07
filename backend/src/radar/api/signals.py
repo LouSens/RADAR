@@ -1,6 +1,6 @@
 """Routes for signals and their track records. They read stored results only."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -11,6 +11,7 @@ from radar.api.routes import SessionDep, UniverseDep, find_asset
 from radar.brief.writer import Sentence
 from radar.db.models import SignalTrackRecord
 from radar.pipelines import brief as brief_job
+from radar.pipelines import events as events_job
 from radar.pipelines import portfolio as portfolio_job
 from radar.pipelines import rebalance
 from radar.pipelines import signals as job
@@ -174,3 +175,13 @@ def get_latest_brief(session: SessionDep) -> BriefOut:
             for row in rows
         ],
     )
+
+
+@router.get("/events", response_model=events_job.Calendar)
+def get_events(session: SessionDep) -> events_job.Calendar:
+    """Scheduled economic events: those still to come, and how each market has behaved
+    around past ones."""
+    found = events_job.calendar(session, datetime.now(UTC))
+    if found is None:
+        raise HTTPException(status_code=404, detail="Events have not been measured yet")
+    return found

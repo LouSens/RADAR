@@ -112,7 +112,7 @@ export function fanShape(
 
 /** "7 days" for crypto, "5 market sessions" for stocks. */
 export function stepsLabel(steps: number, continuous: boolean): string {
-  const unit = continuous ? "day" : "market session";
+  const unit = continuous ? "day" : "trading day";
   return `${steps} ${unit}${steps === 1 ? "" : "s"}`;
 }
 

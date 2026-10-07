@@ -92,12 +92,39 @@ export function SystemPage() {
                 <table className="w-full min-w-[640px] border-collapse text-sm">
                   <thead>
                     <tr className="label text-xs">
-                      <th scope="col" className="border-b border-line pb-2 pr-3 text-left font-normal">Market</th>
-                      <th scope="col" className="border-b border-line pb-2 pr-3 text-left font-normal">Interval</th>
-                      <th scope="col" className="border-b border-line pb-2 pr-3 text-right font-normal">Bars</th>
-                      <th scope="col" className="border-b border-line pb-2 pr-3 text-left font-normal">Since</th>
-                      <th scope="col" className="border-b border-line pb-2 pr-3 text-left font-normal">Updated</th>
-                      <th scope="col" className="border-b border-line pb-2 text-right font-normal">Gaps</th>
+                      <th
+                        scope="col"
+                        className="border-b border-line pb-2 pr-3 text-left font-normal"
+                      >
+                        Market
+                      </th>
+                      <th
+                        scope="col"
+                        className="border-b border-line pb-2 pr-3 text-left font-normal"
+                      >
+                        Interval
+                      </th>
+                      <th
+                        scope="col"
+                        className="border-b border-line pb-2 pr-3 text-right font-normal"
+                      >
+                        Bars
+                      </th>
+                      <th
+                        scope="col"
+                        className="border-b border-line pb-2 pr-3 text-left font-normal"
+                      >
+                        Since
+                      </th>
+                      <th
+                        scope="col"
+                        className="border-b border-line pb-2 pr-3 text-left font-normal"
+                      >
+                        Updated
+                      </th>
+                      <th scope="col" className="border-b border-line pb-2 text-right font-normal">
+                        Gaps
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -129,9 +156,10 @@ export function SystemPage() {
                 </table>
               </div>
             )}
-            <p className="mt-4 max-w-[78ch] text-xs leading-relaxed text-faint">
+            <p className="mt-4 prose text-xs leading-relaxed text-faint">
               Gaps is the share of bars the trading calendar expects that are missing. Stock markets
-              count as up to date for 5 days after their last bar, to allow for weekends and holidays.
+              count as up to date for 5 days after their last bar, to allow for weekends and
+              holidays.
             </p>
           </Card>
 
@@ -139,7 +167,10 @@ export function SystemPage() {
             <CardHeader title="About the data" />
             <ul className="flex flex-col">
               {ABOUT.map((line) => (
-                <li key={line} className="border-b border-line py-2.5 text-sm text-muted last:border-b-0">
+                <li
+                  key={line}
+                  className="border-b border-line py-2.5 text-sm text-muted last:border-b-0"
+                >
                   {line}
                 </li>
               ))}
