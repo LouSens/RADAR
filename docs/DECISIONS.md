@@ -3182,3 +3182,16 @@ counting.
 **Still owed:** the portfolio's risk pages as pictures; the market pages beyond their
 footers; stock screening by the user's rules, from the regulator's filings (he agreed to
 that source on this date); the notebooks 01 to 05.
+
+## 083. Stocks by the user's rules: asked for, then cancelled for want of a source (2026-10-07)
+
+The user asked that an individual stock be suggested only if the company was profitable
+five years running, has low debt, turns profit into cash and has a gross margin over
+30%. That needs company accounts. Alpaca's market data has none. The official free
+source, the US regulator's filings, serves them only to a program that gives a contact
+email, and the user chose not to give one. He cancelled the feature.
+
+The reader and the rules were written and tested on branch `stock-screen`, which is not
+merged and can be picked up if a source is ever agreed. Nothing of it is in the app.
+Stocks are therefore held only through the broad US stock fund in the plan, and no
+individual stock is suggested.
