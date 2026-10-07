@@ -315,7 +315,8 @@ export interface paths {
         };
         /**
          * Get Portfolio
-         * @description The saved holdings and the assets that can be held.
+         * @description The saved holdings and the assets that can be held. Holdings kept on Binance are
+         *     read again first when the last read is more than a few minutes old.
          */
         get: operations["get_portfolio_api_v1_portfolio_get"];
         /**
@@ -509,7 +510,11 @@ export interface paths {
         /**
          * Get Steps
          * @description Where cash over the plan goes, at what prices, and why. Worked out from the
-         *     stored portfolio and plan each time it is asked for; nothing is traded.
+         *     portfolio and plan each time it is asked for; nothing is traded.
+         *
+         *     When the holdings come from Binance and were last read more than a few minutes ago,
+         *     they are read again first, so a purchase or a deposit shows up without anyone asking
+         *     for it. If Binance cannot be reached, what is stored is used.
          */
         get: operations["get_steps_api_v1_portfolio_steps_get"];
         put?: never;
@@ -1676,6 +1681,8 @@ export interface components {
             leveraged: components["schemas"]["Leveraged"][];
             /** Problem */
             problem?: string | null;
+            /** Read At */
+            read_at?: string | null;
             /** Source */
             source: string | null;
             /** Supported */
@@ -2555,6 +2562,8 @@ export interface components {
             cash: number;
             /** Cash Plan */
             cash_plan: number;
+            /** Checked At */
+            checked_at?: string | null;
             /** Has Plan */
             has_plan: boolean;
             /** Model Version */

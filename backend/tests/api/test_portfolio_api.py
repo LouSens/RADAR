@@ -601,3 +601,40 @@ def test_a_ticker_is_looked_up_so_it_can_be_tried(client: TestClient) -> None:
         client.post("/api/v1/portfolio/lookup", json={"ticker": "X", "kind": "bond"}).status_code
         == 422
     )
+
+
+def test_what_to_do_reads_binance_again_by_itself_when_the_last_read_is_old(
+    client: TestClient, engine: Engine, session: Session
+) -> None:
+    from datetime import timedelta
+
+    from sqlalchemy import update
+
+    from radar.db.models import Portfolio
+
+    held = {"quantity": 0.4}
+    reads: list[float] = []
+
+    def reader(_: object) -> BinanceReading:
+        reads.append(held["quantity"])
+        return reading(("BTC/USD", held["quantity"]))
+
+    app = client.app
+    app.dependency_overrides[get_binance_reader] = lambda: reader  # type: ignore[attr-defined]
+    assert client.post("/api/v1/portfolio/binance").status_code == 200
+    assert reads == [0.4]
+
+    # Asked again at once: the reading is fresh, so Binance is left alone.
+    first = client.get("/api/v1/portfolio/steps").json()
+    assert reads == [0.4]
+    assert first["checked_at"] is not None
+
+    # Something was bought on the exchange, and ten minutes pass.
+    held["quantity"] = 0.9
+    session.execute(update(Portfolio).values(updated_at=datetime.now(UTC) - timedelta(minutes=10)))
+    session.commit()
+    later = client.get("/api/v1/portfolio/steps").json()
+    assert reads == [0.4, 0.9]
+    assert later["checked_at"] > first["checked_at"]
+    assert client.get("/api/v1/portfolio").json()["holdings"][0]["quantity"] == 0.9
+    app.dependency_overrides.pop(get_binance_reader)  # type: ignore[attr-defined]

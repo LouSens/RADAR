@@ -655,6 +655,12 @@ def set_tags(session: Session, tags: dict[str, str | None]) -> bool:
     return True
 
 
+def read_at(session: Session) -> datetime | None:
+    """When the holdings were last read or saved."""
+    portfolio = session.get(Portfolio, PORTFOLIO_ID)
+    return None if portfolio is None else portfolio.updated_at
+
+
 def stored_wallets(session: Session) -> list[dict[str, Any]]:
     portfolio = session.get(Portfolio, PORTFOLIO_ID)
     return list(portfolio.wallets) if portfolio is not None else []

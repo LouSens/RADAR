@@ -74,6 +74,8 @@ class Steps(BaseModel):
     steps: list[Step]
     # Parts not bought by this date are bought then, so cash does not wait for ever.
     by: AwareDatetime
+    # When the holdings behind this were last read from where they are kept.
+    checked_at: AwareDatetime | None = None
 
 
 def _past(close: pd.Series, parts: int) -> Past | None:

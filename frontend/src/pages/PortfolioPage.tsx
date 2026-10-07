@@ -39,6 +39,7 @@ import {
 import { formatChange, formatCount, formatMoney, formatShare } from "../lib/format";
 import {
   PORTFOLIO_SECTIONS,
+  accountWorth,
   isPortfolioSection,
   largestImbalance,
   worstEpisode,
@@ -797,7 +798,11 @@ export function PortfolioPage() {
     <div className="flex flex-col gap-4 @xl:gap-6">
       <header className="flex items-baseline gap-3">
         <h1 className="title">Portfolio</h1>
-        {analysis && <span className="label num">{formatMoney(analysis.value)}</span>}
+        {analysis && (
+          <span className="label num">
+            {formatMoney(accountWorth(portfolio.data?.wallets, analysis.value) ?? analysis.value)}
+          </span>
+        )}
       </header>
       <Tabs base={BASE} items={PORTFOLIO_SECTIONS} label="Portfolio pages" />
 

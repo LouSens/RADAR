@@ -395,8 +395,9 @@ describe("PortfolioPage", () => {
     state.portfolio = { ...PORTFOLIO, wallets };
     state.analysis = { ...ANALYSIS, value: 363.24 };
     show("/portfolio/holdings");
-    expect(screen.getByText("$400.85")).toBeVisible(); // Binance's total
-    expect(screen.getAllByText("$363.24")).toHaveLength(2); // the page header, and what RADAR found
+    // The page heading follows Binance's own total; what RADAR found sits beside it.
+    expect(screen.getAllByText("$400.85")).toHaveLength(2);
+    expect(screen.getAllByText("$363.24")).toHaveLength(1);
     expect(screen.getByText("Earn wallet")).toBeVisible();
     expect(screen.getByText("$37.61 not found")).toBeVisible();
     expect(screen.getByText(/That money is not in\s+any figure here/)).toBeVisible();

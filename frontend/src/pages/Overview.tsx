@@ -14,6 +14,7 @@ import {
 import { BriefCard } from "../components/BriefCard";
 import { ComingUp } from "../components/ComingUp";
 import { RadarMark, Wordmark } from "../components/Layout";
+import { accountWorth } from "../lib/portfolio";
 import { StepsCard } from "../components/StepsPanel";
 import { LatestSignals } from "../components/LatestSignals";
 import { MarketCard } from "../components/MarketCard";
@@ -116,7 +117,8 @@ function Hero() {
   const analysis = usePortfolioAnalysis().data;
   const empty = portfolio !== undefined && portfolio.holdings.length === 0;
   const level = analysis?.risk_level?.label;
-  const value = analysis ? formatMoney(analysis.value) : undefined;
+  const worth = accountWorth(portfolio?.wallets, analysis?.value);
+  const value = worth !== undefined ? formatMoney(worth) : undefined;
   const [whole, cents] = value?.includes(".") ? value.split(".") : [value, undefined];
   const typical = analysis ? analysis.xray.daily_volatility * analysis.covered_value : undefined;
   const save = useSavePortfolio();

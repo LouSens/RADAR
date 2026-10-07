@@ -3230,3 +3230,23 @@ The user asked that nothing be hardcoded and that no card appear from nowhere.
 points; the thresholds of the to-do list (2% or 5 dollars spare, 5 points over); the
 list of common coins asked about when Binance's own list cannot be read; and one
 sentence stating the result of the test of decision 079.
+
+## 086. The account follows Binance by itself, and shows Binance's own total; a shorter Signals feed (2026-10-07)
+
+The user saw 401.16 in RADAR while Binance showed 399, had to open Holdings and pull
+again to see a purchase, and found the Signals page too long to scroll.
+
+- **Why the two totals differed.** RADAR valued the holdings at the last US market
+  close, with the stock fund's price standing in for Binance's token, and read the
+  account once an hour. Binance prices everything this minute.
+- **The total shown is Binance's own** wherever the exchange gives one: the sum of its
+  wallet totals, read with the balances (`accountWorth`). RADAR's own valuation is still
+  what the shares and the risk figures are worked out on, and Holdings still sets the
+  two side by side.
+- **The account is read again by itself.** Asking for the holdings re-reads Binance when
+  the last read is more than five minutes old (`_follow_exchange`), the app asks every
+  five minutes and when its window is returned to, and whatever is worked out from the
+  holdings is fetched again when a new read lands. Nothing needs pressing. If Binance
+  cannot be reached the stored reading is kept.
+- **Signals** opens with five from the last three months, with one button for ten more
+  and one to include older ones.

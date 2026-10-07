@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 import type { Steps } from "../api/client";
 import { formatMoney, formatPrice } from "../lib/format";
-import { formatDate } from "../lib/time";
+import { formatDate, formatDateTime } from "../lib/time";
 import { Caption, Message, Panel } from "./ui";
 
 type Step = Steps["steps"][number];
@@ -222,7 +222,12 @@ export function StepsPanel({ steps }: { steps: Steps }) {
             label: "Cash now",
             value: `${formatMoney(steps.cash)}; your plan keeps ${formatMoney(steps.cash_plan)}`,
           },
-          { label: "Updates", value: "Each time you look, from your balances and your plan" },
+          {
+            label: "Your Binance account",
+            value: steps.checked_at
+              ? `Read again by itself; last at ${formatDateTime(steps.checked_at)}`
+              : "Read again by itself each time you look",
+          },
           { label: "You place the trades", value: "RADAR cannot buy or sell anything" },
         ]}
       >

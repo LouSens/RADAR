@@ -92,6 +92,11 @@ function FeedRow({ signal, colour }: { signal: Signal; colour: string }) {
   );
 }
 
+/** How many signals the feed opens with, how many more a tap adds, and how far back. */
+const FIRST = 5;
+const MORE = 10;
+const RECENT_DAYS = 90;
+
 function Feed() {
   const assets = useAssets().data ?? [];
   const primary = assets.filter((a) => a.is_primary);
@@ -110,6 +115,16 @@ function Feed() {
     return asset ? `var(${assetColorVar(asset)})` : "var(--accent)";
   };
   const data = signals.data;
+  // A short list first: the last three months, a few at a time. A long feed is tiring and
+  // the newest few are what matter.
+  const [shown, setShown] = useState(FIRST);
+  const [older, setOlder] = useState(false);
+  const [opened] = useState(() => Date.now());
+  const cutoff = opened - RECENT_DAYS * 86_400_000;
+  const all = data?.signals ?? [];
+  const recent = all.filter((signal) => Date.parse(signal.ts) >= cutoff);
+  const list = older ? all : recent;
+  const visible = list.slice(0, shown);
   // While the next set is fetched the one on screen stays and dims. Only the very first
   // load has nothing to show, and that is where the skeletons belong.
   const busy = signals.isPlaceholderData || (signals.isFetching && !data);
@@ -137,8 +152,24 @@ function Feed() {
         }
       >
         <div className="flex flex-wrap gap-3">
-          <Segmented options={markets} value={market} onChange={setMarket} label="Market" />
-          <Segmented options={KINDS} value={kind} onChange={setKind} label="Kind of signal" />
+          <Segmented
+            options={markets}
+            value={market}
+            onChange={(value) => {
+              setMarket(value);
+              setShown(FIRST);
+            }}
+            label="Market"
+          />
+          <Segmented
+            options={KINDS}
+            value={kind}
+            onChange={(value) => {
+              setKind(value);
+              setShown(FIRST);
+            }}
+            label="Kind of signal"
+          />
         </div>
         {!data && !signals.isError && (
           <div role="status" aria-label="Loading" className="flex flex-col gap-4">
@@ -150,10 +181,31 @@ function Feed() {
         {signals.isError && <Message>Signals are unavailable right now.</Message>}
         {data && data.signals.length > 0 && (
           <ul className="-my-2 flex flex-col" data-busy={busy} aria-busy={busy}>
-            {data.signals.map((signal) => (
+            {visible.map((signal) => (
               <FeedRow key={signal.id} signal={signal} colour={colourOf(signal.symbol)} />
             ))}
           </ul>
+        )}
+        {data && all.length > 0 && visible.length === 0 && (
+          <p className="text-sm text-muted">Nothing in the last 3 months.</p>
+        )}
+        {data && (list.length > visible.length || (!older && all.length > recent.length)) && (
+          <div className="flex flex-wrap gap-2">
+            {list.length > visible.length && (
+              <button
+                type="button"
+                className="btn btn-ghost press"
+                onClick={() => setShown(shown + MORE)}
+              >
+                Show {Math.min(MORE, list.length - visible.length)} more
+              </button>
+            )}
+            {!older && all.length > recent.length && (
+              <button type="button" className="btn btn-ghost press" onClick={() => setOlder(true)}>
+                Include older ones ({all.length - recent.length})
+              </button>
+            )}
+          </div>
         )}
         <Caption
           facts={[
@@ -163,7 +215,7 @@ function Feed() {
               value: "An hour's move over 5 times the usual size for the market's state",
             },
             { label: "Date", value: "The day the signal describes" },
-            { label: "Showing", value: "The newest 50" },
+            { label: "Showing", value: "The last 3 months first, a few at a time" },
           ]}
         >
           Each signal links to its track record: what the market did after every earlier signal of
