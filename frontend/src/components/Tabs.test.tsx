@@ -44,20 +44,19 @@ describe("Tabs", () => {
 describe("SectionMenu", () => {
   afterEach(cleanup);
 
-  it("lists a subject's pages in groups, each with what it answers", () => {
+  it("offers a few pages as tiles, each with what it answers, and leaves the rest out", () => {
     at(
       "/portfolio",
       <SectionMenu base="/portfolio" items={PORTFOLIO_SECTIONS} title="Your portfolio" />,
     );
     const menu = screen.getByRole("navigation", { name: "Your portfolio" });
-    expect(within(menu).getByText("Understand your risk")).toBeVisible();
-    expect(within(menu).getByText("Try things")).toBeVisible();
-    const loss = within(menu).getByRole("link", { name: /^Possible loss/ });
-    expect(loss).toHaveAttribute("href", "/portfolio/limits");
-    expect(within(loss).getByText("How much a bad day could cost")).toBeVisible();
-    // The subject's own page is not listed among its pages.
+    const plan = within(menu).getByRole("link", { name: /^My plan/ });
+    expect(plan).toHaveAttribute("href", "/portfolio/try");
+    expect(within(plan).getByText("How much goes into each thing")).toBeVisible();
+    // The subject's own page is not listed, and neither are pages reached from inside.
     expect(within(menu).queryByRole("link", { name: /^Summary/ })).toBeNull();
-    expect(within(menu).getAllByRole("link")).toHaveLength(PORTFOLIO_SECTIONS.length - 1);
+    expect(within(menu).queryByRole("link", { name: /^Possible loss/ })).toBeNull();
+    expect(within(menu).getAllByRole("link")).toHaveLength(6);
   });
 
   it("every page of every subject says what it is for, briefly", () => {

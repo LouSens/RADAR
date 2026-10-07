@@ -2942,3 +2942,243 @@ release means for his holdings. He places every trade himself.
 - One total for every coin and all time, then coins held now, then coins no longer
   held. The comparison with buying and keeping is off the screen until it is verified.
 - Plain words throughout; no statistical phrase is shown (the check is still applied).
+
+## 076. Every traded coin found, coins that left counted as lost on the user's word, and the plan he chose (2026-10-07)
+
+**Agreed by the user.** One more public read from Binance, the list of pairs
+(`GET /api/v3/exchangeInfo`, no key): `binance_public.dollar_pairs`. With it the record
+asks about every coin listed against USDT, USDC or FDUSD, on the pairs it really has;
+the built-in list stays for coins since delisted. A full run is several hundred
+requests and takes about a quarter of an hour, once a day.
+
+**Coins that left without a sale.** The user says which were lost for good
+(`PUT /portfolio/record/lost`; a button on the trades page). What was paid for them then
+counts as a loss. It is applied when the record is read, so the stored record is the
+history as the exchange gives it. He has said so for ETH and SOL (sent to another wallet
+and lost there).
+
+**A fault found and fixed.** A tokenised US stock held on Binance was shown as having
+left, because its name in the trade history (ticker plus `B`) was not matched to the
+holding.
+
+**The user's plan.** Careful: mainly cash, US stocks, gold and Bitcoin. No altcoins for
+now; one may be added later, at most 1% each and 10% in all. He adds about 25 dollars a
+month. Starting shares, his to change: cash 48%, US stocks 25%, gold 20%, Bitcoin 7%.
+Over December 2021 to October 2026 a mix close to this (with 3% in large altcoins) grew
+about 9% a year and fell 16.5% at its deepest; those years favoured gold and US stocks.
+
+**What he asks for that is still not possible.** A signal to buy altcoins low and sell
+high from order flow, open interest, liquidation maps and price levels. Order blocks,
+fair value gaps, Fibonacci levels, funding and buy-side volume were tested and did not
+tell direction (061, 068, 073); liquidation maps are not in any source RADAR may read.
+Two things are offered instead: a check before buying that says where the price sits in
+its week and month, since his own record shows he bought near the top; and one test not
+yet run, across every coin Binance lists, of whether coins low in their range did better
+afterwards than coins high in it. Its rules are to be written down before it is run.
+
+## 077. What to do now: spare cash, a ladder of prices, and the reasons (2026-10-07)
+
+The user asked for exact prices and amounts in the app, updated as his cash changes,
+with the reasons shown; and said he does not want to buy every month, only when he has
+more cash than he should.
+
+**Built.** `pipelines/steps.py`, `GET /portfolio/steps`, a "What to do now" page on
+Portfolio and a card on Home in place of "Make RADAR yours", which the user judged not
+to belong there.
+- When cash is above the plan's share by 2% of the account or 5 dollars, the cash over
+  is shared among the holdings short of their share.
+- Each purchase is split into up to three equal parts (`analytics/buying.ladder`): one
+  at today's price, the others one and two usual weekly swings lower. Parts are never
+  under 5 dollars. Whatever is not bought within 30 days is bought then.
+- A holding more than 5 points above its share is listed to sell back to it.
+- Each purchase shows why: its share now against the plan, where the price sits in the
+  last three months, how much it usually moves in a week, and what this same ladder paid
+  in past months against buying everything at once.
+
+**What the ladder is and is not.** Replayed on ten years of months it paid 0.5% to 0.9%
+more on average than buying at once, and got a lower price in about half of them
+(US stocks, gold, Bitcoin). It is shown with that figure. It is not a way to a better
+price; it keeps the user from putting a whole amount in at one price, which his record
+shows he did near the top. The steps are sized from the swing forecast, the one thing
+that can be forecast.
+
+**The user's plan was set** on his word: US stocks 25%, gold 20%, Bitcoin 7%, the
+altcoin he holds 1%, the rest cash.
+
+**Still to build from his list of 2026-10-07:** the check before buying; the test of
+coins low against high in their range, across every listed coin; then a review of
+routing, wording, the home page and the look on phone and desktop.
+
+## 078. Before you buy; and coins low against high in their range: the test, written before running (2026-10-07)
+
+**Before you buy** (built): `pipelines/check.py`, `GET /portfolio/check/{coin}`, a page
+on Portfolio. For any coin Binance lists it shows where the price sits between the
+lowest and highest of the last week, month and three months, in plain words ("high",
+"middle", "low": the week and month averaged, at or above 0.65 and at or below 0.35),
+beside the user's own record: where his purchases usually sat, what followed the ones
+near the top and near the bottom, and his result on that coin. It describes; it does not
+say what comes next. Gold on Home is now shown at the PAX Gold price, the one he holds.
+
+**The question still open.** The user wants a screener that says an altcoin is "low and
+might be good". Earlier tests asked whether one market's own readings tell its own
+direction, on six coins. Not asked yet: *across all coins in the same week, did the ones
+low in their range do better afterwards than the ones high in it?* That is a comparison
+between coins, on hundreds of them, and it is the claim a screener would make.
+
+**The test.**
+- *Coins*: every coin Binance lists against USDT today, without dollar coins, wrapped
+  copies of other coins and leveraged tokens. Daily bars from 2019 or the coin's first
+  day. A coin counts in a week only with 60 days of history and a median daily traded
+  value over the last 30 days of at least 1 million dollars.
+- *Each Monday*: "low" and "high" exactly as the app's check defines them (week and
+  month places averaged; 0.35 and 0.65).
+- *What followed*: the coin's return over the next 7 days, and over the next 28, less
+  the middle coin's return over the same days, so that a week when everything fell does
+  not count against either group.
+- *The figure*: each week, the average for the low coins less the average for the high
+  coins. Weeks with fewer than 10 coins in either group are left out. For 28 days only
+  every fourth week is used, so periods do not overlap.
+- *Pass, for each of the two periods*: low ahead of high by at least 0.5 points over 7
+  days (2 points over 28); under 5% of resamples of weeks show no advantage; ahead in
+  both halves of the record; and ahead in at least 6 calendar years of every 10.
+- Also reported, not part of the mark: how often a low coin was up at all a week later,
+  and the same for the largest 30 coins only.
+
+**A known weakness, stated first.** Coins Binance has delisted are not in today's list.
+Many of them fell and never came back, and they would have been "low" on the way down.
+Leaving them out flatters "low". A pass here is therefore an upper bound.
+
+**My guess.** Low is ahead of high over 7 days by a little, less than the mark or not
+steadily across years; nothing over 28 days.
+
+**If it passes**, the check may say "coins this low in their range did better than coins
+near their highs, by X on average, in N weeks of M", with the weeks it failed, and the
+1% cap stays. **If it does not**, the check stays as it is: a description, with no coin
+called a good buy.
+
+## 079. Coins low against high in their range: the result (2026-10-07)
+
+The test of decision 078, run once, on 617 coins with 90 days or more of daily bars
+(686 listed against USDT), Mondays from 2020 to October 2026.
+
+| Period | Coins | Weeks | Low ahead of high | Resamples with no lead | Years ahead | Passes |
+|---|---|---|---|---|---|---|
+| 7 days | all | 183 | -0.45 points | 82% | 3 of 7 | no |
+| 7 days | largest 30 | 100 | -2.65 points | 100% | 1 of 8 | no |
+| 28 days | all | 44 | -4.61 points | 97% | 1 of 7 | no |
+| 28 days | largest 30 | 23 | -6.68 points | 96% | 3 of 8 | no |
+
+A coin low in its range was up at all a week later 42% of the time. (For the largest
+30 the groups hold 7 to 9 coins, under the 10 the rule asks; shown as written, not part
+of the mark.)
+
+**It does not pass, and it points the other way.** Coins low in their range did worse
+afterwards than coins high in it, in most years, and by more among the large coins. This
+is with delisted coins left out, which flatters "low". So "it is low, it might be good"
+is not something RADAR can say about an altcoin.
+
+**My guess** was a small lead for low over 7 days. Wrong: there was none.
+
+**Not to be turned round.** That high did better than low was not the question written
+down, so it is not a finding to act on. If it is ever to be used it needs its own test,
+written first, on data kept apart.
+
+**The user's own record says something different, and both are true.** Over his 414
+purchases with a week of prices after them: the 266 made near the week's top were down
+2.9% a week later on average, the 87 made near the bottom up 0.5%. That is about the
+moments he chose (after a jump), not about coins in general. The check before buying
+shows him his own figures, which are his; it does not colour "low" as good, and it now
+states what the test across all coins found.
+
+**Decided.** No screener calls a coin a good buy. The check before buying stays a
+description. Altcoins stay at 1% each.
+
+## 080. Fewer cards, pictures in place of text, and the rate cash earns (2026-10-07)
+
+The user's review: too much text causes fatigue; Portfolio opens on so many cards he
+does not know where to start; "Try a mix" is ambiguous; the desktop view feels empty.
+He also asked whether the rate his cash earns in Binance Earn can be read.
+
+**Done.**
+- Portfolio now opens on three figures (all trades, what cash earns, risk), one picture
+  of the account against the plan (two bars and a line per holding, "8% → 7%"), and one
+  card saying what to do. The nine risk tiles moved to their own page, "Risk at a
+  glance". The menu is grouped by what the user does: What to do, Where you stand, Your
+  risk, Try things. "Try a mix" is listed as "My plan".
+- "What to do now" draws each purchase as steps down a price line, with the share of
+  the account against the plan and the place in the last three months as two small
+  bars. The sentences it replaced are in each picture's label for screen readers.
+- The Earn wallet carries the dollars in flexible savings and the yearly rate Binance
+  is paying now, read from a read already allowed (`latestAnnualPercentageRate`), so no
+  new endpoint. Portfolio shows the rate and about how much a month it comes to.
+
+**Not done, and asked for:** the same treatment for the other text-heavy pages; a
+clearer plan page; the desktop layout and sidebar; type, colour, spacing, shadows and
+motion across the app.
+
+**Stocks with the user's rules** (profitable five years running, low debt, profits that
+turn into cash, gross margin over 30%, a fuller quality review, in a current theme;
+capped at 10% with altcoins). RADAR has no company accounts: Alpaca's market data has
+none. The official free source is the US regulator's filings (SEC EDGAR, company
+facts). That is a new host and needs the user's yes and a test, as every source does.
+The rules are filters on the business, not a forecast of the share price, and would be
+shown that way.
+
+## 081. A design pass after the user's review: fewer doors, a desktop Home, a new mark, more periods in the check (2026-10-07)
+
+The user's review, with a screenshot of the Portfolio menu: too many options, too much
+text, cards left hanging on desktop, the four Home shortcuts not sized for a wide
+screen, the sidebar empty, the logo and name weak. He also asked that "low or high" for
+a coin be an insight over several periods, never a reason to buy.
+
+**Done.**
+- *Portfolio menu*: six tiles with icons in a grid (What to do now, Before you buy, My
+  plan, My trades, Holdings, My risk) in place of twelve rows in four groups. The four
+  risk pages are reached from My risk; regular buying from My plan. `SectionMenu` draws
+  tiles everywhere and leaves out pages marked `hidden`.
+- *Home on a wide screen*: the portfolio sits on a pane beside the to-do card, the
+  shortcuts become rows with the name beside the icon, and the lower cards sit on a
+  twelve-column grid so none is left hanging.
+- *Sidebar*: a card at its foot with the account's worth, its risk and how many things
+  there are to do.
+- *Mark and name*: a lit badge with a radar sweep and one blip, and the name set in
+  lower case with a full stop in the accent colour. Each copy of the mark carries its
+  own gradient, since one inside the hidden sidebar would not paint on a phone.
+- *Before you buy*: today, this week, this month, the last three months and the last
+  year, each as a line with a dot. It says where the price is, in neutral colour, and
+  states what decision 079 found. It names no coin a good buy.
+
+**Not done.** The risk, market and plan pages still carry their long text. Type, colour
+and motion were not reworked beyond the above. A new typeface would be a new
+dependency, so it waits for the user's choice. Desktop was checked by measuring the
+layout, because the preview pane is phone-width: the user's own look at it is the real
+check.
+
+## 082. A plan page that can be read at a glance, calmer entrances, the Earn bonus, a plainer mark, and a walk of every link (2026-10-07)
+
+After the user's next review: the plan page was ambiguous, cards hopped on reload, the
+mark did not suit a finance app, and Binance Earn pays a bonus tier the app was not
+counting.
+
+- **My plan** (`PlanPanel`) replaces "Try a mix" on its page: three starting points with
+  how far each fell, one slider per holding with its share and dollars, cash as whatever
+  is left, anything outside US stocks, gold and Bitcoin capped at 1%, three figures that
+  follow the sliders (a usual day, the worst fall so far, the risk level), and one
+  button to save. The old builder stays in the code, unused by any screen.
+- **Entrances** fade and do not move, and the new pages show skeletons while they load.
+  Sliding each card up as its data landed made the page hop.
+- **Earn**: the rate now counts Binance's bonus tier on the part of the balance it
+  covers (`tierAnnualPercentageRate`), from the same read as before, and the screen says
+  the bonus can change. The user's figure of about 6% was right: 2.6% plus 4% on the
+  first 1,000 dollars.
+- **Mark**: a rising line leaving a ring, in one colour on a plain dark badge, with the
+  name in spaced capitals. No gradient.
+- **Long footers** on the market pages (state, range, news) are folded behind "How this
+  works".
+- **Every link walked** in the running app: 37 addresses reached by following links from
+  Home, none missing, none leading back to where it started. Pages no longer in a menu
+  are all still reached from inside another page.
+
+**Still owed:** the portfolio's risk pages as pictures; the market pages beyond their
+footers; stock screening by the user's rules, from the regulator's filings (he agreed to
+that source on this date); the notebooks 01 to 05.

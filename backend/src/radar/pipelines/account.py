@@ -32,11 +32,12 @@ from radar.pipelines import relationships
 from radar.providers import binance_public
 from radar.providers.binance import BinanceError
 from radar.providers.binance_history import BinanceHistory
-from radar.providers.public import PublicReader
+from radar.providers.public import PublicDataError, PublicReader
 
 log = get_logger(__name__)
 
 NAME = "account_record"
+LOST = "account_lost_coins"
 VERSION = "account-1"
 STORE = Path("data/account")
 SINCE = datetime(2017, 8, 1, tzinfo=UTC)
@@ -243,6 +244,22 @@ class AssetRecord(BaseModel):
     # Cost of units that history still shows but the account no longer has: moved,
     # withdrawn, or swapped in a way the trade history does not list.
     moved_out_cost: float = 0.0
+    # The part of that cost the user has said was lost for good; it is inside the
+    # realised figure once they have.
+    written_off: float = 0.0
+
+
+class Outcome(BaseModel):
+    """What followed the purchases made in one part of the week's range."""
+
+    # "high": in the top two fifths of the week before the purchase; "low": the bottom
+    # two fifths; "middle": between.
+    where: str
+    trades: int
+    # The price a week later against the price paid, averaged by the money in each.
+    after_week: float
+    # The share of them that were lower a week later.
+    fell_share: float
 
 
 class Month(BaseModel):
@@ -267,19 +284,28 @@ class Record(BaseModel):
     months: list[Month]
     # Entries whose cost was taken from the market price of the day.
     priced_at_market: int
+    # Purchases grouped by where in the week they were made, with what followed.
+    buy_outcomes: list[Outcome] = []
     # Cost of coins that left without a sale on record, over all coins.
     moved_out_cost: float = 0.0
+    written_off: float = 0.0
 
 
 def collect(
-    history: BinanceHistory, assets: list[str], now: datetime, pause: float = PAUSE
+    history: BinanceHistory,
+    assets: list[str],
+    now: datetime,
+    pause: float = PAUSE,
+    listed: dict[str, list[str]] | None = None,
 ) -> list[Entry]:
     """Every entry the account's history gives, for `assets`, the common coins, and
     whatever else its swaps and rewards mention. `pause` is the wait between requests,
     which keeps a long scan inside the exchange's limits."""
     entries: list[Entry] = []
     likely = set(assets)
-    names = likely | set(COMMON)
+    # With the exchange's own list every coin it trades is asked about; the common
+    # coins stay in for ones it has since stopped listing.
+    names = likely | set(COMMON) | set(listed or {})
     quiet, end = 0, now
     while end > SINCE and quiet < QUIET_WINDOWS:
         start = end - WINDOW
@@ -311,7 +337,8 @@ def collect(
         quiet = 0 if found else quiet + 1
         end = start
     for asset in sorted(names - ledger.CASH):
-        for quote in QUOTES:
+        quotes = (listed or {}).get(asset) or list(QUOTES)
+        for quote in quotes:
             try:
                 fills = history.fills(asset + quote)
             except BinanceError:
@@ -331,7 +358,7 @@ def collect(
                     entries.append(entry)
             # Nearly every trade is against USDT: a coin never traded there is not asked
             # about against the other dollars, unless the account itself points to it.
-            if quote == QUOTES[0] and not fills and asset not in likely:
+            if quote == quotes[0] and not fills and asset not in likely:
                 break
     return sorted(entries, key=lambda e: e.at)
 
@@ -379,6 +406,29 @@ def _trips(entries: list[Entry], asset: str) -> Trips | None:
     )
 
 
+def _outcomes(bought: list[pd.DataFrame]) -> list[Outcome]:
+    """Purchases with a week of prices after them, grouped by where they were made."""
+    frames = [frame for frame in bought if len(frame)]
+    if not frames:
+        return []
+    table = pd.concat(frames, ignore_index=True).dropna(subset=["after_week"])
+    groups = {
+        "high": table[table["place"] >= 0.6],
+        "middle": table[(table["place"] > 0.4) & (table["place"] < 0.6)],
+        "low": table[table["place"] <= 0.4],
+    }
+    return [
+        Outcome(
+            where=name,
+            trades=len(part),
+            after_week=float(np.average(part["after_week"], weights=part["dollars"])),
+            fell_share=float((part["after_week"] < 0).mean()),
+        )
+        for name, part in groups.items()
+        if len(part)
+    ]
+
+
 def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: datetime) -> Record:
     """The record from entries, hourly prices and the units held now."""
     traded = sorted({e.asset for e in entries if e.kind == "buy" and e.asset not in ledger.CASH})
@@ -399,6 +449,7 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
 
     standings = ledger.standing(entries, price_at)
     assets: list[AssetRecord] = []
+    bought: list[pd.DataFrame] = []
     for asset in traded:
         from_history = standings[asset]
         now_standing, moved_out = (
@@ -413,6 +464,7 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
             price = float(frame["close"].iloc[-1])
             context = trading.context(entries, frame, asset)
             buys, sells = trading.habit(context, "buy"), trading.habit(context, "sell")
+            bought.append(context[context["kind"] == "buy"])
             if now_standing.first is not None:
                 typical = trading.usual(frame, pd.Timestamp(now_standing.first))
             buys_unusual = trading.place_is_unusual(context, "buy", frame)
@@ -469,25 +521,70 @@ def build(entries: list[Entry], prices: Prices, held: dict[str, float], now: dat
         assets=assets,
         months=[by_month[key] for key in sorted(by_month)],
         priced_at_market=sum(a.standing.priced_at_market for a in assets),
+        buy_outcomes=_outcomes(bought),
         moved_out_cost=sum(a.moved_out_cost for a in assets),
     )
 
 
 def held_units(session: Session) -> dict[str, float]:
-    """Units of each crypto asset the stored portfolio says are held now."""
+    """Units of each asset the stored portfolio says are held now, under the name the
+    exchange's trade history uses for it: a crypto pair by its coin, and a US stock by
+    its ticker with the `B` Binance puts on its tokenised stocks."""
     analysis = portfolio_job.stored_analysis(session)
     if analysis is None:
         return {}
-    return {
-        position.symbol.split("/")[0]: position.quantity
-        for position in analysis.positions
-        if "/" in position.symbol
-    }
+    held: dict[str, float] = {}
+    for position in analysis.positions:
+        if "/" in position.symbol:
+            held[position.symbol.split("/")[0]] = position.quantity
+        elif position.symbol != "USD":
+            held[position.symbol + "B"] = position.quantity
+    return held
+
+
+def with_losses(record: Record, lost: list[str]) -> Record:
+    """The record with the coins named in `lost` counted as lost: what was paid for the
+    units that left without a sale becomes a loss on that coin and in the total."""
+    assets = []
+    total = 0.0
+    for asset in record.assets:
+        cost = asset.moved_out_cost if asset.asset in lost else 0.0
+        if cost <= 0:
+            assets.append(asset)
+            continue
+        total += cost
+        standing = asset.standing.model_copy(update={"realised": asset.standing.realised - cost})
+        assets.append(
+            asset.model_copy(
+                update={"standing": standing, "moved_out_cost": 0.0, "written_off": cost}
+            )
+        )
+    return record.model_copy(
+        update={
+            "assets": assets,
+            "realised": record.realised - total,
+            "moved_out_cost": record.moved_out_cost - total,
+            "written_off": total,
+        }
+    )
+
+
+def lost_coins(session: Session) -> list[str]:
+    """The coins the user has said were lost after leaving the account."""
+    row = relationships.current(session, LOST, None)
+    return [] if row is None else [str(name) for name in row.metrics.get("assets", [])]
+
+
+def set_lost_coins(session: Session, assets: list[str], now: datetime) -> None:
+    names = sorted({name.strip().upper() for name in assets if name.strip()})
+    relationships._store(session, LOST, None, VERSION, {"assets": names}, now.date(), now.date())
 
 
 def stored(session: Session) -> Record | None:
     row = relationships.current(session, NAME, None)
-    return None if row is None else Record.model_validate(row.metrics)
+    if row is None:
+        return None
+    return with_losses(Record.model_validate(row.metrics), lost_coins(session))
 
 
 def run(engine: Engine, now: datetime | None = None) -> int:
@@ -501,9 +598,14 @@ def run(engine: Engine, now: datetime | None = None) -> int:
     now = now or datetime.now(UTC)
     with session_scope(engine) as session:
         held = held_units(session)
+    try:
+        with binance_public.reader() as source:
+            listed = binance_public.dollar_pairs(source, QUOTES)
+    except PublicDataError:
+        listed = None  # the common coins are still asked about
     history = BinanceHistory(key, secret)
     try:
-        entries = collect(history, sorted(held), now)
+        entries = collect(history, sorted(held), now, listed=listed)
     finally:
         history.close()
     with binance_public.reader() as source:

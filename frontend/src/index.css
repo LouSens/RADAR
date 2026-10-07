@@ -263,6 +263,7 @@ figcaption {
    own radius, and `position` is declared where it is actually needed. */
 .glass,
 .tile,
+.door,
 .menu-row,
 .capsule {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.022));
@@ -273,6 +274,9 @@ figcaption {
 .glass {
   position: relative;
   border-radius: var(--radius-card);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 20px 44px -28px rgba(0, 0, 0, 0.75);
 }
 
 /* The thin highlight along a card's top edge. */
@@ -358,6 +362,7 @@ figcaption {
    overrode each other, and a tap on a hovered card did nothing. */
 .press,
 .tile,
+.door,
 .menu-row,
 .back-link,
 .action,
@@ -441,6 +446,124 @@ figcaption {
   transition: transform var(--mid) var(--ease);
 }
 
+/* On a wide Home the portfolio sits on a pane of its own, like the card beside it. */
+@container (min-width: 56rem) {
+  .home-pane {
+    height: 100%;
+    padding: 1.75rem;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  /* Shortcuts become rows with the name beside the icon: there is room for words. */
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .actions .action {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.8rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.025);
+    color: var(--ink);
+  }
+
+  .actions .action-icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 12px;
+  }
+
+  .actions .action-label {
+    font-size: 0.9rem;
+    text-align: left;
+  }
+}
+
+/* A slider for a share: a thin track and a thumb large enough for a thumb. */
+.slider {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 1.75rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: transform var(--fast) var(--ease);
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+/* The door's icon warms up under a cursor, so the tile reads as something to open. */
+@media (hover: hover) and (pointer: fine) {
+  .door:hover .door-icon {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+}
+
+.door-icon {
+  transition: background var(--mid) ease;
+}
+
+/* A page of a subject as a tile: an icon, its name, and what it answers. */
+.door {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 7.25rem;
+  padding: 1rem 1.05rem 1.05rem;
+  border-radius: 18px;
+  color: var(--ink);
+}
+
+.door-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 12px;
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
 /* A shortcut on Home: a round icon with its name beneath. */
 .action {
   display: flex;
@@ -469,6 +592,7 @@ figcaption {
    card that will not let go. */
 @media (hover: hover) and (pointer: fine) {
   .tile:hover,
+  .door:hover,
   .menu-row:hover {
     --lift: -2px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
@@ -613,51 +737,27 @@ figcaption {
 /* ---------- Motion ------------------------------------------------------------------- */
 
 /* A page's parts arrive one after another, quickly, so the eye is led down the page. */
+/* Entrances fade and do not move. Cards arrive at different moments as their data
+   lands; sliding each one up made the page hop on every reload. */
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
 }
 
 .page-in > * > * {
-  animation: page-in 0.34s var(--ease) both;
-}
-
-.page-in > * > *:nth-child(2) {
-  animation-delay: 0.04s;
-}
-
-.page-in > * > *:nth-child(3) {
-  animation-delay: 0.08s;
-}
-
-.page-in > * > *:nth-child(4) {
-  animation-delay: 0.12s;
-}
-
-.page-in > * > *:nth-child(n + 5) {
-  animation-delay: 0.16s;
+  animation: page-in var(--mid) ease-out both;
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(14px);
   }
 }
 
 /* Content starts visible if animations are off; this only softens the entrance. */
 .rise {
-  animation: rise 0.6s var(--ease) both;
-}
-
-.rise-2 {
-  animation-delay: 0.08s;
-}
-
-.rise-3 {
-  animation-delay: 0.16s;
+  animation: rise var(--mid) ease-out both;
 }
 
 @keyframes pulse-dot {
@@ -843,6 +943,7 @@ figcaption {
 
   @media (hover: hover) and (pointer: fine) {
     .tile:hover,
+    .door:hover,
     .menu-row:hover,
     .glass-lift:hover {
       --lift: 0px;

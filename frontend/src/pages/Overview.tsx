@@ -3,13 +3,20 @@ import { Link } from "react-router-dom";
 
 import { useNow } from "../api/market";
 import type { Holding } from "../api/client";
-import { useAssets, usePortfolio, usePortfolioAnalysis, useSavePortfolio } from "../api/queries";
+import {
+  useAssets,
+  usePortfolio,
+  usePortfolioAnalysis,
+  useSavePortfolio,
+  useSteps,
+} from "../api/queries";
 import { BriefCard } from "../components/BriefCard";
 import { ComingUp } from "../components/ComingUp";
-import { GettingStarted } from "../components/GettingStarted";
+import { RadarMark, Wordmark } from "../components/Layout";
+import { StepsCard } from "../components/StepsPanel";
 import { LatestSignals } from "../components/LatestSignals";
 import { MarketCard } from "../components/MarketCard";
-import { Skeleton } from "../components/Skeleton";
+import { CardSkeleton, Skeleton } from "../components/Skeleton";
 import { Message } from "../components/ui";
 import { levelColour } from "../components/viz";
 import { formatMoney } from "../lib/format";
@@ -36,7 +43,7 @@ function ActionIcon({ children }: { children: ReactNode }) {
 const ACTIONS = [
   {
     to: "/portfolio/sources",
-    label: "Your risk",
+    label: "My risk",
     icon: (
       <>
         <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12V3.5Z" />
@@ -45,8 +52,8 @@ const ACTIONS = [
     ),
   },
   {
-    to: "/portfolio/ahead",
-    label: "What's ahead",
+    to: "/portfolio/check",
+    label: "Before I buy",
     icon: (
       <>
         <path d="M3.5 12h5" />
@@ -56,7 +63,7 @@ const ACTIONS = [
   },
   {
     to: "/portfolio/try",
-    label: "Try a mix",
+    label: "My plan",
     icon: (
       <>
         <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
@@ -66,8 +73,8 @@ const ACTIONS = [
     ),
   },
   {
-    to: "/portfolio/buying",
-    label: "Buy regularly",
+    to: "/portfolio/record",
+    label: "My trades",
     icon: (
       <>
         <path d="M4.5 19.5V15M9.5 19.5v-7.5M14.5 19.5V9M19.5 19.5v-15" />
@@ -199,13 +206,13 @@ function Hero() {
           </Link>
         </p>
       )}
-      <nav aria-label="Portfolio shortcuts" className="grid grid-cols-4 gap-2 @xl:max-w-xl">
+      <nav aria-label="Portfolio shortcuts" className="actions grid grid-cols-4 gap-2">
         {ACTIONS.map((action) => (
           <Link key={action.to} to={action.to} className="action press">
             <span className="action-icon">
               <ActionIcon>{action.icon}</ActionIcon>
             </span>
-            <span className="text-center text-[11px] font-medium leading-tight @xl:text-xs">
+            <span className="action-label text-center text-[11px] font-medium leading-tight @xl:text-xs">
               {action.label}
             </span>
           </Link>
@@ -220,8 +227,8 @@ export function Overview() {
   const assets = useAssets();
   const now = useNow(60_000);
   const primary = assets.data?.filter((a) => a.is_primary) ?? [];
-  const portfolio = usePortfolio();
-  const analysis = usePortfolioAnalysis();
+  const paxg = assets.data?.find((a) => a.symbol === "PAXG/USD");
+  const steps = useSteps();
   const today = new Intl.DateTimeFormat("en-GB", {
     weekday: "long",
     day: "numeric",
@@ -231,16 +238,27 @@ export function Overview() {
   return (
     <div className="flex flex-col gap-6 @xl:gap-8">
       <header className="flex items-center justify-between gap-3">
-        <h1 className="text-sm font-semibold tracking-[0.14em]">RADAR</h1>
+        <h1 className="flex items-center gap-2.5 md:hidden">
+          <RadarMark size={26} />
+          <Wordmark />
+          <span className="sr-only">RADAR</span>
+        </h1>
+        <h1 className="title hidden md:block">Home</h1>
         <p className="label">{today}</p>
       </header>
 
-      <Hero />
-      <GettingStarted
-        portfolio={portfolio.data}
-        analysis={analysis.data}
-        markets={primary.length}
-      />
+      <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-12 @4xl:gap-6">
+        <div className="home-pane @4xl:col-span-7">
+          <Hero />
+        </div>
+        <div className="@4xl:col-span-5">
+          {steps.data ? (
+            <StepsCard steps={steps.data} />
+          ) : steps.isPending ? (
+            <CardSkeleton lines={3} />
+          ) : null}
+        </div>
+      </div>
 
       {assets.isError && <Message>Markets are unavailable right now.</Message>}
 
@@ -255,14 +273,22 @@ export function Overview() {
         </div>
         <div className="grid grid-cols-3 gap-2 @xl:gap-4">
           {primary.map((asset) => (
-            <MarketCard key={asset.slug} asset={asset} />
+            <MarketCard
+              key={asset.slug}
+              asset={asset}
+              priced={asset.symbol === "GLD" ? paxg : undefined}
+            />
           ))}
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 @4xl:grid-cols-2 @xl:gap-6">
-        <ComingUp />
-        <LatestSignals assets={assets.data ?? []} />
+      <div className="grid grid-cols-1 gap-4 @4xl:grid-cols-12 @xl:gap-6">
+        <div className="@4xl:col-span-5">
+          <ComingUp />
+        </div>
+        <div className="@4xl:col-span-7">
+          <LatestSignals assets={assets.data ?? []} />
+        </div>
       </div>
       <BriefCard assets={assets.data ?? []} />
     </div>

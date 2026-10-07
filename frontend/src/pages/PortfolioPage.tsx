@@ -2,11 +2,21 @@ import { Fragment, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
 import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from "../api/client";
-import { useAccountRecord, usePortfolio, usePortfolioAnalysis } from "../api/queries";
+import {
+  useAccountRecord,
+  usePortfolio,
+  usePortfolioAnalysis,
+  useSetLostCoins,
+  useSteps,
+} from "../api/queries";
 import { RangeAheadPanel } from "../components/AheadPanels";
 import { HoldingsEditor } from "../components/HoldingsEditor";
-import { LevelsPanel, targetSummary } from "../components/PlanPanels";
+import { PlanPanel } from "../components/PlanPanel";
+import { targetSummary } from "../components/PlanPanels";
+import { CheckPanel } from "../components/CheckPanel";
+import { PortfolioStart } from "../components/PortfolioStart";
 import { RecordPanel } from "../components/RecordPanel";
+import { StepsPanel } from "../components/StepsPanel";
 import { badLabel } from "../components/RiskPanel";
 import { RegularBuyingPanel } from "../components/RegularBuyingPanel";
 import { PageSkeleton } from "../components/Skeleton";
@@ -25,7 +35,7 @@ import {
   levelColour,
   type Part,
 } from "../components/viz";
-import { formatChange, formatCount, formatMoney, formatPrice, formatShare } from "../lib/format";
+import { formatChange, formatCount, formatMoney, formatShare } from "../lib/format";
 import {
   PORTFOLIO_SECTIONS,
   isPortfolioSection,
@@ -729,6 +739,8 @@ export function PortfolioPage() {
   const portfolio = usePortfolio();
   const analysis = usePortfolioAnalysis().data ?? undefined;
   const record = useAccountRecord().data;
+  const setLost = useSetLostCoins();
+  const steps = useSteps().data;
 
   if (!isPortfolioSection(section)) return <Navigate to={BASE} replace />;
   const empty = portfolio.data !== undefined && portfolio.data.holdings.length === 0;
@@ -756,43 +768,23 @@ export function PortfolioPage() {
 
       {portfolio.data && (section === undefined || section === "") && (
         <>
-          {analysis ? <Brief analysis={analysis} /> : needsHoldings}
-          <SectionMenu base={BASE} items={PORTFOLIO_SECTIONS} title="Your portfolio" />
-          {analysis && (
-            <section className="glass p-4 @xl:p-7">
-              <h2 className="text-base font-semibold tracking-tight">What you hold</h2>
-              <ul className="mt-3">
-                {analysis.positions.map((position) => (
-                  <li
-                    key={position.symbol}
-                    className="flex items-baseline justify-between gap-4 border-t border-line py-2.5 text-sm first:border-t-0"
-                  >
-                    <span>
-                      {position.name}{" "}
-                      <span className="num text-muted">
-                        {formatCount(position.quantity)} at {formatPrice(position.price)}
-                      </span>
-                    </span>
-                    <span className="num font-medium">
-                      {formatMoney(position.value)}{" "}
-                      <span className="text-muted">{formatShare(position.weight, 0)}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Caption
-                facts={[
-                  {
-                    label: "Valued at",
-                    value: `The market close on ${formatDate(analysis.as_of)}`,
-                  },
-                  { label: "Updated", value: "Every hour, as new prices are stored" },
-                ]}
-              />
-            </section>
+          {analysis ? (
+            <PortfolioStart
+              portfolio={portfolio.data}
+              analysis={analysis}
+              record={record}
+              steps={steps}
+            />
+          ) : (
+            needsHoldings
           )}
+          <SectionMenu base={BASE} items={PORTFOLIO_SECTIONS} />
         </>
       )}
+
+      {portfolio.data &&
+        section === "risk" &&
+        (analysis ? <Brief analysis={analysis} /> : needsHoldings)}
 
       {portfolio.data && section === "holdings" && portfolio.data.wallets.length > 0 && (
         <ExchangeCheck wallets={portfolio.data.wallets} found={analysis?.value} />
@@ -805,20 +797,55 @@ export function PortfolioPage() {
         </section>
       )}
 
+      {section === "todo" &&
+        (steps ? (
+          <StepsPanel steps={steps} />
+        ) : steps === null ? (
+          <Message>Add your holdings first, then pick a plan.</Message>
+        ) : (
+          <PageSkeleton cards={2} />
+        ))}
+
+      {section === "check" && (
+        <CheckPanel
+          suggestions={[
+            ...new Set([
+              ...(record?.assets ?? []).filter((a) => a.held).map((a) => a.asset),
+              "BTC",
+              "PAXG",
+              "ETH",
+              "SOL",
+            ]),
+          ]}
+        />
+      )}
+
       {section === "record" &&
         (record ? (
-          <RecordPanel record={record} worth={analysis?.value} />
-        ) : (
+          <RecordPanel record={record} worth={analysis?.value} onLost={setLost.mutate} />
+        ) : record === null ? (
           <Message>
-            {record === null
-              ? "Nothing here yet. This is filled in once a day from your Binance trade history, when a read-only key is set."
-              : "Loading your trades…"}
+            Nothing here yet. This is filled in once a day from your Binance trade history, when a
+            read-only key is set.
           </Message>
+        ) : (
+          <PageSkeleton cards={3} />
         ))}
 
       {portfolio.data &&
         section === "try" &&
-        (analysis ? <LevelsPanel analysis={analysis} /> : needsHoldings)}
+        (analysis ? <PlanPanel analysis={analysis} /> : needsHoldings)}
+      {portfolio.data && section === "try" && (
+        <Link to={`${BASE}/buying`} className="menu-row">
+          <span className="min-w-0">
+            <span className="block font-medium">Adding the same amount every month?</span>
+            <span className="mt-0.5 block text-sm text-muted">
+              See where a regular plan might end up
+            </span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
       {portfolio.data && section === "buying" && (
         // Remounted once the holdings arrive, so the plan starts from what is held.
         <RegularBuyingPanel

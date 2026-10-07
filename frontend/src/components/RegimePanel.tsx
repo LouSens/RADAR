@@ -140,27 +140,30 @@ export function RegimePanel({ asset, trust }: PanelProps) {
         </div>
       </div>
 
-      <p className="mt-5 border-t border-line pt-4 text-xs leading-relaxed text-faint">
-        The state on each day is estimated from that day and earlier days only, using daily returns
-        and volatility for {formatCount(regime.model.n_train)} days from{" "}
-        {formatDate(regime.model.train_start)}.
-        {evaluation && (
-          <>
-            {" "}
-            Tested on {formatCount(evaluation.n_days)} days the model had not seen (
-            {formatDate(evaluation.first_test_day)} to {formatDate(evaluation.last_test_day)}), the
-            average swing on the following day was{" "}
-            {Object.entries(evaluation.next_day_volatility)
-              .map(([label, value]) => `${formatShare(value)} after ${label}`)
-              .join(", ")}
-            .
-            {evaluation.volatility_is_ordered
-              ? ""
-              : " These are not in order, so treat the state as a weak signal."}
-          </>
-        )}{" "}
-        A change of state is detected after it begins, not before.
-      </p>
+      <details className="about">
+        <summary>How this works</summary>
+        <p className="prose mt-3 text-xs leading-relaxed text-muted">
+          The state on each day is estimated from that day and earlier days only, using daily
+          returns and volatility for {formatCount(regime.model.n_train)} days from{" "}
+          {formatDate(regime.model.train_start)}.
+          {evaluation && (
+            <>
+              {" "}
+              Tested on {formatCount(evaluation.n_days)} days the model had not seen (
+              {formatDate(evaluation.first_test_day)} to {formatDate(evaluation.last_test_day)}),
+              the average swing on the following day was{" "}
+              {Object.entries(evaluation.next_day_volatility)
+                .map(([label, value]) => `${formatShare(value)} after ${label}`)
+                .join(", ")}
+              .
+              {evaluation.volatility_is_ordered
+                ? ""
+                : " These are not in order, so treat the state as a weak signal."}
+            </>
+          )}{" "}
+          A change of state is detected after it begins, not before.
+        </p>
+      </details>
     </Panel>
   );
 }

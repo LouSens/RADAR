@@ -373,6 +373,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/check/{coin}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Check
+         * @description Whether a coin's price is high or low against its own last week, month and three
+         *     months, beside the user's own record. Reads public prices; nothing is traded.
+         */
+        get: operations["get_check_api_v1_portfolio_check__coin__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/import": {
         parameters: {
             query?: never;
@@ -436,6 +457,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/record/lost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Lost Coins
+         * @description Say which coins that left the account without a sale were lost for good. This
+         *     only changes how the record adds up; nothing is sent to any exchange.
+         */
+        put: operations["put_lost_coins_api_v1_portfolio_record_lost_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/regular-buying": {
         parameters: {
             query?: never;
@@ -451,6 +493,27 @@ export interface paths {
          *     at once. A simulation only: nothing is saved and nothing is bought.
          */
         post: operations["post_regular_buying_api_v1_portfolio_regular_buying_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portfolio/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Steps
+         * @description Where cash over the plan goes, at what prices, and why. Worked out from the
+         *     stored portfolio and plan each time it is asked for; nothing is traded.
+         */
+        get: operations["get_steps_api_v1_portfolio_steps_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -698,6 +761,11 @@ export interface components {
             usual: components["schemas"]["Usual"] | null;
             /** Value */
             value: number | null;
+            /**
+             * Written Off
+             * @default 0
+             */
+            written_off: number;
         };
         /** BarOut */
         BarOut: {
@@ -851,6 +919,51 @@ export interface components {
              * @enum {string}
              */
             topic: "state" | "swings" | "tone";
+        };
+        /** Check */
+        Check: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Below High */
+            below_high: number;
+            /** Coin */
+            coin: string;
+            /** Habit Place */
+            habit_place?: number | null;
+            /** Model Version */
+            model_version: string;
+            /** Move Day */
+            move_day: number;
+            /** Move Week */
+            move_week: number;
+            /**
+             * Outcomes
+             * @default []
+             */
+            outcomes: components["schemas"]["radar__pipelines__account__Outcome"][];
+            /** Place Day */
+            place_day?: number | null;
+            /** Place Month */
+            place_month: number | null;
+            /** Place Quarter */
+            place_quarter: number | null;
+            /** Place Week */
+            place_week: number;
+            /** Place Year */
+            place_year?: number | null;
+            /** Price */
+            price: number;
+            /** Weekly Swing */
+            weekly_swing: number | null;
+            /**
+             * Where
+             * @enum {string}
+             */
+            where: "high" | "middle" | "low";
+            yours?: components["schemas"]["Yours"] | null;
         };
         /** ClassifierScoreOut */
         ClassifierScoreOut: {
@@ -1123,12 +1236,12 @@ export interface components {
         };
         /** HorizonRecord */
         HorizonRecord: {
-            baseline: components["schemas"]["Outcome"];
+            baseline: components["schemas"]["radar__signals__track__Outcome"];
             /** Label */
             label: string;
             /** P Value */
             p_value: number | null;
-            signal: components["schemas"]["Outcome"];
+            signal: components["schemas"]["radar__signals__track__Outcome"];
             /** Size P Value */
             size_p_value?: number | null;
             /**
@@ -1342,6 +1455,11 @@ export interface components {
             /** Ticker */
             ticker: string;
         };
+        /** LostIn */
+        LostIn: {
+            /** Assets */
+            assets: string[];
+        };
         /** MarketResult */
         MarketResult: {
             day_before: components["schemas"]["Share"];
@@ -1406,28 +1524,6 @@ export interface components {
             n_days: number;
             /** R Squared */
             r_squared: number;
-        };
-        /**
-         * Outcome
-         * @description Forward returns over one horizon, for the signal days or for all days.
-         */
-        Outcome: {
-            /** Mean */
-            mean: number | null;
-            /** Mean Size */
-            mean_size: number | null;
-            /** N */
-            n: number;
-            /** Quantiles */
-            quantiles: {
-                [key: string]: number;
-            };
-            /** Share High */
-            share_high: number | null;
-            /** Share Low */
-            share_low: number | null;
-            /** Share Positive */
-            share_positive: number | null;
         };
         /** OutlookHorizon */
         OutlookHorizon: {
@@ -1519,6 +1615,20 @@ export interface components {
             rolling_90: number | null;
             /** Weighted */
             weighted: number | null;
+        };
+        /**
+         * Past
+         * @description What this ladder paid in past months, against buying everything on the first day.
+         */
+        Past: {
+            /** Average Saving */
+            average_saving: number;
+            /** Cheaper Share */
+            cheaper_share: number;
+            /** Months */
+            months: number;
+            /** Worst */
+            worst: number;
         };
         /** Plan */
         Plan: {
@@ -1618,6 +1728,11 @@ export interface components {
             as_traded: number;
             /** Assets */
             assets: components["schemas"]["AssetRecord"][];
+            /**
+             * Buy Outcomes
+             * @default []
+             */
+            buy_outcomes: components["schemas"]["radar__pipelines__account__Outcome"][];
             /** Fees */
             fees: number;
             /** First Trade */
@@ -1643,6 +1758,11 @@ export interface components {
             trades: number;
             /** Unrealised */
             unrealised: number;
+            /**
+             * Written Off
+             * @default 0
+             */
+            written_off: number;
         };
         /**
          * RecordSummary
@@ -1987,6 +2107,18 @@ export interface components {
             model_version: string;
             /** Symbol */
             symbol: string;
+        };
+        /**
+         * Rung
+         * @description One part of a purchase: buy `amount` dollars at `price` or lower.
+         */
+        Rung: {
+            /** Amount */
+            amount: number;
+            /** Below */
+            below: number;
+            /** Price */
+            price: number;
         };
         /** Sentence */
         Sentence: {
@@ -2375,6 +2507,62 @@ export interface components {
             units: number;
             /** Unpriced */
             unpriced: number;
+        };
+        /** Step */
+        Step: {
+            /** Amount */
+            amount: number;
+            /** Below High */
+            below_high?: number | null;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+            past?: components["schemas"]["Past"] | null;
+            /** Place */
+            place?: number | null;
+            /** Price */
+            price: number;
+            /**
+             * Rungs
+             * @default []
+             */
+            rungs: components["schemas"]["Rung"][];
+            /** Share Now */
+            share_now: number;
+            /** Share Plan */
+            share_plan: number;
+            /** Symbol */
+            symbol: string;
+            /** Weekly Swing */
+            weekly_swing?: number | null;
+        };
+        /** Steps */
+        Steps: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * By
+             * Format: date-time
+             */
+            by: string;
+            /** Cash */
+            cash: number;
+            /** Cash Plan */
+            cash_plan: number;
+            /** Has Plan */
+            has_plan: boolean;
+            /** Model Version */
+            model_version: string;
+            /** Spare */
+            spare: number;
+            /** Steps */
+            steps: components["schemas"]["Step"][];
+            /** Value */
+            value: number;
         };
         /** StressPart */
         StressPart: {
@@ -2793,10 +2981,18 @@ export interface components {
          * @description One of the account's wallets and what Binance says it is worth, in dollars.
          */
         Wallet: {
+            /** Bonus Rate */
+            bonus_rate?: number | null;
+            /** Bonus Up To */
+            bonus_up_to?: number | null;
+            /** Earning */
+            earning?: number | null;
             /** Name */
             name: string;
             /** Value */
             value: number;
+            /** Yearly Rate */
+            yearly_rate?: number | null;
         };
         /** WeekendGap */
         WeekendGap: {
@@ -2953,6 +3149,20 @@ export interface components {
             undiversified_volatility: number;
         };
         /**
+         * Yours
+         * @description What the record says about this coin.
+         */
+        Yours: {
+            /** Held */
+            held: boolean;
+            /** Purchases */
+            purchases: number;
+            /** Result */
+            result: number;
+            /** Sales */
+            sales: number;
+        };
+        /**
          * Backtest
          * @description How one way of splitting the holdings behaved, rebalanced monthly. History only.
          */
@@ -3028,6 +3238,42 @@ export interface components {
             n: number;
             /** Reliable */
             reliable: boolean;
+        };
+        /**
+         * Outcome
+         * @description What followed the purchases made in one part of the week's range.
+         */
+        radar__pipelines__account__Outcome: {
+            /** After Week */
+            after_week: number;
+            /** Fell Share */
+            fell_share: number;
+            /** Trades */
+            trades: number;
+            /** Where */
+            where: string;
+        };
+        /**
+         * Outcome
+         * @description Forward returns over one horizon, for the signal days or for all days.
+         */
+        radar__signals__track__Outcome: {
+            /** Mean */
+            mean: number | null;
+            /** Mean Size */
+            mean_size: number | null;
+            /** N */
+            n: number;
+            /** Quantiles */
+            quantiles: {
+                [key: string]: number;
+            };
+            /** Share High */
+            share_high: number | null;
+            /** Share Low */
+            share_low: number | null;
+            /** Share Positive */
+            share_positive: number | null;
         };
     };
     responses: never;
@@ -3567,6 +3813,37 @@ export interface operations {
             };
         };
     };
+    get_check_api_v1_portfolio_check__coin__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Check"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     import_portfolio_api_v1_portfolio_import_post: {
         parameters: {
             query?: never;
@@ -3653,6 +3930,39 @@ export interface operations {
             };
         };
     };
+    put_lost_coins_api_v1_portfolio_record_lost_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LostIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Record"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     post_regular_buying_api_v1_portfolio_regular_buying_post: {
         parameters: {
             query?: never;
@@ -3682,6 +3992,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_steps_api_v1_portfolio_steps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Steps"];
                 };
             };
         };

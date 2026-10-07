@@ -1,27 +1,49 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useStreamStatus } from "../api/live";
-import { useAssets, useHealth } from "../api/queries";
-import { markSeen } from "./GettingStarted";
+import { useAssets, useHealth, usePortfolioAnalysis, useSteps } from "../api/queries";
+import { formatMoney } from "../lib/format";
 import { assetColorVar } from "./ui";
 
-function RadarMark() {
+/** The mark: a rising line that leaves a radar ring, on a plain dark badge. */
+export function RadarMark({ size = 30 }: { size?: number }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="9" fill="#0d1820" />
+      <rect
+        x="0.75"
+        y="0.75"
+        width="30.5"
+        height="30.5"
+        rx="9"
+        stroke="var(--accent)"
+        strokeOpacity="0.4"
+        strokeWidth="1.5"
+      />
       <circle
-        cx="12"
-        cy="12"
-        r="10"
+        cx="15"
+        cy="17"
+        r="8.5"
         stroke="var(--accent)"
         strokeOpacity="0.35"
-        strokeWidth="1.2"
+        strokeWidth="1.5"
       />
-      <circle cx="12" cy="12" r="6" stroke="var(--accent)" strokeOpacity="0.6" strokeWidth="1.2" />
-      <path d="M12 12 19 5" stroke="var(--accent)" strokeWidth="1.6" strokeLinecap="round" />
-      <circle cx="12" cy="12" r="1.8" fill="var(--accent)" />
+      <path
+        d="M7.5 21.5 12.5 16.5l3.5 3 8.5-9.5"
+        stroke="var(--accent)"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="24.5" cy="10" r="2.4" fill="var(--accent)" />
     </svg>
   );
+}
+
+/** The name, set to sit beside the mark. */
+export function Wordmark({ className = "" }: { className?: string }) {
+  return <span className={`text-[15px] font-semibold tracking-[0.12em] ${className}`}>RADAR</span>;
 }
 
 const icon = {
@@ -149,6 +171,36 @@ const sideLink = ({ isActive }: { isActive: boolean }) =>
     isActive ? "lens text-ink" : "text-muted hover:bg-white/5 hover:text-ink"
   }`;
 
+/** The account at a glance, at the foot of the sidebar: worth, risk, and what to do. */
+function Account() {
+  const analysis = usePortfolioAnalysis().data;
+  const steps = useSteps().data;
+  if (!analysis) return null;
+  const level = analysis.risk_level?.label;
+  const todo = steps?.has_plan ? steps.steps.length : 0;
+  return (
+    <div className="well mt-3 p-3.5">
+      <Link to="/portfolio" className="press block">
+        <span className="label block">Your account</span>
+        <span className="num mt-1 block text-xl font-semibold tracking-tight">
+          {formatMoney(analysis.value)}
+        </span>
+        {level && <span className="mt-0.5 block text-xs capitalize text-muted">{level} risk</span>}
+      </Link>
+      <Link
+        to="/portfolio/todo"
+        className="press mt-3 flex items-center justify-between gap-2 rounded-xl bg-white/6 px-3 py-2 text-xs font-medium hover:bg-white/10"
+      >
+        <span>{todo > 0 ? `${todo} thing${todo > 1 ? "s" : ""} to do` : "Nothing to do"}</span>
+        <span
+          className={`h-2 w-2 rounded-full ${todo > 0 ? "bg-accent" : "bg-white/25"}`}
+          aria-hidden="true"
+        />
+      </Link>
+    </div>
+  );
+}
+
 function Sidebar({
   collapsed,
   canToggle,
@@ -164,18 +216,19 @@ function Sidebar({
   return (
     <aside
       className={`capsule fixed inset-y-3 left-3 z-40 hidden flex-col rounded-3xl p-3 transition-[width] duration-300 md:flex ${
-        collapsed ? "w-[68px]" : "w-[232px]"
+        collapsed ? "w-[68px]" : "w-[252px]"
       }`}
     >
       <div className="flex h-11 items-center justify-between gap-2 pl-2">
         <Link to="/" className="flex min-w-0 items-center gap-2.5" aria-label="RADAR home">
           <RadarMark />
-          <span className={`text-[15px] font-bold tracking-[0.14em] ${hidden}`}>RADAR</span>
+          <Wordmark className={hidden} />
         </Link>
         {!collapsed && canToggle && <CollapseButton collapsed={collapsed} onToggle={onToggle} />}
       </div>
 
-      <nav aria-label="Main" className="mt-4 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+      {!collapsed && <p className="label mt-5 px-2.5">Menu</p>}
+      <nav aria-label="Main" className="mt-2 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
         {PLACES.map((place) => (
           <Link
             key={place.to}
@@ -192,6 +245,7 @@ function Sidebar({
         ))}
       </nav>
 
+      {!collapsed && <Account />}
       <div className="mt-2 flex flex-col gap-1 border-t border-line pt-2">
         {/* Only when something is wrong: otherwise it is of no use to the person using it. */}
         {!good && (
@@ -242,7 +296,6 @@ export function Layout() {
 
   // A new page starts at its top, like any other.
   useEffect(() => {
-    markSeen(pathname);
     if (typeof window.scrollTo === "function") window.scrollTo(0, 0);
   }, [pathname]);
 
@@ -269,7 +322,7 @@ export function Layout() {
       {/* Phones navigate with the tabs at the bottom, within thumb reach; nothing on top. */}
       <div
         className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ${
-          collapsed ? "md:pl-[80px]" : "md:pl-[244px]"
+          collapsed ? "md:pl-[80px]" : "md:pl-[264px]"
         }`}
       >
         <main className="page pb-tabbar @container mx-auto w-full max-w-[1280px] flex-1">

@@ -5,6 +5,7 @@ runs inside a request: the analysis is recomputed and stored there, so that ever
 read is only a read.
 """
 
+import re
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
@@ -25,10 +26,15 @@ from radar.models.holdings import (
     Unsupported,
 )
 from radar.pipelines import account as account_job
+from radar.pipelines import check as check_job
 from radar.pipelines import discover, rebalance
 from radar.pipelines import portfolio as job
+from radar.pipelines import steps as steps_job
 from radar.pipelines.datasets import build_mixed_panel
+from radar.pipelines.signals import daily_close
+from radar.providers import binance_public
 from radar.providers.binance import BinanceError, Leveraged, Wallet
+from radar.providers.public import PublicDataError
 from radar.universe import Universe
 
 router = APIRouter(prefix="/api/v1/portfolio")
@@ -77,6 +83,11 @@ class TargetIn(BaseModel):
 class WhatIfIn(BaseModel):
     # Each holding's share of the whole, from 0 to 1. Cash is whatever is left over.
     weights: dict[str, float] = Field(max_length=50)
+
+
+class LostIn(BaseModel):
+    # Coins whose units left the account without a sale and are gone for good.
+    assets: list[str] = Field(max_length=100)
 
 
 class RegularBuyingIn(BaseModel):
@@ -147,6 +158,55 @@ def _finish(session: Session, universe: Universe, read: Holdings, *, binance: bo
 def get_record(session: SessionDep) -> account_job.Record:
     """What the holdings cost, what was made, and how the trades were timed, from the
     exchange's own history. Read from the stored result; nothing is fetched here."""
+    record = account_job.stored(session)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No account record yet")
+    return record
+
+
+@router.get("/steps", response_model=steps_job.Steps)
+def get_steps(universe: UniverseDep, session: SessionDep) -> steps_job.Steps:
+    """Where cash over the plan goes, at what prices, and why. Worked out from the
+    stored portfolio and plan each time it is asked for; nothing is traded."""
+    analysis = job.stored_analysis(session)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="No portfolio analysis yet")
+    weights = None
+    if analysis.plan is not None and analysis.plan.moves:
+        weights = {m.symbol: m.target_weight for m in analysis.plan.moves if m.symbol != CASH}
+    wanted = set(weights or {})
+    closes = {
+        asset.symbol: daily_close(session, asset)
+        for asset in discover.extend(universe, session).assets
+        if asset.symbol in wanted
+    }
+    return steps_job.build(analysis, weights, closes, datetime.now(UTC))
+
+
+@router.get("/check/{coin}", response_model=check_job.Check)
+def get_check(coin: str, session: SessionDep) -> check_job.Check:
+    """Whether a coin's price is high or low against its own last week, month and three
+    months, beside the user's own record. Reads public prices; nothing is traded."""
+    name = coin.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9]{2,12}", name):
+        raise HTTPException(status_code=422, detail="That is not a coin name.")
+    try:
+        with binance_public.reader() as source:
+            bars = check_job.fetch(source, name)
+            daily = check_job.fetch_year(source, name) if len(bars) else None
+    except PublicDataError:
+        raise HTTPException(status_code=404, detail=f"No prices for {name}.") from None
+    if len(bars) < check_job.WEEK + 1:
+        raise HTTPException(status_code=404, detail=f"No prices for {name}.")
+    return check_job.build(name, bars, account_job.stored(session), datetime.now(UTC), daily)
+
+
+@router.put("/record/lost", response_model=account_job.Record)
+def put_lost_coins(body: LostIn, session: SessionDep) -> account_job.Record:
+    """Say which coins that left the account without a sale were lost for good. This
+    only changes how the record adds up; nothing is sent to any exchange."""
+    account_job.set_lost_coins(session, body.assets, datetime.now(UTC))
+    session.commit()
     record = account_job.stored(session)
     if record is None:
         raise HTTPException(status_code=404, detail="No account record yet")

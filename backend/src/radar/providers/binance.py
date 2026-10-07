@@ -16,6 +16,7 @@ The key and secret are never logged and never appear in an error message.
 
 import hashlib
 import hmac
+import re
 from collections.abc import Iterable
 from typing import Any
 from urllib.parse import urlencode
@@ -69,6 +70,10 @@ ALLOWED = frozenset(
 FUNDING_BALANCES = (SPOT_HOST, "/sapi/v1/asset/get-funding-asset")
 READ_BY_POST = frozenset({FUNDING_BALANCES})
 
+# A bonus tier as Binance names it: "0-1000USDT" is the first 1,000 dollars.
+_TIER = re.compile(r"^([\d.]+)-([\d.]+)")
+# Dollar coins: what flexible savings pays on these is interest on cash.
+DOLLARS = frozenset({"USDT", "USDC", "FDUSD", "USD1", "TUSD", "DAI"})
 # Balances smaller than this many units are dust and are ignored.
 DUST = 1e-8
 TIMEOUT_SECONDS = 15.0
@@ -101,6 +106,14 @@ class Wallet(BaseModel):
 
     name: str
     value: float
+    # For the Earn wallet: the dollars in flexible savings and the yearly rate
+    # Binance is paying on them now, as a fraction. Missing when it does not say.
+    earning: float | None = None
+    yearly_rate: float | None = None
+    # The part of that rate that is a bonus on the first dollars only, and how many
+    # dollars it covers. Binance changes or withdraws it without notice.
+    bonus_rate: float | None = None
+    bonus_up_to: float | None = None
 
 
 class BinanceReading(BaseModel):
@@ -216,10 +229,25 @@ class BinanceSource:
         # Flexible savings, read directly. When that works, the copies of it in the
         # spot wallet are skipped so that nothing is counted twice.
         direct = False
+        earning = interest = 0.0
+        bonus: tuple[float | None, float | None] = (None, None)
         try:
             flexible = self._read(FLEXIBLE_SAVINGS, signed=True, clock=clock, extra={"size": "100"})
             for row in flexible.get("rows", []):
                 add(str(row["asset"]), float(row["totalAmount"]))
+                rate = row.get("latestAnnualPercentageRate")
+                if str(row["asset"]) in DOLLARS and rate is not None:
+                    amount = float(row["totalAmount"])
+                    earning += amount
+                    interest += amount * float(rate)
+                    for span, extra in (row.get("tierAnnualPercentageRate") or {}).items():
+                        bounds = _TIER.match(str(span))
+                        if bounds is None:
+                            continue
+                        low, high = float(bounds.group(1)), float(bounds.group(2))
+                        interest += max(min(amount, high) - low, 0.0) * float(extra)
+                        if amount > low and float(extra) > (bonus[0] or 0.0):
+                            bonus = (float(extra), high)
             direct = True
         except BinanceError as error:
             log.info("binance_flexible_savings_skipped", reason=str(error))
@@ -292,7 +320,16 @@ class BinanceSource:
         try:
             rows = self._read(WALLET_TOTALS, signed=True, clock=clock, extra={"quoteAsset": "USDT"})
             wallets = [
-                Wallet(name=str(row["walletName"]), value=float(row["balance"]))
+                Wallet(
+                    name=str(row["walletName"]),
+                    value=float(row["balance"]),
+                    earning=earning if row["walletName"] == "Earn" and earning > 0 else None,
+                    yearly_rate=(
+                        interest / earning if row["walletName"] == "Earn" and earning > 0 else None
+                    ),
+                    bonus_rate=bonus[0] if row["walletName"] == "Earn" else None,
+                    bonus_up_to=bonus[1] if row["walletName"] == "Earn" else None,
+                )
                 for row in rows
                 if abs(float(row["balance"])) > 0.005
             ]

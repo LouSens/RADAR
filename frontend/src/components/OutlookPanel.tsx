@@ -392,16 +392,20 @@ export function OutlookPanel({ asset, trust }: PanelProps) {
 
       {calibration && <TrackRecord asset={asset} calibration={calibration} horizon={horizon} />}
 
-      <p className="border-t border-line pt-4 text-xs leading-relaxed text-faint">
-        This is a spread of outcomes, not a prediction. Each simulated path starts from the current
-        market state, moves between states as this market has in the past, and draws each day&apos;s
-        move from real past moves in that state. It assumes the future resembles the past.
-        {main?.adjusted
-          ? " Ranges shown are adjusted using how earlier ranges held."
-          : " How past ranges held has not been measured yet, so ranges are shown as simulated."}
-        {widest.length > 0 &&
-          ` The ${widest.map((r) => percent(r.interval.level)).join(" and ")} range has been widened as far as it can go for this period, so it covers nearly every simulated outcome.`}
-      </p>
+      <details className="about">
+        <summary>How this works</summary>
+        <p className="prose mt-3 text-xs leading-relaxed text-muted">
+          This is a spread of outcomes, not a prediction. Each simulated path starts from the
+          current market state, moves between states as this market has in the past, and draws each
+          day&apos;s move from real past moves in that state. It assumes the future resembles the
+          past.
+          {main?.adjusted
+            ? " Ranges shown are adjusted using how earlier ranges held."
+            : " How past ranges held has not been measured yet, so ranges are shown as simulated."}
+          {widest.length > 0 &&
+            ` The ${widest.map((r) => percent(r.interval.level)).join(" and ")} range has been widened as far as it can go for this period, so it covers nearly every simulated outcome.`}
+        </p>
+      </details>
     </Panel>
   );
 }

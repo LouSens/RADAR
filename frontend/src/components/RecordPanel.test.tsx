@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { AccountRecord } from "../api/client";
@@ -48,6 +48,7 @@ const asset = (name: string, extra: Partial<AssetRecord> = {}): AssetRecord => (
   missing_share: 0,
   held: true,
   moved_out_cost: 0,
+  written_off: 0,
   ...extra,
 });
 
@@ -65,14 +66,16 @@ const RECORD: AccountRecord = {
   assets: [asset("SOL"), asset("GONE", { held: false, unrealised: null, value: 0 })],
   months: [],
   priced_at_market: 1,
+  buy_outcomes: [],
   moved_out_cost: 0,
+  written_off: 0,
 };
 
 describe("RecordPanel", () => {
   afterEach(cleanup);
 
   it("opens with one total for every coin and all time, in plain words", () => {
-    const record = { ...RECORD, realised: -30, moved_out_cost: 48 };
+    const record = { ...RECORD, realised: -30 };
     const { container } = render(<RecordPanel record={record} worth={500} />);
     expect(screen.getByText("You are down $50.00 in total")).toBeInTheDocument();
     expect(container.textContent).toMatch(/Every coin, all time: 24 trades since 1 Jan 2025/);
@@ -81,7 +84,24 @@ describe("RecordPanel", () => {
     );
     expect(screen.getByText("Coins that made money")).toBeInTheDocument();
     expect(screen.getByText("Coins that lost money")).toBeInTheDocument();
-    expect(container.textContent).toMatch(/coins you paid \$48\.00 for left your trading wallet/);
+  });
+
+  it("lets you say which coins that left were lost, and undo it", () => {
+    const calls: string[][] = [];
+    const record = {
+      ...RECORD,
+      assets: [
+        asset("ETH", { held: false, moved_out_cost: 29, unrealised: null, value: 0 }),
+        asset("SOL", { held: false, written_off: 20, unrealised: null, value: 0 }),
+      ],
+    };
+    render(<RecordPanel record={record} onLost={(names) => calls.push(names)} />);
+    expect(screen.getByText("Coins that left without being sold")).toBeInTheDocument();
+    expect(screen.getByText(/you paid \$29\.00 · not counted/)).toBeInTheDocument();
+    expect(screen.getByText(/you paid \$20\.00 · counted as lost/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "It is gone" }));
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(calls).toEqual([["SOL", "ETH"], []]);
   });
 
   it("keeps coins you hold now apart from coins you no longer hold", () => {

@@ -13,8 +13,9 @@ import { stateColour } from "./viz";
  * One market at a glance: its name, price, today's change, and the week as a line. Small
  * enough that the three sit side by side on a phone. Tap to open the market.
  */
-export function MarketCard({ asset }: { asset: Asset }) {
-  const market = useMarket(asset);
+export function MarketCard({ asset, priced }: { asset: Asset; priced?: Asset }) {
+  // Gold is held as PAXG, so its card shows the PAXG price: the one in the portfolio.
+  const market = useMarket(priced ?? asset);
   const state = useSummary(asset.slug).data?.state;
   return (
     <Link
@@ -39,6 +40,11 @@ export function MarketCard({ asset }: { asset: Asset }) {
         )}
       </span>
       <Change value={market.sinceClose} className="mt-0.5 block text-xs @2xl:text-sm" />
+      {priced && (
+        <span className="mt-0.5 block truncate text-[11px] text-muted">
+          per ounce, {priced.symbol.split("/")[0]}
+        </span>
+      )}
       <span className="mt-2 block h-8 w-full @2xl:h-11">
         <Sparkline values={market.weekCloses} colorVar={assetColorVar(asset)} />
       </span>

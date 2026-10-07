@@ -16,6 +16,7 @@ def test_the_lists_of_public_sources_are_exactly_these() -> None:
     assert {
         ("api.binance.com", "/api/v3/klines"),
         ("fapi.binance.com", "/fapi/v1/fundingRate"),
+        ("api.binance.com", "/api/v3/exchangeInfo"),
     } == binance_public.ALLOWED
     assert {
         ("publicreporting.cftc.gov", "/resource/72hh-3qpy.json"),
@@ -157,3 +158,26 @@ def test_a_positioning_report_becomes_long_short_and_open_interest_by_date() -> 
     assert list(frame.index) == [pd.Timestamp("2024-01-02"), pd.Timestamp("2024-01-09")]
     assert frame["long"].tolist() == [200.0, 300.0]
     assert frame["open_interest"].tolist() == [1000.0, 1000.0]
+
+
+def test_the_list_of_pairs_gives_each_coin_and_the_dollars_it_trades_against() -> None:
+    def handle(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v3/exchangeInfo"
+        assert request.method == "GET"
+        return httpx.Response(
+            200,
+            json={
+                "symbols": [
+                    {"symbol": "MANTAUSDC", "baseAsset": "MANTA", "quoteAsset": "USDC"},
+                    {"symbol": "MANTAUSDT", "baseAsset": "MANTA", "quoteAsset": "USDT"},
+                    {"symbol": "ETHBTC", "baseAsset": "ETH", "quoteAsset": "BTC"},
+                    {"symbol": "USDCUSDT", "baseAsset": "USDC", "quoteAsset": "USDT"},
+                    {"symbol": "TAOFDUSD", "baseAsset": "TAO", "quoteAsset": "FDUSD"},
+                ]
+            },
+        )
+
+    source = reader(httpx.MockTransport(handle), binance_public.ALLOWED)
+    found = binance_public.dollar_pairs(source, ("USDT", "USDC", "FDUSD"))
+    # Coins against dollars only, a dollar against a dollar left out, dollars in the order given.
+    assert found == {"MANTA": ["USDT", "USDC"], "TAO": ["FDUSD"]}

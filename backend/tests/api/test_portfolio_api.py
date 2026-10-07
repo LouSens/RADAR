@@ -305,10 +305,12 @@ def test_binance_holdings_replace_the_portfolio_when_a_key_is_configured(
     assert [(h["symbol"], h["quantity"]) for h in body["holdings"]] == [("BTC/USD", 0.4)]
     assert [u["symbol"] for u in body["unsupported"]] == ["USDT"]
     assert body["leveraged"][0]["distance_to_liquidation"] == 0.25
-    assert body["wallets"] == [
-        {"name": "Spot", "value": 90.42},
-        {"name": "Earn", "value": 306.24},
+    assert [(w["name"], w["value"]) for w in body["wallets"]] == [
+        ("Spot", 90.42),
+        ("Earn", 306.24),
     ]
+    # No rate is read in this account, so none is claimed.
+    assert all(w["yearly_rate"] is None and w["bonus_rate"] is None for w in body["wallets"])
     assert client.get("/api/v1/portfolio").json()["wallets"] == body["wallets"]
     assert client.get("/api/v1/portfolio").json()["leveraged"] == body["leveraged"]
     assert client.get("/api/v1/portfolio/analysis").json()["positions"][0]["quantity"] == 0.4

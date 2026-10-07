@@ -8,6 +8,7 @@ import {
   type AccountRecord,
   type Asset,
   type Bars,
+  type BuyCheck,
   type Calibration,
   type Health,
   type Holding,
@@ -18,6 +19,7 @@ import {
   type Risk,
   type Sentiment,
   type Simulation,
+  type Steps,
   type Summary,
   type Timeframe,
   type Volatility,
@@ -187,6 +189,34 @@ export function useAccountRecord() {
     queryKey: ["portfolio", "record"],
     queryFn: () => orNull(() => getJson<AccountRecord>("/portfolio/record")),
     staleTime: 60 * 60_000,
+  });
+}
+
+/** Whether a coin's price is high or low against its own recent past. */
+export function useBuyCheck(coin: string) {
+  return useQuery({
+    queryKey: ["portfolio", "check", coin],
+    queryFn: () => orNull(() => getJson<BuyCheck>(`/portfolio/check/${encodeURIComponent(coin)}`)),
+    enabled: coin.length > 1,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** What to do with cash the plan does not keep: what to buy, at what prices, and why. */
+export function useSteps() {
+  return useQuery({
+    queryKey: ["portfolio", "steps"],
+    queryFn: () => orNull(() => getJson<Steps>("/portfolio/steps")),
+    refetchInterval: 10 * 60_000,
+  });
+}
+
+/** Say which coins that left the account without a sale were lost for good. */
+export function useSetLostCoins() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (assets: string[]) => putJson<AccountRecord>("/portfolio/record/lost", { assets }),
+    onSuccess: (record) => client.setQueryData(["portfolio", "record"], record),
   });
 }
 
