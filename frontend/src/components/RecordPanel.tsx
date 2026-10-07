@@ -175,8 +175,69 @@ function PastRow({ asset }: { asset: AssetRecord }) {
   );
 }
 
+/** Coins that left the account without a sale: you say which were lost for good. */
+function MovedOut({
+  record,
+  onLost,
+}: {
+  record: AccountRecord;
+  onLost?: (assets: string[]) => void;
+}) {
+  const open = record.assets.filter((a) => a.moved_out_cost >= 1);
+  const lost = record.assets.filter((a) => a.written_off > 0);
+  if (open.length === 0 && lost.length === 0) return null;
+  const names = lost.map((a) => a.asset);
+  return (
+    <div className="well p-4">
+      <h3 className="text-sm font-semibold tracking-tight">Coins that left without being sold</h3>
+      <p className="mt-1 text-sm text-muted">
+        Moved to another wallet, withdrawn, or swapped another way. Tell RADAR which are gone for
+        good, and they are counted as a loss.
+      </p>
+      <ul className="mt-2">
+        {[...open, ...lost].map((asset) => {
+          const gone = asset.written_off > 0;
+          return (
+            <li
+              key={asset.asset}
+              className="flex items-center justify-between gap-3 border-t border-line py-2.5 first:border-t-0"
+            >
+              <span className="min-w-0 text-sm">
+                <span className="font-medium">{asset.asset}</span>{" "}
+                <span className="text-muted">
+                  you paid {formatMoney(gone ? asset.written_off : asset.moved_out_cost)} ·{" "}
+                  {gone ? "counted as lost" : "not counted"}
+                </span>
+              </span>
+              {onLost && (
+                <button
+                  type="button"
+                  className="press shrink-0 rounded-full border border-line px-3 py-1.5 text-xs font-medium hover:text-ink"
+                  onClick={() =>
+                    onLost(gone ? names.filter((n) => n !== asset.asset) : [...names, asset.asset])
+                  }
+                >
+                  {gone ? "Undo" : "It is gone"}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 /** What your trades have made or lost so far, and when you tend to buy and sell. */
-export function RecordPanel({ record, worth }: { record: AccountRecord; worth?: number }) {
+export function RecordPanel({
+  record,
+  worth,
+  onLost,
+}: {
+  record: AccountRecord;
+  worth?: number;
+  onLost?: (assets: string[]) => void;
+}) {
   const total = record.realised + record.unrealised;
   const held = record.assets.filter((a) => a.held);
   const past = record.assets
@@ -208,13 +269,7 @@ export function RecordPanel({ record, worth }: { record: AccountRecord; worth?: 
         <Figure label="Coins that lost money" value={lost} note="added together" />
       </div>
 
-      {record.moved_out_cost >= 1 && (
-        <p className="text-sm text-muted">
-          Not counted either way: coins you paid {formatMoney(record.moved_out_cost)} for left your
-          trading wallet without a sale on record (moved, withdrawn, or swapped another way). If
-          they were lost, your total is that much lower.
-        </p>
-      )}
+      <MovedOut record={record} onLost={onLost} />
 
       {held.length > 0 && (
         <div className="border-t border-line pt-5">

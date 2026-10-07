@@ -395,6 +395,11 @@
               }
             ],
             "title": "Value"
+          },
+          "written_off": {
+            "default": 0.0,
+            "title": "Written Off",
+            "type": "number"
           }
         },
         "required": [
@@ -2001,6 +2006,23 @@
         "title": "LookupIn",
         "type": "object"
       },
+      "LostIn": {
+        "properties": {
+          "assets": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Assets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "assets"
+        ],
+        "title": "LostIn",
+        "type": "object"
+      },
       "MarketResult": {
         "properties": {
           "day_before": {
@@ -2864,6 +2886,11 @@
           },
           "unrealised": {
             "title": "Unrealised",
+            "type": "number"
+          },
+          "written_off": {
+            "default": 0.0,
+            "title": "Written Off",
             "type": "number"
           }
         },
@@ -7520,6 +7547,45 @@
           }
         },
         "summary": "Get Record"
+      }
+    },
+    "/api/v1/portfolio/record/lost": {
+      "put": {
+        "description": "Say which coins that left the account without a sale were lost for good. This\nonly changes how the record adds up; nothing is sent to any exchange.",
+        "operationId": "put_lost_coins_api_v1_portfolio_record_lost_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LostIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Record"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Lost Coins"
       }
     },
     "/api/v1/portfolio/regular-buying": {

@@ -37,6 +37,7 @@ from radar.providers.public import PublicDataError, PublicReader
 log = get_logger(__name__)
 
 NAME = "account_record"
+LOST = "account_lost_coins"
 VERSION = "account-1"
 STORE = Path("data/account")
 SINCE = datetime(2017, 8, 1, tzinfo=UTC)
@@ -243,6 +244,9 @@ class AssetRecord(BaseModel):
     # Cost of units that history still shows but the account no longer has: moved,
     # withdrawn, or swapped in a way the trade history does not list.
     moved_out_cost: float = 0.0
+    # The part of that cost the user has said was lost for good; it is inside the
+    # realised figure once they have.
+    written_off: float = 0.0
 
 
 class Month(BaseModel):
@@ -269,6 +273,7 @@ class Record(BaseModel):
     priced_at_market: int
     # Cost of coins that left without a sale on record, over all coins.
     moved_out_cost: float = 0.0
+    written_off: float = 0.0
 
 
 def collect(
@@ -496,9 +501,49 @@ def held_units(session: Session) -> dict[str, float]:
     return held
 
 
+def with_losses(record: Record, lost: list[str]) -> Record:
+    """The record with the coins named in `lost` counted as lost: what was paid for the
+    units that left without a sale becomes a loss on that coin and in the total."""
+    assets = []
+    total = 0.0
+    for asset in record.assets:
+        cost = asset.moved_out_cost if asset.asset in lost else 0.0
+        if cost <= 0:
+            assets.append(asset)
+            continue
+        total += cost
+        standing = asset.standing.model_copy(update={"realised": asset.standing.realised - cost})
+        assets.append(
+            asset.model_copy(
+                update={"standing": standing, "moved_out_cost": 0.0, "written_off": cost}
+            )
+        )
+    return record.model_copy(
+        update={
+            "assets": assets,
+            "realised": record.realised - total,
+            "moved_out_cost": record.moved_out_cost - total,
+            "written_off": total,
+        }
+    )
+
+
+def lost_coins(session: Session) -> list[str]:
+    """The coins the user has said were lost after leaving the account."""
+    row = relationships.current(session, LOST, None)
+    return [] if row is None else [str(name) for name in row.metrics.get("assets", [])]
+
+
+def set_lost_coins(session: Session, assets: list[str], now: datetime) -> None:
+    names = sorted({name.strip().upper() for name in assets if name.strip()})
+    relationships._store(session, LOST, None, VERSION, {"assets": names}, now.date(), now.date())
+
+
 def stored(session: Session) -> Record | None:
     row = relationships.current(session, NAME, None)
-    return None if row is None else Record.model_validate(row.metrics)
+    if row is None:
+        return None
+    return with_losses(Record.model_validate(row.metrics), lost_coins(session))
 
 
 def run(engine: Engine, now: datetime | None = None) -> int:

@@ -436,6 +436,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/record/lost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Lost Coins
+         * @description Say which coins that left the account without a sale were lost for good. This
+         *     only changes how the record adds up; nothing is sent to any exchange.
+         */
+        put: operations["put_lost_coins_api_v1_portfolio_record_lost_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/regular-buying": {
         parameters: {
             query?: never;
@@ -698,6 +719,11 @@ export interface components {
             usual: components["schemas"]["Usual"] | null;
             /** Value */
             value: number | null;
+            /**
+             * Written Off
+             * @default 0
+             */
+            written_off: number;
         };
         /** BarOut */
         BarOut: {
@@ -1342,6 +1368,11 @@ export interface components {
             /** Ticker */
             ticker: string;
         };
+        /** LostIn */
+        LostIn: {
+            /** Assets */
+            assets: string[];
+        };
         /** MarketResult */
         MarketResult: {
             day_before: components["schemas"]["Share"];
@@ -1643,6 +1674,11 @@ export interface components {
             trades: number;
             /** Unrealised */
             unrealised: number;
+            /**
+             * Written Off
+             * @default 0
+             */
+            written_off: number;
         };
         /**
          * RecordSummary
@@ -3649,6 +3685,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Record"];
+                };
+            };
+        };
+    };
+    put_lost_coins_api_v1_portfolio_record_lost_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LostIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Record"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

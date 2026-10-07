@@ -79,6 +79,11 @@ class WhatIfIn(BaseModel):
     weights: dict[str, float] = Field(max_length=50)
 
 
+class LostIn(BaseModel):
+    # Coins whose units left the account without a sale and are gone for good.
+    assets: list[str] = Field(max_length=100)
+
+
 class RegularBuyingIn(BaseModel):
     # How each purchase is split among assets; the shares are scaled to add up to 100%.
     weights: dict[str, float] = Field(max_length=20)
@@ -147,6 +152,18 @@ def _finish(session: Session, universe: Universe, read: Holdings, *, binance: bo
 def get_record(session: SessionDep) -> account_job.Record:
     """What the holdings cost, what was made, and how the trades were timed, from the
     exchange's own history. Read from the stored result; nothing is fetched here."""
+    record = account_job.stored(session)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No account record yet")
+    return record
+
+
+@router.put("/record/lost", response_model=account_job.Record)
+def put_lost_coins(body: LostIn, session: SessionDep) -> account_job.Record:
+    """Say which coins that left the account without a sale were lost for good. This
+    only changes how the record adds up; nothing is sent to any exchange."""
+    account_job.set_lost_coins(session, body.assets, datetime.now(UTC))
+    session.commit()
     record = account_job.stored(session)
     if record is None:
         raise HTTPException(status_code=404, detail="No account record yet")

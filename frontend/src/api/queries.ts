@@ -190,6 +190,15 @@ export function useAccountRecord() {
   });
 }
 
+/** Say which coins that left the account without a sale were lost for good. */
+export function useSetLostCoins() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (assets: string[]) => putJson<AccountRecord>("/portfolio/record/lost", { assets }),
+    onSuccess: (record) => client.setQueryData(["portfolio", "record"], record),
+  });
+}
+
 /** Save typed-in holdings, the text of a CSV file, or what Binance holds. Each replaces
  *  what was saved. */
 export function useSavePortfolio() {

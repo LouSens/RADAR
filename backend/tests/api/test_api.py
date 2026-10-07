@@ -238,6 +238,7 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/portfolio/import",
         "/api/v1/portfolio/binance",
         "/api/v1/portfolio/record",
+        "/api/v1/portfolio/record/lost",
         "/api/v1/portfolio/target",
         "/api/v1/portfolio/what-if",
         "/api/v1/portfolio/regular-buying",
@@ -269,8 +270,10 @@ def test_api_has_no_trading_routes(client: TestClient) -> None:
         "/api/v1/portfolio/regular-buying",
         "/api/v1/portfolio/lookup",
     ]
-    # The second PUT sets what the portfolio is compared with. It trades nothing.
+    # The first PUT marks coins that left the account as lost, and the third sets
+    # what the portfolio is compared with. Neither trades anything.
     assert [p for p, item in routes.items() if "put" in item] == [
+        "/api/v1/portfolio/record/lost",
         "/api/v1/portfolio",
         "/api/v1/portfolio/target",
     ]
