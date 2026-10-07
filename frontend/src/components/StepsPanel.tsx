@@ -25,77 +25,111 @@ export function stepLine(step: Step): string {
   return `${step.kind === "buy" ? "Buy" : "Sell"} ${formatMoney(step.amount)} of ${shortName(step.name)}`;
 }
 
-function Rungs({ step, by }: { step: Step; by: string }) {
+/**
+ * The purchase drawn as steps down a price line: today's price on the right, each lower
+ * price to its left, with how much to buy at each.
+ */
+export function Ladder({ step }: { step: Step }) {
+  const deepest = Math.max(...step.rungs.map((r) => r.below), 0);
+  const at = (below: number) => (deepest > 0 ? 100 - (below / deepest) * 84 : 50);
+  const last = step.rungs.length - 1;
   return (
-    <ol className="mt-3">
-      {step.rungs.map((rung, i) => (
-        <li
-          key={rung.price}
-          className="flex items-baseline justify-between gap-3 border-t border-line py-2.5 first:border-t-0"
-        >
-          <span className="text-sm">
-            <span className="font-medium">Buy {formatMoney(rung.amount)}</span>{" "}
-            <span className="text-muted">
-              {i === 0
-                ? "now"
-                : `if the price falls ${percent(rung.below)}, to ${formatPrice(rung.price)} or lower`}
+    <div
+      role="img"
+      aria-label={step.rungs
+        .map((r, i) =>
+          i === 0
+            ? `Buy ${formatMoney(r.amount)} now at about ${formatPrice(r.price)}`
+            : `Buy ${formatMoney(r.amount)} at ${formatPrice(r.price)} or lower`,
+        )
+        .join("; ")}
+    >
+      <div className="relative h-14">
+        <span className="absolute inset-x-0 top-1/2 h-px bg-line-strong" />
+        {step.rungs.map((rung, i) => {
+          const align =
+            i === 0 ? "items-end text-right" : i === last ? "items-start" : "items-center";
+          const shift = i === 0 ? "-translate-x-full" : i === last ? "" : "-translate-x-1/2";
+          return (
+            <span
+              key={rung.price}
+              className={`absolute top-0 flex h-full flex-col justify-between ${align} ${shift}`}
+              style={{ left: `${at(rung.below)}%` }}
+            >
+              <span className="num whitespace-nowrap text-xs text-muted">
+                {i === 0 ? "now " : ""}
+                {formatPrice(rung.price)}
+              </span>
+              <span className="num whitespace-nowrap text-sm font-semibold">
+                {formatMoney(rung.amount)}
+              </span>
             </span>
-          </span>
-          {i === 0 && <span className="num shrink-0 text-sm">about {formatPrice(rung.price)}</span>}
-        </li>
-      ))}
+          );
+        })}
+        {step.rungs.map((rung, i) => (
+          <span
+            key={`dot-${rung.price}`}
+            className={`absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full ${
+              i === 0 ? "bg-accent" : "border-2 border-accent bg-[var(--bg)]"
+            }`}
+            style={{ left: `${at(rung.below)}%` }}
+          />
+        ))}
+      </div>
       {step.rungs.length > 1 && (
-        <li className="border-t border-line py-2.5 text-sm text-muted">
-          Whatever is not bought by {formatDate(by)}: buy it that day.
-        </li>
+        <div className="mt-1 flex justify-between text-xs text-faint">
+          <span>← buy more if it falls</span>
+          <span>today</span>
+        </div>
       )}
-    </ol>
+    </div>
   );
 }
 
-function Why({ step }: { step: Step }) {
-  const facts = [
-    {
-      label: "Your plan",
-      value: `It is ${share(step.share_now)} of your account now; your plan says ${share(step.share_plan)}`,
-    },
-  ];
-  if (step.place != null && step.below_high != null) {
-    facts.push({
-      label: "Where the price is",
-      value: `${placeWords(step.place).replace(/^./, (c) => c.toUpperCase())}${
-        step.below_high < -0.005 ? `, ${percent(step.below_high)} below the highest` : ""
-      }`,
-    });
-  }
-  if (step.weekly_swing != null && step.rungs.length > 1) {
-    facts.push({
-      label: "Why these prices",
-      value: `It usually moves about ${percent(step.weekly_swing)} in a week; each step is that far apart`,
-    });
-  }
-  if (step.past) {
-    const dearer = step.past.average_saving < 0;
-    facts.push({
-      label: "What buying in steps did before",
-      value: `Over ${step.past.months} past months it paid ${percent(step.past.average_saving)} ${
-        dearer ? "more" : "less"
-      } on average than buying all at once, and got a lower price in ${Math.round(
-        step.past.cheaper_share * 100,
-      )} months out of 100`,
-    });
-  }
+/** Two marks on one line: the share now and the share the plan asks for. */
+function ShareBar({ step }: { step: Step }) {
+  const reach = Math.max(step.share_now, step.share_plan, 0.01) * 1.15;
   return (
-    <div className="mt-4 border-t border-line pt-3">
-      <p className="label">Why</p>
-      <dl className="facts mt-2">
-        {facts.map((fact) => (
-          <div key={fact.label}>
-            <dt className="label">{fact.label}</dt>
-            <dd>{fact.value}</dd>
-          </div>
-        ))}
-      </dl>
+    <div
+      role="img"
+      aria-label={`${share(step.share_now)} of your account now; your plan says ${share(step.share_plan)}`}
+    >
+      <div className="relative h-2 rounded-full bg-line">
+        <span
+          className="absolute inset-y-0 left-0 rounded-full bg-accent"
+          style={{ width: `${(step.share_now / reach) * 100}%` }}
+        />
+        <span
+          className="absolute top-[-3px] h-[14px] w-0.5 bg-ink"
+          style={{ left: `${(step.share_plan / reach) * 100}%` }}
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-xs text-muted">
+        <span>
+          <span className="num text-ink">{share(step.share_now)}</span> now
+        </span>
+        <span>
+          plan <span className="num text-ink">{share(step.share_plan)}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** A dot on a line from the lowest to the highest price of the last three months. */
+function PlaceLine({ place }: { place: number }) {
+  return (
+    <div role="img" aria-label={`The price is ${placeWords(place)}`}>
+      <div className="relative h-2 rounded-full bg-line">
+        <span
+          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink"
+          style={{ left: `${Math.min(Math.max(place, 0.03), 0.97) * 100}%` }}
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-xs text-muted">
+        <span>3-month low</span>
+        <span>3-month high</span>
+      </div>
     </div>
   );
 }
@@ -103,16 +137,44 @@ function Why({ step }: { step: Step }) {
 function StepCard({ step, by }: { step: Step; by: string }) {
   const buy = step.kind === "buy";
   return (
-    <article className="well p-4">
+    <article className="well flex flex-col gap-4 p-4">
       <h3 className="text-base font-semibold tracking-tight">{stepLine(step)}</h3>
-      {!buy && (
-        <p className="mt-1 text-sm text-muted">
-          It has grown to {share(step.share_now)} of your account; your plan says{" "}
-          {share(step.share_plan)}. Selling this much brings it back.
+      {buy && <Ladder step={step} />}
+      <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
+        <div>
+          <p className="label mb-2">Share of your account</p>
+          <ShareBar step={step} />
+        </div>
+        {step.place != null && (
+          <div>
+            <p className="label mb-2">Where the price is</p>
+            <PlaceLine place={step.place} />
+          </div>
+        )}
+      </div>
+      {buy && step.rungs.length > 1 && (
+        <p className="text-xs text-muted">
+          Not all bought by {formatDate(by)}? Buy the rest that day.
+          {step.weekly_swing != null &&
+            ` Steps are ${percent(step.weekly_swing)} apart: a usual week's move.`}
         </p>
       )}
-      {buy && <Rungs step={step} by={by} />}
-      {buy && <Why step={step} />}
+      {step.past && (
+        <p className="text-xs text-muted">
+          In {step.past.months} past months, buying in steps paid{" "}
+          <span className="num text-ink">
+            {percent(step.past.average_saving)} {step.past.average_saving < 0 ? "more" : "less"}
+          </span>{" "}
+          on average than buying all at once, and got a lower price in{" "}
+          <span className="num text-ink">{Math.round(step.past.cheaper_share * 100)} of 100</span>{" "}
+          months.
+        </p>
+      )}
+      {!buy && (
+        <p className="text-xs text-muted">
+          Selling this much brings it back to its share of your plan.
+        </p>
+      )}
     </article>
   );
 }
@@ -137,15 +199,14 @@ export function StepsPanel({ steps }: { steps: Steps }) {
       headline={
         todo
           ? steps.spare > 0
-            ? `You have ${formatMoney(steps.spare)} more cash than your plan keeps`
+            ? `${formatMoney(steps.spare)} of your cash is spare`
             : "One of your holdings has grown past its share"
           : "Nothing to do right now"
       }
     >
       {!todo && (
         <p className="text-sm text-muted">
-          Your account matches your plan closely enough. This updates when you add cash or prices
-          move.
+          Your account matches your plan. This updates when you add cash or prices move.
         </p>
       )}
       {todo && (
@@ -161,7 +222,7 @@ export function StepsPanel({ steps }: { steps: Steps }) {
             label: "Cash now",
             value: `${formatMoney(steps.cash)}; your plan keeps ${formatMoney(steps.cash_plan)}`,
           },
-          { label: "Worked out", value: "From your balances and your plan, each time you look" },
+          { label: "Updates", value: "Each time you look, from your balances and your plan" },
           { label: "You place the trades", value: "RADAR cannot buy or sell anything" },
         ]}
       >
@@ -175,6 +236,7 @@ export function StepsPanel({ steps }: { steps: Steps }) {
 /** The same thing in one card, for Home. */
 export function StepsCard({ steps }: { steps: Steps }) {
   const todo = steps.has_plan && steps.steps.length > 0;
+  const first = steps.steps.find((s) => s.kind === "buy");
   return (
     <Link
       to="/portfolio/todo"
@@ -189,11 +251,16 @@ export function StepsCard({ steps }: { steps: Steps }) {
             ? steps.steps.map(stepLine).join(" · ")
             : "Nothing to do right now"}
       </p>
-      <p className="mt-1 text-sm text-muted">
+      {todo && first && (
+        <div className="mt-4">
+          <Ladder step={first} />
+        </div>
+      )}
+      <p className="mt-3 text-sm text-muted">
         {!steps.has_plan
           ? "Choose how much of your account goes into each thing"
           : todo
-            ? "See the prices and the reasons"
+            ? "See every price and the reasons"
             : "Your account matches your plan"}
       </p>
     </Link>

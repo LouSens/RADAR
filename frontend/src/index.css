@@ -263,6 +263,7 @@ figcaption {
    own radius, and `position` is declared where it is actually needed. */
 .glass,
 .tile,
+.door,
 .menu-row,
 .capsule {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.022));
@@ -358,6 +359,7 @@ figcaption {
    overrode each other, and a tap on a hovered card did nothing. */
 .press,
 .tile,
+.door,
 .menu-row,
 .back-link,
 .action,
@@ -439,6 +441,67 @@ figcaption {
 .menu-row svg {
   color: var(--faint);
   transition: transform var(--mid) var(--ease);
+}
+
+/* On a wide Home the portfolio sits on a pane of its own, like the card beside it. */
+@container (min-width: 56rem) {
+  .home-pane {
+    height: 100%;
+    padding: 1.75rem;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  /* Shortcuts become rows with the name beside the icon: there is room for words. */
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  .actions .action {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.8rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.025);
+    color: var(--ink);
+  }
+
+  .actions .action-icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 12px;
+  }
+
+  .actions .action-label {
+    font-size: 0.9rem;
+    text-align: left;
+  }
+}
+
+/* A page of a subject as a tile: an icon, its name, and what it answers. */
+.door {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 7.25rem;
+  padding: 1rem 1.05rem 1.05rem;
+  border-radius: 18px;
+  color: var(--ink);
+}
+
+.door-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 12px;
+  color: var(--accent);
+  background: var(--accent-dim);
 }
 
 /* A shortcut on Home: a round icon with its name beneath. */

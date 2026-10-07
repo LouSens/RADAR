@@ -6363,6 +6363,17 @@
       "Wallet": {
         "description": "One of the account's wallets and what Binance says it is worth, in dollars.",
         "properties": {
+          "earning": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earning"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -6370,6 +6381,17 @@
           "value": {
             "title": "Value",
             "type": "number"
+          },
+          "yearly_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yearly Rate"
           }
         },
         "required": [

@@ -79,7 +79,11 @@ def account(
                 json={
                     "rows": [
                         {"asset": "ETH", "totalAmount": "2.00000000"},
-                        {"asset": "USDT", "totalAmount": "80"},
+                        {
+                            "asset": "USDT",
+                            "totalAmount": "80",
+                            "latestAnnualPercentageRate": "0.05",
+                        },
                     ],
                     "total": 2,
                 },
@@ -271,3 +275,13 @@ def test_a_network_failure_is_reported_without_the_request() -> None:
         source.read()
     assert excinfo.value.__cause__ is None
     assert "signature" not in str(excinfo.value)
+
+
+def test_the_earn_wallet_carries_the_dollars_earning_and_the_yearly_rate() -> None:
+    source = BinanceSource(KEY, SECRET, KNOWN, transport=account([]))
+    wallets = {w.name: w for w in source.read_account().wallets}
+    # 80 USDT in flexible savings at 5% a year; the ETH there is not cash.
+    assert wallets["Earn"].earning == 80
+    assert wallets["Earn"].yearly_rate == pytest.approx(0.05)
+    assert wallets["Spot"].yearly_rate is None
+    assert wallets["Spot"].earning is None

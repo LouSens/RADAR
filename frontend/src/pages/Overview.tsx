@@ -12,6 +12,7 @@ import {
 } from "../api/queries";
 import { BriefCard } from "../components/BriefCard";
 import { ComingUp } from "../components/ComingUp";
+import { RadarMark, Wordmark } from "../components/Layout";
 import { StepsCard } from "../components/StepsPanel";
 import { LatestSignals } from "../components/LatestSignals";
 import { MarketCard } from "../components/MarketCard";
@@ -205,13 +206,13 @@ function Hero() {
           </Link>
         </p>
       )}
-      <nav aria-label="Portfolio shortcuts" className="grid grid-cols-4 gap-2 @xl:max-w-xl">
+      <nav aria-label="Portfolio shortcuts" className="actions grid grid-cols-4 gap-2">
         {ACTIONS.map((action) => (
           <Link key={action.to} to={action.to} className="action press">
             <span className="action-icon">
               <ActionIcon>{action.icon}</ActionIcon>
             </span>
-            <span className="text-center text-[11px] font-medium leading-tight @xl:text-xs">
+            <span className="action-label text-center text-[11px] font-medium leading-tight @xl:text-xs">
               {action.label}
             </span>
           </Link>
@@ -237,12 +238,21 @@ export function Overview() {
   return (
     <div className="flex flex-col gap-6 @xl:gap-8">
       <header className="flex items-center justify-between gap-3">
-        <h1 className="text-sm font-semibold tracking-[0.14em]">RADAR</h1>
+        <h1 className="flex items-center gap-2.5 md:hidden">
+          <RadarMark size={26} />
+          <Wordmark />
+          <span className="sr-only">RADAR</span>
+        </h1>
+        <h1 className="title hidden md:block">Home</h1>
         <p className="label">{today}</p>
       </header>
 
-      <Hero />
-      {steps.data && <StepsCard steps={steps.data} />}
+      <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-12 @4xl:gap-6">
+        <div className="home-pane @4xl:col-span-7">
+          <Hero />
+        </div>
+        <div className="@4xl:col-span-5">{steps.data && <StepsCard steps={steps.data} />}</div>
+      </div>
 
       {assets.isError && <Message>Markets are unavailable right now.</Message>}
 
@@ -266,9 +276,13 @@ export function Overview() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 @4xl:grid-cols-2 @xl:gap-6">
-        <ComingUp />
-        <LatestSignals assets={assets.data ?? []} />
+      <div className="grid grid-cols-1 gap-4 @4xl:grid-cols-12 @xl:gap-6">
+        <div className="@4xl:col-span-5">
+          <ComingUp />
+        </div>
+        <div className="@4xl:col-span-7">
+          <LatestSignals assets={assets.data ?? []} />
+        </div>
       </div>
       <BriefCard assets={assets.data ?? []} />
     </div>

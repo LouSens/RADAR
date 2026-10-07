@@ -69,6 +69,8 @@ ALLOWED = frozenset(
 FUNDING_BALANCES = (SPOT_HOST, "/sapi/v1/asset/get-funding-asset")
 READ_BY_POST = frozenset({FUNDING_BALANCES})
 
+# Dollar coins: what flexible savings pays on these is interest on cash.
+DOLLARS = frozenset({"USDT", "USDC", "FDUSD", "USD1", "TUSD", "DAI"})
 # Balances smaller than this many units are dust and are ignored.
 DUST = 1e-8
 TIMEOUT_SECONDS = 15.0
@@ -101,6 +103,10 @@ class Wallet(BaseModel):
 
     name: str
     value: float
+    # For the Earn wallet: the dollars in flexible savings and the yearly rate
+    # Binance is paying on them now, as a fraction. Missing when it does not say.
+    earning: float | None = None
+    yearly_rate: float | None = None
 
 
 class BinanceReading(BaseModel):
@@ -216,10 +222,15 @@ class BinanceSource:
         # Flexible savings, read directly. When that works, the copies of it in the
         # spot wallet are skipped so that nothing is counted twice.
         direct = False
+        earning = interest = 0.0
         try:
             flexible = self._read(FLEXIBLE_SAVINGS, signed=True, clock=clock, extra={"size": "100"})
             for row in flexible.get("rows", []):
                 add(str(row["asset"]), float(row["totalAmount"]))
+                rate = row.get("latestAnnualPercentageRate")
+                if str(row["asset"]) in DOLLARS and rate is not None:
+                    earning += float(row["totalAmount"])
+                    interest += float(row["totalAmount"]) * float(rate)
             direct = True
         except BinanceError as error:
             log.info("binance_flexible_savings_skipped", reason=str(error))
@@ -292,7 +303,14 @@ class BinanceSource:
         try:
             rows = self._read(WALLET_TOTALS, signed=True, clock=clock, extra={"quoteAsset": "USDT"})
             wallets = [
-                Wallet(name=str(row["walletName"]), value=float(row["balance"]))
+                Wallet(
+                    name=str(row["walletName"]),
+                    value=float(row["balance"]),
+                    earning=earning if row["walletName"] == "Earn" and earning > 0 else None,
+                    yearly_rate=(
+                        interest / earning if row["walletName"] == "Earn" and earning > 0 else None
+                    ),
+                )
                 for row in rows
                 if abs(float(row["balance"])) > 0.005
             ]

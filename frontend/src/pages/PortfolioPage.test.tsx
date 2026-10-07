@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, within, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -216,7 +216,7 @@ describe("PortfolioPage", () => {
   state.mutate = vi.fn();
 
   it("opens with figures and pictures, in percent and in money", () => {
-    show("/portfolio");
+    show("/portfolio/risk");
     expect(screen.getAllByText("$10,000")).toHaveLength(2); // the header and the first tile
     expect(screen.getByText("±$160.00")).toBeVisible();
     expect(screen.getByText("±1.60% of the whole")).toBeVisible();
@@ -261,7 +261,7 @@ describe("PortfolioPage", () => {
       covered_value: 10000,
       unmeasured: [{ symbol: "PURR", name: "PURR", weight: 0.2, days: 210 }],
     };
-    show("/portfolio");
+    show("/portfolio/risk");
     expect(screen.getByText(/is not in the risk figures yet/)).toBeVisible();
     expect(screen.getByText(/210 of the 250 days of prices needed/)).toBeVisible();
     expect(screen.getByText(/describe the other 80%/)).toBeVisible();
@@ -275,7 +275,7 @@ describe("PortfolioPage", () => {
       ...ANALYSIS,
       young: [{ symbol: "PURR", name: "PURR", weight: 0.01, days: 208 }],
     };
-    show("/portfolio");
+    show("/portfolio/risk");
     expect(
       screen.getByText(/is new, with 208 days of prices: its risk is a rough estimate/),
     ).toBeVisible();
@@ -285,7 +285,7 @@ describe("PortfolioPage", () => {
   });
 
   it("ties the holdings to the state of their markets", () => {
-    show("/portfolio");
+    show("/portfolio/risk");
     expect(screen.getByText("60% in turbulence")).toBeVisible();
     expect(screen.getByText("turbulent")).toBeVisible();
   });
@@ -416,7 +416,18 @@ describe("PortfolioPage", () => {
 
   it("sends an unknown page back to the summary", () => {
     show("/portfolio/nonsense");
-    expect(screen.getByRole("region", { name: "In brief" })).toBeInTheDocument();
+    expect(screen.getByText("Your account against your plan")).toBeInTheDocument();
+  });
+
+  it("starts with where you stand, your plan and one thing to do, not a wall of cards", () => {
+    show("/portfolio");
+    expect(screen.getByText("Your account against your plan")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Risk" })).toHaveAttribute("href", "/portfolio/risk");
+    const menu = screen.getByRole("navigation", { name: "More" });
+    expect(within(menu).getAllByRole("link")).toHaveLength(6);
+    expect(menu.textContent).toMatch(/My plan/);
+    // The risk tiles have a page of their own now.
+    expect(screen.queryByText("Possible loss in a day")).toBeNull();
   });
 });
 

@@ -55,26 +55,31 @@ const show = (node: React.ReactNode) => render(<MemoryRouter>{node}</MemoryRoute
 describe("StepsPanel", () => {
   afterEach(cleanup);
 
-  it("says how much cash is over the plan and what to buy with it, part by part", () => {
+  it("says how much cash is spare and draws what to buy as steps down a price line", () => {
     const { container } = show(<StepsPanel steps={STEPS} />);
-    expect(screen.getByText("You have $118.00 more cash than your plan keeps")).toBeInTheDocument();
+    expect(screen.getByText("$118.00 of your cash is spare")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Buy $66.00 of PAX Gold" })).toBeInTheDocument();
-    expect(container.textContent).toMatch(/Buy \$22\.00 now/);
-    expect(container.textContent).toMatch(
-      /Buy \$22\.00 if the price falls 2\.2%, to \$4,078 or lower/,
-    );
-    expect(container.textContent).toMatch(/Whatever is not bought by 6 Nov 2026: buy it that day/);
+    expect(
+      screen.getByRole("img", {
+        name: "Buy $22.00 now at about $4,170; Buy $22.00 at $4,078 or lower; Buy $22.00 at $3,987 or lower",
+      }),
+    ).toBeInTheDocument();
+    expect(container.textContent).toMatch(/Not all bought by 6 Nov 2026\? Buy the rest that day/);
+    expect(container.textContent).toMatch(/Steps are 2\.2% apart: a usual week's move/);
   });
 
-  it("gives the reasons in plain words, with what buying in steps cost before", () => {
+  it("shows the reasons as pictures: share against plan, and where the price is", () => {
     const { container } = show(<StepsPanel steps={STEPS} />);
-    expect(container.textContent).toMatch(/It is 3% of your account now; your plan says 20%/);
+    expect(
+      screen.getByRole("img", { name: "3% of your account now; your plan says 20%" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name: "The price is near its lowest price of the last 3 months",
+      }),
+    ).toBeInTheDocument();
     expect(container.textContent).toMatch(
-      /Near its lowest price of the last 3 months, 10\.8% below the highest/,
-    );
-    expect(container.textContent).toMatch(/It usually moves about 2\.2% in a week/);
-    expect(container.textContent).toMatch(
-      /Over 99 past months it paid 0\.5% more on average than buying all at once, and got a lower price in 47 months out of 100/,
+      /In 99 past months, buying in steps paid 0\.5% more on average than buying all at once, and got a lower price in 47 of 100 months/,
     );
     expect(container.textContent).toMatch(/RADAR cannot tell which way a price goes next/);
   });
@@ -82,7 +87,10 @@ describe("StepsPanel", () => {
   it("lists a holding that has grown past its share, to sell back to it", () => {
     const { container } = show(<StepsPanel steps={STEPS} />);
     expect(screen.getByRole("heading", { name: "Sell $40.00 of Bitcoin" })).toBeInTheDocument();
-    expect(container.textContent).toMatch(/grown to 17% of your account; your plan says 7%/);
+    expect(
+      screen.getByRole("img", { name: "17% of your account now; your plan says 7%" }),
+    ).toBeInTheDocument();
+    expect(container.textContent).toMatch(/brings it back to its share of your plan/);
   });
 
   it("says so when there is nothing to do, and asks for a plan when there is none", () => {
@@ -96,7 +104,7 @@ describe("StepsPanel", () => {
     );
   });
 
-  it("puts the same thing in one line on Home, leading to the page", () => {
+  it("puts the same thing in one card on Home, leading to the page", () => {
     show(<StepsCard steps={STEPS} />);
     const card = screen.getByRole("link", { name: "What to do now" });
     expect(card).toHaveAttribute("href", "/portfolio/todo");

@@ -2977,10 +2977,14 @@ export interface components {
          * @description One of the account's wallets and what Binance says it is worth, in dollars.
          */
         Wallet: {
+            /** Earning */
+            earning?: number | null;
             /** Name */
             name: string;
             /** Value */
             value: number;
+            /** Yearly Rate */
+            yearly_rate?: number | null;
         };
         /** WeekendGap */
         WeekendGap: {

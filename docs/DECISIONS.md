@@ -3092,3 +3092,34 @@ states what the test across all coins found.
 
 **Decided.** No screener calls a coin a good buy. The check before buying stays a
 description. Altcoins stay at 1% each.
+
+## 080. Fewer cards, pictures in place of text, and the rate cash earns (2026-10-07)
+
+The user's review: too much text causes fatigue; Portfolio opens on so many cards he
+does not know where to start; "Try a mix" is ambiguous; the desktop view feels empty.
+He also asked whether the rate his cash earns in Binance Earn can be read.
+
+**Done.**
+- Portfolio now opens on three figures (all trades, what cash earns, risk), one picture
+  of the account against the plan (two bars and a line per holding, "8% → 7%"), and one
+  card saying what to do. The nine risk tiles moved to their own page, "Risk at a
+  glance". The menu is grouped by what the user does: What to do, Where you stand, Your
+  risk, Try things. "Try a mix" is listed as "My plan".
+- "What to do now" draws each purchase as steps down a price line, with the share of
+  the account against the plan and the place in the last three months as two small
+  bars. The sentences it replaced are in each picture's label for screen readers.
+- The Earn wallet carries the dollars in flexible savings and the yearly rate Binance
+  is paying now, read from a read already allowed (`latestAnnualPercentageRate`), so no
+  new endpoint. Portfolio shows the rate and about how much a month it comes to.
+
+**Not done, and asked for:** the same treatment for the other text-heavy pages; a
+clearer plan page; the desktop layout and sidebar; type, colour, spacing, shadows and
+motion across the app.
+
+**Stocks with the user's rules** (profitable five years running, low debt, profits that
+turn into cash, gross margin over 30%, a fuller quality review, in a current theme;
+capped at 10% with altcoins). RADAR has no company accounts: Alpaca's market data has
+none. The official free source is the US regulator's filings (SEC EDGAR, company
+facts). That is a new host and needs the user's yes and a test, as every source does.
+The rules are filters on the business, not a forecast of the share price, and would be
+shown that way.

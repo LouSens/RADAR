@@ -1,39 +1,33 @@
 import type { Position, StressResult, Xray } from "../api/client";
 
-const RISK = "Understand your risk";
-const TRY = "Try things";
-
+/** Six pages are offered on Portfolio. The rest are reached from inside one of them. */
 export const PORTFOLIO_SECTIONS = [
   { path: "", label: "Summary" },
-  { path: "todo", label: "What to do now", hint: "Where spare cash goes, and at what prices" },
-  { path: "check", label: "Before you buy", hint: "Is this price high or low right now" },
-  { path: "holdings", label: "Holdings", hint: "See, change or re-read what you hold" },
-  { path: "record", label: "Your trades so far", hint: "What you made or lost, coin by coin" },
-  {
-    path: "sources",
-    label: "Risk by holding",
-    hint: "Which holding carries the risk",
-    group: RISK,
-  },
-  { path: "limits", label: "Possible loss", hint: "How much a bad day could cost", group: RISK },
+  { path: "todo", label: "What to do now", hint: "Where spare cash goes, at what prices" },
+  { path: "check", label: "Before you buy", hint: "Is a price high or low right now" },
+  { path: "try", label: "My plan", hint: "How much goes into each thing" },
+  { path: "record", label: "My trades", hint: "What you made or lost, coin by coin" },
+  { path: "holdings", label: "Holdings", hint: "See or change what you hold" },
+  { path: "risk", label: "My risk", hint: "How much it could move or lose" },
+  { path: "sources", label: "Risk by holding", hint: "Which holding carries the risk", hidden: true },
+  { path: "limits", label: "Possible loss", hint: "How much a bad day could cost", hidden: true },
   {
     path: "ahead",
     label: "Value range ahead",
     hint: "Where its value might be in 1 to 3 months",
-    group: RISK,
+    hidden: true,
   },
   {
     path: "episodes",
     label: "Past crashes",
     hint: "How it would have fared in past crashes",
-    group: RISK,
+    hidden: true,
   },
-  { path: "try", label: "Try a mix", hint: "Change the shares and see the risk", group: TRY },
   {
     path: "buying",
     label: "Regular buying",
     hint: "Simulate buying a fixed amount on a schedule",
-    group: TRY,
+    hidden: true,
   },
 ] as const;
 
