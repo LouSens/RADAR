@@ -121,3 +121,21 @@ def test_buying_tops_and_selling_bottoms_is_told_apart_from_trading_at_random() 
     )
     assert not trading.place_is_unusual(at_random, "buy", prices)
     assert not trading.place_is_unusual(found.head(5), "buy", prices)  # too few to judge
+
+
+def test_the_invented_chaser_is_found_and_the_invented_random_trader_is_not() -> None:
+    rng = np.random.default_rng(4)
+    close = 100 * np.exp(np.cumsum(rng.normal(0, 0.004, 6000)))
+    prices = bars(close)
+    for chases in (True, False):
+        entries = trading.made_up_trades(prices, "SOL", chases=chases, seed=2)
+        found = trading.context(entries, prices, "SOL")
+        buys, sells = trading.habit(found, "buy"), trading.habit(found, "sell")
+        assert buys is not None
+        assert sells is not None
+        assert trading.place_is_unusual(found, "buy", prices) is chases
+        if chases:
+            assert buys.before_day > 0.01
+            assert sells.before_day < -0.01
+            assert buys.place > sells.place + 0.2
+    assert all(e.dollars is not None and e.dollars > 0 for e in entries)

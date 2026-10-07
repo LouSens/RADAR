@@ -170,3 +170,43 @@ def place_is_unusual(trades: pd.DataFrame, kind: str, bars: pd.DataFrame, seed: 
     seen = float(part["place"].mean())
     low_edge, high_edge = np.percentile(draws, [2.5, 97.5])
     return bool(seen < low_edge or seen > high_edge)
+
+
+def made_up_trades(
+    bars: pd.DataFrame, asset: str, chases: bool, trades: int = 120, seed: int = 0
+) -> list[Entry]:
+    """An invented trader on real prices, for notebooks, demos and tests.
+
+    One who `chases` buys in hours after a strong day and sells in hours after a weak
+    one. One who does not trades at random hours. Either way each purchase is 100
+    dollars and each sale is half of what is held, so the two differ only in timing.
+    """
+    rng = np.random.default_rng(seed)
+    close = bars["close"].to_numpy(dtype=float)
+    day_move = pd.Series(close).pct_change(DAY).to_numpy()
+    hours = np.arange(WEEK, len(close) - WEEK)
+    if chases:
+        strong = hours[day_move[hours] > np.nanquantile(day_move[hours], 0.85)]
+        weak = hours[day_move[hours] < np.nanquantile(day_move[hours], 0.15)]
+    else:
+        strong = weak = hours
+    picks = sorted(
+        [(int(h), "buy") for h in rng.choice(strong, size=trades // 2, replace=False)]
+        + [(int(h), "sell") for h in rng.choice(weak, size=trades // 2, replace=False)]
+    )
+    index = pd.DatetimeIndex(bars.index)
+    entries: list[Entry] = []
+    units = 0.0
+    for hour, kind in picks:
+        price = close[hour]
+        at = index[hour].to_pydatetime() + pd.Timedelta(minutes=30)
+        if kind == "buy":
+            entries.append(Entry(at=at, asset=asset, kind="buy", units=100 / price, dollars=100.0))
+            units += 100 / price
+        elif units > 0:
+            sold = units / 2
+            entries.append(
+                Entry(at=at, asset=asset, kind="sell", units=-sold, dollars=sold * price)
+            )
+            units -= sold
+    return entries
