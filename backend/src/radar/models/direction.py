@@ -40,6 +40,11 @@ SUMMARY_INPUTS = (
     "hour_cos",
 )
 
+OUTSIDE_SUMMARY = ("buy_1", "buy_24", "buy_168", "funding", "funding_week", "funding_unusual")
+OUTSIDE_BARS = ("buy", "funding")
+FUNDING_WEEK = 21
+FUNDING_QUARTER = 270
+
 Predict = Callable[[np.ndarray], np.ndarray]
 
 
@@ -94,6 +99,58 @@ def summary_inputs(frame: pd.DataFrame) -> pd.DataFrame:
         index=frame.index,
     )
     return table[list(SUMMARY_INPUTS)]
+
+
+def _buy_share(frame: pd.DataFrame, bars: int) -> pd.Series:
+    """Of the volume of the last `bars` bars, the share bought by the side that crossed
+    the spread. Above a half, buyers were the more eager side."""
+    volume = frame["volume"].rolling(bars).sum()
+    return frame["taker_buy"].rolling(bars).sum() / volume.where(volume > 0)
+
+
+def funding_by_bar(funding: pd.Series, index: pd.DatetimeIndex) -> pd.DataFrame:
+    """For each bar, the funding figures already paid by its opening time: the latest
+    rate, its average over the last week of payments, and how unusual the latest is
+    against the quarter of payments before it."""
+    before = funding.shift(1)
+    spread = before.rolling(FUNDING_QUARTER).std()
+    table = pd.DataFrame(
+        {
+            "funding": funding,
+            "funding_week": funding.rolling(FUNDING_WEEK).mean(),
+            "funding_unusual": (funding - before.rolling(FUNDING_QUARTER).mean())
+            / spread.where(spread > 0),
+        }
+    )
+    table.index = pd.DatetimeIndex(table.index).floor("h")
+    table = table[~table.index.duplicated(keep="last")]
+    return table.reindex(table.index.union(index)).ffill().reindex(index)
+
+
+def outside_summary(frame: pd.DataFrame, funding: pd.Series) -> pd.DataFrame:
+    """Outside inputs for the two simpler models. `frame` also has taker_buy."""
+    paid = funding_by_bar(funding, pd.DatetimeIndex(frame.index))
+    table = pd.DataFrame(
+        {
+            "buy_1": _buy_share(frame, 1),
+            "buy_24": _buy_share(frame, 24),
+            "buy_168": _buy_share(frame, 168),
+            "funding": paid["funding"],
+            "funding_week": paid["funding_week"],
+            "funding_unusual": paid["funding_unusual"],
+        },
+        index=frame.index,
+    )
+    return table[list(OUTSIDE_SUMMARY)]
+
+
+def outside_bars(frame: pd.DataFrame, funding: pd.Series) -> pd.DataFrame:
+    """Outside inputs the LSTM sees bar by bar."""
+    paid = funding_by_bar(funding, pd.DatetimeIndex(frame.index))
+    table = pd.DataFrame(
+        {"buy": _buy_share(frame, 1), "funding": paid["funding"]}, index=frame.index
+    )
+    return table[list(OUTSIDE_BARS)]
 
 
 @dataclass(frozen=True)

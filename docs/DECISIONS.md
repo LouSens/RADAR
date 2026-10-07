@@ -2435,3 +2435,52 @@ of the time spent in cash, and about level in the ones that fell hardest.
 **After.** Whatever passes can become a suggestion under decision 062 with its record.
 What does not pass is not built. The crypto funding and order-flow test stays open until
 the user decides about the blocked hosts.
+
+## 067. Crypto funding rates and buy-side volume: the test, written before running (2026-10-07)
+
+Decision 066 left this out because Binance's hosts did not resolve. The user reported
+the same day that they are reachable again, and they are. This entry adds the crypto
+half of the outside-data test. Nothing below has been run.
+
+**New reads, both public and sent without any key**, through a separate client
+`providers/binance_public.py` that refuses every other host, path and method (a test
+asserts it), so the signed account reader of decision 038 does not grow:
+- `GET api.binance.com/api/v3/klines`: hourly bars, which carry the volume bought by
+  takers as well as the total;
+- `GET fapi.binance.com/fapi/v1/fundingRate`: the funding rate paid every 8 hours on
+  the perpetual contract.
+Kept in the gitignored `data/research/binance/`, not in the app's tables.
+
+**Markets.** BTCUSDT, ETHUSDT, SOLUSDT, hourly, from 2020 or the contract's first day.
+
+**Question.** As decision 062: will the close 24 bars from now be higher?
+
+**Inputs.** *Price only*: the summaries of decision 062. *With outside data*: those,
+plus the share of volume bought by takers over the last 1, 24 and 168 bars; the latest
+funding rate; its average over the last 21 payments (7 days); and how unusual the latest
+rate is against the 270 payments before (90 days). A funding rate is known from its
+payment time. The LSTM gets the same two things bar by bar.
+
+**Models, split, planted check.** As decision 062: LSTM, small trees, logistic
+regression; first 60% train, next 20% validate, last 20% test, with gaps; the planted
+pattern first, and a model that recovers under half of it carries no weight.
+
+**Pass mark.** That of decision 062, for the models *with* outside data: at least 3
+points above always giving the usual answer on test days that do not overlap; a p-value
+that survives Benjamini-Hochberg across the 9 comparisons; ahead in both halves.
+Reported beside it: the same models on price only, and how often the two disagree and
+which was right (McNemar's test), to say whether the outside data added anything. If a
+model passes, it is then judged as a rule against a fixed share of its own average
+(decision 065) before anything is built.
+
+**Crowded funding, as a pattern.** A funding rate 2 or more above its usual (z-score
+over 270 payments) is "crowded long"; minus 2 or less, "crowded short". A case is the
+first payment of each run. Whether the price was higher 1 day and 7 days later is set
+against all hours by the method of decision 051: at least 30 cases, Benjamini-Hochberg
+across the 12 comparisons. Size of the move reported the same way.
+
+**Known weakness.** About 470 separate test days per market; an edge under about 5
+points cannot be seen.
+
+**My guess.** The outside inputs add less than a point. No model passes. Crowded
+funding is followed by larger moves, not by a reliable direction.
