@@ -20,12 +20,6 @@ export const PORTFOLIO_SECTIONS = [
     group: RISK,
   },
   {
-    path: "forces",
-    label: "What it moves with",
-    hint: "Which outside forces it follows",
-    group: RISK,
-  },
-  {
     path: "episodes",
     label: "Past crashes",
     hint: "How it would have fared in past crashes",
@@ -33,21 +27,9 @@ export const PORTFOLIO_SECTIONS = [
   },
   { path: "try", label: "Try a mix", hint: "Change the shares and see the risk", group: TRY },
   {
-    path: "mixes",
-    label: "Compare mixes",
-    hint: "Five ways to split the same holdings",
-    group: TRY,
-  },
-  {
     path: "buying",
     label: "Regular buying",
     hint: "Simulate buying a fixed amount on a schedule",
-    group: TRY,
-  },
-  {
-    path: "sleeves",
-    label: "Core and satellite",
-    hint: "Tag holdings and compare the groups",
     group: TRY,
   },
 ] as const;

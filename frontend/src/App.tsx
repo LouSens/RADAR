@@ -10,7 +10,6 @@ import { Overview } from "./pages/Overview";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { SignalsPage } from "./pages/SignalsPage";
 import { SystemPage } from "./pages/SystemPage";
-import { TogetherPage } from "./pages/TogetherPage";
 
 export function App() {
   useLiveConnection();
@@ -20,7 +19,6 @@ export function App() {
         <Route index element={<Overview />} />
         <Route path="markets" element={<MarketsPage />} />
         <Route path="asset/:slug/:section?" element={<AssetPage />} />
-        <Route path="together/:section?" element={<TogetherPage />} />
         <Route path="portfolio/:section?" element={<PortfolioPage />} />
         <Route path="signals/:type?" element={<SignalsPage />} />
         <Route path="calendar/:event?" element={<CalendarPage />} />

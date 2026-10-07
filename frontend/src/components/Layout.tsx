@@ -102,7 +102,7 @@ function SystemIcon({ good }: { good: boolean }) {
 /** The five places in RADAR. Everything else is reached from one of them. */
 const PLACES = [
   { to: "/", label: "Home", icon: "home", under: [] },
-  { to: "/markets", label: "Markets", icon: "together", under: ["/asset", "/together"] },
+  { to: "/markets", label: "Markets", icon: "together", under: ["/asset"] },
   { to: "/portfolio", label: "Portfolio", icon: "portfolio", under: [] },
   { to: "/signals", label: "Signals", icon: "signals", under: [] },
   { to: "/calendar", label: "Calendar", icon: "calendar", under: [] },

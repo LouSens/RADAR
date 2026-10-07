@@ -245,7 +245,7 @@ describe("PortfolioPage", () => {
       "/portfolio/sources",
       "/portfolio/sources",
       "/portfolio/limits",
-      "/together",
+      "/markets",
       "/portfolio/episodes",
     ]);
   });
@@ -280,25 +280,10 @@ describe("PortfolioPage", () => {
     expect(screen.getByText(/scaled up for these/)).toBeInTheDocument();
   });
 
-  it("ties the holdings to the state of their markets and to the weekend", () => {
-    state.together = {
-      weekend_now: {
-        since: "2026-10-02T20:00:00Z",
-        as_of: "2026-10-04T10:00:00Z",
-        bitcoin_move: Math.log(1.05),
-      },
-      weekends: [
-        { symbol: "SPY", verdict: "moves with", slope: 0.08, weekends: 299, worst_count: 30 },
-      ],
-    };
+  it("ties the holdings to the state of their markets", () => {
     show("/portfolio");
     expect(screen.getByText("60% in turbulence")).toBeVisible();
     expect(screen.getByText("turbulent")).toBeVisible();
-    expect(screen.getByText("Bitcoin since the last close")).toBeVisible();
-    expect(screen.getByText("+5.00%")).toBeInTheDocument();
-    // 8% of a 5% move on a $6,000 holding.
-    expect(screen.getByText(/\$24\.00\s+up/)).toBeVisible();
-    state.together = undefined;
   });
 
   it("offers Binance only when a key is configured, and shows leveraged exposure", () => {
@@ -332,7 +317,6 @@ describe("PortfolioPage", () => {
       "/portfolio",
       "/portfolio/sources",
       "/portfolio/limits",
-      "/together",
       "/portfolio/episodes",
     ]) {
       const { container } = show(path);

@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PortfolioAnalysis } from "../api/client";
-import { RangeAheadPanel, SleevesPanel } from "./AheadPanels";
+import { RangeAheadPanel } from "./AheadPanels";
 
 const state = vi.hoisted(() => ({ mutate: undefined as unknown }));
 vi.mock("../api/queries", () => ({
@@ -129,52 +129,5 @@ describe("RangeAheadPanel", () => {
   it("says why there is no range when the holdings share too little history", () => {
     render(<RangeAheadPanel analysis={{ ...ANALYSIS, simulation: null }} />);
     expect(screen.getByText(/A range needs 250 trading days/)).toBeVisible();
-  });
-});
-
-describe("SleevesPanel", () => {
-  beforeEach(() => {
-    state.mutate = vi.fn();
-  });
-  afterEach(cleanup);
-
-  it("sets each group's share of the money beside its share of the risk", () => {
-    const { container } = render(<SleevesPanel analysis={ANALYSIS} />);
-    expect(
-      screen.getByText("Satellite holdings are 10% of your money and 70% of your risk"),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("img", {
-        name: "Share of your money: Satellite 10%, Not tagged 15%, Cash 75%",
-      }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole("img", {
-        name: "Share of your risk: Satellite 70%, Not tagged 30%, Cash 0%",
-      }),
-    ).toBeVisible();
-    expect(screen.getByText("+2.00% · $8.00")).toBeVisible();
-    expect(screen.getByText("−0.50% · -$2.00")).toBeVisible();
-    expect(container.textContent).toMatch(/not what you earned/);
-    expect(container.textContent).not.toMatch(/\b(buy|sell|you should)\b/i);
-  });
-
-  it("lets every holding but cash be tagged, one at a time", () => {
-    render(<SleevesPanel analysis={ANALYSIS} />);
-    const bitcoin = screen.getByRole("group", { name: "Bitcoin is" });
-    expect(bitcoin.querySelector('[aria-pressed="true"]')).toHaveTextContent("Satellite");
-    expect(screen.queryByRole("group", { name: "Cash is" })).toBeNull();
-
-    const stocks = screen.getByRole("group", { name: "US stocks is" });
-    fireEvent.click(stocks.querySelectorAll("button")[0] as HTMLElement);
-    expect(state.mutate).toHaveBeenCalledWith({ tags: { SPY: "core" } });
-    fireEvent.click(bitcoin.querySelectorAll("button")[2] as HTMLElement);
-    expect(state.mutate).toHaveBeenCalledWith({ tags: { "BTC/USD": null } });
-  });
-
-  it("asks for tags before there is anything to report", () => {
-    render(<SleevesPanel analysis={{ ...ANALYSIS, sleeves: null }} />);
-    expect(screen.getByText("Tag your holdings to see what each group carries")).toBeVisible();
-    expect(screen.queryByText("Share of your risk")).toBeNull();
   });
 });

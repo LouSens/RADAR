@@ -9,9 +9,7 @@ export const SECTIONS = [
   },
   { path: "swings", label: "Daily movement", hint: "How much it is expected to move each day" },
   { path: "risk", label: "Possible loss", hint: "How bad a bad day or week could be" },
-  { path: "drivers", label: "What it moves with", hint: "Which outside forces it follows" },
   { path: "news", label: "News", hint: "Recent headlines and their tone" },
-  { path: "record", label: "Forecast accuracy", hint: "How past forecasts turned out" },
 ] as const;
 
 export type SectionPath = (typeof SECTIONS)[number]["path"];
