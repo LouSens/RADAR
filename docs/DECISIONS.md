@@ -3182,3 +3182,38 @@ counting.
 **Still owed:** the portfolio's risk pages as pictures; the market pages beyond their
 footers; stock screening by the user's rules, from the regulator's filings (he agreed to
 that source on this date); the notebooks 01 to 05.
+
+## 083. Stocks by the user's rules: the reader and the rules are built; the regulator wants a contact (2026-10-07)
+
+The user asked that an individual stock be suggested only if the company was profitable
+five years running, has low debt, turns profit into cash, and has a gross margin over
+30%, with a wider review of quality and a note of the current theme; stocks and altcoins
+together stay within 10% of the account, 1% each. He agreed to the US regulator's public
+filings (SEC EDGAR) as the source of company accounts.
+
+**Which stocks.** Binance's public list of pairs holds about 80 US stocks as tokens,
+named by ticker plus `B` (AAPLB, NVDAB, MSFTB). The user says Binance also sells some
+stocks directly for USDC, tradable in market hours; those are not in the public spot
+list and no read RADAR has shows them. The screen will cover the names in the list.
+
+**Built.**
+- `providers/sec.py`: two public reads, the ticker-to-company list and one file of
+  reported figures per company; `yearly` takes one figure per financial year from annual
+  reports only. `PublicReader` now also allows a fixed path shape, for the one file per
+  company.
+- `analytics/fundamentals.py`: the four rules, each a yes, a no or "cannot tell" with
+  its figure (profit in each of five years; long-term debt repayable from three years
+  of profit; cash from the business at least 80% of profit over five years; gross margin
+  over 30%), and four wider checks that are counted but do not decide (profit at least
+  15% of the owners' money; more profit than five years before; under half the cash
+  spent on buildings and equipment; no more than 5% more shares). "Cannot tell" is never
+  a pass.
+
+**Blocked.** The regulator's site answered 403. It serves these files only to a program
+that gives a contact email in its requests. RADAR will not invent one, and the user's
+address is not sent anywhere without his say. The contact is now a setting,
+`SEC_CONTACT`, sent to that site only; without it no request is made. The screen has
+not been run on real companies yet.
+
+**To be said on the screen when it exists.** These rules describe the business. They do
+not say where the share price goes, and the theme label is a list, not a forecast.

@@ -7,6 +7,7 @@ follows a redirect, and has no way to carry a key. It is separate from the signe
 account reader in `binance.py` on purpose, so that one never grows.
 """
 
+import re
 import time
 from collections.abc import Callable
 from types import TracebackType
@@ -33,18 +34,24 @@ class PublicReader:
         self,
         allowed: frozenset[tuple[str, str]],
         *,
+        patterns: tuple[tuple[str, re.Pattern[str]], ...] = (),
+        user_agent: str | None = None,
         pause_seconds: float = 0.25,
         transport: httpx.BaseTransport | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.allowed = allowed
+        # Paths that carry an identifier, such as one file per company: a host and the
+        # exact shape the path must have.
+        self.patterns = patterns
         self._pause = pause_seconds
         self._sleep = sleep
         self._http = httpx.Client(
             timeout=TIMEOUT_SECONDS,
             follow_redirects=False,
             transport=transport,
-            headers={"Accept": "application/json"},
+            headers={"Accept": "application/json"}
+            | ({"User-Agent": user_agent} if user_agent else {}),
         )
 
     def __enter__(self) -> Self:
@@ -62,7 +69,10 @@ class PublicReader:
         self._http.close()
 
     def get(self, host: str, path: str, params: dict[str, Param]) -> Any:
-        if (host, path) not in self.allowed:
+        listed = (host, path) in self.allowed or any(
+            host == known and shape.fullmatch(path) for known, shape in self.patterns
+        )
+        if not listed:
             raise DisallowedPublicRequestError(f"{host}{path} is not a public source RADAR reads")
         try:
             response = self._http.get(f"https://{host}{path}", params=params)

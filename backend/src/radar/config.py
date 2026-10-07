@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     binance_api_key: SecretStr | None = None
     binance_api_secret: SecretStr | None = None
 
+    # Optional. An email address the US regulator's site (SEC EDGAR) asks every program
+    # to give as a contact before it serves company accounts. Sent to that site only.
+    sec_contact: str | None = None
+
     postgres_user: str | None = None
     postgres_password: SecretStr | None = None
     postgres_db: str | None = None
