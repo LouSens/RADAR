@@ -2132,3 +2132,74 @@ hold.
 **Open, for the user.** What could be built from this: a sizing guide shown as a
 trade-off (shallower falls for less return, and not in gold), and levels shown as places
 where moves get larger rather than where price turns.
+
+## 062. Suggestions are allowed with their basis; and the LSTM test, written before running (2026-10-07)
+
+**The wording rule, changed by the user.** Until now the app could never write "buy",
+"sell" or "you should". The user's decision on 2026-10-07: RADAR still never places a
+trade, but it may give alerts, forecasts and suggestions about adding and reducing,
+provided each one states the rule or theory it rests on and its justification. So:
+
+- A suggestion names its rule ("the close is below its 200-day average"), what following
+  that rule did in the past, over what period and how many cases, and where it failed.
+- A suggestion is only made from a rule that has passed a test written down beforehand.
+  A rule that was tested and did not hold (decision 061: levels as places to add or
+  reduce, direction from RSI, gaps, blocks) is not turned into a suggestion.
+- Nothing is executed, and nothing is worded as a certainty or a promise.
+
+If RADAR is later opened to other people, suggestions about buying and selling may count
+as financial advice where they live. That is a question to settle before opening it, not
+now.
+
+**The LSTM test.** The user asked for an LSTM, or anything that might work, trained,
+validated and tested properly. Nothing below has been run.
+
+*Why hourly bars.* Decision 061 showed a neural network cannot learn even a planted
+pattern from a few thousand days. Hourly bars give about 50,000 examples for Bitcoin and
+about 42,000 each for gold and US stocks.
+
+*Question.* At each hour: will the close one day later (24 bars for Bitcoin, 16 for the
+others, which trade 16 hourly bars a day with extended hours) be higher than now?
+
+*Inputs.* For the LSTM, the last 48 bars, each as: its return, its high-to-low range,
+its volume against the average of the 168 bars before, and the hour of day. For the two
+simpler models, summaries known at the bar: returns over 1, 6, 24, 72 and 168 bars, the
+spread of the last 24 and 168 returns, the volume figure, RSI over 14 bars, and the hour.
+Everything is scaled with the averages of the training part only.
+
+*Split, in time order.* First 60% to train, next 20% to validate (choose when to stop),
+last 20% to test, looked at once. A gap of one horizon plus 48 bars is left out between
+parts so no answer in one part depends on prices in the next.
+
+*Models.* (1) LSTM: one layer of 32 units, dropout 0.2, Adam at 0.001, batches of 256,
+at most 30 passes, stopping when the validation loss has not improved for 5; three
+seeds, averaged. (2) Gradient-boosted trees with the small settings of decision 061.
+(3) Logistic regression. Against: always giving the answer that was more common in the
+training part.
+
+*First, the planted pattern.* Before any real answer is used, each model is run on
+made-up answers (higher 65% of the time when the last 24 bars rose, 40% when they fell).
+A model that recovers less than half of the possible gain on the test part "cannot learn
+here" and its real result carries no weight. If the LSTM fails, its size (16, 32 or 64
+units) and learning rate (0.0003, 0.001, 0.003) may be chosen on the planted validation
+part, never on real answers.
+
+*Pass mark, for "accurate enough to build alerts on".* On test cases one horizon apart
+(so they do not overlap), a model passes in a market only if all of these hold:
+1. it is right at least 3 points more often than the always-one-answer baseline;
+2. the binomial p-value against that baseline survives Benjamini-Hochberg at 5% across
+   the 9 comparisons (3 models, 3 markets);
+3. it is ahead of the baseline in both halves of the test part.
+Reported beside it, not judged: holding only when the model says "higher", decided once
+a day, after 0.1% costs, against holding throughout.
+
+*Known limit.* The test part holds roughly 400 separate days per market, where an edge
+under about 5 points cannot be seen. A model can fail here and still have a small edge;
+an edge that small is not one to send alerts on.
+
+*My guess.* The LSTM will pass the planted check on hourly data. No model will pass the
+mark on real answers; accuracy will sit within 2 points of the baseline.
+
+*After.* If a model passes, alerts are built on it with its record shown. If none does,
+the alerts that remain possible are the damage-side rules of decision 061, which rest on
+how far the portfolio fell, not on calling direction.

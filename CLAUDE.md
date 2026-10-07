@@ -1,6 +1,6 @@
 # RADAR
 
-RADAR is a market outlook web app for Bitcoin, gold, and US stocks, with a portfolio layer on top. It tells the user what state the market is in, what range of outcomes is plausible, and what the news is doing to price. It is an analytics product. It never places trades.
+RADAR is a market outlook web app for Bitcoin, gold, and US stocks, with a portfolio layer on top. It tells the user what state the market is in, what range of outcomes is plausible, and what the news is doing to price. It is an analytics product. It never places trades; it may suggest, with its basis shown (decision 062).
 
 The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant to your task before writing code. Do not import the whole file into every session; open the section you need.
 
@@ -55,7 +55,7 @@ These apply to every change.
 - **UTC everywhere in storage and APIs.** Convert to local time only in the frontend. Store timezone-aware timestamps.
 - **Idempotent ingestion.** Re-running any ingestion job for the same window must produce the same rows (upsert on natural keys).
 - **Raw data is immutable.** The raw layer is append-only. Cleaning writes to a separate layer.
-- **Honest output.** Every conclusion shown in the UI carries its evidence: sample size, time window, and uncertainty. If a signal shows no measurable edge, the UI says so. Never write "buy", "sell", or "you should" in user-facing text; use "signal", "historically", and "probability".
+- **Honest output.** Every conclusion shown in the UI carries its evidence: sample size, time window, and uncertainty. If a signal shows no measurable edge, the UI says so. The app may give alerts, forecasts and suggestions about adding and reducing (the user's decision of 2026-10-07, `docs/DECISIONS.md` 062), but only from a rule that passed a test written down beforehand, and each one states the rule, what following it did in the past, over what period, and where it failed. Never word one as a certainty or a promise, and never turn a rule that was tested and did not hold into a suggestion.
 - **Numbers in generated text come from data.** The daily brief may only contain numbers present in its input payload. A test enforces this.
 
 ## Commands
