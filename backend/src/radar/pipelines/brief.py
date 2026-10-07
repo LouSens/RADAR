@@ -17,7 +17,9 @@ from radar.brief import payload as facts
 from radar.brief import writer as brief_writer
 from radar.db.models import Brief
 from radar.pipelines import portfolio as portfolio_job
+from radar.pipelines import prices as prices_job
 from radar.pipelines import signals as signals_job
+from radar.pipelines import steps as steps_job
 from radar.signals import detect, track
 from radar.universe import Asset, Universe
 
@@ -28,8 +30,27 @@ PORTFOLIO = "PORTFOLIO"
 LEVEL_WORDS = {"low": "low risk", "moderate": "moderate risk", "high": "high risk"}
 
 
+def _today(
+    session: Session, asset: Asset, latest: dict[str, prices_job.Latest], articles: int | None
+) -> facts.TodayFacts | None:
+    """The newest price against the last daily close, or None when either is missing."""
+    close = signals_job.daily_close(session, asset)
+    if asset.symbol not in latest or close.empty:
+        return None
+    price = latest[asset.symbol][0]
+    return facts.TodayFacts(
+        price=_shown(price),
+        change_percent=round((price / float(close.iloc[-1]) - 1) * 100, 1),
+        articles=articles,
+    )
+
+
 def _asset_facts(
-    session: Session, universe: Universe, asset: Asset, now: datetime
+    session: Session,
+    universe: Universe,
+    asset: Asset,
+    now: datetime,
+    latest: dict[str, prices_job.Latest],
 ) -> facts.AssetFacts:
     # The summary route already gathers a market's stored answers; the brief reads the
     # same ones so the two can never disagree.
@@ -58,6 +79,7 @@ def _asset_facts(
     return facts.AssetFacts(
         symbol=asset.symbol,
         name=asset.name.split(" (")[0],
+        today=_today(session, asset, latest, summary.news.articles_24h if summary.news else None),
         state=facts.StateFacts(
             label=summary.state.label,
             probability_percent=min(round(summary.state.probability * 100), 99),
@@ -118,10 +140,19 @@ def _off_target(analysis: portfolio_job.Analysis) -> tuple[str | None, list[str]
     return name, list(dict.fromkeys(found))
 
 
-def _portfolio_facts(session: Session) -> facts.PortfolioFacts | None:
+def _worded(step: steps_job.Step) -> str:
+    return f"{step.name.split(' (')[0]} {brief_writer.money(_shown(step.amount))}"
+
+
+def _portfolio_facts(
+    session: Session, universe: Universe, live: prices_job.Reader, now: datetime
+) -> facts.PortfolioFacts | None:
     analysis = portfolio_job.stored_analysis(session)
     if analysis is None:
         return None
+    todo = steps_job.current(session, universe, live, now)
+    # Where the exchange gives its own total, that is the figure, as on every screen.
+    own = sum(float(w.get("value", 0.0)) for w in portfolio_job.stored_wallets(session))
     level = analysis.risk_level
     month = (
         next((h for h in analysis.simulation.horizons if h.summary.steps == 30), None)
@@ -131,7 +162,10 @@ def _portfolio_facts(session: Session) -> facts.PortfolioFacts | None:
     eighty = next((i for i in month.summary.intervals if i.level == 0.8), None) if month else None
     target, off = _off_target(analysis)
     return facts.PortfolioFacts(
-        value=_shown(analysis.value),
+        value=_shown(own if own > 0 else analysis.value),
+        has_plan=todo.has_plan if todo else False,
+        to_buy=[_worded(s) for s in todo.steps if s.kind == "buy"] if todo else [],
+        to_trim=[_worded(s) for s in todo.steps if s.kind == "trim"] if todo else [],
         risk_level=level.label if level else None,
         times_stocks=round(level.ratio, 2) if level else None,
         typical_day=_shown(analysis.xray.daily_volatility * analysis.covered_value),
@@ -145,12 +179,23 @@ def _portfolio_facts(session: Session) -> facts.PortfolioFacts | None:
     )
 
 
-def build(session: Session, universe: Universe, now: datetime) -> facts.Payload:
-    """Everything the brief may say, from stored results as of now."""
+def build(
+    session: Session,
+    universe: Universe,
+    now: datetime,
+    live: prices_job.Reader = prices_job.none,
+) -> facts.Payload:
+    """Everything the brief may say: stored results, at the prices now. `live` asks for
+    the latest trades; where it gives none, the newest stored hour is used."""
+    primary = list(universe.primary)
+    latest = prices_job.newest(
+        prices_job.stored(session, [a.symbol for a in primary]),
+        live(primary, universe.crypto_location),
+    )
     return facts.Payload(
         day=now.date().isoformat(),
-        assets=[_asset_facts(session, universe, asset, now) for asset in universe.primary],
-        portfolio=_portfolio_facts(session),
+        assets=[_asset_facts(session, universe, asset, now, latest) for asset in primary],
+        portfolio=_portfolio_facts(session, universe, live, now),
     )
 
 
@@ -194,11 +239,12 @@ def run(
     universe: Universe,
     writer: brief_writer.BriefWriter | None = None,
     now: datetime | None = None,
+    live: prices_job.Reader = prices_job.none,
 ) -> int:
     """Write and store today's brief. Returns the number of items stored."""
     moment = now or datetime.now(UTC)
     with Session(engine) as session:
-        payload = build(session, universe, moment)
+        payload = build(session, universe, moment, live)
         items = brief_writer.write(payload, writer)
         stored = store(session, moment.date(), payload, items)
         session.commit()

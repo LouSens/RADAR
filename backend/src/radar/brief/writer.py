@@ -112,6 +112,24 @@ class TemplateWriter:
 
     def asset(self, facts: AssetFacts) -> list[Sentence]:
         out: list[Sentence] = []
+        if facts.today is not None:
+            today = facts.today
+            if today.change_percent == 0:
+                moved = "unchanged since the last close"
+            else:
+                way = "up" if today.change_percent > 0 else "down"
+                moved = f"{way} {number(abs(today.change_percent))}% since the last close"
+            out.append(
+                Sentence(text=f"{facts.name}: {money(today.price)} now, {moved}.", section="price")
+            )
+            if today.articles:
+                out.append(
+                    Sentence(
+                        text=f"{plural(today.articles, 'news article')} in the last "
+                        f"{today.articles_hours} hours.",
+                        section="news",
+                    )
+                )
         if facts.state is not None:
             state = facts.state
             out.append(
@@ -167,6 +185,18 @@ class TemplateWriter:
 
     def portfolio(self, facts: PortfolioFacts) -> list[Sentence]:
         out = [Sentence(text=f"Your portfolio is worth {money(facts.value)}.", section="portfolio")]
+        if facts.to_buy or facts.to_trim:
+            parts = []
+            if facts.to_buy:
+                parts.append("cash over your plan to put in: " + ", ".join(facts.to_buy))
+            if facts.to_trim:
+                parts.append("over its share of your plan: " + ", ".join(facts.to_trim))
+            text = "; ".join(parts) + "."
+            out.append(Sentence(text=text[0].upper() + text[1:], section="todo"))
+        elif facts.has_plan:
+            out.append(
+                Sentence(text="Nothing to do: your account matches your plan.", section="todo")
+            )
         if facts.risk_level is not None and facts.times_stocks is not None:
             typical = (
                 f", about {money(facts.typical_day)} on a typical day"

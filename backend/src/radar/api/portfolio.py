@@ -32,7 +32,6 @@ from radar.pipelines import portfolio as job
 from radar.pipelines import prices as prices_job
 from radar.pipelines import steps as steps_job
 from radar.pipelines.datasets import build_mixed_panel
-from radar.pipelines.signals import daily_close
 from radar.providers import binance_public
 from radar.providers.binance import BinanceError, Leveraged, Wallet
 from radar.providers.public import PublicDataError
@@ -220,20 +219,9 @@ def get_steps(
     for it. If Binance cannot be reached, what is stored is used.
     """
     universe = _follow_exchange(session, universe, binance, finder)
-    analysis = job.stored_analysis(session)
-    if analysis is None:
+    steps = steps_job.current(session, universe, live, datetime.now(UTC))
+    if steps is None:
         raise HTTPException(status_code=404, detail="No portfolio analysis yet")
-    weights = None
-    if analysis.plan is not None and analysis.plan.moves:
-        weights = {m.symbol: m.target_weight for m in analysis.plan.moves if m.symbol != CASH}
-    wanted = set(weights or {}) | {p.symbol for p in analysis.positions if p.symbol != CASH}
-    assets = [a for a in discover.extend(universe, session).assets if a.symbol in wanted]
-    closes = {a.symbol: daily_close(session, a) for a in assets if a.symbol in (weights or {})}
-    # The prices to act on are the prices now, not the last daily close.
-    latest = prices_job.newest(
-        prices_job.stored(session, wanted), live(assets, universe.crypto_location)
-    )
-    steps = steps_job.build(analysis, weights, closes, datetime.now(UTC), latest)
     return steps.model_copy(update={"checked_at": job.read_at(session)})
 
 

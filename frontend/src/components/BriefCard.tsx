@@ -12,11 +12,13 @@ const ASSET_PAGE: Record<string, string> = {
   outlook: "/outlook",
   swings: "/swings",
   risk: "/risk",
+  news: "/news",
 };
 const PORTFOLIO_PAGE: Record<string, string> = {
   portfolio: "/portfolio",
   outlook: "/portfolio/ahead",
   target: "/portfolio/try",
+  todo: "/portfolio/todo",
 };
 
 /** Where the evidence for one sentence lives. */

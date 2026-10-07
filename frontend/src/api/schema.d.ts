@@ -2135,7 +2135,7 @@ export interface components {
              * Section
              * @enum {string}
              */
-            section: "state" | "outlook" | "swings" | "risk" | "signals" | "portfolio" | "target";
+            section: "price" | "news" | "state" | "outlook" | "swings" | "risk" | "signals" | "portfolio" | "target" | "todo";
             /** Text */
             text: string;
         };
