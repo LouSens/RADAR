@@ -11,7 +11,8 @@ import {
 } from "../api/queries";
 import { RangeAheadPanel } from "../components/AheadPanels";
 import { HoldingsEditor } from "../components/HoldingsEditor";
-import { LevelsPanel, targetSummary } from "../components/PlanPanels";
+import { PlanPanel } from "../components/PlanPanel";
+import { targetSummary } from "../components/PlanPanels";
 import { CheckPanel } from "../components/CheckPanel";
 import { PortfolioStart } from "../components/PortfolioStart";
 import { RecordPanel } from "../components/RecordPanel";
@@ -832,7 +833,7 @@ export function PortfolioPage() {
 
       {portfolio.data &&
         section === "try" &&
-        (analysis ? <LevelsPanel analysis={analysis} /> : needsHoldings)}
+        (analysis ? <PlanPanel analysis={analysis} /> : needsHoldings)}
       {portfolio.data && section === "try" && (
         <Link to={`${BASE}/buying`} className="menu-row">
           <span className="min-w-0">

@@ -2981,6 +2981,10 @@ export interface components {
          * @description One of the account's wallets and what Binance says it is worth, in dollars.
          */
         Wallet: {
+            /** Bonus Rate */
+            bonus_rate?: number | null;
+            /** Bonus Up To */
+            bonus_up_to?: number | null;
             /** Earning */
             earning?: number | null;
             /** Name */

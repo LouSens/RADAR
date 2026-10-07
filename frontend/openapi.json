@@ -6385,6 +6385,28 @@
       "Wallet": {
         "description": "One of the account's wallets and what Binance says it is worth, in dollars.",
         "properties": {
+          "bonus_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bonus Rate"
+          },
+          "bonus_up_to": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bonus Up To"
+          },
           "earning": {
             "anyOf": [
               {

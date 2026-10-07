@@ -140,7 +140,11 @@ export function PortfolioStart({
           <Stat
             label="Cash in Earn"
             figure={`${(earn.yearly_rate * 100).toFixed(1)}% a year`}
-            note={`about ${formatMoney((earn.earning * earn.yearly_rate) / 12)} a month on ${formatMoney(earn.earning)}`}
+            note={
+              earn.bonus_rate != null && earn.bonus_up_to != null
+                ? `about ${formatMoney((earn.earning * earn.yearly_rate) / 12)} a month, with a ${(earn.bonus_rate * 100).toFixed(0)}% bonus on the first ${formatMoney(earn.bonus_up_to)} that Binance can change`
+                : `about ${formatMoney((earn.earning * earn.yearly_rate) / 12)} a month on ${formatMoney(earn.earning)}`
+            }
             to="/portfolio/holdings"
           />
         )}
