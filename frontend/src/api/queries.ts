@@ -8,6 +8,7 @@ import {
   type AccountRecord,
   type Asset,
   type Bars,
+  type BuyCheck,
   type Calibration,
   type Health,
   type Holding,
@@ -188,6 +189,16 @@ export function useAccountRecord() {
     queryKey: ["portfolio", "record"],
     queryFn: () => orNull(() => getJson<AccountRecord>("/portfolio/record")),
     staleTime: 60 * 60_000,
+  });
+}
+
+/** Whether a coin's price is high or low against its own recent past. */
+export function useBuyCheck(coin: string) {
+  return useQuery({
+    queryKey: ["portfolio", "check", coin],
+    queryFn: () => orNull(() => getJson<BuyCheck>(`/portfolio/check/${encodeURIComponent(coin)}`)),
+    enabled: coin.length > 1,
+    staleTime: 5 * 60_000,
   });
 }
 

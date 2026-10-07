@@ -93,7 +93,9 @@ export function CheckResult({ check }: { check: BuyCheck }) {
             {check.habit_place != null && (
               <li>
                 Across all your coins, you usually bought at{" "}
-                <span className="num text-ink">{Math.round(check.habit_place * 100)} out of 100</span>{" "}
+                <span className="num text-ink">
+                  {Math.round(check.habit_place * 100)} out of 100
+                </span>{" "}
                 in the week. Today this coin is at{" "}
                 <span className="num text-ink">{Math.round(check.place_week * 100)}</span>.
               </li>
@@ -181,14 +183,17 @@ export function CheckPanel({ suggestions }: { suggestions: string[] }) {
 
       <Caption
         facts={[
-          { label: "What it compares", value: "Today's price with the lowest and highest of each period" },
+          {
+            label: "What it compares",
+            value: "Today's price with the lowest and highest of each period",
+          },
           { label: "Prices from", value: "Binance, hour by hour, read when you ask" },
           { label: "Your record", value: "Your own past purchases on Binance" },
         ]}
       >
-        A low price can go lower and a high price can go higher: RADAR cannot tell which way it
-        goes next. This shows where you are standing before you buy, so that it is a choice
-        and not a habit.
+        A low price can go lower and a high price can go higher: RADAR cannot tell which way it goes
+        next. This shows where you are standing before you buy, so that it is a choice and not a
+        habit.
       </Caption>
     </Panel>
   );

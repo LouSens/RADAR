@@ -812,6 +812,130 @@
         "title": "ChangeOut",
         "type": "object"
       },
+      "Check": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "below_high": {
+            "title": "Below High",
+            "type": "number"
+          },
+          "coin": {
+            "title": "Coin",
+            "type": "string"
+          },
+          "habit_place": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Habit Place"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "move_day": {
+            "title": "Move Day",
+            "type": "number"
+          },
+          "move_week": {
+            "title": "Move Week",
+            "type": "number"
+          },
+          "outcomes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/radar__pipelines__account__Outcome"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "place_month": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Month"
+          },
+          "place_quarter": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place Quarter"
+          },
+          "place_week": {
+            "title": "Place Week",
+            "type": "number"
+          },
+          "price": {
+            "title": "Price",
+            "type": "number"
+          },
+          "weekly_swing": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Swing"
+          },
+          "where": {
+            "enum": [
+              "high",
+              "middle",
+              "low"
+            ],
+            "title": "Where",
+            "type": "string"
+          },
+          "yours": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Yours"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "coin",
+          "as_of",
+          "model_version",
+          "price",
+          "place_week",
+          "place_month",
+          "place_quarter",
+          "move_day",
+          "move_week",
+          "below_high",
+          "weekly_swing",
+          "where"
+        ],
+        "title": "Check",
+        "type": "object"
+      },
       "ClassifierScoreOut": {
         "properties": {
           "accuracy": {
@@ -1483,7 +1607,7 @@
       "HorizonRecord": {
         "properties": {
           "baseline": {
-            "$ref": "#/components/schemas/Outcome"
+            "$ref": "#/components/schemas/radar__signals__track__Outcome"
           },
           "label": {
             "title": "Label",
@@ -1501,7 +1625,7 @@
             "title": "P Value"
           },
           "signal": {
-            "$ref": "#/components/schemas/Outcome"
+            "$ref": "#/components/schemas/radar__signals__track__Outcome"
           },
           "size_p_value": {
             "anyOf": [
@@ -2185,88 +2309,6 @@
         "title": "OutOfSample",
         "type": "object"
       },
-      "Outcome": {
-        "description": "Forward returns over one horizon, for the signal days or for all days.",
-        "properties": {
-          "mean": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mean"
-          },
-          "mean_size": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mean Size"
-          },
-          "n": {
-            "title": "N",
-            "type": "integer"
-          },
-          "quantiles": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "title": "Quantiles",
-            "type": "object"
-          },
-          "share_high": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Share High"
-          },
-          "share_low": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Share Low"
-          },
-          "share_positive": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Share Positive"
-          }
-        },
-        "required": [
-          "n",
-          "share_positive",
-          "share_low",
-          "share_high",
-          "mean",
-          "mean_size",
-          "quantiles"
-        ],
-        "title": "Outcome",
-        "type": "object"
-      },
       "OutlookHorizon": {
         "properties": {
           "expected_worst_drawdown": {
@@ -2859,6 +2901,14 @@
               "$ref": "#/components/schemas/AssetRecord"
             },
             "title": "Assets",
+            "type": "array"
+          },
+          "buy_outcomes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/radar__pipelines__account__Outcome"
+            },
+            "title": "Buy Outcomes",
             "type": "array"
           },
           "fees": {
@@ -6756,6 +6806,35 @@
         "title": "Xray",
         "type": "object"
       },
+      "Yours": {
+        "description": "What the record says about this coin.",
+        "properties": {
+          "held": {
+            "title": "Held",
+            "type": "boolean"
+          },
+          "purchases": {
+            "title": "Purchases",
+            "type": "integer"
+          },
+          "result": {
+            "title": "Result",
+            "type": "number"
+          },
+          "sales": {
+            "title": "Sales",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "purchases",
+          "sales",
+          "result",
+          "held"
+        ],
+        "title": "Yours",
+        "type": "object"
+      },
       "radar__models__allocation__Backtest": {
         "description": "How one way of splitting the holdings behaved, rebalanced monthly. History only.",
         "properties": {
@@ -6929,6 +7008,117 @@
           "last_day"
         ],
         "title": "Backtest",
+        "type": "object"
+      },
+      "radar__pipelines__account__Outcome": {
+        "description": "What followed the purchases made in one part of the week's range.",
+        "properties": {
+          "after_week": {
+            "title": "After Week",
+            "type": "number"
+          },
+          "fell_share": {
+            "title": "Fell Share",
+            "type": "number"
+          },
+          "trades": {
+            "title": "Trades",
+            "type": "integer"
+          },
+          "where": {
+            "title": "Where",
+            "type": "string"
+          }
+        },
+        "required": [
+          "where",
+          "trades",
+          "after_week",
+          "fell_share"
+        ],
+        "title": "Outcome",
+        "type": "object"
+      },
+      "radar__signals__track__Outcome": {
+        "description": "Forward returns over one horizon, for the signal days or for all days.",
+        "properties": {
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "mean_size": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Size"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "quantiles": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Quantiles",
+            "type": "object"
+          },
+          "share_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share High"
+          },
+          "share_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Low"
+          },
+          "share_positive": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Positive"
+          }
+        },
+        "required": [
+          "n",
+          "share_positive",
+          "share_low",
+          "share_high",
+          "mean",
+          "mean_size",
+          "quantiles"
+        ],
+        "title": "Outcome",
         "type": "object"
       }
     }
@@ -7655,6 +7845,46 @@
           }
         },
         "summary": "Read Binance"
+      }
+    },
+    "/api/v1/portfolio/check/{coin}": {
+      "get": {
+        "description": "Whether a coin's price is high or low against its own last week, month and three\nmonths, beside the user's own record. Reads public prices; nothing is traded.",
+        "operationId": "get_check_api_v1_portfolio_check__coin__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "coin",
+            "required": true,
+            "schema": {
+              "title": "Coin",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Check"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Check"
       }
     },
     "/api/v1/portfolio/import": {

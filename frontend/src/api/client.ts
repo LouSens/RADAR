@@ -30,6 +30,7 @@ export type Holding = components["schemas"]["Holding"];
 export type PortfolioAnalysis = components["schemas"]["Analysis"];
 export type AccountRecord = components["schemas"]["Record"];
 export type Steps = components["schemas"]["Steps"];
+export type BuyCheck = components["schemas"]["Check"];
 export type Position = components["schemas"]["Position"];
 export type Xray = components["schemas"]["Xray"];
 export type LimitHorizon = components["schemas"]["LimitHorizon"];

@@ -373,6 +373,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/check/{coin}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Check
+         * @description Whether a coin's price is high or low against its own last week, month and three
+         *     months, beside the user's own record. Reads public prices; nothing is traded.
+         */
+        get: operations["get_check_api_v1_portfolio_check__coin__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/import": {
         parameters: {
             query?: never;
@@ -899,6 +920,47 @@ export interface components {
              */
             topic: "state" | "swings" | "tone";
         };
+        /** Check */
+        Check: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Below High */
+            below_high: number;
+            /** Coin */
+            coin: string;
+            /** Habit Place */
+            habit_place?: number | null;
+            /** Model Version */
+            model_version: string;
+            /** Move Day */
+            move_day: number;
+            /** Move Week */
+            move_week: number;
+            /**
+             * Outcomes
+             * @default []
+             */
+            outcomes: components["schemas"]["radar__pipelines__account__Outcome"][];
+            /** Place Month */
+            place_month: number | null;
+            /** Place Quarter */
+            place_quarter: number | null;
+            /** Place Week */
+            place_week: number;
+            /** Price */
+            price: number;
+            /** Weekly Swing */
+            weekly_swing: number | null;
+            /**
+             * Where
+             * @enum {string}
+             */
+            where: "high" | "middle" | "low";
+            yours?: components["schemas"]["Yours"] | null;
+        };
         /** ClassifierScoreOut */
         ClassifierScoreOut: {
             /** Accuracy */
@@ -1170,12 +1232,12 @@ export interface components {
         };
         /** HorizonRecord */
         HorizonRecord: {
-            baseline: components["schemas"]["Outcome"];
+            baseline: components["schemas"]["radar__signals__track__Outcome"];
             /** Label */
             label: string;
             /** P Value */
             p_value: number | null;
-            signal: components["schemas"]["Outcome"];
+            signal: components["schemas"]["radar__signals__track__Outcome"];
             /** Size P Value */
             size_p_value?: number | null;
             /**
@@ -1459,28 +1521,6 @@ export interface components {
             /** R Squared */
             r_squared: number;
         };
-        /**
-         * Outcome
-         * @description Forward returns over one horizon, for the signal days or for all days.
-         */
-        Outcome: {
-            /** Mean */
-            mean: number | null;
-            /** Mean Size */
-            mean_size: number | null;
-            /** N */
-            n: number;
-            /** Quantiles */
-            quantiles: {
-                [key: string]: number;
-            };
-            /** Share High */
-            share_high: number | null;
-            /** Share Low */
-            share_low: number | null;
-            /** Share Positive */
-            share_positive: number | null;
-        };
         /** OutlookHorizon */
         OutlookHorizon: {
             /** Expected Worst Drawdown */
@@ -1684,6 +1724,11 @@ export interface components {
             as_traded: number;
             /** Assets */
             assets: components["schemas"]["AssetRecord"][];
+            /**
+             * Buy Outcomes
+             * @default []
+             */
+            buy_outcomes: components["schemas"]["radar__pipelines__account__Outcome"][];
             /** Fees */
             fees: number;
             /** First Trade */
@@ -3092,6 +3137,20 @@ export interface components {
             undiversified_volatility: number;
         };
         /**
+         * Yours
+         * @description What the record says about this coin.
+         */
+        Yours: {
+            /** Held */
+            held: boolean;
+            /** Purchases */
+            purchases: number;
+            /** Result */
+            result: number;
+            /** Sales */
+            sales: number;
+        };
+        /**
          * Backtest
          * @description How one way of splitting the holdings behaved, rebalanced monthly. History only.
          */
@@ -3167,6 +3226,42 @@ export interface components {
             n: number;
             /** Reliable */
             reliable: boolean;
+        };
+        /**
+         * Outcome
+         * @description What followed the purchases made in one part of the week's range.
+         */
+        radar__pipelines__account__Outcome: {
+            /** After Week */
+            after_week: number;
+            /** Fell Share */
+            fell_share: number;
+            /** Trades */
+            trades: number;
+            /** Where */
+            where: string;
+        };
+        /**
+         * Outcome
+         * @description Forward returns over one horizon, for the signal days or for all days.
+         */
+        radar__signals__track__Outcome: {
+            /** Mean */
+            mean: number | null;
+            /** Mean Size */
+            mean_size: number | null;
+            /** N */
+            n: number;
+            /** Quantiles */
+            quantiles: {
+                [key: string]: number;
+            };
+            /** Share High */
+            share_high: number | null;
+            /** Share Low */
+            share_low: number | null;
+            /** Share Positive */
+            share_positive: number | null;
         };
     };
     responses: never;
@@ -3702,6 +3797,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PortfolioOut"];
+                };
+            };
+        };
+    };
+    get_check_api_v1_portfolio_check__coin__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                coin: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Check"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

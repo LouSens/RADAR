@@ -42,7 +42,7 @@ function ActionIcon({ children }: { children: ReactNode }) {
 const ACTIONS = [
   {
     to: "/portfolio/sources",
-    label: "Your risk",
+    label: "My risk",
     icon: (
       <>
         <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12V3.5Z" />
@@ -51,8 +51,8 @@ const ACTIONS = [
     ),
   },
   {
-    to: "/portfolio/ahead",
-    label: "What's ahead",
+    to: "/portfolio/check",
+    label: "Before I buy",
     icon: (
       <>
         <path d="M3.5 12h5" />
@@ -62,7 +62,7 @@ const ACTIONS = [
   },
   {
     to: "/portfolio/try",
-    label: "Try a mix",
+    label: "My plan",
     icon: (
       <>
         <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
@@ -72,8 +72,8 @@ const ACTIONS = [
     ),
   },
   {
-    to: "/portfolio/buying",
-    label: "Buy regularly",
+    to: "/portfolio/record",
+    label: "My trades",
     icon: (
       <>
         <path d="M4.5 19.5V15M9.5 19.5v-7.5M14.5 19.5V9M19.5 19.5v-15" />

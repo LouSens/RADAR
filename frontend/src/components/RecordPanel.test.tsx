@@ -66,6 +66,7 @@ const RECORD: AccountRecord = {
   assets: [asset("SOL"), asset("GONE", { held: false, unrealised: null, value: 0 })],
   months: [],
   priced_at_market: 1,
+  buy_outcomes: [],
   moved_out_cost: 0,
   written_off: 0,
 };

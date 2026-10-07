@@ -12,6 +12,7 @@ import {
 import { RangeAheadPanel } from "../components/AheadPanels";
 import { HoldingsEditor } from "../components/HoldingsEditor";
 import { LevelsPanel, targetSummary } from "../components/PlanPanels";
+import { CheckPanel } from "../components/CheckPanel";
 import { RecordPanel } from "../components/RecordPanel";
 import { StepsPanel } from "../components/StepsPanel";
 import { badLabel } from "../components/RiskPanel";
@@ -822,6 +823,20 @@ export function PortfolioPage() {
             {steps === null ? "Add your holdings first, then pick a plan." : "Working it out…"}
           </Message>
         ))}
+
+      {section === "check" && (
+        <CheckPanel
+          suggestions={[
+            ...new Set([
+              ...(record?.assets ?? []).filter((a) => a.held).map((a) => a.asset),
+              "BTC",
+              "PAXG",
+              "ETH",
+              "SOL",
+            ]),
+          ]}
+        />
+      )}
 
       {section === "record" &&
         (record ? (
