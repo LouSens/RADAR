@@ -123,7 +123,7 @@ class IngestionRun(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     job: Mapped[str] = mapped_column(Text)
-    # What was fetched, for example "bars:BTC/USD:1Hour:us-1" or "news:BTCUSD".
+    # What was fetched, for example "bars:BTC/USD:1Hour:us-1" or "news:BTC/USD:BTCUSD".
     key: Mapped[str] = mapped_column(Text)
     window_start: Mapped[datetime] = mapped_column(TZDateTime)
     window_end: Mapped[datetime] = mapped_column(TZDateTime)

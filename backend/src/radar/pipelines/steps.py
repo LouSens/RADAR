@@ -27,6 +27,10 @@ SPARE_SHARE = 0.02
 SPARE_DOLLARS = 5.0
 # The smallest purchase worth listing, and so the smallest part of a ladder.
 SMALLEST = 5.0
+# A holding short of its plan by less than the smallest order, but by at least this
+# share of the order, is still bought, as one smallest order. Dropping it would leave a
+# target the user set with nothing to do about it.
+NOTICED = 0.5
 # A holding is listed to trim when it is this far above its share of the account.
 TRIM_ABOVE = 0.05
 QUARTER = 63
@@ -53,6 +57,8 @@ class Step(BaseModel):
     share_now: float
     share_plan: float
     price: float
+    # When that was the price: the latest trade or stored hour, not the last daily close.
+    priced_at: AwareDatetime | None = None
     # Where the price sits between the lowest and highest close of the last three
     # months, 0 to 1, and how far it is below that high.
     place: float | None = None
@@ -94,12 +100,14 @@ def _past(close: pd.Series, parts: int) -> Past | None:
     )
 
 
-def _reading(close: pd.Series) -> tuple[float | None, float | None, float | None]:
-    """Place in the last three months, distance below their high, and the weekly swing."""
+def _reading(close: pd.Series, price: float) -> tuple[float | None, float | None, float | None]:
+    """Place of `price` in the last three months of closes, its distance below their
+    high, and the weekly swing."""
     if len(close) < QUARTER:
         return None, None, None
     recent = close.iloc[-QUARTER:]
-    last, top, bottom = float(close.iloc[-1]), float(recent.max()), float(recent.min())
+    last = price
+    top, bottom = max(float(recent.max()), price), min(float(recent.min()), price)
     swing = float(close.pct_change().rolling(SWING_DAYS).std().iloc[-1] * np.sqrt(5))
     place = (last - bottom) / (top - bottom) if top > bottom else 0.5
     return place, last / top - 1, swing if np.isfinite(swing) else None
@@ -110,8 +118,15 @@ def build(
     weights: dict[str, float] | None,
     closes: dict[str, pd.Series],
     now: datetime,
+    latest: dict[str, tuple[float, datetime]] | None = None,
 ) -> Steps:
-    """The steps for an analysed portfolio and the plan's shares (cash is the rest)."""
+    """The steps for an analysed portfolio and the plan's shares (cash is the rest).
+
+    `latest` is each asset's newest price and when it was the price. Where it is given
+    the prices to buy at are worked out from it; the daily closes only say how much the
+    price usually moves and where it has been.
+    """
+    latest = latest or {}
     value = analysis.value
     held = {p.symbol: p for p in analysis.positions}
     cash = held[CASH].value if CASH in held else 0.0
@@ -133,17 +148,27 @@ def build(
         symbol: share * value - (held[symbol].value if symbol in held else 0.0)
         for symbol, share in weights.items()
     }
-    short = {symbol: gap for symbol, gap in short.items() if gap >= SMALLEST}
+    short = {symbol: gap for symbol, gap in short.items() if gap >= NOTICED * SMALLEST}
     steps: list[Step] = []
     if short and spare >= max(SPARE_DOLLARS, SPARE_SHARE * value):
         scale = min(1.0, spare / sum(short.values()))
-        for symbol, gap in sorted(short.items(), key=lambda item: -item[1]):
-            amount = gap * scale
+        amounts = {symbol: gap * scale for symbol, gap in short.items()}
+        # A part too small to place as an order is raised to the smallest order, and
+        # the largest part gives up the difference, so the total is never more than
+        # the cash that is over.
+        for symbol in amounts:
+            if NOTICED * SMALLEST <= amounts[symbol] < SMALLEST:
+                largest = max(amounts, key=lambda name: amounts[name])
+                raised = SMALLEST - amounts[symbol]
+                if largest != symbol and amounts[largest] - raised >= SMALLEST:
+                    amounts[largest] -= raised
+                    amounts[symbol] = SMALLEST
+        for symbol, amount in sorted(amounts.items(), key=lambda item: -item[1]):
             close = closes.get(symbol)
             if amount < SMALLEST or close is None or close.empty:
                 continue
-            price = float(close.iloc[-1])
-            place, below_high, swing = _reading(close)
+            price, priced_at = latest.get(symbol, (float(close.iloc[-1]), None))
+            place, below_high, swing = _reading(close, price)
             parts = int(min(3, amount // SMALLEST)) if swing else 1
             steps.append(
                 Step(
@@ -154,6 +179,7 @@ def build(
                     share_now=(held[symbol].value if symbol in held else 0.0) / value,
                     share_plan=weights[symbol],
                     price=price,
+                    priced_at=priced_at,
                     place=place,
                     below_high=below_high,
                     weekly_swing=swing,
@@ -177,7 +203,8 @@ def build(
                     amount=over * value,
                     share_now=position.weight,
                     share_plan=share_plan,
-                    price=position.price,
+                    price=latest.get(symbol, (position.price, None))[0],
+                    priced_at=latest.get(symbol, (position.price, None))[1],
                 )
             )
     return Steps(

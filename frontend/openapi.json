@@ -5118,6 +5118,18 @@
             "title": "Price",
             "type": "number"
           },
+          "priced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priced At"
+          },
           "rungs": {
             "default": [],
             "items": {

@@ -233,7 +233,10 @@ export function useSteps() {
   return useQuery({
     queryKey: ["portfolio", "steps"],
     queryFn: () => orNull(() => getJson<Steps>("/portfolio/steps")),
-    refetchInterval: 10 * 60_000,
+    // The prices to buy at follow the market: asked again every minute and whenever
+    // the window is returned to.
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 }
 

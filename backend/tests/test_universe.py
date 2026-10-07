@@ -44,9 +44,11 @@ def test_default_universe_matches_the_audit_decisions() -> None:
     }
 
     gold = universe.get("GLD")
-    assert gold.news_symbols == ("GLD",)
+    paxg_start = universe.get("PAXG/USD").news_start
+    assert gold.news_symbols == ()
     assert gold.asset_class == "stock"
-    assert gold.news_start == date(2023, 1, 1)
+    assert gold.news_start is None
+    assert paxg_start == date(2023, 1, 1)
     assert universe.get("BTC/USD").news_start == date(2022, 1, 1)
     assert universe.news_symbols == ("BTCUSD", "GLD", "SPY")
     assert universe.timeframes_for(universe.get("SPY")) == ("1Hour", "1Day")

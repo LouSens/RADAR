@@ -24,10 +24,22 @@
 # `uv run python backend/scripts/build_notebooks.py 04_news`.
 
 # %%
+import contextlib
+import io
+import logging
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from IPython.display import display
+
+warnings.filterwarnings("ignore")  # progress-bar notices from the model library
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+from transformers.utils import logging as model_logging
+
+model_logging.disable_progress_bar()
+model_logging.set_verbosity_error()
 from sqlalchemy import select
 
 from radar.db.models import ModelRegistry, NewsArticle, NewsSentiment, NewsSymbol, SentimentAggregate
@@ -127,6 +139,11 @@ fig.tight_layout()
 # Scores pile up near -1, 0 and +1 because the model is usually sure of itself. That is
 # normal for this kind of model and is why the app shows a day's average, never one
 # article's score.
+#
+# In the chart below, look at how each line moves, not where it sits. News about US
+# stocks reads as negative almost all the time while prices rose for years, so the
+# level of a market's tone says more about how its news is written than about the
+# market, and tone is not comparable between markets.
 
 # %%
 fig, axes = plt.subplots(len(MARKETS), 1, figsize=(10, 2.1 * len(MARKETS)))
@@ -244,10 +261,12 @@ test = parts["test"]
 truth, texts = test["sentiment"].tolist(), test["text"].tolist()
 general = sentiment.FinbertScorer()
 tuned = sentiment.FinbertScorer(model_dir, finetune.MODEL_VERSION)
-said = {
-    "general model": [sentiment.LABELS[i] for i in general.probabilities(texts).argmax(axis=1)],
-    "trained model": [sentiment.LABELS[i] for i in tuned.probabilities(texts).argmax(axis=1)],
-}
+with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    # loading the models prints download notices, which are not results
+    said = {
+        "general model": [sentiment.LABELS[i] for i in general.probabilities(texts).argmax(axis=1)],
+        "trained model": [sentiment.LABELS[i] for i in tuned.probabilities(texts).argmax(axis=1)],
+    }
 if DEFAULT_PATH.is_file():
     said["word list"] = Lexicon.load().labels(texts)
 results = {name: classification.report(truth, labels, sentiment.LABELS) for name, labels in said.items()}
@@ -336,8 +355,7 @@ else:
                 "only the general model was right": check["only_first_right"],
                 "only the trained model was right": check["only_second_right"],
                 "could be luck (p)": f"{check['p_value']:.2g}",
-                "decision after the first test": record.get("first_decision", {}).get("reason"),
-                "decision now": record["reason"],
+                "decision": record["reason"],
                 "trained model adopted": record["adopted"],
             },
             name="second test",

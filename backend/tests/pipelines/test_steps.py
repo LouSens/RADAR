@@ -104,3 +104,54 @@ def test_a_market_with_no_prices_is_left_out_and_short_history_gets_one_part() -
     assert len(found.steps[0].rungs) == 1
     assert found.steps[0].past is None
     assert found.steps[0].place is None
+
+
+def test_prices_to_buy_at_come_from_the_newest_price_not_the_last_close() -> None:
+    held = account(cash=300, stocks=50, gold=20, coin=30)
+    at = datetime(2026, 10, 7, 9, 30, tzinfo=UTC)
+    last_close = float(PRICES["PAXG/USD"].iloc[-1])
+    now_price = last_close * 0.9  # the price has fallen a tenth since the close
+    found = steps.build(held, PLAN, PRICES, NOW, {"PAXG/USD": (now_price, at)})
+    by_symbol = {s.symbol: s for s in found.steps}
+    gold, stocks = by_symbol["PAXG/USD"], by_symbol["SPY"]
+    assert gold.price == pytest.approx(now_price)
+    assert gold.priced_at == at
+    assert gold.rungs[0].price == pytest.approx(now_price)
+    assert all(rung.price <= now_price for rung in gold.rungs)
+    # Where it sits is read at the newest price too: lower than at the close.
+    before = {s.symbol: s for s in steps.build(held, PLAN, PRICES, NOW).steps}["PAXG/USD"]
+    assert gold.place is not None
+    assert before.place is not None
+    assert gold.place <= before.place
+    # An asset with no newer price keeps its last close and says no time.
+    assert stocks.price == pytest.approx(float(PRICES["SPY"].iloc[-1]))
+    assert stocks.priced_at is None
+
+
+def test_the_later_of_two_prices_is_the_one_used() -> None:
+    from radar.pipelines import prices
+
+    early = datetime(2026, 10, 7, 9, tzinfo=UTC)
+    late = datetime(2026, 10, 7, 10, tzinfo=UTC)
+    merged = prices.newest(
+        {"A": (1.0, early), "B": (5.0, late)}, {"A": (2.0, late), "B": (4.0, early)}
+    )
+    assert merged == {"A": (2.0, late), "B": (5.0, late)}
+
+
+def test_a_gap_just_under_the_smallest_order_is_still_bought() -> None:
+    # 400 in all, plenty of cash over. The coin should be 28 and is 23.2: 4.8 short,
+    # under the smallest order of 5. It is bought as one order of 5, and the largest
+    # purchase gives up the 0.2, so no more is spent than is short.
+    held = account(cash=306.8, stocks=50, gold=20, coin=23.2)
+    found = steps.build(held, PLAN, PRICES, NOW)
+    by_symbol = {s.symbol: s for s in found.steps}
+    assert by_symbol["BTC/USD"].amount == pytest.approx(steps.SMALLEST)
+    assert len(by_symbol["BTC/USD"].rungs) == 1
+    assert sum(s.amount for s in found.steps) == pytest.approx(50 + 60 + 4.8)
+    assert sum(s.amount for s in found.steps) <= found.spare
+
+
+def test_a_gap_of_pennies_is_left_alone() -> None:
+    held = account(cash=302, stocks=50, gold=20, coin=27)
+    assert "BTC/USD" not in {s.symbol for s in steps.build(held, PLAN, PRICES, NOW).steps}

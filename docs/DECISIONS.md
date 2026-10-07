@@ -3286,3 +3286,54 @@ is read from Binance.
   wallets as bars, and what is held as a list with value and share. What RADAR found is
   shown beside Binance's figure only when money is missing. The form for typing
   holdings is behind "Enter holdings by hand instead".
+
+## 089. Gold's news is linked to PAX Gold; notebooks 01 to 05 reworked (2026-10-07)
+
+**A gap left by decision 087.** After gold became PAX Gold, the Gold market's News page
+was empty. The news backfill kept its progress per news ticker (`news:GLD`), so when two
+assets read the same ticker the second was treated as already done and got no links to
+the articles. Reworking the news notebook is what showed it.
+
+- Progress is now kept per asset and ticker (`news:PAXG/USD:GLD`). The first backfill
+  after this fetches every asset's news once more; rows are upserted, so nothing is
+  duplicated.
+- The gold fund no longer reads news. It is not a market in the app, and PAX Gold reads
+  the fund's ticker.
+- Labelled headlines drawn earlier keep the fund's ticker in their files. That is a
+  record of where they were drawn from and is left as it is; the notebook names them by
+  what they are (gold).
+
+**What the rework of notebook 01 measured, and is now stated there.** PAX Gold has no
+trade in about 4% of hours, so on about 8% of days the size of the day's movement is
+built from too few hours and is flagged. Daily prices are complete. This is a cost of
+decision 087 that was not counted when it was taken. The state and movement models for
+gold are fitted on a measure that is rougher than Bitcoin's or US stocks'. Nothing is
+changed for it here; whether to build gold's daily movement from Binance's hourly PAXG
+prices (a public read already agreed, decision 067) is for the user.
+
+**Notebooks.** 01 to 05 follow the pattern of 06: the answer first, a table of step,
+code and screen, plain labels, one style, and every claim in the closing section backed
+by a count printed in the notebook. 01 is built from `notebooks/src/` like the rest;
+`backend/scripts/build_notebook.py` is removed. Two statements changed because the
+outputs did not support the old ones: all three ways of setting a loss limit held about
+equally often (the old text said the scaled one was the most reliable), and the
+portfolio's 30-day range held 35 times in 39, wider than the 80% it states.
+
+## 090. "What to do now" uses the price now, and does not drop a small gap (2026-10-07)
+
+The user reported two things about the to-do list.
+
+- **Its prices were not the market's.** The prices to buy at were worked out from the
+  last daily close, which for Bitcoin can be most of a day old. They now come from the
+  newest price there is: the latest trade asked of Alpaca's market data when the list
+  is opened (`pipelines/prices.py`; the same host and the same kind of read the app
+  already makes), and failing that the newest stored hour. Each step says when its
+  price is from, and the list is asked for again every minute. Daily closes still say
+  how far apart the steps are and where the price has been.
+- **A target he set for Bitcoin produced no step.** Bitcoin was short of its new target
+  by a little under 5 dollars, and anything under the smallest order was dropped
+  without a word. A gap of at least half the smallest order is now bought as one
+  smallest order, and the largest purchase gives up the difference, so the total stays
+  within the cash that is over. A gap of pennies is still left alone.
+
+Nothing here forecasts or times a purchase; both are corrections to arithmetic.

@@ -2532,6 +2532,8 @@ export interface components {
             place?: number | null;
             /** Price */
             price: number;
+            /** Priced At */
+            priced_at?: string | null;
             /**
              * Rungs
              * @default []

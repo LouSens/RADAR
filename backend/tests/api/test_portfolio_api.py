@@ -12,7 +12,7 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from radar.api.app import create_app
-from radar.api.portfolio import get_asset_finder, get_binance_reader
+from radar.api.portfolio import get_asset_finder, get_binance_reader, get_live_prices
 from radar.db.assets import sync_assets
 from radar.db.models import PortfolioAnalysis, PortfolioHolding
 from radar.features.calendars import nyse_schedule
@@ -99,6 +99,7 @@ def client(engine: Engine, session: Session) -> Iterator[TestClient]:
     # Tests never read a real key from this machine's .env.
     app.dependency_overrides[get_binance_reader] = lambda: None
     app.dependency_overrides[get_asset_finder] = lambda: None
+    app.dependency_overrides[get_live_prices] = lambda: lambda assets, loc: {}
     with TestClient(app) as test_client:
         yield test_client
 

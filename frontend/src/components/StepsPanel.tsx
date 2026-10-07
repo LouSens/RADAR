@@ -140,6 +140,10 @@ function StepCard({ step, by }: { step: Step; by: string }) {
     <article className="well flex flex-col gap-4 p-4">
       <h3 className="text-base font-semibold tracking-tight">{stepLine(step)}</h3>
       {buy && <Ladder step={step} />}
+      <p className="text-xs text-muted">
+        Price now <span className="num text-ink">{formatPrice(step.price)}</span>
+        {step.priced_at ? `, at ${formatDateTime(step.priced_at)}` : ", at the last close"}
+      </p>
       <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
         <div>
           <p className="label mb-2">Share of your account</p>
