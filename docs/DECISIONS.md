@@ -2484,3 +2484,53 @@ points cannot be seen.
 
 **My guess.** The outside inputs add less than a point. No model passes. Crowded
 funding is followed by larger moves, not by a reliable direction.
+
+## 068. Outside data, and adding versus cutting: the result (2026-10-07)
+
+The tests of decisions 066 and 067, run once. Notebook 14 shows every table.
+
+**A. Positioning (CFTC).** Counting each run of crowded weeks once gives 6 to 25 runs
+per market and side in ten years, under the 30 required, so nothing is judged. Holding
+half while crowded long did not beat a fixed share of the same size in gold, US stocks
+or Bitcoin. Noted and not acted on: in US stocks the four weeks after a crowded reading
+on either side ended higher about 40% of the time against 70% for any day, on 25 and 22
+runs.
+
+**B. Adding versus cutting, 27 markets.** Neither alternative passed.
+- Cutting when a gain turns into a loss ended with less than paying in on schedule in
+  20 of 27 markets (p about 0.10), and had a better worst point in 21 of 27. Where the
+  crash was deepest it was far better and ended with more (the oil fund: worst point
+  18% under paid-in instead of 81% under). It is insurance with a price.
+- Waiting for dips ended with less in 21 of 27 markets, more than chance. It did beat
+  leaving the same cash idle, in 24 of 27.
+
+**C. Funding rates and buy-side volume (Binance, three coins, hourly).** All three
+models found the planted pattern. None of 9 passed with the outside data added. Nearest:
+small trees on Bitcoin, 53.5% of 490 test days against 50.0%, with a p-value of 0.07
+before correction and no advantage in the second half. What the outside data added
+ranged from 2.7 points worse to 2.0 better, none distinguishable from chance. Crowded
+funding showed nothing measurable in direction or size in 12 comparisons.
+
+**My guesses, checked.** Right on too few positioning runs, on the sizing rule, on
+neither behaviour passing, and on no model passing. I said cutting would improve the
+worst point in some markets and it did in most. I expected larger moves after crowded
+funding and there were none.
+
+**On the network.** `api.binance.com` and `fapi.binance.com` did not resolve when
+decision 066 was written and did an hour later, when the user said so. Nothing was done
+to get round it in between.
+
+**Where this leaves direction.** Decisions 061, 063, 065 and this one have now tested
+indicators, levels, daily and hourly models, timing rules for cash, positioning, funding
+and buy-side volume. None calls direction. Do not rerun any of them with changed
+settings until one passes. No "buy now" or "sell now" suggestion is built.
+
+**What can be built honestly, for the user to choose from.**
+1. *How much to hold*: for any share of the user's mix, how far it fell and what it
+   earned (belongs with Try a mix).
+2. *A rougher-week warning* from the swings forecast, with its record.
+3. *Paying in*: the regular-buying page can show the three behaviours side by side on
+   the user's own assets, with the break-even exit presented as insurance: what it cost
+   and what it saved.
+Each is a statement about size or risk with a tested record, which is what decision 062
+allows.
