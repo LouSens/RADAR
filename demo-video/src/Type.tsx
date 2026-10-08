@@ -1,6 +1,6 @@
 import { useCurrentFrame } from "remotion";
 import { C, FEATURES, FONT, NUM_FEATURES } from "./theme";
-import { BEAT, EASE, EASE_IN_OUT, tween } from "./timing";
+import { BEAT, EASE, EASE_IN_OUT, HEIGHT, WIDTH, tween } from "./timing";
 
 /**
  * The film's type, all of it. Three sizes and nothing else: a headline, a hero number
@@ -161,4 +161,109 @@ export const hero: React.CSSProperties = {
   lineHeight: 1,
   whiteSpace: "nowrap",
   color: C.ink,
+};
+
+/** How long a question takes to go from the middle of the frame to its dock. */
+export const DOCK = 14;
+/** A question as it arrives, and once it has docked as its page's heading. */
+export const ASK = 180;
+export const DOCKED = 88;
+
+/**
+ * A question: the film's only headlines. It lands large in the middle of the frame, a
+ * word at a time, then shrinks to the top left as the camera goes into the page that
+ * answers it, and leaves by sliding up when the next one arrives. Words between
+ * asterisks take the accent. Without `dock` it stays where it landed.
+ */
+export const Ask: React.FC<{
+  readonly lines: readonly string[];
+  readonly at: number;
+  readonly dock?: number;
+  readonly out?: number;
+  readonly accent?: string;
+  readonly size?: number;
+  /** The middle of the block while it stands in the frame, from the top. */
+  readonly middle?: number;
+  /** The frame each word rises, in order, where they do not simply follow one another. */
+  readonly wordsAt?: readonly number[];
+  /** The middle of the block from the left, where it is not the frame's. */
+  readonly centre?: number;
+  /** Starts the lines at the left margin instead of centring them. */
+  readonly left?: boolean;
+}> = ({
+  lines,
+  at,
+  dock,
+  out,
+  accent = C.accent,
+  size = ASK,
+  middle = HEIGHT / 2,
+  wordsAt,
+  centre = WIDTH / 2,
+  left = false,
+}) => {
+  const frame = useCurrentFrame();
+  const docked =
+    dock === undefined ? 0 : tween(frame, dock, dock + DOCK, 0, 1, EASE_IN_OUT);
+  // At the left margin a block is placed as a docked one is, at its own size.
+  const t = left ? 1 : docked;
+  let next = at;
+  let lit = false;
+  let count = 0;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: centre + (MARGIN - centre) * t,
+        top: left ? middle : middle + (TOP - middle) * t,
+        translate: left ? "0 -50%" : `${-50 * (1 - t)}% ${-50 * (1 - t)}%`,
+        scale: left ? undefined : String(1 + (DOCKED / size - 1) * t),
+        transformOrigin: "0 0",
+        fontFamily: FONT,
+        fontFeatureSettings: FEATURES,
+        fontSize: size,
+        fontWeight: 700,
+        letterSpacing: "-0.03em",
+        lineHeight: 1.05,
+        color: C.ink,
+      }}
+    >
+      {lines.map((line, row) => {
+        const words = line.split(" ");
+        const start = next;
+        next = start + words.length * 4;
+        return (
+          <div
+            key={line + row}
+            style={{
+              display: "flex",
+              gap: "0.24em",
+              whiteSpace: "nowrap",
+              width: "max-content",
+              // In the middle the lines are centred on each other; docked, they start
+              // together at the margin.
+              position: "relative",
+              left: `${50 * (1 - t)}%`,
+              translate: `${-50 * (1 - t)}% 0`,
+            }}
+          >
+            {words.map((raw, i) => {
+              const marked = lit || raw.startsWith("*");
+              lit = marked && !raw.endsWith("*");
+              return (
+                <Rise
+                  key={raw + i}
+                  at={wordsAt?.[count++] ?? start + i * 4}
+                  out={out}
+                  style={{ color: marked ? accent : undefined }}
+                >
+                  {raw.split("*").join("")}
+                </Rise>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
 };

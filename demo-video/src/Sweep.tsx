@@ -9,8 +9,8 @@ const CY = HEIGHT / 2;
 const REACH = Math.hypot(CX, CY) + 40;
 
 /** How far round the line is, in degrees from twelve o'clock, `since` frames in. */
-export const sweepAngle = (since: number): number =>
-  tween(since, 0, SWEEP, 0, 360, EASE_IN_OUT);
+export const sweepAngle = (since: number, length = SWEEP): number =>
+  tween(since, 0, length, 0, 360, EASE_IN_OUT);
 
 /**
  * One side of a change of scene. The line turns once round the centre; the scene coming
@@ -19,15 +19,17 @@ export const sweepAngle = (since: number): number =>
 export const Swept: React.FC<{
   readonly since: number;
   readonly side: "in" | "out";
+  /** How many frames the line takes to go round. */
+  readonly length?: number;
   readonly children: React.ReactNode;
-}> = ({ since, side, children }) => {
-  const angle = sweepAngle(since);
+}> = ({ since, side, length = SWEEP, children }) => {
+  const angle = sweepAngle(since, length);
   const soft = Math.min(angle, 5);
   let mask: string | undefined;
   if (since < 0) {
     mask =
       side === "in" ? "linear-gradient(transparent, transparent)" : undefined;
-  } else if (since >= SWEEP) {
+  } else if (since >= length) {
     mask =
       side === "in" ? undefined : "linear-gradient(transparent, transparent)";
   } else if (side === "in") {
@@ -43,13 +45,17 @@ export const Swept: React.FC<{
 };
 
 /** The line itself, with its fading trail and the faint rings of a radar's face. */
-export const SweepLine: React.FC<{ readonly since: number }> = ({ since }) => {
-  if (since < -4 || since > SWEEP + 6) {
+export const SweepLine: React.FC<{
+  readonly since: number;
+  readonly length?: number;
+}> = ({ since, length = SWEEP }) => {
+  if (since < -4 || since > length + 6) {
     return null;
   }
-  const angle = sweepAngle(since);
+  const angle = sweepAngle(since, length);
   const presence =
-    tween(since, -4, 2, 0, 1) * (1 - tween(since, SWEEP - 3, SWEEP + 6, 0, 1));
+    tween(since, -4, 2, 0, 1) *
+    (1 - tween(since, length - 3, length + 6, 0, 1));
   const trail = 80;
   return (
     <AbsoluteFill style={{ opacity: presence }}>

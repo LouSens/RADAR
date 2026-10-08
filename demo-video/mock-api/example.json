@@ -1,0 +1,26 @@
+{
+  "note": "A made-up example portfolio. The holdings are invented; nothing here comes from an account. `money` is each holding's share of the account now and `plan` its share in the plan; cash is the rest.",
+  "value": 25000.0,
+  "holdings": [
+    {
+      "symbol": "BTC/USD",
+      "money": 0.12,
+      "plan": 0.12
+    },
+    {
+      "symbol": "PAXG/USD",
+      "money": 0.04,
+      "plan": 0.04
+    },
+    {
+      "symbol": "SPY",
+      "money": 0.24,
+      "plan": 0.3
+    },
+    {
+      "symbol": "USD",
+      "money": 0.6,
+      "plan": 0.54
+    }
+  ]
+}
