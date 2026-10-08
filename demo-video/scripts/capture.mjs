@@ -50,7 +50,7 @@ for (const [name, address, id] of PAGES) {
     serveUrl,
     output,
     inputProps,
-    scaleFactor: id === "Desk" ? 2 : 3,
+    scale: id === "Desk" ? 2 : 3,
     timeoutInMilliseconds: 60000,
   });
   console.log(output);
