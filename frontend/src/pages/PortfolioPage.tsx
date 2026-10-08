@@ -730,7 +730,11 @@ export function ExchangeCheck({
         )}
       </div>
       <p className="num mt-2 text-2xl font-semibold tracking-tight">{formatMoney(total)}</p>
-      <div className="mt-4 grid grid-cols-1 gap-x-10 gap-y-5 @xl:grid-cols-2">
+      {/* Two columns only when there are two things to set side by side: with the
+          wallets alone, they take the card's width. */}
+      <div
+        className={`mt-4 grid grid-cols-1 gap-x-10 gap-y-5 ${short ? "@xl:grid-cols-2" : ""}`}
+      >
         {short && found !== undefined && (
           <Bars
             format={formatMoney}
