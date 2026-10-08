@@ -402,3 +402,168 @@ if second is not None and "by_symbol" in second:
 # - All articles come from one provider. Gold's news is the news written about the
 #   gold fund, read for PAX Gold, because the coin has almost none of its own.
 # - With a few hundred test headlines per market, the per-market figures are rough.
+
+# %% [markdown]
+# ## Step 6. Can the training be improved?
+#
+# Five changes are tested here, all on the same train/validation split so the test part
+# stays sealed. The improved run is compared against a baseline that matches the original
+# settings. We also test a stronger base model (DeBERTa-v3). **No test-set result is used to pick between them; the improved settings are
+# adopted into production only if they pass the same McNemar rule as before.**
+#
+# | Change | Reason |
+# |---|---|
+# | Token length 128 → 256 | Training context now matches the 256-token window used at inference |
+# | Layer-wise LR decay (0.9×/layer) | Lower layers hold general language; they need a smaller nudge |
+# | Class-weighted cross-entropy | "Neutral" headlines dominate; weighting improves recall of directional labels |
+# | Label smoothing 0.1 | Softens overconfident predictions, helps macro-F1 on minority classes |
+# | Oversample minority classes | Rebalances the training set so all classes have equal frequency |
+# | Early stopping (patience 3) | Avoids overfitting, allows raising the max epochs safely |
+
+# %%
+import tempfile
+from pathlib import Path as _Path
+
+_train = parts["train"]
+_val = parts["validation"]
+_train_texts, _train_labels = _train["text"].tolist(), _train["sentiment"].tolist()
+_val_texts, _val_labels = _val["text"].tolist(), _val["sentiment"].tolist()
+
+print(
+    f"Training on {len(_train_texts):,} headlines, validating on {len(_val_texts):,}. "
+    f"Label mix (train): {dict(pd.Series(_train_labels).value_counts())}"
+)
+
+# %%
+# -- Baseline run: original settings (epochs capped at 4, no improvements) --
+_baseline_dir = _Path(tempfile.mkdtemp(prefix="radar_baseline_"))
+with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    _baseline_result = finetune.fine_tune(
+        _train_texts, _train_labels, _val_texts, _val_labels,
+        _baseline_dir,
+        epochs=4,
+        learning_rate=2e-5,
+        batch_size=16,
+        seed=13,
+        early_stopping_patience=99,   # disable early stopping for apples-to-apples
+        label_smoothing=0.0,
+        class_weights=False,
+        layer_wise_lr_decay=1.0,      # disable LLRD
+        oversample_minority=False,    # the default is on: a baseline must turn it off
+    )
+print(
+    f"Baseline — best epoch: {_baseline_result.best_epoch}, "
+    f"val accuracy: {max(e.validation_accuracy for e in _baseline_result.epochs):.1%}, "
+    f"val macro-F1: {max(e.validation_macro_f1 for e in _baseline_result.epochs):.3f}"
+)
+
+# %%
+# -- Improved run: all five changes active --
+_improved_dir = _Path(tempfile.mkdtemp(prefix="radar_improved_"))
+with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    _improved_result = finetune.fine_tune(
+        _train_texts, _train_labels, _val_texts, _val_labels,
+        _improved_dir,
+        epochs=20,
+        learning_rate=2e-5,
+        batch_size=16,
+        seed=13,
+        early_stopping_patience=3,
+        label_smoothing=0.1,
+        class_weights=True,
+        layer_wise_lr_decay=0.9,
+        oversample_minority=True,
+    )
+print(
+    f"Improved — best epoch: {_improved_result.best_epoch} "
+    f"(stopped after {len(_improved_result.epochs)} of 20), "
+    f"val accuracy: {max(e.validation_accuracy for e in _improved_result.epochs):.1%}, "
+    f"val macro-F1: {max(e.validation_macro_f1 for e in _improved_result.epochs):.3f}"
+)
+
+# %%
+# -- DeBERTa-v3 run: stronger base model + all improvements --
+_deberta_dir = _Path(tempfile.mkdtemp(prefix="radar_deberta_"))
+with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    _deberta_result = finetune.fine_tune(
+        _train_texts, _train_labels, _val_texts, _val_labels,
+        _deberta_dir,
+        base_model="nickmuchi/deberta-v3-base-finetuned-finance-text-classification",
+        label_names=list(sentiment.LABELS),
+        epochs=20,
+        learning_rate=2e-5,
+        batch_size=16,
+        seed=13,
+        early_stopping_patience=3,
+        label_smoothing=0.1,
+        class_weights=True,
+        layer_wise_lr_decay=0.9,
+        oversample_minority=True,
+    )
+print(
+    f"DeBERTa — best epoch: {_deberta_result.best_epoch} "
+    f"(stopped after {len(_deberta_result.epochs)} of 20), "
+    f"val accuracy: {max(e.validation_accuracy for e in _deberta_result.epochs):.1%}, "
+    f"val macro-F1: {max(e.validation_macro_f1 for e in _deberta_result.epochs):.3f}"
+)
+
+# %%
+# -- Side-by-side learning curves --
+_b = pd.DataFrame([e.model_dump() for e in _baseline_result.epochs]).set_index("epoch")
+_i = pd.DataFrame([e.model_dump() for e in _improved_result.epochs]).set_index("epoch")
+_d = pd.DataFrame([e.model_dump() for e in _deberta_result.epochs]).set_index("epoch")
+
+fig, axes = plt.subplots(1, 3, figsize=(14, 3.5))
+
+axes[0].plot(_b.index, _b["validation_loss"], marker="o", color=MUTED, label="baseline")
+axes[0].plot(_i.index, _i["validation_loss"], marker="o", color=ACCENT, label="improved")
+axes[0].plot(_d.index, _d["validation_loss"], marker="o", color=INK, label="DeBERTa")
+axes[0].axvline(_baseline_result.best_epoch, color=MUTED, ls="--", lw=0.8)
+axes[0].axvline(_improved_result.best_epoch, color=ACCENT, ls="--", lw=0.8)
+axes[0].axvline(_deberta_result.best_epoch, color=INK, ls="--", lw=0.8)
+axes[0].set(title="Validation loss (lower is better)", xlabel="epoch")
+axes[0].legend()
+
+axes[1].plot(_b.index, _b["validation_accuracy"] * 100, marker="o", color=MUTED, label="baseline")
+axes[1].plot(_i.index, _i["validation_accuracy"] * 100, marker="o", color=ACCENT, label="improved")
+axes[1].plot(_d.index, _d["validation_accuracy"] * 100, marker="o", color=INK, label="DeBERTa")
+axes[1].axvline(_baseline_result.best_epoch, color=MUTED, ls="--", lw=0.8)
+axes[1].axvline(_improved_result.best_epoch, color=ACCENT, ls="--", lw=0.8)
+axes[1].axvline(_deberta_result.best_epoch, color=INK, ls="--", lw=0.8)
+axes[1].set(title="Validation accuracy, %", xlabel="epoch")
+axes[1].legend()
+
+axes[2].plot(_b.index, _b["validation_macro_f1"], marker="o", color=MUTED, label="baseline")
+axes[2].plot(_i.index, _i["validation_macro_f1"], marker="o", color=ACCENT, label="improved")
+axes[2].plot(_d.index, _d["validation_macro_f1"], marker="o", color=INK, label="DeBERTa")
+axes[2].axvline(_baseline_result.best_epoch, color=MUTED, ls="--", lw=0.8)
+axes[2].axvline(_improved_result.best_epoch, color=ACCENT, ls="--", lw=0.8)
+axes[2].axvline(_deberta_result.best_epoch, color=INK, ls="--", lw=0.8)
+axes[2].set(title="Macro-F1 (class-balanced, higher is better)", xlabel="epoch")
+axes[2].legend()
+
+fig.tight_layout()
+
+# %%
+# -- Summary comparison table (validation set only — test part stays sealed) --
+def _best_metrics(result) -> dict:
+    best = max(result.epochs, key=lambda e: e.validation_macro_f1)
+    return {
+        "best epoch": best.epoch,
+        "epochs run": len(result.epochs),
+        "val accuracy, %": round(best.validation_accuracy * 100, 1),
+        "val macro-F1": round(best.validation_macro_f1, 3),
+    }
+
+pd.DataFrame({
+    "baseline": _best_metrics(_baseline_result),
+    "improved": _best_metrics(_improved_result),
+    "DeBERTa": _best_metrics(_deberta_result),
+}).T
+
+# %% [markdown]
+# The dashed vertical lines mark the epoch kept for each run. If the improved macro-F1
+# is higher, the settings are worth adopting. Run `uv run radar finetune` to train the
+# production model with the improved settings and let the decision rule (step 5) confirm
+# that the gain holds on truly unseen headlines.
+
