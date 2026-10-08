@@ -4,19 +4,27 @@
   "height": 1080,
   "frames": 900,
   "shots": [
-    { "id": "shot1", "name": "Confidence", "from": 0, "frames": 120 },
-    { "id": "shot2", "name": "The hero test", "from": 120, "frames": 120 },
-    { "id": "shot3", "name": "The rhythm", "from": 240, "frames": 105 },
-    { "id": "shot4", "name": "Silence", "from": 345, "frames": 75 },
-    { "id": "shot5", "name": "The turn", "from": 420, "frames": 75 },
+    { "id": "beat1", "name": "Payday", "from": 0, "frames": 90 },
+    { "id": "beat2", "name": "Everyone has a tip", "from": 90, "frames": 120 },
     {
-      "id": "shot6",
-      "name": "The second measurement",
-      "from": 495,
+      "id": "beat3",
+      "name": "What you already own",
+      "from": 210,
       "frames": 90
     },
-    { "id": "shot7", "name": "Many outcomes", "from": 585, "frames": 165 },
-    { "id": "shot8", "name": "One ball", "from": 750, "frames": 90 },
-    { "id": "shot9", "name": "The name", "from": 840, "frames": 60 }
+    {
+      "id": "beat4",
+      "name": "Where your money sits",
+      "from": 300,
+      "frames": 150
+    },
+    {
+      "id": "beat5",
+      "name": "Where your risk sits",
+      "from": 450,
+      "frames": 150
+    },
+    { "id": "beat6", "name": "This month's money", "from": 600, "frames": 150 },
+    { "id": "beat7", "name": "The name", "from": 750, "frames": 150 }
   ]
 }

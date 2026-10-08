@@ -1,78 +1,55 @@
-import { Series, useVideoConfig } from "remotion";
-import { SHOTS } from "./timing";
-import { ShotLayer } from "./ShotLayer";
+import { AbsoluteFill, Series, useVideoConfig } from "remotion";
+import { Opening } from "./Opening";
+import { Super } from "./Super";
+import { BEATS, COPY, type BeatId } from "./timing";
 
-/**
- * The film: nine shots in order, cuts only. Each shot is its own node so that it can be
- * selected and retimed alone, and takes its length from shots.json.
- */
+/** A beat that is written but not yet built: its line over the app's dark ground. */
+const Pending: React.FC<{ readonly id: BeatId }> = ({ id }) => (
+  <AbsoluteFill style={{ backgroundColor: "#090a0e" }}>
+    <Super text={COPY[id].text} from={COPY[id].from} to={COPY[id].to} />
+  </AbsoluteFill>
+);
+
+/** The film, "Payday": seven beats, thirty seconds. Beats 1 to 3 are one scene. */
 export const Film: React.FC = () => {
   const { fps } = useVideoConfig();
 
   return (
     <Series>
       <Series.Sequence
-        name="1 Confidence"
-        durationInFrames={SHOTS.shot1.frames}
+        name="1 to 3 Payday, tips, what you own"
+        durationInFrames={BEATS.beat4.from}
         premountFor={fps}
       >
-        <ShotLayer id="shot1" />
+        <Opening />
       </Series.Sequence>
       <Series.Sequence
-        name="2 The hero test"
-        durationInFrames={SHOTS.shot2.frames}
+        name="4 Where your money sits"
+        durationInFrames={BEATS.beat4.frames}
         premountFor={fps}
       >
-        <ShotLayer id="shot2" />
+        <Pending id="beat4" />
       </Series.Sequence>
       <Series.Sequence
-        name="3 The rhythm"
-        durationInFrames={SHOTS.shot3.frames}
+        name="5 Where your risk sits"
+        durationInFrames={BEATS.beat5.frames}
         premountFor={fps}
       >
-        <ShotLayer id="shot3" />
+        <Pending id="beat5" />
       </Series.Sequence>
       <Series.Sequence
-        name="4 Silence"
-        durationInFrames={SHOTS.shot4.frames}
+        name="6 This month's money"
+        durationInFrames={BEATS.beat6.frames}
         premountFor={fps}
       >
-        <ShotLayer id="shot4" />
+        <Pending id="beat6" />
       </Series.Sequence>
       <Series.Sequence
-        name="5 The turn"
-        durationInFrames={SHOTS.shot5.frames}
+        name="7 The name"
+        durationInFrames={BEATS.beat7.frames}
         premountFor={fps}
       >
-        <ShotLayer id="shot5" />
-      </Series.Sequence>
-      <Series.Sequence
-        name="6 The second measurement"
-        durationInFrames={SHOTS.shot6.frames}
-        premountFor={fps}
-      >
-        <ShotLayer id="shot6" />
-      </Series.Sequence>
-      <Series.Sequence
-        name="7 Many outcomes"
-        durationInFrames={SHOTS.shot7.frames}
-        premountFor={fps}
-      >
-        <ShotLayer id="shot7" />
-      </Series.Sequence>
-      <Series.Sequence
-        name="8 One ball"
-        durationInFrames={SHOTS.shot8.frames}
-        premountFor={fps}
-      >
-        <ShotLayer id="shot8" />
-      </Series.Sequence>
-      <Series.Sequence
-        name="9 The name"
-        durationInFrames={SHOTS.shot9.frames}
-        premountFor={fps}
-      >
-        <ShotLayer id="shot9" />
+        <Pending id="beat7" />
       </Series.Sequence>
     </Series>
   );

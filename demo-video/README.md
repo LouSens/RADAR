@@ -1,30 +1,41 @@
-# The RADAR film
+# The RADAR film: "Payday"
 
-A 30-second film, "The Calibration Laboratory".
+A 30-second app ad in seven beats. Motion graphics made in Remotion, with a small set of
+3D objects made in Blender.
 
-- Story, timing and copy: [`docs/DEMO_STORYBOARD.md`](../docs/DEMO_STORYBOARD.md)
-- How each shot is made: [`docs/DEMO_STAGING.md`](../docs/DEMO_STAGING.md)
+| Beat | Time | Copy | Built |
+|---|---|---|---|
+| 1 | 0:00 to 0:03 | Payday. | Yes |
+| 2 | 0:03 to 0:07 | Everyone has a tip. | Yes |
+| 3 | 0:07 to 0:10 | RADAR starts with what you already own. | Yes |
+| 4 | 0:10 to 0:15 | Where your money sits. | No |
+| 5 | 0:15 to 0:20 | Where your risk sits. | No |
+| 6 | 0:20 to 0:25 | And where this month's money goes. | No |
+| 7 | 0:25 to 0:30 | No tips. No trades. · RADAR. It measures. You decide. | No |
 
-**State: staged, not built.** The edit holds the nine shots at their lengths with their
-copy over a plain ground. No assets exist yet.
+## Where things are
 
-## How it is made
-
-| Part | Tool |
-|---|---|
-| Reusable 3D objects, each rendered alone on a transparent background | Blender |
-| Composition, movement, depth, the cut, the copy, sound, the final render | Remotion |
-
-No room is modelled in Blender and no shot is rendered there. An earlier pass did both;
-it was the wrong architecture and was removed. It is in the branch history.
-
-## Fixed points
-
-- `src/shots.json` is the one place a shot's start and length are written.
-- `src/timing.ts` holds the approved copy and the frames it is on screen.
-- `src/Super.tsx` is the only typography: small, lower left, fades only.
-- Rendered assets will live in `public/assets/<asset>/`.
+- `blender/build_assets.py` makes the 3D objects, each alone, into `public/assets/` as a
+  `.glb` and a `.png`. That is all Blender does: no shots and no camera moves.
+- `src/shots.json` holds each beat's start and length; `src/timing.ts` holds the copy.
+- `src/Opening.tsx` is beats 1 to 3 as one scene. `src/three/` loads the objects and
+  lights them. `src/Super.tsx` is the only typography.
 
 ```bash
 npm --prefix demo-video run dev
 ```
+
+```bash
+"C:/Program Files/Blender Foundation/Blender 5.0/blender.exe" -b -P demo-video/blender/build_assets.py
+```
+
+## Two things that bite
+
+- **Load objects outside the 3D canvas** (`useObjects`). A render hold placed inside the
+  canvas comes too late and the first frames come out empty.
+- **While rendering, the canvas only draws when told to.** After setting the reflections
+  the scene must be advanced once by hand (`Studio`), or each render tab's first frame is
+  drawn without them and the metal is black.
+
+`docs/DEMO_STORYBOARD.md` and `docs/DEMO_STAGING.md` describe an earlier concept, a
+calibration laboratory, which was set aside for this one.
