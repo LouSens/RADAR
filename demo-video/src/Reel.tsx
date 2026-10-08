@@ -1,30 +1,48 @@
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
+import { LEAVES } from "./Beat";
+import { DeskLayer } from "./DeskLayer";
 import { Grain } from "./Grain";
 import { Ground } from "./Ground";
-import { PINGS, Questions } from "./Questions";
+import { Opening, Questions } from "./Questions";
+import { Both } from "./shots/Both";
+import { Calendar } from "./shots/Calendar";
 import { Close } from "./shots/Close";
+import { Level } from "./shots/Level";
 import { Meet } from "./shots/Meet";
+import { Plan } from "./shots/Plan";
 import { Question } from "./shots/Question";
 import { Range } from "./shots/Range";
 import { Risk } from "./shots/Risk";
+import { Why } from "./shots/Why";
 import { Sound } from "./Sound";
 import { SweepLine, Swept } from "./Sweep";
 import { AssetsProvider, useAssets } from "./three/assets";
-import { FPS, shot } from "./timing";
-import { World } from "./World";
+import { FPS, LAST_SWEEP, SWEEP, shot, type ShotId } from "./timing";
+
+/** The answers, each opening out of a card of Home and going back into it. */
+const ANSWERS: readonly (readonly [ShotId, React.ReactNode])[] = [
+  ["why", <Why key="why" />],
+  ["level", <Level key="level" />],
+  ["range", <Range key="range" />],
+  ["risk", <Risk key="risk" />],
+  ["plan", <Plan key="plan" />],
+  ["calendar", <Calendar key="calendar" />],
+];
 
 /**
- * The reel: one situation, answered by the app. Bitcoin falls (shot 1); the mark is
- * drawn and turns out to be the logo of the app (shot 2); then the film stays inside
- * the app, which is one world (World) with the questions over it (Questions), until the
- * radar line uncovers the end card. The start and length of every shot are in
- * shots.json and nowhere else.
+ * The reel: one situation, answered by the app. Bitcoin falls, as a coin (shot 1); the
+ * radar's line takes the coin away and the mark is drawn, lands as the app's logo, and
+ * Home builds itself round it (shot 2); each question is then answered out of a card of
+ * Home (shots 3 to 8); Home reflows on to the phone (shot 9); and the line uncovers the
+ * end card. Only the coin, the mark and the phone are objects: all the data is the
+ * app's own elements, moving. Every shot's start and length are in shots.json.
  */
 export const Reel: React.FC = () => {
   const frame = useCurrentFrame();
   const assets = useAssets();
   const question = shot("question");
   const meet = shot("meet");
+  const both = shot("both");
   const close = shot("close");
 
   return (
@@ -32,37 +50,50 @@ export const Reel: React.FC = () => {
       <AbsoluteFill>
         <Ground />
         <Sound />
-        <Swept since={frame - close.from} side="out">
-          <Sequence
-            name="1 question"
-            from={question.from}
-            durationInFrames={question.duration}
-            premountFor={FPS}
-          >
-            <Question />
-          </Sequence>
-          {/* The app and the questions run on the film's own clock, not a shot's. */}
-          <World pings={PINGS} />
-          <Sequence
-            name="2 meet"
-            from={meet.from}
-            durationInFrames={meet.duration}
-            premountFor={FPS}
-          >
-            <Meet />
-          </Sequence>
-          {(["range", "risk"] as const).map((id) => (
+        <Swept since={frame - close.from} side="out" length={LAST_SWEEP}>
+          <Swept since={frame - meet.from} side="out">
             <Sequence
-              key={id}
-              name={id}
-              from={shot(id).from}
-              durationInFrames={shot(id).duration}
+              name="1 question"
+              from={question.from}
+              durationInFrames={question.duration + SWEEP}
               premountFor={FPS}
             >
-              {id === "range" ? <Range /> : <Risk />}
+              <Question />
             </Sequence>
-          ))}
-          <Questions />
+            <Opening />
+          </Swept>
+          <Swept since={frame - meet.from} side="in">
+            <Sequence
+              name="9 both"
+              from={both.from}
+              durationInFrames={both.duration + LAST_SWEEP}
+              premountFor={FPS}
+            >
+              <Both />
+            </Sequence>
+            {/* Home and the questions run on the film's own clock, not a shot's. */}
+            <DeskLayer />
+            <Sequence
+              name="2 meet"
+              from={meet.from}
+              durationInFrames={meet.duration}
+              premountFor={FPS}
+            >
+              <Meet />
+            </Sequence>
+            {ANSWERS.map(([id, picture]) => (
+              <Sequence
+                key={id}
+                name={id}
+                from={shot(id).from}
+                durationInFrames={shot(id).duration + LEAVES}
+                premountFor={FPS}
+              >
+                {picture}
+              </Sequence>
+            ))}
+            <Questions />
+          </Swept>
         </Swept>
         <Sequence
           name="10 close"
@@ -70,11 +101,12 @@ export const Reel: React.FC = () => {
           durationInFrames={close.duration}
           premountFor={FPS}
         >
-          <Swept since={frame - close.from} side="in">
+          <Swept since={frame - close.from} side="in" length={LAST_SWEEP}>
             <Close />
           </Swept>
         </Sequence>
-        <SweepLine since={frame - close.from} />
+        <SweepLine since={frame - meet.from} />
+        <SweepLine since={frame - close.from} length={LAST_SWEEP} />
         <Grain />
       </AbsoluteFill>
     </AssetsProvider>

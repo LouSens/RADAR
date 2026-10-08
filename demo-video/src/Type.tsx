@@ -184,6 +184,8 @@ export const Ask: React.FC<{
   readonly middle?: number;
   /** The frame each word rises, in order, where they do not simply follow one another. */
   readonly wordsAt?: readonly number[];
+  /** The middle of the block from the left, where it is not the frame's. */
+  readonly centre?: number;
 }> = ({
   lines,
   at,
@@ -193,6 +195,7 @@ export const Ask: React.FC<{
   size = ASK,
   middle = HEIGHT / 2,
   wordsAt,
+  centre = WIDTH / 2,
 }) => {
   const frame = useCurrentFrame();
   const t =
@@ -204,7 +207,7 @@ export const Ask: React.FC<{
     <div
       style={{
         position: "absolute",
-        left: WIDTH / 2 + (MARGIN - WIDTH / 2) * t,
+        left: centre + (MARGIN - centre) * t,
         top: middle + (TOP - middle) * t,
         translate: `${-50 * (1 - t)}% ${-50 * (1 - t)}%`,
         scale: String(1 + (DOCKED / size - 1) * t),

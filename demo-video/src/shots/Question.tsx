@@ -2,7 +2,7 @@ import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { Quaternion, Vector3 } from "three";
 import fall from "../fixtures/fall.json";
 import { C } from "../theme";
-import { Floor, KIT, Piece, each } from "../three/Kit";
+import { Coin, Floor, KIT, each } from "../three/Kit";
 import { Stage, type MoveAt, type View } from "../three/Stage";
 import { useLoaded } from "../three/assets";
 import { BEAT, EASE, tween } from "../timing";
@@ -25,6 +25,8 @@ const HALF = (KIT.coin.depth * SIZE) / 2;
 /** When the coin stops spinning upright and starts to go over, and when it lands. */
 export const TOPPLE = 26;
 export const LANDS = 41;
+/** When the coin is flicked up and rolls out of the frame. */
+export const EXIT = 88;
 /** The three words, a beat apart: each one tips the coin the other way. */
 export const WORDS = [BEAT * 3, BEAT * 4, BEAT * 5] as const;
 
@@ -36,9 +38,7 @@ const FACE = new Vector3(0, 0, 1);
  * round its rim as a dropped coin does, more quickly as it settles. Each word knocks it
  * again from the other side.
  */
-const coinAt = (
-  frame: number,
-): { position: Vector3; turn: Quaternion } => {
+const coinAt = (frame: number): { position: Vector3; turn: Quaternion } => {
   // Upright, turning about the vertical: fast at first, nearly stopped as it goes over.
   const spin = 6.5 * (1 - Math.exp(-frame / 13)) + frame * 0.02;
   let normal: Vector3;
@@ -64,7 +64,8 @@ const coinAt = (
       if (since < 0) {
         return;
       }
-      const size = (i === 0 ? 0.34 : 0.26) * Math.exp(-since / (i === 0 ? 7 : 9));
+      const size =
+        (i === 0 ? 0.34 : 0.26) * Math.exp(-since / (i === 0 ? 7 : 9));
       // It rolls faster as it settles.
       const round = 0.5 * since + 0.012 * since * since + i * Math.PI + 0.6;
       x += size * Math.cos(round);
@@ -72,15 +73,29 @@ const coinAt = (
     });
     normal = new Vector3(x, 1, z).normalize();
     const since = frame - LANDS;
-    lift = 0.2 * Math.exp(-since / 4) * Math.abs(Math.sin((Math.PI * since) / 6));
+    lift =
+      0.2 * Math.exp(-since / 4) * Math.abs(Math.sin((Math.PI * since) / 6));
+  }
+  // At the end it is flicked up on to its edge and rolls away to the right, out of the
+  // frame: its roll is what the radar's line picks up.
+  const leaving = frame - EXIT;
+  let along = 0;
+  if (leaving > 0) {
+    const up = tween(leaving, 0, 8, 0, 1, EASE);
+    normal = normal.lerp(FACE, up).normalize();
+    along = 0.021 * Math.max(leaving - 3, 0) ** 2;
+    lift *= 1 - up;
   }
   // Its rim rests on the floor: the middle is as high as the tilt puts it.
   const flat = Math.abs(normal.y);
   const height = RADIUS * Math.sqrt(1 - flat * flat) + HALF * flat + lift;
   const turn = new Quaternion().setFromUnitVectors(FACE, normal);
   // The struck face turns about its own middle as well, so the sign is seen to move.
-  turn.multiply(new Quaternion().setFromAxisAngle(FACE, spin * 0.35));
-  return { position: new Vector3(0, height, 0), turn };
+  // Rolling, it turns by as much as it travels.
+  turn.multiply(
+    new Quaternion().setFromAxisAngle(FACE, spin * 0.35 - along / RADIUS),
+  );
+  return { position: new Vector3(along, height, 0), turn };
 };
 
 const move: MoveAt = (frame, scene) => {
@@ -131,7 +146,7 @@ export const Question: React.FC = () => {
     step === 0 || step === HOURS - 1
       ? 0
       : 1 - tween(since, 0, TICK, 0, 1, EASE);
-  const fast = frame >= TOPPLE - 2 && frame < LANDS + 8;
+  const fast = (frame >= TOPPLE - 2 && frame < LANDS + 8) || frame >= EXIT;
 
   return (
     <AbsoluteFill>
@@ -144,7 +159,7 @@ export const Question: React.FC = () => {
         turn={0.6}
       >
         <Floor tint={C.btc}>
-          <Piece kit={assets.kit} piece="coin" name="coin" scale={SIZE} />
+          <Coin kit={assets.kit} name="coin" scale={SIZE} />
         </Floor>
       </Stage>
 

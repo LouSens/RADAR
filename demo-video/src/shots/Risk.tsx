@@ -1,238 +1,253 @@
-import { useMemo } from "react";
-import { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { Color, MeshPhysicalMaterial } from "three";
-import portfolio from "../fixtures/portfolio.json";
-import { C, FEATURES, FONT } from "../theme";
-import { Card, Floor, KIT, Numerals, Piece, glass, type PieceName } from "../three/Kit";
-import { Stage, project, type View } from "../three/Stage";
-import { useLoaded, type Assets } from "../three/assets";
-import { COPY, EASE_IN_OUT, tween } from "../timing";
-import { MARGIN, Rise, Small } from "../Type";
-import { ASKED, Ring } from "../World";
+import { AbsoluteFill, interpolateColors, useCurrentFrame } from "remotion";
+import { ASKED, OPENS, Answer, ZOOM } from "../Beat";
+import film from "../fixtures/film.json";
+import { C } from "../theme";
+import { EASE_IN_OUT, shot, tween } from "../timing";
+import { Rise } from "../Type";
+import { BUTTON, type Box } from "../ui/Desk";
+import { base, formatMoney, label } from "../ui/kit";
+import { DonutRing, Ping, Swatch, Ticker, pop, settle } from "../ui/motion";
 
-/**
- * What each holding is in the scene. A share of 1 would stand `full` units tall; the
- * things are sized by the square root of their share, so that a thing with four times
- * the share looks four times as large on the screen, not sixty-four.
- */
-const THINGS: Readonly<
-  Record<string, { piece: PieceName; unit: number; lift?: number; turn?: number }>
-> = {
-  "BTC/USD": { piece: "coin", unit: 1.5, lift: KIT.coin.radius },
-  "PAXG/USD": { piece: "ingot", unit: 1.55 },
-  SPY: { piece: "stocks", unit: 1.45 },
-  USD: { piece: "chip", unit: 1.6 },
-};
-const sized = (share: number): number => Math.sqrt(share) * 1.55;
-
-const holdings = portfolio.holdings;
+const { holdings } = film.portfolio;
 const bitcoin = holdings[0];
+const MONEY_SHARE = Math.round(bitcoin.money * 100);
+const RISK_SHARE = Math.round(bitcoin.risk * 100);
 
-/** The glass ring the holdings stand on. */
-const RING = 2.5;
+/** The answer's frame: a little taller than usual, so the rings can be 70% of the
+ *  frame's height. */
+const AREA: Box = { x: 128, y: 214, w: 1664, h: 826 };
+/** The rings, in the app's pixels: 378 across, which is 756 in the frame. */
+const RINGS = { x: 26, y: 17, size: 378 } as const;
+const TABLE = { x: 462, y: 104, w: 342, row: 54 } as const;
 
-/** When the holdings arrive, when they change to their share of the risk, and when the
- *  number has finished counting. */
-export const ARRIVE = 2;
-export const MONEY = [ARRIVE, ARRIVE + 12] as const;
-export const RISK = [ASKED + 24, ASKED + 44] as const;
-/** When the picture folds into the card, and when the card stands. */
-export const FOLD = [ASKED + 58, ASKED + 74] as const;
-
-const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
-
-/** A slow turn round the ring the whole time, from a little above. */
-const camera = (frame: number): View => {
-  const round = -0.25 + frame * 0.0035;
-  const up = tween(frame, FOLD[0] - 4, FOLD[1] + 6, 0, 1, EASE_IN_OUT);
-  const far = 13.4 - frame * 0.014;
-  return {
-    position: [Math.sin(round) * far, 4.4 - up * 2.1, Math.cos(round) * far],
-    target: [0, 1.75 - up * 0.35, 0],
-    focus: [0, 1, 0],
-    aperture: 0.045,
-    fov: 30,
-  };
-};
-
-/** Where the middle of the number stands. */
-const NUMBER = { y: 3.05, tall: 1.2 } as const;
-const CARD = { width: 6.6 } as const;
-const CARD_TALL = (CARD.width * 310) / 738;
-const Scene: React.FC<{
-  readonly assets: Assets;
-  readonly frame: number;
-  readonly fps: number;
-}> = ({ assets, frame, fps }) => {
-  const ring = useMemo(() => glass("#9fb7c4", { glow: 0.04, rough: 0.12 }), []);
-  const figure = useMemo(
-    () =>
-      new MeshPhysicalMaterial({
-        color: "#eef0f6",
-        roughness: 0.22,
-        clearcoat: 1,
-        clearcoatRoughness: 0.1,
-        emissive: new Color("#eef0f6"),
-        emissiveIntensity: 0.12,
-      }),
-    [],
-  );
-  const counted = tween(frame, RISK[0], RISK[1], 0, 1, EASE_IN_OUT);
-  // The number takes Bitcoin's colour as it becomes Bitcoin's share of the risk.
-  figure.color.set("#eef0f6").lerp(new Color("#f0a878"), counted);
-  figure.emissive.copy(figure.color);
-  figure.emissiveIntensity = 0.12 + counted * 0.25;
-
-  const fold = tween(frame, FOLD[0], FOLD[1], 0, 1, EASE_IN_OUT);
-  const away = 1 - fold;
-  const stand = spring({
-    frame: frame - FOLD[0] - 3,
-    fps,
-    config: { damping: 14, mass: 0.7, stiffness: 120 },
-  });
-  // The ring and what stands on it turn slowly, against the camera.
-  const turned = -frame * 0.006;
-
-  return (
-    <Floor tint={C.accent}>
-      <group rotation={[0, turned, 0]} scale={away}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} material={ring}>
-          <torusGeometry args={[RING, 0.07, 20, 160]} />
-        </mesh>
-        {holdings.map((holding, i) => {
-          const thing = THINGS[holding.symbol];
-          const angle = (i / holdings.length) * Math.PI * 2 + 0.95;
-          // Each arrives at its share of the money, a few frames after the one before,
-          // then springs to its share of the risk and settles.
-          const arrived = spring({
-            frame: frame - MONEY[0] - i * 3,
-            fps,
-            config: { damping: 13, mass: 0.6, stiffness: 140 },
-          });
-          const changed = spring({
-            frame: frame - RISK[0] - i * 3,
-            fps,
-            config: { damping: 12, mass: 0.8, stiffness: 110 },
-          });
-          const size =
-            Math.max(mix(sized(holding.money) * arrived, sized(holding.risk), changed), 0) *
-            thing.unit;
-          return (
-            <group
-              key={holding.symbol}
-              position={[Math.sin(angle) * RING, 0.05, Math.cos(angle) * RING]}
-              rotation={[0, angle + Math.PI / 2 + frame * 0.012, 0]}
-              scale={Math.max(size, 0.0001)}
-            >
-              {holding.symbol === "USD" ? (
-                // Cash is a short stack of chips.
-                [0, 1, 2, 3].map((n) => (
-                  <Piece
-                    key={n}
-                    kit={assets.kit}
-                    piece="chip"
-                    position={[n % 2 ? 0.02 : -0.02, n * KIT.chip.depth * 1.04, 0]}
-                    rotation={[0, n * 0.7, 0]}
-                  />
-                ))
-              ) : (
-                <Piece
-                  kit={assets.kit}
-                  piece={thing.piece}
-                  position={[0, thing.lift ?? 0, 0]}
-                />
-              )}
-            </group>
-          );
-        })}
-      </group>
-      {away > 0.02 && (
-        <Numerals
-          kit={assets.kit}
-          value={mix(bitcoin.money, bitcoin.risk, counted) * 100}
-          unit="percent"
-          position={[0, NUMBER.y - NUMBER.tall / 2, 0]}
-          rotation={[0, -0.25 + frame * 0.0035, 0]}
-          scale={NUMBER.tall * away}
-          material={figure}
-        />
-      )}
-      {stand > 0.001 && (
-        <group
-          position={[0, 0.04, 0]}
-          rotation={[mix(-Math.PI / 2, -0.12, stand), -0.25 + frame * 0.0035, 0, "YXZ"]}
-        >
-          <Card
-            face={assets.cards.risk}
-            width={CARD.width}
-            position={[0, CARD_TALL / 2, 0]}
-            lit={tween(stand, 0.2, 0.9, 0.25, 1, (t) => t)}
-          />
-        </group>
-      )}
-    </Floor>
-  );
-};
+/** When the inner ring (money) sweeps in, and the number counts to it. */
+export const MONEY = [ASKED + OPENS - 4, ASKED + OPENS + 14] as const;
+/** When the outer ring (risk) sweeps in, and the number counts on. */
+export const RISK = [ASKED + 40, ASKED + 58] as const;
+/** When Bitcoin's piece of the outer ring swells. */
+export const SWELL = RISK[1] - 4;
+/** When the first row of the table slides in, and how long after it each other does. */
+export const ROWS = ASKED + OPENS + 2;
+export const EVERY = 4;
+export const PINGED = RISK[1] + 4;
 
 /**
- * Shot 6. The four holdings as things on a turning glass ring, each as large as its
- * share of the money; then each as large as its share of the risk, and the number in
- * the middle goes from Bitcoin's share of the one to its share of the other. The
- * picture folds into the app's own card. Figures: the made-up example in
- * fixtures/portfolio.json.
+ * Shot 6. The app's two rings, large. The inner ring is how the account's money is
+ * split, and the number in the middle counts to Bitcoin's share of it; then the outer
+ * ring, how its risk is split, sweeps in round it, Bitcoin's piece swells, and the same
+ * number counts on to Bitcoin's share of that, in Bitcoin's colour. Beside them the
+ * app's own rows arrive one by one. Figures: the made-up example portfolio
+ * (fixtures/film.json).
  */
 export const Risk: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const assets = useLoaded();
-  if (!assets) {
-    return null;
-  }
-  const shown = tween(frame, ASKED - 4, ASKED + 10, 0.3, 1, (t) => t);
-  const view = camera(frame);
-  const fold = tween(frame, FOLD[0], FOLD[1], 0, 1, EASE_IN_OUT);
-  const under = project(view, [0, NUMBER.y - NUMBER.tall / 2 - 0.12, 0]);
-  const middle = project(view, [0, NUMBER.y, 0]);
-  const label: React.CSSProperties = {
-    position: "absolute",
-    left: under.x,
-    top: under.y,
-    translate: "-50% 0",
-    fontFamily: FONT,
-    fontFeatureSettings: FEATURES,
-    fontSize: 48,
-    fontWeight: 500,
-    letterSpacing: "-0.011em",
-    whiteSpace: "nowrap",
-  };
+  const duration = shot("risk").duration;
+  const money = tween(frame, MONEY[0], MONEY[1], 0, 1, EASE_IN_OUT);
+  const risk = tween(frame, RISK[0], RISK[1], 0, 1, EASE_IN_OUT);
+  const share = MONEY_SHARE * money + (RISK_SHARE - MONEY_SHARE) * risk;
+  // A swell that goes a little too far and comes back to a thicker piece.
+  const swell = settle(frame, SWELL, 9) * 0.32;
+  const shares = (of: "money" | "risk") =>
+    holdings.map((h) => ({ symbol: h.symbol, tone: h.tone, share: h[of] }));
+  // Each piece of a ring sweeps in a little after the one before it.
+  const swept = (start: number): number[] =>
+    holdings.map((_, i) =>
+      tween(frame, start + i * 3, start + 12 + i * 3, 0, 1, EASE_IN_OUT),
+    );
 
   return (
     <AbsoluteFill>
-      <Stage
-        room={assets.room}
-        light={C.accent}
-        camera={camera}
-        turn={0.4}
-        style={{ opacity: shown }}
+      <Answer
+        duration={duration}
+        from={BUTTON.risk}
+        area={AREA}
+        card
+        framed={ASKED + OPENS - 4}
+        title=""
       >
-        <Scene assets={assets} frame={frame} fps={fps} />
-      </Stage>
-      {/* Whose share the number is: of the money, then of the risk. */}
-      <div style={label}>
-        <Rise at={2} out={RISK[0] + 2} style={{ color: C.muted }}>
-          of your money
-        </Rise>
-      </div>
-      <div style={{ ...label, opacity: fold > 0.5 ? 0 : 1 }}>
-        <Rise at={RISK[1] - 8} out={FOLD[0]} style={{ color: C.btc }}>
-          of your risk
-        </Rise>
-      </div>
-      <Ring since={frame - RISK[1]} x={middle.x} y={middle.y} reach={230} />
-      <Small
-        text={COPY.example}
-        at={ASKED}
-        style={{ position: "absolute", left: MARGIN, top: 980 }}
+        <svg
+          viewBox="0 0 120 120"
+          width={RINGS.size}
+          height={RINGS.size}
+          style={{ position: "absolute", left: RINGS.x, top: RINGS.y }}
+        >
+          <DonutRing
+            id="risk-inner"
+            radius={42}
+            width={3.4}
+            quiet
+            shares={shares("money")}
+            drawn={swept(MONEY[0])}
+          />
+          <DonutRing
+            id="risk-outer"
+            radius={52}
+            width={5.6}
+            shares={shares("risk")}
+            drawn={swept(RISK[0])}
+            swell={{ [bitcoin.symbol]: swell }}
+          />
+        </svg>
+        {/* One number, in the middle of its rings as the app puts it. */}
+        <div
+          style={{
+            ...base,
+            position: "absolute",
+            left: RINGS.x,
+            top: RINGS.y,
+            width: RINGS.size,
+            height: RINGS.size,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 104,
+              fontWeight: 600,
+              letterSpacing: "-0.04em",
+              color: interpolateColors(risk, [0, 1], [C.ink, C.btc]),
+              opacity: frame >= MONEY[0] ? 1 : 0,
+            }}
+          >
+            <Ticker value={share} suffix="%" places={2} />
+          </span>
+          <span
+            style={{
+              position: "relative",
+              height: 34,
+              width: "100%",
+              fontSize: 24,
+              fontWeight: 500,
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                inset: 0,
+                textAlign: "center",
+                color: C.muted,
+              }}
+            >
+              <Rise at={MONEY[0] + 2} out={RISK[0] - 2}>
+                of your money
+              </Rise>
+            </span>
+            <span
+              style={{
+                position: "absolute",
+                inset: 0,
+                textAlign: "center",
+                color: C.btc,
+              }}
+            >
+              <Rise at={RISK[0] + 6}>of your risk</Rise>
+            </span>
+          </span>
+        </div>
+
+        {/* The app's own rows: each holding's share of the money, and of the risk. */}
+        <div
+          style={{
+            ...base,
+            position: "absolute",
+            left: TABLE.x,
+            top: TABLE.y,
+            width: TABLE.w,
+          }}
+        >
+          <div
+            style={{
+              ...label,
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 38,
+              height: 30,
+              opacity: pop(frame, ROWS - 2),
+            }}
+          >
+            <span>Money</span>
+            <span>Risk</span>
+          </div>
+          {holdings.map((holding, i) => {
+            const at = ROWS + i * EVERY;
+            const slid = settle(frame, at, 14);
+            const counted = tween(frame, at, at + 14, 0, 1, EASE_IN_OUT);
+            const from = RISK[0] + i * 3;
+            const risked = tween(frame, from, from + 16, 0, 1, EASE_IN_OUT);
+            return (
+              <div
+                key={holding.symbol}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  height: TABLE.row,
+                  borderTop: `1px solid ${C.line}`,
+                  fontSize: 22,
+                  translate: `${(1 - slid) * 70}px 0`,
+                  opacity: Math.min(Math.max(slid * 2, 0), 1),
+                }}
+              >
+                <Swatch tone={holding.tone} size={12} />
+                <span style={{ fontWeight: 500 }}>{holding.name}</span>
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    width: 64,
+                    textAlign: "right",
+                    color: C.muted,
+                  }}
+                >
+                  <Ticker
+                    value={Math.round(holding.money * 100) * counted}
+                    suffix="%"
+                  />
+                </span>
+                <span
+                  style={{ width: 70, textAlign: "right", fontWeight: 700 }}
+                >
+                  {frame >= from && (
+                    <Ticker
+                      value={Math.round(holding.risk * 100) * risked}
+                      suffix="%"
+                    />
+                  )}
+                </span>
+              </div>
+            );
+          })}
+          <div
+            style={{
+              ...label,
+              marginTop: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              opacity: pop(frame, ROWS + 16),
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: C.faint,
+              }}
+            />
+            Example portfolio · {formatMoney(film.portfolio.value)}
+          </div>
+        </div>
+        <div style={{ ...label, position: "absolute", left: TABLE.x, top: 44 }}>
+          <Rise at={ROWS - 4}>Your money, and where the risk sits</Rise>
+        </div>
+      </Answer>
+      <Ping
+        since={frame - PINGED}
+        x={AREA.x + (TABLE.x + TABLE.w - 30) * ZOOM}
+        y={AREA.y + (TABLE.y + 30 + TABLE.row / 2) * ZOOM}
       />
     </AbsoluteFill>
   );

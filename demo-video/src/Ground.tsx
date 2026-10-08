@@ -11,13 +11,13 @@ const LIGHT: readonly (readonly [number, string])[] = [
   [shot("meet").from, C.btc],
   [shot("meet").from + 26, C.accent],
   [shot("why").from + 18, C.accent],
-  [shot("why").from + 40, C.btc],
+  [shot("why").from + 36, C.btc],
   [shot("level").from, C.btc],
-  [shot("level").from + 20, C.accent],
+  [shot("level").from + 18, C.accent],
   [shot("range").from + 18, C.accent],
-  [shot("range").from + 40, C.btc],
+  [shot("range").from + 36, C.btc],
   [shot("risk").from, C.btc],
-  [shot("risk").from + 20, C.accent],
+  [shot("risk").from + 18, C.accent],
   [shot("close").from + 60, C.accent],
 ];
 

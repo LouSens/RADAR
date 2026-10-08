@@ -1,258 +1,314 @@
-import { useThree } from "@react-three/fiber";
-import { useMemo } from "react";
-import { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import {
-  BoxGeometry,
-  Color,
-  MeshBasicMaterial,
-  MeshPhysicalMaterial,
-  Plane,
-  Vector3,
-} from "three";
-import market from "../fixtures/market.json";
-import { C } from "../theme";
-import { Card, Floor, Numerals, figureWidth, glass } from "../three/Kit";
-import { Stage, project, type View } from "../three/Stage";
-import { useLoaded, type Assets } from "../three/assets";
-import { EASE_IN_OUT, tween } from "../timing";
-import { ASKED, Ring } from "../World";
+import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { ASKED, AREA, Answer, ZOOM } from "../Beat";
+import film from "../fixtures/film.json";
+import { C, fade } from "../theme";
+import { EASE, EASE_IN_OUT, shot, tween } from "../timing";
+import { AT } from "../ui/Desk";
+import { base, formatPrice, num } from "../ui/kit";
+import { Ping, Segmented, Ticker, settle } from "../ui/motion";
 
-const { range } = market;
+const { range } = film;
 
-// The scene, in its own units. The prices run along X; the bars stand on the floor and
-// the two figures stand in front of them.
-const SPAN = 9;
-const TALL = 2.3;
-const FRONT = 1.5;
+// The chart, in the app's pixels inside the answer's frame (832 by 388).
+const LEFT = 40;
+const SPAN = 752;
+const BASE = 346;
+const TALL = 150;
+/** The row the two ends of the range come to rest on. */
+const ROW = 134;
+/** The one price is as large as the film's hero numbers (260 in the frame); the two
+ *  ends of the range come down to this. */
+const HERO = 130;
+const RESTING = 50;
+/** Where the one price stands before it is cut. */
+const START = { x: 416, y: 222 } as const;
+
 const first = range.edges[0];
 const last = range.edges[range.edges.length - 1];
 const x = (value: number): number =>
-  -SPAN / 2 + ((value - first) / (last - first)) * SPAN;
-
+  LEFT + ((value - first) / (last - first)) * SPAN;
 const X_LOW = x(range.low);
 const X_HIGH = x(range.high);
 const X_NOW = x(range.startPrice);
 const MOST = Math.max(...range.counts);
 const BAR = SPAN / range.counts.length;
-const NOW_BAR = Math.floor((X_NOW + SPAN / 2) / BAR);
+const NOW_BAR = Math.floor((X_NOW - LEFT) / BAR);
 
-/** How tall the one price stands, and how tall each end of the range comes to rest. */
-const WHOLE = 1.15;
-const RESTING = 0.46;
-const WIDE = figureWidth(range.startPrice, "dollar");
+const PRICE = Math.round(range.startPrice);
+const LOW = Math.round(range.low);
+const HIGH = Math.round(range.high);
 
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /** When the cut starts to open and when the two figures land. */
-export const OPEN = [ASKED + 6, ASKED + 38] as const;
-/** When the first bar starts to rise, and how much later each one farther out starts. */
-export const RISE = ASKED + 18;
-const STAGGER = 1.3;
-/** When the bars fold away into the card, and when the card stands. */
-export const FOLD = [ASKED + 56, ASKED + 72] as const;
-/** When the ring spreads from the range on the card. */
-export const PINGED = FOLD[1] + 2;
+export const OPEN = [ASKED + 14, ASKED + 44] as const;
+/** When the first bar starts to grow. */
+export const RISE = ASKED + 22;
+/** When the card draws itself round the chart, and when the ring spreads. */
+export const FRAMED = ASKED + 56;
+export const PINGED = ASKED + 72;
 
-/** The clear space between the two figures, `open` of the way through the move. */
+/** How wide the price is, and one digit of it, as multiples of its size. */
+const WIDE = 3.9;
+const DIGIT = 0.62;
+/** The clear space between the two copies, `open` of the way through the move. */
 const gapAt = (open: number): number =>
-  (X_HIGH - X_LOW) * open - WIDE * mix(WHOLE, RESTING, open);
+  (X_HIGH - X_LOW) * open - WIDE * mix(HERO, RESTING, open);
 /** How far through the move the space first exceeds one digit: counting starts there. */
 const COUNT_FROM = (() => {
   for (let open = 0; open <= 1; open += 0.001) {
-    if (gapAt(open) > 0.7 * mix(WHOLE, RESTING, open)) {
+    if (gapAt(open) > DIGIT * mix(HERO, RESTING, open)) {
       return open;
     }
   }
   return 1;
 })();
 
-/** The card of the app the picture resolves into: how wide, and where it stands. */
-const CARD = { width: 7.6, z: -0.2, lean: -0.1 } as const;
-const CARD_TALL = (CARD.width * 480) / 1118;
-/** Where "$78,964 to $88,767" is on the card's face, from its top left, as shares. */
-const ANSWER = { u: 0.118, v: 0.56 } as const;
-
-/** Low, and pushing in the whole time; it rises a little to meet the card. */
-const camera = (frame: number): View => {
-  const push = tween(frame, 0, 105, 0, 1, (t) => t);
-  const up = tween(frame, FOLD[0] - 6, FOLD[1] + 6, 0, 1, EASE_IN_OUT);
-  return {
-    position: [0.9 - push * 0.7, 0.75 + up * 0.75, 11.2 - push * 2.2 - up * 0.3],
-    target: [0, 1.55 + up * 0.15, 0],
-    focus: [0, 0.6, mix(FRONT, CARD.z, up)],
-    aperture: 0.05,
-    fov: 30,
-  };
-};
-
-/** Lets one material be cut by a plane of its own. Three leaves this off by default. */
-const Cuts: React.FC = () => {
-  const { gl } = useThree();
-  gl.localClippingEnabled = true;
-  return null;
-};
-
-const Scene: React.FC<{
-  readonly assets: Assets;
-  readonly frame: number;
-  readonly fps: number;
-}> = ({ assets, frame, fps }) => {
-  const bar = useMemo(() => new BoxGeometry(BAR * 0.78, 1, 0.55), []);
-  const inside = useMemo(() => glass(C.btc, { glow: 0.32, rough: 0.2 }), []);
-  const outside = useMemo(() => glass("#4d4741", { glow: 0.05, rough: 0.3 }), []);
-  const lit = useMemo(
-    () => new MeshBasicMaterial({ color: "#ffc59b", toneMapped: false }),
-    [],
-  );
-  const dull = useMemo(
-    () => new MeshBasicMaterial({ color: "#6b625a", toneMapped: false }),
-    [],
-  );
-  const cap = useMemo(() => new BoxGeometry(BAR * 0.78, 0.02, 0.55), []);
-  // The two copies of the price: each is shown on its own side of the cut.
-  const [left, right] = useMemo(() => {
-    const make = (side: 1 | -1): MeshPhysicalMaterial =>
-      new MeshPhysicalMaterial({
-        color: "#d9dce6",
-        roughness: 0.25,
-        clearcoat: 1,
-        clearcoatRoughness: 0.1,
-        envMapIntensity: 1,
-        emissive: new Color("#d9dce6"),
-        emissiveIntensity: 0.05,
-        clippingPlanes: [new Plane(new Vector3(side, 0, 0), 0)],
-      });
-    return [make(-1), make(1)];
-  }, []);
-
-  // One move, on one curve. The price is two copies of itself standing exactly
-  // together, the left one seen only left of a cut and the right one only right of it.
-  // Both show the same value while they part, so no frame has a figure made of two
-  // different numbers. Once they stand clear, with more than a digit between them, each
-  // counts to its end of the range as it finishes its journey.
-  const open = tween(frame, OPEN[0], OPEN[1], 0, 1, EASE_IN_OUT);
-  const size = mix(WHOLE, RESTING, open);
-  const lowX = mix(X_NOW, X_LOW, open);
-  const highX = mix(X_NOW, X_HIGH, open);
-  const seam = (lowX + highX) / 2;
-  const gap = Math.max(gapAt(open), 0);
-  // A plane keeps what is on the side its normal points to: normal · p + constant > 0.
-  left.clippingPlanes?.[0].set(new Vector3(-1, 0, 0), seam - gap / 2 + Math.min(gap, 0.03));
-  right.clippingPlanes?.[0].set(new Vector3(1, 0, 0), -(seam + gap / 2 - Math.min(gap, 0.03)));
-  const counted = tween(open, COUNT_FROM, 1, 0, 1, (t) => t);
-
-  const fold = tween(frame, FOLD[0], FOLD[1], 0, 1, EASE_IN_OUT);
-  const stand = spring({
-    frame: frame - FOLD[0] - 3,
-    fps,
-    config: { damping: 14, mass: 0.7, stiffness: 120 },
-  });
-  const away = 1 - fold;
-
-  return (
-    <Floor tint={C.btc}>
-      <Cuts />
-      {range.counts.map((count, i) => {
-        const centre = -SPAN / 2 + (i + 0.5) * BAR;
-        const within =
-          range.edges[i + 1] > range.low && range.edges[i] < range.high;
-        const grown =
-          spring({
-            frame: frame - RISE - Math.abs(i - NOW_BAR) * STAGGER,
-            fps,
-            config: { damping: 13, mass: 0.6, stiffness: 150 },
-          }) * away;
-        const tall = (count / MOST) * TALL * grown;
-        if (tall < 0.01) {
-          return null;
-        }
-        return (
-          <group key={range.edges[i]} position={[centre, 0, 0]}>
-            <mesh
-              geometry={bar}
-              material={within ? inside : outside}
-              position={[0, tall / 2, 0]}
-              scale={[1, tall, 1]}
-            />
-            {grown > 0.02 && (
-              <mesh
-                geometry={cap}
-                material={within ? lit : dull}
-                position={[0, tall + 0.01, 0]}
-              />
-            )}
-          </group>
-        );
-      })}
-      {away > 0.02 && (
-        <>
-          <Numerals
-            kit={assets.kit}
-            value={mix(range.startPrice, range.low, counted)}
-            position={[lowX, 0, FRONT]}
-            scale={size * away}
-            material={left}
-          />
-          <Numerals
-            kit={assets.kit}
-            value={mix(range.startPrice, range.high, counted)}
-            position={[highX, 0, FRONT]}
-            scale={size * away}
-            material={right}
-          />
-        </>
-      )}
-      {/* The proof: the app's own card stands up from the floor where the bars were. */}
-      {stand > 0.001 && (
-        <group
-          position={[0, 0.04, CARD.z]}
-          rotation={[mix(-Math.PI / 2, CARD.lean, stand), 0, 0]}
-        >
-          <Card
-            face={assets.cards.range}
-            width={CARD.width}
-            position={[0, CARD_TALL / 2, 0]}
-            lit={tween(stand, 0.2, 0.9, 0.25, 1, (t) => t)}
-          />
-        </group>
-      )}
-    </Floor>
-  );
-};
+/** One figure, centred on a point, counting as a meter does. */
+const Figure: React.FC<{
+  readonly value: number;
+  readonly cx: number;
+  readonly cy: number;
+  readonly size: number;
+  readonly mask: string;
+}> = ({ value, cx, cy, size, mask }) => (
+  <div
+    style={{
+      position: "absolute",
+      inset: 0,
+      maskImage: mask,
+      WebkitMaskImage: mask,
+    }}
+  >
+    <div
+      style={{
+        ...base,
+        position: "absolute",
+        left: cx,
+        top: cy,
+        translate: "-50% -50%",
+        fontSize: size,
+        fontWeight: 600,
+        letterSpacing: "-0.04em",
+      }}
+    >
+      <Ticker value={value} prefix="$" places={5} />
+    </div>
+  </div>
+);
 
 /**
- * Shot 5. The price as solid figures is cut down the middle into the low and the high
- * of the week's range, the simulated outcomes rise between them, and the whole picture
- * folds into the app's own card. Figures: fixtures/market.json.
+ * Shot 5. One price is cut down the middle into the low and the high of the week's
+ * range, the simulated outcomes grow between them from today's price outwards, and the
+ * app's own card draws itself round the chart. Figures: the app's simulation of
+ * Bitcoin's next seven days (fixtures/film.json).
  */
 export const Range: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const assets = useLoaded();
-  if (!assets) {
-    return null;
-  }
-  // While the question stands in the middle of the frame the picture waits behind it.
-  const shown = tween(frame, ASKED - 4, ASKED + 10, 0.3, 1, (t) => t);
-  const view = camera(frame);
-  const answer = project(view, [
-    (ANSWER.u - 0.5) * CARD.width,
-    0.04 + (1 - ANSWER.v) * CARD_TALL * Math.cos(CARD.lean),
-    CARD.z + (1 - ANSWER.v) * CARD_TALL * Math.sin(CARD.lean) + 0.2,
-  ]);
+  const duration = shot("range").duration;
+
+  // One move, on one curve. The price is two copies of itself lying exactly together,
+  // the left one shown only left of a cut and the right one only right of it. Both show
+  // the same value while they part, so no frame has a figure made of two different
+  // numbers. Once they stand clear of each other, with more than a digit of space
+  // between them, each counts to its end of the range as it finishes its journey.
+  const open = tween(frame, OPEN[0], OPEN[1], 0, 1, EASE_IN_OUT);
+  const size = mix(HERO, RESTING, open);
+  const cy = mix(START.y, ROW, open);
+  const lowX = mix(START.x, X_LOW, open);
+  const highX = mix(START.x, X_HIGH, open);
+  const seam = (lowX + highX) / 2;
+  const gap = Math.max(gapAt(open), 0);
+  const cutLeft = seam - gap / 2 + Math.min(gap, 3);
+  const cutRight = seam + gap / 2 - Math.min(gap, 3);
+  const leftOnly = `linear-gradient(to right, #000 ${cutLeft}px, transparent ${cutLeft}px)`;
+  const rightOnly = `linear-gradient(to right, transparent ${cutRight}px, #000 ${cutRight}px)`;
+  const counted = tween(open, COUNT_FROM, 1, 0, 1, (t) => t);
+  // The price rises into the frame once its question has docked above it.
+  const arrived = tween(frame, ASKED + 4, ASKED + 13, 0, 1, EASE);
+  // While the price is still large and low in the frame, no bar grows into it.
+  const room = BASE - (cy + size * 0.5 + 10);
+  const guides = tween(frame, OPEN[1] - 4, OPEN[1] + 10, 0, 1, EASE);
+  const chosen = tween(frame, FRAMED + 8, FRAMED + 18, 0, 1, EASE_IN_OUT);
 
   return (
     <AbsoluteFill>
-      <Stage
-        room={assets.room}
-        light={C.btc}
-        camera={camera}
-        turn={0.9}
-        style={{ opacity: shown }}
+      <Answer
+        duration={duration}
+        from={AT.btc}
+        framed={FRAMED}
+        title="Price range ahead"
+        badge="solid"
+        aside={
+          frame >= FRAMED + 4 ? (
+            <Segmented options={["1 day", "1 week", "1 month"]} at={chosen} />
+          ) : null
+        }
       >
-        <Scene assets={assets} frame={frame} fps={fps} />
-      </Stage>
-      <Ring since={frame - PINGED} x={answer.x} y={answer.y} reach={190} />
+        {/* The outcomes: bright inside the range, dim outside it, as in the app. */}
+        {frame >= RISE &&
+          range.counts.map((count, i) => {
+            const mid = (range.edges[i] + range.edges[i + 1]) / 2;
+            const inside = mid >= range.low && mid <= range.high;
+            const grown = settle(
+              frame,
+              RISE + Math.abs(i - NOW_BAR) * 1.25,
+              14,
+            );
+            const height = Math.max(
+              Math.min((count / MOST) * TALL * grown, room),
+              0,
+            );
+            // The range lights once both of its ends have landed.
+            const lit = inside
+              ? tween(frame, OPEN[1] - 6, OPEN[1] + 6, 0.45, 1)
+              : 0.28;
+            return (
+              <div
+                key={range.edges[i]}
+                style={{
+                  position: "absolute",
+                  left: LEFT + i * BAR + 1,
+                  width: BAR - 2,
+                  top: BASE - height,
+                  height,
+                  borderRadius: "2px 2px 0 0",
+                  background: fade(C.btc, lit),
+                }}
+              />
+            );
+          })}
+        <div
+          style={{
+            position: "absolute",
+            left: LEFT,
+            width: SPAN * tween(frame, RISE - 4, RISE + 26, 0, 1, EASE),
+            top: BASE,
+            height: 1,
+            background: C.lineStrong,
+          }}
+        />
+        {/* Where each end of the range falls among the outcomes. */}
+        {[X_LOW, X_HIGH].map((at) => (
+          <div
+            key={at}
+            style={{
+              position: "absolute",
+              left: at - 0.5,
+              top: ROW + 32,
+              width: 1,
+              height: (BASE - ROW - 32) * guides,
+              background: `linear-gradient(${C.ink}, ${fade(C.ink, 0.25)})`,
+              opacity: 0.7,
+            }}
+          />
+        ))}
+        {[first, last].map((edge, i) => (
+          <span
+            key={edge}
+            style={{
+              ...base,
+              ...num,
+              position: "absolute",
+              left: i ? undefined : LEFT,
+              right: i ? 832 - LEFT - SPAN : undefined,
+              top: BASE + 6,
+              fontSize: 12,
+              color: C.faint,
+              opacity: guides,
+            }}
+          >
+            {formatPrice(edge)}
+          </span>
+        ))}
+
+        {/* One figure and a cut: the left copy is only ever seen left of the cut and the
+            right copy right of it, so two whole figures never touch. */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              translate: `0 ${(1 - arrived) * 110}%`,
+            }}
+          >
+            <Figure
+              value={mix(PRICE, LOW, counted)}
+              cx={lowX}
+              cy={cy}
+              size={size}
+              mask={leftOnly}
+            />
+            <Figure
+              value={mix(PRICE, HIGH, counted)}
+              cx={highX}
+              cy={cy}
+              size={size}
+              mask={rightOnly}
+            />
+          </div>
+        </div>
+        {/* The cut itself: a lit line where the price parts, so that the two halves are
+            read as one figure being opened and not as a longer one. */}
+        <div
+          style={{
+            position: "absolute",
+            left: seam - 1.5,
+            top: cy - size * 0.62,
+            width: 3,
+            height: size * 1.24,
+            borderRadius: 2,
+            background: C.btc,
+            boxShadow: `0 0 16px 4px ${fade(C.btc, 0.6)}`,
+            opacity:
+              tween(frame, OPEN[0] - 4, OPEN[0], 0, 1) *
+              (1 - tween(open, COUNT_FROM * 0.6, COUNT_FROM, 0, 1)),
+          }}
+        />
+        <span
+          style={{
+            ...base,
+            position: "absolute",
+            left: (X_LOW + X_HIGH) / 2,
+            top: ROW,
+            translate: "-50% -50%",
+            fontSize: 22,
+            fontWeight: 500,
+            color: C.muted,
+            opacity: guides,
+          }}
+        >
+          to
+        </span>
+        <span
+          style={{
+            ...base,
+            position: "absolute",
+            left: LEFT,
+            top: ROW - 62,
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.075em",
+            textTransform: "uppercase",
+            color: C.muted,
+            opacity: guides,
+          }}
+        >
+          80% of simulated outcomes after {range.days} days
+        </span>
+      </Answer>
+      <Ping
+        since={frame - PINGED}
+        x={AREA.x + ((X_LOW + X_HIGH) / 2) * ZOOM}
+        y={AREA.y + ROW * ZOOM}
+        reach={240}
+      />
     </AbsoluteFill>
   );
 };

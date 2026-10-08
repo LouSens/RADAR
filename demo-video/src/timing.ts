@@ -10,6 +10,8 @@ export const BEAT = 15;
 
 /** How long the radar line takes to go round when it changes the scene. */
 export const SWEEP = 20;
+/** The end card is uncovered by a faster turn of the line. */
+export const LAST_SWEEP = 10;
 
 export type ShotId =
   | "question"
