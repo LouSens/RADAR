@@ -1555,6 +1555,40 @@
         "title": "HoldingRisk",
         "type": "object"
       },
+      "HoldingStanding": {
+        "description": "Where one holding stands: analysed, or how far it is from being.",
+        "properties": {
+          "analysed": {
+            "title": "Analysed",
+            "type": "boolean"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "needed": {
+            "default": 500,
+            "title": "Needed",
+            "type": "integer"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "name",
+          "days",
+          "analysed"
+        ],
+        "title": "HoldingStanding",
+        "type": "object"
+      },
       "HoldingState": {
         "description": "The market state of a holding right now, from the market it belongs to.",
         "properties": {
@@ -8001,6 +8035,29 @@
           }
         },
         "summary": "Get Check"
+      }
+    },
+    "/api/v1/portfolio/followed": {
+      "get": {
+        "description": "Each holding with how many days of prices it has and whether the models run for\nit yet. They start once a holding has enough days to be checked on unseen ones.",
+        "operationId": "get_followed_api_v1_portfolio_followed_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HoldingStanding"
+                  },
+                  "title": "Response Get Followed Api V1 Portfolio Followed Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Followed"
       }
     },
     "/api/v1/portfolio/import": {

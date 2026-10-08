@@ -395,6 +395,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/portfolio/followed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Followed
+         * @description Each holding with how many days of prices it has and whether the models run for
+         *     it yet. They start once a holding has enough days to be checked on unseen ones.
+         */
+        get: operations["get_followed_api_v1_portfolio_followed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/portfolio/import": {
         parameters: {
             query?: never;
@@ -1208,6 +1229,25 @@ export interface components {
             symbol: string;
             /** Weight */
             weight: number;
+        };
+        /**
+         * HoldingStanding
+         * @description Where one holding stands: analysed, or how far it is from being.
+         */
+        HoldingStanding: {
+            /** Analysed */
+            analysed: boolean;
+            /** Days */
+            days: number;
+            /** Name */
+            name: string;
+            /**
+             * Needed
+             * @default 500
+             */
+            needed: number;
+            /** Symbol */
+            symbol: string;
         };
         /**
          * HoldingState
@@ -3853,6 +3893,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_followed_api_v1_portfolio_followed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HoldingStanding"][];
                 };
             };
         };

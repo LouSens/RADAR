@@ -1,3 +1,4 @@
+import { CardSkeleton } from "./Skeleton";
 import { Link } from "react-router-dom";
 
 import type { AccountRecord, Portfolio, PortfolioAnalysis, Steps } from "../api/client";
@@ -162,6 +163,8 @@ export function PortfolioStart({
         </div>
       </section>
 
+      {/* Still being worked out: hold its place, so the card does not jump in later. */}
+      {steps === undefined && <CardSkeleton lines={2} />}
       {steps?.has_plan && (
         <Link
           to="/portfolio/todo"

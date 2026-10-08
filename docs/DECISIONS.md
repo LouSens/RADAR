@@ -3433,3 +3433,34 @@ readers who cannot see it; the notebook's date, model version and sample in a he
 real result tables in `07_what_we_tested`; a Models page; the large-fall forecast redone
 once or retired; browser tests at phone, tablet and desktop widths; notebooks built in
 CI (they need a filled database, so this needs a small fixture first).
+
+## 095. The models run for every holding with enough history; section 0 rewritten (2026-10-08)
+
+The user's answers to the questions of decision 094.
+
+**Every holding.** The state, range ahead, movement forecast, loss limits, signals and
+the forecast log ran for the three followed markets only. They now run for those and for
+every other holding with at least 500 days of prices (`pipelines/followed.py`).
+
+- **Why 500.** No model here is shown without a check on days it had not seen, and those
+  checks need 500 days before their first unseen one (`min_train` in the movement and
+  loss jobs). Fitting on less and showing it as the same thing would break the
+  honest-output rule. This is a different thing from decision 043, which puts a holding
+  with 30 to 249 sessions into the portfolio's risk on the days it has; that stands.
+- **Until then** the holding says so on the Holdings page: "Not analysed yet: 211 of 500
+  days of prices". An analysed holding links to its own page, which already worked for
+  any asset in the universe.
+- **An asset nobody holds is not analysed**, however long its record: the work follows
+  the account.
+- News tone, the calendar study and the brief stay with the three markets: a discovered
+  holding has no news feed of its own.
+- Today this changes no figure: the account's other holding has under 500 days.
+
+**To check with the user.** That holding was found in Alpaca's data as a US-listed
+stock with the ticker PURR and is priced as that. The user has described it as an
+altcoin. If the Binance holding is the coin and not the stock, it is being priced from
+the wrong instrument, and the fix is to price it from Binance's public prices instead.
+
+**Section 0 of the specification** described a plan the app did not follow. It now
+describes the app as it is, with what is planned and not built in its own table (0.6),
+each item needing the user's go-ahead.

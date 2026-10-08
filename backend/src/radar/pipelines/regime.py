@@ -194,8 +194,10 @@ def score(engine: Engine, asset: Asset) -> int:
 
 def run(engine: Engine, universe: Universe, *, retrain: bool = False, evaluate: bool = True) -> int:
     """Train where there is no current model (or always, with `retrain`), then score."""
+    from radar.pipelines import followed
+
     changed = 0
-    for asset in universe.primary:
+    for asset in followed.of(engine, universe):
         with session_scope(engine) as session:
             missing = current_model(session, asset.symbol) is None
         if retrain or missing:

@@ -20,6 +20,7 @@ import {
   type Risk,
   type Sentiment,
   type Simulation,
+  type Followed,
   type Steps,
   type Summary,
   type Timeframe,
@@ -229,6 +230,15 @@ export function useBuyCheck(coin: string) {
 }
 
 /** What to do with cash the plan does not keep: what to buy, at what prices, and why. */
+/** Each holding with whether the models run for it yet, and how many days it has. */
+export function useFollowed() {
+  return useQuery({
+    queryKey: ["portfolio", "followed"],
+    queryFn: () => orNull(() => getJson<Followed[]>("/portfolio/followed")),
+    refetchInterval: 10 * 60_000,
+  });
+}
+
 export function useSteps() {
   return useQuery({
     queryKey: ["portfolio", "steps"],

@@ -240,6 +240,7 @@ def test_openapi_documents_every_route_and_live_message(client: TestClient) -> N
         "/api/v1/portfolio/record",
         "/api/v1/portfolio/check/{coin}",
         "/api/v1/portfolio/steps",
+        "/api/v1/portfolio/followed",
         "/api/v1/portfolio/record/lost",
         "/api/v1/portfolio/target",
         "/api/v1/portfolio/what-if",
