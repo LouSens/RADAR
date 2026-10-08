@@ -1,5 +1,10 @@
-"""Lay stills side by side on one sheet: python scripts/sheet.py out/look/sheet.png 3 a.png b.png ..."""
+"""Lay stills side by side on one sheet.
+
+python scripts/sheet.py out/look/sheet.png 3 a.png b.png
+"""
+
 import sys
+
 from PIL import Image, ImageDraw
 
 out, cols, names = sys.argv[1], int(sys.argv[2]), sys.argv[3:]

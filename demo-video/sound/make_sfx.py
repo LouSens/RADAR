@@ -10,6 +10,7 @@ Each sound is made at its own level and none is raised to full scale afterwards:
 a sound is in the film is set where it is cued (src/Sound.tsx), not here.
 """
 
+import sys
 import wave
 from pathlib import Path
 
@@ -68,7 +69,7 @@ def save(name, left, right=None, peak=0.5):
         file.setsampwidth(2)
         file.setframerate(RATE)
         file.writeframes((both * 32767).astype("<i2").tobytes())
-    print(f"{name:10s} {len(left) / RATE:6.2f} s  peak {peak:.2f}")
+    sys.stdout.write(f"{name:10s} {len(left) / RATE:6.2f} s  peak {peak:.2f}\n")
 
 
 def room():
@@ -109,7 +110,12 @@ def shimmer():
     """A soft rising tone, about 1.5 s, with a slow waver so it is not a plain whistle."""
     t = seconds(1.5)
     pitch = glide(t, 392, 784, 1.3)
-    body = tone(pitch) + 0.45 * tone(pitch * 1.5) + 0.2 * tone(pitch * 2.005) + 0.1 * tone(pitch * 3.01)
+    body = (
+        tone(pitch)
+        + 0.45 * tone(pitch * 1.5)
+        + 0.2 * tone(pitch * 2.005)
+        + 0.1 * tone(pitch * 3.01)
+    )
     body *= 1 + 0.18 * np.sin(2 * np.pi * 5.5 * t)
     shape = np.sin(np.pi * (t / t[-1]) ** 0.8) ** 1.5
     save("shimmer", body * shape, peak=0.3)
@@ -140,7 +146,12 @@ def glass():
     for i, pitch in enumerate((1760, 1976, 2217)):
         body = sum(
             weight * tone(np.full(t.size, pitch * ratio)) * fall(t, time)
-            for ratio, weight, time in ((1, 1.0, 0.09), (2.76, 0.5, 0.05), (5.4, 0.25, 0.03), (8.93, 0.1, 0.015))
+            for ratio, weight, time in (
+                (1, 1.0, 0.09),
+                (2.76, 0.5, 0.05),
+                (5.4, 0.25, 0.03),
+                (8.93, 0.1, 0.015),
+            )
         )
         save(f"glass-{i}", body * edges(t, 0.0015, 0.05), peak=0.3)
 
@@ -151,7 +162,12 @@ def shink():
     cut = noise(0.6, 5000, 14000, 41) * fall(t, 0.012)
     ring = sum(
         weight * tone(np.full(t.size, pitch)) * fall(t, time)
-        for pitch, weight, time in ((3136, 1.0, 0.13), (4699, 0.6, 0.1), (6272, 0.35, 0.07), (9397, 0.15, 0.04))
+        for pitch, weight, time in (
+            (3136, 1.0, 0.13),
+            (4699, 0.6, 0.1),
+            (6272, 0.35, 0.07),
+            (9397, 0.15, 0.04),
+        )
     )
     save("shink", (0.5 * cut + ring) * edges(t, 0.001, 0.08), peak=0.35)
 
@@ -160,7 +176,9 @@ def rise():
     """A soft tone rising for about 1.5 s under the bars as they grow."""
     t = seconds(1.5)
     pitch = glide(t, 196, 587, 1.5)
-    body = tone(pitch) + 0.3 * tone(pitch * 2.0) + 0.5 * noise(1.5, 300, 2500, 51) * (t / t[-1]) ** 2
+    body = (
+        tone(pitch) + 0.3 * tone(pitch * 2.0) + 0.5 * noise(1.5, 300, 2500, 51) * (t / t[-1]) ** 2
+    )
     shape = (t / t[-1]) ** 1.4 * np.clip((t[-1] - t) / 0.22, 0, 1)
     save("rise", body * shape, peak=0.3)
 
@@ -184,7 +202,9 @@ def click():
     t = seconds(0.3)
     for i, pitch in enumerate((659, 784, 988)):
         snap = noise(0.3, 2500, 9000, 60 + i) * fall(t, 0.0025)
-        note = (tone(np.full(t.size, pitch)) + 0.3 * tone(np.full(t.size, pitch * 2))) * fall(t, 0.07)
+        note = (tone(np.full(t.size, pitch)) + 0.3 * tone(np.full(t.size, pitch * 2))) * fall(
+            t, 0.07
+        )
         save(f"click-{i}", (0.6 * snap + note) * edges(t, 0.0008, 0.04), peak=0.4)
 
 
@@ -209,5 +229,19 @@ def impact():
 
 
 if __name__ == "__main__":
-    for make in (room, tick, sweep, shimmer, whoosh, pop, glass, shink, rise, roll, click, hit, impact):
+    for make in (
+        room,
+        tick,
+        sweep,
+        shimmer,
+        whoosh,
+        pop,
+        glass,
+        shink,
+        rise,
+        roll,
+        click,
+        hit,
+        impact,
+    ):
         make()

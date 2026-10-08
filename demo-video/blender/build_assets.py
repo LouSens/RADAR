@@ -39,7 +39,12 @@ def outline(width, height, radius, steps=20):
     """A rectangle with round corners, anticlockwise seen from +Z."""
     points = []
     half_w, half_h = width / 2 - radius, height / 2 - radius
-    for cx, cy, start in ((half_w, half_h, 0), (-half_w, half_h, 90), (-half_w, -half_h, 180), (half_w, -half_h, 270)):
+    for cx, cy, start in (
+        (half_w, half_h, 0),
+        (-half_w, half_h, 90),
+        (-half_w, -half_h, 180),
+        (half_w, -half_h, 270),
+    ):
         for i in range(steps + 1):
             angle = math.radians(start + 90 * i / steps)
             points.append((cx + radius * math.cos(angle), cy + radius * math.sin(angle)))
@@ -66,9 +71,15 @@ def slab(name, width, height, radius, z_from, z_to, mat, at=(0.0, 0.0), bevel=0.
     """A rounded rectangle with thickness."""
     mesh = bpy.data.meshes.new(name)
     bm = bmesh.new()
-    face = bm.faces.new([bm.verts.new((x + at[0], y + at[1], z_from)) for x, y in outline(width, height, radius)])
+    face = bm.faces.new(
+        [bm.verts.new((x + at[0], y + at[1], z_from)) for x, y in outline(width, height, radius)]
+    )
     lifted = bmesh.ops.extrude_face_region(bm, geom=[face])
-    bmesh.ops.translate(bm, vec=(0, 0, z_to - z_from), verts=[g for g in lifted["geom"] if isinstance(g, bmesh.types.BMVert)])
+    bmesh.ops.translate(
+        bm,
+        vec=(0, 0, z_to - z_from),
+        verts=[g for g in lifted["geom"] if isinstance(g, bmesh.types.BMVert)],
+    )
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(mesh)
     bm.free()
@@ -105,7 +116,12 @@ def disc(name, radius, depth, centre, mat, bevel=0.0):
 
 def phone():
     metal, glass, back = material("metal"), material("glass"), material("back")
-    screen, sheen, lens, flash = material("screen"), material("sheen"), material("lens"), material("flash")
+    screen, sheen, lens, flash = (
+        material("screen"),
+        material("sheen"),
+        material("lens"),
+        material("flash"),
+    )
 
     # The frame: one band of metal, its two rims rounded over.
     slab("frame", WIDTH, HEIGHT, CORNER, BACK, FRONT, metal, bevel=0.0016, segments=6)
@@ -120,7 +136,15 @@ def phone():
     disc("front camera", 0.0016, 0.00004, (0, HEIGHT / 2 - 0.0068, FRONT + 0.00016), lens)
 
     # Back: frosted glass, and a low pill carrying two lenses and a flash.
-    plate("back glass", WIDTH - 2 * rim, HEIGHT - 2 * rim, CORNER - rim, BACK - 0.00004, back, faces_back=True)
+    plate(
+        "back glass",
+        WIDTH - 2 * rim,
+        HEIGHT - 2 * rim,
+        CORNER - rim,
+        BACK - 0.00004,
+        back,
+        faces_back=True,
+    )
     bump_at = (WIDTH / 2 - 0.0195, HEIGHT / 2 - 0.0330)
     bump_top = BACK - 0.0015
     slab("camera bump", 0.0230, 0.0460, 0.0115, BACK, bump_top, glass, at=bump_at, bevel=0.0006)
