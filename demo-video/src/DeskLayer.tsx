@@ -86,36 +86,33 @@ export const SCREEN: Box = { x: 1424, y: 160, w: 352, h: 762 };
 const ASIDE = { k: 0.62, x: 40, y: 205 } as const;
 const STEPS = [both, both + 12] as const;
 /** How long a piece takes to cross, and when each sets off. */
-const CROSSING = 9;
+const CROSSING = 8;
 export const SETS_OFF: Readonly<Record<Piece, number>> = {
-  side: both + 8,
   title: both + 12,
   note: both + 12,
-  worth: both + 14,
-  todo: both + 18,
+  worth: both + 19,
+  todo: both + 12,
+  // Each sets off as the one before arrives, and of two that stand side by side the
+  // one nearer the phone goes first, so that none has to pass over another. The three markets stand side by side and go together, so none crosses another.
   markets: both + 22,
   btc: both + 22,
-  gold: both + 24,
-  stock: both + 26,
-  coming: both + 29,
-  signals: both + 32,
+  gold: both + 22,
+  stock: both + 22,
+  coming: both + 28,
+  signals: both + 25,
+  // The capsule goes last, across a desk the cards have already left.
+  side: both + 31,
 };
+/** When the sidebar becomes the capsule of places, where it stands. */
+export const COLLAPSES = [both + 8, both + 16] as const;
 /** When the last piece is across, and the phone's own screen takes over. */
-export const HANDOVER = [both + 40, both + 45] as const;
+export const HANDOVER = [both + 38, both + 43] as const;
 
 const towards =
   (frame: number) =>
   (piece: Piece): number => {
     const at = SETS_OFF[piece];
-    // The sidebar takes longer: it changes shape on the way.
-    return tween(
-      frame,
-      at,
-      at + (piece === "side" ? 12 : CROSSING),
-      0,
-      1,
-      EASE_IN_OUT,
-    );
+    return tween(frame, at, at + CROSSING, 0, 1, EASE_IN_OUT);
   };
 
 const viewAt = (frame: number): { k: number; x: number; y: number } => {
@@ -205,6 +202,7 @@ export const DeskLayer: React.FC = () => {
           logo={tween(frame, LANDED - 4, LANDED + 2, 0, 1, (t) => t)}
           lifted={lifted}
           towards={towards(frame)}
+          capsule={tween(frame, COLLAPSES[0], COLLAPSES[1], 0, 1, EASE_IN_OUT)}
           phone={SCREEN}
           view={viewAt(frame)}
         />
@@ -257,7 +255,7 @@ export const DeskLayer: React.FC = () => {
  */
 export const DeskOnPhone: React.FC = () => {
   const frame = useCurrentFrame();
-  if (frame < SETS_OFF.side || frame > HANDOVER[1]) {
+  if (frame < SETS_OFF.title || frame > HANDOVER[1]) {
     return null;
   }
   const handed = tween(frame, HANDOVER[0], HANDOVER[1], 0, 1, (t) => t);
@@ -273,6 +271,7 @@ export const DeskOnPhone: React.FC = () => {
         built={built(frame)}
         alive={ALIVE}
         towards={towards(frame)}
+        capsule={tween(frame, COLLAPSES[0], COLLAPSES[1], 0, 1, EASE_IN_OUT)}
         phone={SCREEN}
         view={viewAt(frame)}
         arriving

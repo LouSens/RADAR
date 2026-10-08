@@ -7,6 +7,7 @@ import {
   OPENINGS,
   RESOLVES,
   SETS_OFF,
+  COLLAPSES,
 } from "./DeskLayer";
 import * as Phone from "./shots/Both";
 import * as Cal from "./shots/Calendar";
@@ -210,7 +211,7 @@ const CUES: readonly Cue[] = [
   // Shot 9: the phone coming up, the sidebar becoming the capsule, each card arriving
   // on the screen, and the phone's own screen taking over.
   { file: "dive", at: at("both") + Phone.SLIDES[0] },
-  { file: "whoosh", at: SETS_OFF.side, level: 0.4 },
+  { file: "whoosh", at: COLLAPSES[0], level: 0.4 },
   ...(["worth", "todo", "btc", "gold", "stock"] as const).map((piece, i) => ({
     file: `pop-${i % 3}`,
     at: SETS_OFF[piece] + 7,

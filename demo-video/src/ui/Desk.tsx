@@ -255,6 +255,8 @@ export const Desk: React.FC<{
     readonly y: number;
   };
   readonly arriving?: boolean;
+  /** How far the sidebar has collapsed into the phone's capsule of places. */
+  readonly capsule?: number;
   /** Tells two drawings of Home apart, so that their own drawings do not share names. */
   readonly copy?: string;
 }> = ({
@@ -267,6 +269,7 @@ export const Desk: React.FC<{
   phone,
   view = { k: 1, x: 0, y: 0 },
   arriving = false,
+  capsule = 0,
   copy = "",
 }) => {
   const since = frame - alive;
@@ -358,11 +361,10 @@ export const Desk: React.FC<{
     );
   };
 
-  // On the phone the places are a capsule at the foot: the sidebar becomes it.
-  const capsule = Math.min(
-    Math.max(((towards?.("side") ?? 0) - 0.08) / 0.34, 0),
-    1,
-  );
+  // On the phone the places are a capsule at the foot: the sidebar becomes it where it
+  // stands, at its own foot, and then goes across.
+  const gone = towards?.("side") ?? 0;
+  const foot = (AT.side.h - 56 * (AT.side.w / 350)) * (1 - gone);
 
   return (
     <>
@@ -377,6 +379,7 @@ export const Desk: React.FC<{
               left: 0,
               top: 0,
               width: 350,
+              translate: `0 ${foot}px`,
               transformOrigin: "0 0",
               scale: AT.side.w / 350,
               opacity: capsule,
