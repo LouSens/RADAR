@@ -1,20 +1,24 @@
-import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { AbsoluteFill, interpolateColors, useCurrentFrame } from "remotion";
 import portfolio from "../fixtures/portfolio.json";
-import { C, FONT, fade } from "../theme";
-import { COPY, EASE, EASE_IN_OUT, tween } from "../timing";
-import { HERO, Headline, MARGIN, Rise, hero } from "../Type";
-import { ExampleNote, TONE, label } from "../ui/kit";
+import { C, fade } from "../theme";
+import { COPY, EASE_IN_OUT, HEIGHT, tween } from "../timing";
+import { Headline, MARGIN, Small, TOP, hero } from "../Type";
+import { ExampleNote, TONE } from "../ui/kit";
 
 const holdings = portfolio.holdings;
 const bitcoin = holdings[0];
 
-// The two rings (viz.tsx, Donut: radii 38 and 52 and a stroke of 9 on a box of 120),
-// four times the size, in the corner the two lines leave free.
-const CX = 1560;
-const CY = 812;
-const INNER = 152;
-const OUTER = 208;
-const STROKE = 36;
+// One pair of rings, about four fifths of the frame's height, right of the words. The
+// proportions are the app's (viz.tsx, Donut), opened up so that the number fits inside.
+const CX = 1280;
+const CY = HEIGHT / 2;
+const INNER = 350;
+const OUTER = 410;
+const STROKE = 44;
+
+/** When the money ring draws and the number counts to it, and the same for risk. */
+export const MONEY = [14, 36] as const;
+export const RISK = [50, 72] as const;
 
 /** One ring, drawn clockwise from twelve o'clock as far as `drawn` of the way round. */
 const Ring: React.FC<{
@@ -38,7 +42,7 @@ const Ring: React.FC<{
         const length = share(holding) * round;
         const start = used;
         used += length;
-        const seen = Math.min(Math.max(drawn * round - start, 0), length - 5);
+        const seen = Math.min(Math.max(drawn * round - start, 0), length - 7);
         if (seen <= 0) {
           return null;
         }
@@ -51,13 +55,13 @@ const Ring: React.FC<{
             r={radius}
             fill="none"
             stroke={TONE[holding.tone]}
-            strokeOpacity={main ? 1 : 0.62}
+            strokeOpacity={main ? 1 : 0.6}
             strokeWidth={STROKE}
             strokeDasharray={`${seen} ${round}`}
             strokeDashoffset={-start}
             style={
               main
-                ? { filter: `drop-shadow(0 0 14px ${fade(C.btc, 0.55)})` }
+                ? { filter: `drop-shadow(0 0 18px ${fade(C.btc, 0.55)})` }
                 : undefined
             }
           />
@@ -67,61 +71,33 @@ const Ring: React.FC<{
   );
 };
 
-/** A share as a hero number, counting up, with its words at headline size beside it. */
-const Counted: React.FC<{
-  readonly value: number;
-  readonly words: string;
-  readonly at: number;
-  readonly colour: string;
-  readonly top: number;
-}> = ({ value, words, at, colour, top }) => {
-  const frame = useCurrentFrame();
-  const count = Math.round(tween(frame, at, at + 22, 0, value * 100, EASE));
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: MARGIN - 8,
-        top,
-        display: "flex",
-        alignItems: "baseline",
-        gap: 40,
-      }}
-    >
-      <div style={{ ...hero, color: colour }}>
-        <Rise at={at}>{count}%</Rise>
-      </div>
-      <Headline lines={[words]} at={at + 4} />
-    </div>
-  );
-};
-
 /**
- * Shot 6. Where the money is and where the risk is: the inner ring is how the account is
- * split, the outer ring how its swings are. Bitcoin is a sliver of one and most of the
- * other. Figures: the made-up example in fixtures/portfolio.json.
+ * Shot 6. One number, in the middle of its rings as the app puts it. The inner ring is
+ * how the account's money is split and the number counts to Bitcoin's share of it; then
+ * the outer ring, how its risk is split, draws round it and the same number counts on to
+ * Bitcoin's share of that, turning amber. Figures: the made-up example in
+ * fixtures/portfolio.json.
  */
 export const Risk: React.FC = () => {
   const frame = useCurrentFrame();
-  const money = tween(frame, 16, 38, 0, 1, EASE_IN_OUT);
-  const risk = tween(frame, 46, 68, 0, 1, EASE_IN_OUT);
-  const names = tween(frame, 20, 32, 0, 1);
+  const money = tween(frame, MONEY[0], MONEY[1], 0, 1, EASE_IN_OUT);
+  const risk = tween(frame, RISK[0], RISK[1], 0, 1, EASE_IN_OUT);
+  const share = bitcoin.money * money + (bitcoin.risk - bitcoin.money) * risk;
 
   return (
     <AbsoluteFill>
-      <Counted
-        value={bitcoin.money}
-        words={COPY.risk[0]}
-        at={16}
-        colour={C.ink}
-        top={64}
+      {/* The words change with the ring: the first pair leaves as the second ring starts. */}
+      <Headline
+        lines={COPY.risk.money}
+        at={MONEY[0] - 2}
+        out={RISK[0] - 2}
+        style={{ position: "absolute", left: MARGIN, top: TOP }}
       />
-      <Counted
-        value={bitcoin.risk}
-        words={COPY.risk[1]}
-        at={46}
-        colour={C.btc}
-        top={64 + HERO + 8}
+      <Headline
+        lines={COPY.risk.risk}
+        at={RISK[0] + 6}
+        accent={C.btc}
+        style={{ position: "absolute", left: MARGIN, top: TOP }}
       />
 
       <svg
@@ -137,82 +113,44 @@ export const Risk: React.FC = () => {
         <Ring radius={INNER} share={(h) => h.money} drawn={money} />
         <Ring radius={OUTER} share={(h) => h.risk} drawn={risk} />
       </svg>
-      <div
+
+      {/* Whose share it is, and the share. */}
+      <Small
+        at={MONEY[0]}
+        colour={C.ink}
+        text={
+          <span style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <span
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: C.btc,
+              }}
+            />
+            Bitcoin
+          </span>
+        }
         style={{
           position: "absolute",
           left: CX,
-          top: CY,
-          translate: "-50% -50%",
-          textAlign: "center",
-          fontFamily: FONT,
-          opacity: names,
+          top: CY - 196,
+          translate: "-50% 0",
         }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            fontSize: 34,
-            fontWeight: 600,
-            letterSpacing: "-0.02em",
-            color: C.ink,
-          }}
-        >
-          <span
-            style={{
-              width: 16,
-              height: 16,
-              borderRadius: "50%",
-              background: C.btc,
-            }}
-          />
-          Bitcoin
-        </div>
-      </div>
-
-      {/* viz.tsx, Legend, and what the two rings are. */}
+      />
       <div
         style={{
+          ...hero,
           position: "absolute",
-          left: MARGIN,
-          top: 842,
-          fontFamily: FONT,
-          opacity: names,
+          left: CX,
+          top: CY + 14,
+          translate: "-50% -50%",
+          color: interpolateColors(risk, [0, 1], [C.ink, C.btc]),
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            gap: 36,
-            fontSize: 26,
-            color: C.muted,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {holdings.map((holding) => (
-            <span
-              key={holding.symbol}
-              style={{ display: "flex", alignItems: "center", gap: 10 }}
-            >
-              <span
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: "50%",
-                  background: TONE[holding.tone],
-                }}
-              />
-              {holding.name}
-            </span>
-          ))}
-        </div>
-        <div style={{ ...label, fontSize: 20, marginTop: 18 }}>
-          Inner ring: money · Outer ring: risk
-        </div>
+        {Math.round(share * 100)}%
       </div>
-      <ExampleNote opacity={names} />
+      <ExampleNote />
     </AbsoluteFill>
   );
 };

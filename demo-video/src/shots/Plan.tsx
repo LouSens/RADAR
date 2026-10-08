@@ -1,7 +1,7 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import portfolio from "../fixtures/portfolio.json";
-import { C, FONT, NUM_FEATURES } from "../theme";
-import { COPY, EASE, EASE_IN_OUT, tween } from "../timing";
+import { C } from "../theme";
+import { BEAT, COPY, EASE, EASE_IN_OUT, tween } from "../timing";
 import { Headline, LINE, MARGIN, Small, TOP } from "../Type";
 import {
   ExampleNote,
@@ -17,40 +17,37 @@ import {
 const { holdings, step } = portfolio;
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-// The bar of shares (viz.tsx, StackBar), in frame pixels, under the headline.
-const BAR = { left: MARGIN, width: 1664, top: 548, height: 40 } as const;
-// The card the next step is on, before the camera moves in on it.
-const CARD = { width: 800, top: 690, zoom: 2 } as const;
-const CARD_MIDDLE = 842;
-/** Where the card's middle comes to, and how much larger it is, once the camera is in. */
-const CLOSE = { middle: 752, scale: 1.42 } as const;
+/** The grid's width: the card and the bar both run from margin to margin. */
+const WIDE = 1920 - MARGIN * 2;
+// The bar of shares (viz.tsx, StackBar), where the small line will stand after it.
+const BAR = { top: TOP + LINE * 2 + 18, height: 40 } as const;
+// The card the next step is on (StepsPanel.tsx, StepsCard), at full width.
+const CARD = { top: 476, zoom: 3.2 } as const;
+
+/** How long the bar is on, and when each blip lands on its price: one a beat. */
+const BAR_LEAVES = 15;
+export const LANDS = [BEAT * 2, BEAT * 3, BEAT * 4] as const;
+/** How long a blip is in the air. */
+const FLIGHT = 11;
+/** What the account holds, in the order of shot 3's blips. */
+const BLIPS = [C.btc, C.gold, C.stock] as const;
 
 /**
- * Shot 7. The bar of what is held now reshapes into the plan, and the camera moves in on
- * the next step: three prices, lighting one by one. Figures: the made-up example in
- * fixtures/portfolio.json. The picture is there from the first frame.
+ * Shot 7. The card with the next step is there, full size, from the first frame. For half
+ * a second the bar above it reshapes from what is held into the plan; then the three
+ * blips of shot 3 fly in and land on the three prices, one a beat, each lighting its dot.
+ * Figures: the made-up example in fixtures/portfolio.json.
  */
 export const Plan: React.FC = () => {
   const frame = useCurrentFrame();
-  const reshape = tween(frame, 14, 34, 0, 1, EASE_IN_OUT);
-  const push = tween(frame, 38, 58, 0, 1, EASE_IN_OUT);
+  const reshape = tween(frame, 2, 12, 0, 1, EASE_IN_OUT);
+  const leaves = tween(frame, BAR_LEAVES, BAR_LEAVES + 6, 0, 1, EASE);
   // The price ladder runs right to left: today's price first, then each lower one.
-  const lit = step.rungs.map((_, i) =>
-    tween(frame, 58 + i * 8, 66 + i * 8, 0, 1, EASE),
-  );
-  const named = (text: string, shown: number): React.ReactNode => (
-    <span
-      style={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        whiteSpace: "nowrap",
-        opacity: shown,
-      }}
-    >
-      {text}
-    </span>
-  );
+  const lit = LANDS.map((at) => tween(frame, at, at + 7, 0, 1, EASE));
+  const blips = LANDS.map((at, i) => ({
+    colour: BLIPS[i],
+    flown: tween(frame, at - FLIGHT, at, 0, 1, EASE_IN_OUT),
+  }));
 
   return (
     <AbsoluteFill>
@@ -60,137 +57,69 @@ export const Plan: React.FC = () => {
         lineAt={[2, 32]}
         style={{ position: "absolute", left: MARGIN, top: TOP }}
       />
-      <Small
-        text={COPY.plan.small}
-        at={16}
-        style={{ position: "absolute", left: MARGIN, top: TOP + LINE * 2 + 14 }}
-      />
 
-      {/* Everything below is one picture the camera moves in on. */}
-      <AbsoluteFill
+      {/* What is held, becoming the plan; then the small line takes its place. */}
+      <div
         style={{
-          transformOrigin: `960px ${CARD_MIDDLE}px`,
-          translate: `0 ${(CLOSE.middle - CARD_MIDDLE) * push}px`,
-          scale: mix(1, CLOSE.scale, push),
+          position: "absolute",
+          left: MARGIN,
+          top: BAR.top,
+          width: WIDE * (1 - leaves),
+          height: BAR.height,
+          display: "flex",
+          overflow: "hidden",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.08)",
         }}
       >
-        <div style={{ opacity: 1 - Math.min(push * 2.4, 1) }}>
-          <div
+        {holdings.map((holding) => (
+          <span
+            key={holding.symbol}
             style={{
-              position: "absolute",
-              left: BAR.left,
-              top: BAR.top - 50,
-              height: 40,
-              ...label,
-              fontFamily: FONT,
-              fontSize: 22,
+              flex: `0 0 ${mix(holding.money, holding.plan, reshape) * WIDE}px`,
+              background: TONE[holding.tone],
+              boxShadow: `inset -3px 0 0 ${C.bg}`,
             }}
-          >
-            {named("Now", 1 - tween(frame, 14, 24, 0, 1))}
-            {named("Your plan", tween(frame, 22, 32, 0, 1))}
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              left: BAR.left,
-              top: BAR.top,
-              width: BAR.width,
-              height: BAR.height,
-              display: "flex",
-              overflow: "hidden",
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.08)",
-            }}
-          >
-            {holdings.map((holding) => (
-              <span
-                key={holding.symbol}
-                style={{
-                  width: `${mix(holding.money, holding.plan, reshape) * 100}%`,
-                  background: TONE[holding.tone],
-                  boxShadow: `inset -3px 0 0 ${C.bg}`,
-                }}
-              />
-            ))}
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              left: BAR.left,
-              top: BAR.top + BAR.height + 18,
-              width: BAR.width,
-              display: "flex",
-              gap: 44,
-              fontFamily: FONT,
-              fontSize: 26,
-              color: C.muted,
-            }}
-          >
-            {holdings.map((holding) => (
-              <span
-                key={holding.symbol}
-                style={{ display: "flex", alignItems: "center", gap: 10 }}
-              >
-                <span
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    background: TONE[holding.tone],
-                  }}
-                />
-                {holding.name}
-                <span
-                  style={{
-                    fontFeatureSettings: NUM_FEATURES,
-                    fontVariantNumeric: "tabular-nums",
-                    color: C.ink,
-                  }}
-                >
-                  {Math.round(mix(holding.money, holding.plan, reshape) * 100)}%
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
+          />
+        ))}
+      </div>
+      <Small
+        text={COPY.plan.small}
+        at={BAR_LEAVES + 4}
+        style={{ position: "absolute", left: MARGIN, top: BAR.top - 4 }}
+      />
 
-        {/* StepsPanel.tsx, StepsCard. */}
+      <div style={{ position: "absolute", left: MARGIN, top: CARD.top }}>
         <div
           style={{
-            position: "absolute",
-            left: 960 - CARD.width / 2,
-            top: CARD.top,
+            ...base,
+            ...glass,
+            width: WIDE / CARD.zoom,
+            zoom: CARD.zoom,
+            padding: 16,
           }}
         >
-          <div
+          <TopEdge />
+          <p style={{ ...label, margin: 0 }}>What to do now</p>
+          <p
             style={{
-              ...base,
-              ...glass,
-              width: CARD.width / CARD.zoom,
-              zoom: CARD.zoom,
-              padding: 16,
+              margin: "6px 0 0",
+              fontSize: 18,
+              fontWeight: 600,
+              letterSpacing: "-0.025em",
+              lineHeight: 1.4,
             }}
           >
-            <TopEdge />
-            <p style={{ ...label, margin: 0 }}>What to do now</p>
-            <p
-              style={{
-                margin: "6px 0 0",
-                fontSize: 18,
-                fontWeight: 600,
-                letterSpacing: "-0.025em",
-                lineHeight: 1.4,
-              }}
-            >
-              Buy {formatMoney(step.amount)} of {step.name}
-            </p>
-            <div style={{ marginTop: 16 }}>
-              <Ladder rungs={step.rungs} lit={lit} />
-            </div>
+            Buy {formatMoney(step.amount)} of {step.name}
+          </p>
+          <div style={{ marginTop: 16 }}>
+            <Ladder rungs={step.rungs} lit={lit} blips={blips} />
           </div>
         </div>
-      </AbsoluteFill>
-      <ExampleNote />
+      </div>
+      <ExampleNote
+        style={{ left: "auto", right: MARGIN, bottom: "auto", top: TOP + 16 }}
+      />
     </AbsoluteFill>
   );
 };

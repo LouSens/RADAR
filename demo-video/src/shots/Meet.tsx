@@ -17,7 +17,7 @@ const LIFT = -0.55;
 /** A clear way through the ring: inside it, and to one side of the rising line. */
 const GAP = [RING.centre.x - 0.34, RING.centre.y + 0.44 + LIFT] as const;
 /** When the camera sets off for the ring, and the shot's last frame, when it is through. */
-const PUSH = [46, 59] as const;
+export const PUSH = [46, 59] as const;
 
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
@@ -32,7 +32,7 @@ const cameraAt = (frame: number): View => {
   const x = mix(0, GAP[0], Math.min(push * 2, 1));
   const y = mix(0, GAP[1], Math.min(push * 2, 1));
   return {
-    position: [x, y, mix(mix(11.8, 10.6, drift), -0.7, push)],
+    position: [x, y, mix(mix(8.3, 7.5, drift), -0.7, push)],
     target: [x, y, -8],
   };
 };

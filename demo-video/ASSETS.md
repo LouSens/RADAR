@@ -17,6 +17,7 @@ Open Font License 1.1).
 | File | What | Made by |
 | --- | --- | --- |
 | `public/assets/phone.glb` | A generic phone: metal frame, glass, camera bump, no maker's shapes or marks | `blender/build_assets.py` (Blender 5.0) |
+| `public/sfx/*.wav` | Every sound in the film: 23 short effects and a room tone. Generated, not recorded or downloaded | `sound/make_sfx.py` (numpy) |
 | `public/ui/home.png` | The film's own rebuild of the app's Home, showing the made-up example portfolio | The `Home` composition (`src/ui/Home.tsx`) |
 | `public/ui/*.png` (the rest) | Pages of the running app at phone size, kept as reference. Market data only | The `Capture` composition |
 | `src/fixtures/portfolio.json` | A made-up example portfolio: invented holdings, with risk shares and a usual week's move worked out from daily market closes the way the app does | Written on 2026-10-08 |

@@ -4,31 +4,31 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { C, fade } from "../theme";
+import { C, FEATURES, FONT, fade } from "../theme";
 import { Mark } from "../three/Mark";
 import { Stage, type View } from "../three/Stage";
 import { useLoaded } from "../three/assets";
 import { BEAT, COPY, EASE_IN_OUT, tween } from "../timing";
-import { Headline, LINE, MARGIN, TOP } from "../Type";
+import { END_LINE, Headline, MARGIN, Rise, TOP } from "../Type";
 
-/** When the three phrases leave, together; the last line starts as they go. */
-const LEAVE = 52;
-/** When the mark starts to draw itself, in the space the phrases left. */
-const MARK = 58;
+/** When each phrase starts, when all three leave, and when the mark arrives. */
+export const PHRASES = [0, BEAT, BEAT * 2] as const;
+const LEAVE = 44;
+export const MARK = 50;
 
 /**
- * The mark sits at the left margin above the last line: the camera is off to its right,
- * so it falls left of the middle of the frame, and moves in slowly so that the held
- * picture is never still.
+ * The mark in the middle, about 300 pixels across, its centre a little above the
+ * frame's. The camera moves in slowly, so the held card is never still.
  */
 const cameraAt = (frame: number): View => {
-  const z = 11.9 - tween(frame, MARK, 150, 0, 0.8, (t) => t);
-  return { position: [3.45, -1.25, z], target: [3.45, -1.25, 0] };
+  const z = 14.6 - tween(frame, MARK, 110, 0, 0.7, (t) => t);
+  return { position: [0.12, -1.1, z], target: [0.12, -1.1, 0] };
 };
 
 /**
- * Shot 8. What is yours, a phrase a beat; then the phrases leave together and the mark
- * draws itself over the last line, which is held.
+ * Shot 8. What is yours, a phrase a beat, on the grid; then the phrases leave together
+ * and the end card arrives in the middle, the one thing in the film that is centred: the
+ * mark, the name, and what RADAR is.
  */
 export const Close: React.FC = () => {
   const frame = useCurrentFrame();
@@ -37,10 +37,12 @@ export const Close: React.FC = () => {
   if (!assets) {
     return null;
   }
-  const ring = tween(frame, MARK, MARK + 12, 0, 1, EASE_IN_OUT);
-  const line = tween(frame, MARK + 6, MARK + 17, 0, 1, EASE_IN_OUT);
+  // The ring starts round as the phrases leave, so the frame is never empty between
+  // them; the line and the dot land with the mark's beat.
+  const ring = tween(frame, LEAVE, MARK + 3, 0, 1, EASE_IN_OUT);
+  const line = tween(frame, MARK, MARK + 9, 0, 1, EASE_IN_OUT);
   const dot = spring({
-    frame: frame - MARK - 15,
+    frame: frame - MARK - 7,
     fps,
     config: { damping: 9, mass: 0.45, stiffness: 170 },
   });
@@ -51,7 +53,10 @@ export const Close: React.FC = () => {
         lines={COPY.close.lines}
         // The first word is already most of the way up on the shot's first frame.
         at={-5}
-        lineAt={[-5, BEAT, BEAT * 2]}
+        lineAt={[-5, PHRASES[1], PHRASES[2]]}
+        // The two words of a phrase come close together, so that the third phrase is
+        // whole before all three leave for the mark.
+        step={3}
         out={LEAVE}
         style={{ position: "absolute", left: MARGIN, top: TOP }}
       />
@@ -63,11 +68,25 @@ export const Close: React.FC = () => {
       >
         <Mark ring={ring} line={line} dot={dot} />
       </Stage>
-      <Headline
-        lines={COPY.close.last}
-        at={LEAVE}
-        style={{ position: "absolute", left: MARGIN, top: TOP + LINE * 3 + 56 }}
-      />
+      <AbsoluteFill style={{ alignItems: "center", top: 572 }}>
+        <Headline lines={COPY.close.name} at={MARK + 2} />
+        {/* The one line in the film at this size. */}
+        <div
+          style={{
+            marginTop: 10,
+            fontFamily: FONT,
+            fontFeatureSettings: FEATURES,
+            fontSize: END_LINE,
+            fontWeight: 600,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.1,
+            whiteSpace: "nowrap",
+            color: C.ink,
+          }}
+        >
+          <Rise at={MARK + 6}>{COPY.close.last}</Rise>
+        </div>
+      </AbsoluteFill>
     </AbsoluteFill>
   );
 };

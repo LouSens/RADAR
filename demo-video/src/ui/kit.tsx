@@ -448,7 +448,12 @@ export interface Rung {
 export const Ladder: React.FC<{
   readonly rungs: readonly Rung[];
   readonly lit?: readonly number[];
-}> = ({ rungs, lit }) => {
+  /** A blip flying in to each dot: its colour and how far it has flown, from 0 to 1. */
+  readonly blips?: readonly {
+    readonly colour: string;
+    readonly flown: number;
+  }[];
+}> = ({ rungs, lit, blips }) => {
   const deepest = Math.max(...rungs.map((r) => r.below), 0);
   const at = (below: number): number =>
     deepest > 0 ? 100 - (below / deepest) * 84 : 50;
@@ -534,6 +539,34 @@ export const Ladder: React.FC<{
             />
           );
         })}
+        {blips?.map((blip, i) => {
+          const rung = rungs[i];
+          if (!rung || blip.flown <= 0 || blip.flown >= 1) {
+            return null;
+          }
+          // Each comes down out of the frame above on a curve of its own, shrinking to
+          // the size of the dot it lands on.
+          const left = 1 - blip.flown;
+          const dx = (i - 1) * -150 * left;
+          const dy = -230 * left * left - 40 * left;
+          const size = 12 + 16 * left;
+          return (
+            <span
+              key={`blip-${rung.price}`}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: `${at(rung.below)}%`,
+                width: size,
+                height: size,
+                translate: `calc(-50% + ${dx}px) calc(-50% + ${dy}px)`,
+                borderRadius: "50%",
+                background: blip.colour,
+                boxShadow: `0 0 ${14}px ${5}px ${fade(blip.colour, 0.45)}`,
+              }}
+            />
+          );
+        })}
       </div>
       {rungs.length > 1 && (
         <div
@@ -579,21 +612,23 @@ export const TrustBadge: React.FC<{ readonly word: string }> = ({ word }) => (
 );
 
 /** The small notice that a shot's figures are an example, not anyone's account. */
-export const ExampleNote: React.FC<{ readonly opacity?: number }> = ({
-  opacity = 1,
-}) => (
+export const ExampleNote: React.FC<{
+  readonly opacity?: number;
+  readonly style?: React.CSSProperties;
+}> = ({ opacity = 1, style }) => (
   <div
     style={{
       ...label,
       fontFamily: FONT,
       position: "absolute",
-      left: 96,
-      bottom: 64,
-      fontSize: 20,
+      left: 128,
+      bottom: 48,
+      fontSize: 34,
       display: "flex",
       alignItems: "center",
       gap: 12,
       opacity,
+      ...style,
     }}
   >
     <span

@@ -1,6 +1,6 @@
 import { useCurrentFrame } from "remotion";
 import { C, FEATURES, FONT, NUM_FEATURES } from "./theme";
-import { BEAT, EASE, tween } from "./timing";
+import { BEAT, EASE, EASE_IN_OUT, tween } from "./timing";
 
 /**
  * The film's type, all of it. Three sizes and nothing else: a headline, a hero number
@@ -11,6 +11,8 @@ import { BEAT, EASE, tween } from "./timing";
 export const HEADLINE = 140;
 export const HERO = 260;
 export const SMALL = 40;
+/** The end card's second line, and the only place this size is used. */
+export const END_LINE = 80;
 export const MARGIN = 128;
 export const TOP = 96;
 /** How tall a line of headline is. */
@@ -34,7 +36,7 @@ export const Rise: React.FC<{
   const frame = useCurrentFrame();
   const up = tween(frame, at, at + RISE, 130, 0, EASE);
   const gone =
-    out === undefined ? 0 : tween(frame, out, out + RISE, 0, -130, EASE);
+    out === undefined ? 0 : tween(frame, out, out + RISE, 0, -130, EASE_IN_OUT);
   return (
     <span
       style={{

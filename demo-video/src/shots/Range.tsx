@@ -18,16 +18,14 @@ const price = (value: number): string =>
 // range come to rest on, and the chart.
 const LEFT = 210;
 const SPAN = 1500;
-const HEADING = 400;
-const ROW = 508;
-const BASE = 930;
-const TALL = 306;
+const HEADING = 394;
+const ROW = 514;
+const BASE = 936;
+const TALL = 296;
 /** The size the two figures come down to, as figures of the card. */
 const RESTING = 92;
 /** Where the one price stands before it is cut. */
 const START = { x: 960, y: 690 } as const;
-/** How wide the cut between the two figures is once it has opened. */
-const CUT = 200;
 
 const first = range.edges[0];
 const last = range.edges[range.edges.length - 1];
@@ -42,6 +40,24 @@ const BAR = SPAN / range.counts.length;
 const NOW_BAR = Math.floor((X_NOW - LEFT) / BAR);
 
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+/** When the cut starts to open and when the two figures land. */
+export const OPEN = [22, 56] as const;
+/** How wide the price is, and its widest digit, as multiples of its size. */
+const WIDE = 3.84;
+const DIGIT = 0.64;
+/** The clear space between the two copies, `open` of the way through the move. */
+const gapAt = (open: number): number =>
+  (X_HIGH - X_LOW) * open - WIDE * mix(HERO, RESTING, open);
+/** How far through the move the space first exceeds one digit: counting starts there. */
+const COUNT_FROM = (() => {
+  for (let open = 0; open <= 1; open += 0.001) {
+    if (gapAt(open) > DIGIT * mix(HERO, RESTING, open)) {
+      return open;
+    }
+  }
+  return 1;
+})();
 
 /** One figure, centred on a point. It starts as a hero number. */
 const Figure: React.FC<{
@@ -73,21 +89,22 @@ export const Range: React.FC = () => {
   const { fps } = useVideoConfig();
 
   // One move, on one curve. The price is two copies of itself lying exactly together,
-  // the left one shown only left of a cut and the right one only right of it. As the cut
-  // opens, each copy travels to its end of the range, shrinks to its place in the row and
-  // counts to its value, so position, size and value all change together and none jumps.
-  const open = tween(frame, 22, 56, 0, 1, EASE_IN_OUT);
+  // the left one shown only left of a cut and the right one only right of it. Both show
+  // the same value while they part, so no frame has a figure made of two different
+  // numbers. Once they stand clear of each other, with more than a digit of space
+  // between them, each counts to its end of the range as it finishes its journey.
+  const open = tween(frame, OPEN[0], OPEN[1], 0, 1, EASE_IN_OUT);
   const size = mix(HERO, RESTING, open);
   const cy = mix(START.y, ROW, open);
   const lowX = mix(START.x, X_LOW, open);
   const highX = mix(START.x, X_HIGH, open);
   const seam = (lowX + highX) / 2;
-  const cutLeft = seam - (CUT / 2) * open;
-  const cutRight = seam + (CUT / 2) * open;
-  // The cut is sharp while the copies lie together and softens as they part.
-  const soft = 18 * open;
-  const leftOnly = `linear-gradient(to right, #000 ${cutLeft - soft}px, transparent ${cutLeft}px)`;
-  const rightOnly = `linear-gradient(to left, #000 ${1920 - cutRight - soft}px, transparent ${1920 - cutRight}px)`;
+  const gap = Math.max(gapAt(open), 0);
+  const cutLeft = seam - gap / 2 + Math.min(gap, 6);
+  const cutRight = seam + gap / 2 - Math.min(gap, 6);
+  const leftOnly = `linear-gradient(to right, #000 ${cutLeft}px, transparent ${cutLeft}px)`;
+  const rightOnly = `linear-gradient(to left, #000 ${1920 - cutRight}px, transparent ${1920 - cutRight}px)`;
+  const counted = tween(open, COUNT_FROM, 1, 0, 1, (t) => t);
   // While the price is still large and low in the frame, no bar rises into it.
   const room = BASE - (cy + size * 0.45 + 22);
   const guides = tween(frame, 54, 68, 0, 1, EASE);
@@ -101,7 +118,7 @@ export const Range: React.FC = () => {
   const label: React.CSSProperties = {
     fontFamily: FONT,
     fontFeatureSettings: FEATURES,
-    fontSize: 22,
+    fontSize: 34,
     fontWeight: 600,
     letterSpacing: "0.075em",
     textTransform: "uppercase",
@@ -146,8 +163,8 @@ export const Range: React.FC = () => {
         >
           <span
             style={{
-              width: 14,
-              height: 14,
+              width: 20,
+              height: 20,
               borderRadius: "50%",
               background: C.btc,
             }}
@@ -163,7 +180,7 @@ export const Range: React.FC = () => {
             borderRadius: 999,
             border: `1.5px solid ${C.lineStrong}`,
             fontFamily: FONT,
-            fontSize: 26,
+            fontSize: 34,
             fontWeight: 500,
             color: C.ink,
             scale: badge,
@@ -246,11 +263,11 @@ export const Range: React.FC = () => {
         style={{
           position: "absolute",
           left: X_NOW,
-          top: BASE - TALL - 56,
+          top: BASE - TALL - 58,
           translate: "-50% 0",
           fontFamily: FONT,
           fontFeatureSettings: NUM_FEATURES,
-          fontSize: 28,
+          fontSize: 34,
           color: C.muted,
           whiteSpace: "nowrap",
           opacity: now,
@@ -273,7 +290,7 @@ export const Range: React.FC = () => {
           right copy right of it, so two whole figures never touch. */}
       <AbsoluteFill style={{ maskImage: leftOnly, WebkitMaskImage: leftOnly }}>
         <Figure
-          value={mix(range.startPrice, range.low, open)}
+          value={mix(range.startPrice, range.low, counted)}
           cx={lowX}
           cy={cy}
           size={size}
@@ -283,7 +300,7 @@ export const Range: React.FC = () => {
         style={{ maskImage: rightOnly, WebkitMaskImage: rightOnly }}
       >
         <Figure
-          value={mix(range.startPrice, range.high, open)}
+          value={mix(range.startPrice, range.high, counted)}
           cx={highX}
           cy={cy}
           size={size}
@@ -324,12 +341,12 @@ export const Range: React.FC = () => {
           position: "absolute",
           left: LEFT,
           width: SPAN,
-          top: BASE + 16,
+          top: BASE + 10,
           display: "flex",
           justifyContent: "space-between",
           fontFamily: FONT,
           fontFeatureSettings: NUM_FEATURES,
-          fontSize: 26,
+          fontSize: 34,
           color: C.faint,
           opacity: tween(frame, 60, 72, 0, 1),
         }}

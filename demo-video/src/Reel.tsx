@@ -8,6 +8,7 @@ import { Plan } from "./shots/Plan";
 import { Question } from "./shots/Question";
 import { Range } from "./shots/Range";
 import { Risk } from "./shots/Risk";
+import { Sound } from "./Sound";
 import { SweepLine, Swept } from "./Sweep";
 import { AssetsProvider, useAssets } from "./three/assets";
 import { FPS, SHOTS, SWEEP, type ShotId } from "./timing";
@@ -37,6 +38,7 @@ export const Reel: React.FC = () => {
     <AssetsProvider value={assets}>
       <AbsoluteFill>
         <Ground />
+        <Sound />
         {SHOTS.map((shot, i) => {
           const next = SHOTS[i + 1];
           const tail = next?.sweep ? SWEEP : 0;

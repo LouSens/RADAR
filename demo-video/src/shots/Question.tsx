@@ -9,18 +9,21 @@ const bitcoin = market.markets[0];
 const closes = bitcoin.weekCloses;
 
 /** The price changes this often, in frames. */
-const TICK = 4;
+export const TICK = 4;
 /** The hours the shot plays through: the last of the week, ending on the newest. */
-const HOURS = 30;
+export const HOURS = 30;
 const shown = closes.slice(closes.length - HOURS);
+/** Hours before those, already drawn on the first frame so that it has a trace. */
+const BEFORE = 24;
+const traced = closes.slice(closes.length - HOURS - BEFORE);
 
 // The trace beside the price, in frame pixels.
 const TRACE = { left: 1240, width: 552, top: 600, height: 230 } as const;
-const LOW = Math.min(...shown);
-const HIGH = Math.max(...shown);
+const LOW = Math.min(...traced);
+const HIGH = Math.max(...traced);
 const point = (i: number): readonly [number, number] => [
-  TRACE.left + (i / (HOURS - 1)) * TRACE.width,
-  TRACE.top + TRACE.height * (1 - (shown[i] - LOW) / (HIGH - LOW)),
+  TRACE.left + (i / (traced.length - 1)) * TRACE.width,
+  TRACE.top + TRACE.height * (1 - (traced[i] - LOW) / (HIGH - LOW)),
 ];
 
 /**
@@ -41,9 +44,9 @@ export const Question: React.FC = () => {
       ? 0
       : 1 - tween(since, 0, TICK, 0, 1, EASE);
 
-  const head = point(step);
-  const path = shown
-    .slice(0, step + 1)
+  const head = point(BEFORE + step);
+  const path = traced
+    .slice(0, BEFORE + step + 1)
     .map(
       (_, i) =>
         `${i === 0 ? "M" : "L"}${point(i)[0].toFixed(1)} ${point(i)[1].toFixed(1)}`,
@@ -64,7 +67,7 @@ export const Question: React.FC = () => {
             <stop offset="1" stopColor={C.btc} stopOpacity="0.9" />
           </linearGradient>
         </defs>
-        {step > 0 && (
+        {
           <path
             d={path}
             fill="none"
@@ -73,7 +76,7 @@ export const Question: React.FC = () => {
             strokeLinejoin="round"
             strokeLinecap="round"
           />
-        )}
+        }
         <circle
           cx={head[0]}
           cy={head[1]}

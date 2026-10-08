@@ -20,7 +20,7 @@ const LIGHT: readonly (readonly [number, string])[] = [
   [shot("range").from + 10, C.btc],
   [shot("plan").from - 6, C.btc],
   [shot("plan").from + 14, C.accent],
-  [shot("close").from + 150, C.accent],
+  [shot("close").from + 110, C.accent],
 ];
 
 const hex = (colour: string): string => {

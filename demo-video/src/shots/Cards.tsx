@@ -76,11 +76,18 @@ const onFrame = (
 
 /** How far the viewer is from the picture plane, in pixels. */
 const DEPTH = 1500;
-const PANE = { width: 780, zoom: 2.85 } as const;
+const PANE = { width: 800, zoom: 2.92 } as const;
 const ROW = { x: 800, z: -560, turn: -24 } as const;
 /** The frame each pane is looked at, and how long the camera rests on it. */
-const LOOK = [16, 40, 64] as const;
+export const LOOK = [16, 40, 64] as const;
+/** The frame each card starts to lift off the phone. */
+export const LIFTS = [1, 5, 9] as const;
 const REST = 13;
+/**
+ * How far down the frame the middle of a resting pane is. Low enough that its top is
+ * well clear of the headline's second line: panes cross the headline only while moving.
+ */
+const RESTS = 0.69;
 
 /** Where the camera is along the row: it glides from one pane to the next, never still. */
 const along = (frame: number): number => {
@@ -160,12 +167,12 @@ export const Cards: React.FC = () => {
       </Stage>
 
       <AbsoluteFill
-        style={{ perspective: DEPTH, perspectiveOrigin: "66% 60%" }}
+        style={{ perspective: DEPTH, perspectiveOrigin: `66% ${RESTS * 100}%` }}
       >
         {markets.map((m, i) => {
           const tone = TONE[m.tone];
           // Off the screen: each card starts exactly where it lies on the phone.
-          const lift = tween(frame, 1 + i * 2, 18 + i * 2, 0, 1, EASE_IN_OUT);
+          const lift = tween(frame, LIFTS[i], LIFTS[i] + 17, 0, 1, EASE_IN_OUT);
           const from = onFrame(ON_HOME.xs[i], ON_HOME.y);
           const small = (ON_HOME.width * from.unit) / PANE.width;
           // In the row, as the camera sees it now.
@@ -173,7 +180,7 @@ export const Cards: React.FC = () => {
           const dx = i * ROW.x - cameraX;
           const seen = DEPTH / (DEPTH - dz);
           const x = mix(from.x, WIDTH / 2 + 310 + dx * seen, lift);
-          const y = mix(from.y, HEIGHT * 0.6, lift);
+          const y = mix(from.y, HEIGHT * RESTS, lift);
           const size = mix(small, seen, lift);
           const turn = mix(-12, ROW.turn + (where - i) * 9, lift);
           // The pane being looked at is sharp; the others fall out of focus.
@@ -184,7 +191,9 @@ export const Cards: React.FC = () => {
             fps,
             config: { damping: 11, mass: 0.5, stiffness: 190 },
           });
-          const gone = tween(where - i, 1.25, 1.7, 0, 1);
+          // A pane the camera has passed is gone before the camera comes to rest on the next,
+          // so nothing lies over the headline while the picture is still.
+          const gone = tween(where - i, 0.3, 0.78, 0, 1);
           const face = (copy: string): React.ReactNode => (
             <div style={{ width: PANE.width / PANE.zoom, zoom: PANE.zoom }}>
               <MarketCard
@@ -213,7 +222,8 @@ export const Cards: React.FC = () => {
                 translate: "-50% -24.6%",
                 transformOrigin: "50% 24.6%",
                 transform: `scale(${size}) rotateY(${turn}deg)`,
-                opacity: (1 - gone) * tween(frame, i * 2, 4 + i * 2, 0, 1),
+                opacity:
+                  (1 - gone) * tween(frame, LIFTS[i] - 1, LIFTS[i] + 3, 0, 1),
                 filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
                 zIndex: 10 - Math.round(Math.abs(where - i) * 3),
               }}

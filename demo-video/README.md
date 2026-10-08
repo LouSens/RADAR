@@ -1,8 +1,8 @@
 # The RADAR reel
 
-A 25-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
-750 frames, cut to 120 beats a minute (15 frames a beat). Its words say what RADAR does
-and has.
+A 24-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
+710 frames, cut to 120 beats a minute (15 frames a beat). Its words say what RADAR does
+and has. It has sound effects and no music.
 
 | # | Frames | Picture | Headline | Small line |
 | --- | --- | --- | --- | --- |
@@ -11,11 +11,11 @@ and has.
 | 3 | 135 to 224 | A glide along the phone's metal edge; it swings round showing Home, with a blip for each thing held | Every coin you hold. Live. | Synced from Binance by itself. |
 | 4 | 225 to 314 | The three market cards lift off the screen as panes of glass; the camera travels down the row | How every market feels today. | |
 | 5 | 315 to 419 | One price is cut into the low and high of the week's range, and the outcomes rise between | Next week's range. Today. | From 10,000 simulated weeks. |
-| 6 | 420 to 509 | The radar line again; the money ring, then the risk ring round it | 12% of your money. 62% of your risk. | |
-| 7 | 510 to 599 | The bar of what is held reshapes into the plan; the camera moves in on three prices lighting in turn | What to buy next. And at what price. | From the plan you set. |
-| 8 | 600 to 749 | Three phrases, one a beat; they leave together and the mark draws itself over the last line | Your account. Your risk. Your plan. RADAR. An analyst for everything you own. | |
+| 6 | 420 to 509 | The radar line again; one number in the middle of its rings counts to Bitcoin's share of the money, then on to its share of the risk | Of your money. Of your risk. (12%, then 62%) | |
+| 7 | 510 to 599 | The card with the next step, full width; the bar of shares becomes the plan; three blips land on three prices, one a beat | What to buy next. And at what price. | From the plan you set. |
+| 8 | 600 to 709 | Three phrases, one a beat; they leave together and the end card arrives in the middle: the mark, the name, what RADAR is | Your account. Your risk. Your plan. RADAR. An analyst for everything you own. | |
 
-The two figures of shot 6 are read from the example portfolio, so they change if it does.
+The figure of shot 6 is read from the example portfolio, so it changes if that does.
 
 ## Type
 
@@ -23,8 +23,9 @@ All of it is in `src/Type.tsx`, and there is nothing else:
 
 - **Three sizes.** Headline: Inter Bold, 140, tracking -3%. Hero number: 260, with every
   digit the same width. Small line: Inter Medium, 40, in `#9ea2b0`.
-- **One grid.** Headlines start at a left margin of 128, in the upper third. Shot 3 is the
-  one exception: its words stand beside the phone, level with its top edge.
+- **One grid.** Headlines start at a left margin of 128, in the upper third. Two
+  exceptions: shot 3's words stand beside the phone, level with its top edge, and shot
+  8's end card is centred, with its second line at 80, the only use of that size.
 - **One way in and out.** Each word rises out of a mask at the foot of its line over 8
   frames, half a beat after the word before, and a line leaves by rising out through the
   top. Type is never faded and never blurred.
@@ -43,6 +44,8 @@ own sizes: they are the interface, not the film's type.
 | `src/Reel.tsx` | One sequence a shot, each mounted a second early, over one ground |
 | `src/shots/` | One file a shot |
 | `src/Ground.tsx` | The dark ground and its one light, whose colour follows the subject and is never cut |
+| `src/Sound.tsx` | Every sound cue, each taking its frame from the animation it belongs to; the mix is the `LEVEL` table |
+| `sound/make_sfx.py` | Makes every sound from arithmetic (numpy only) into `public/sfx/` |
 | `src/Sweep.tsx` | The radar line as a change of scene (shots 2 and 6) |
 | `src/Type.tsx` | The film's type: three sizes, one grid, words rising out of a mask |
 | `src/ui/` | The app's interface rebuilt from `frontend/src` (`kit.tsx`), and its Home screen (`Home.tsx`) |
@@ -76,6 +79,12 @@ node scripts/stills.mjs out/look 100 172 380
 node scripts/stills.mjs out/sheet every 30
 ```
 
+Make the sounds again:
+
+```bash
+python demo-video/sound/make_sfx.py
+```
+
 Rebuild the phone:
 
 ```bash
@@ -98,6 +107,8 @@ npx remotion still Home public/ui/home.png --scale=3
   that use it say "Example portfolio". The phone's Home is the film's own rebuild showing
   that example, not a photograph of the running app.
 - **Nothing downloaded goes in `public/` before it is in `ASSETS.md`.** CC0 only.
+- **No music and no downloaded audio.** Sounds are generated, each at its own level; the
+  whole mix is never normalised. The room tone is turned off by `ROOM` in `Sound.tsx`.
 - **Remotion packages are pinned** to the version in `package.json`.
 
 ## Three things that bite

@@ -47,8 +47,8 @@ export const shot = (id: ShotId): Shot => {
 
 /**
  * The film's words, as approved: what RADAR does and has. A line here is a line on
- * screen; the words between asterisks take the accent. The two figures of shot 6 come
- * from the example portfolio and stand in front of their words.
+ * screen; the words between asterisks take the accent. The figure of shot 6 comes from
+ * the example portfolio and stands inside its ring.
  */
 export const COPY = {
   question: ["Buy now?", "Or *wait?*"],
@@ -62,14 +62,18 @@ export const COPY = {
     lines: ["Next week's range.", "*Today.*"],
     small: "From 10,000 simulated weeks.",
   },
-  risk: ["of your money.", "of your risk."],
+  risk: {
+    money: ["Of your", "money."],
+    risk: ["Of your", "*risk.*"],
+  },
   plan: {
     lines: ["What to buy next.", "And at what *price.*"],
     small: "From the plan you set.",
   },
   close: {
     lines: ["Your account.", "Your risk.", "Your *plan.*"],
-    last: ["*RADAR. An analyst for*", "*everything you own.*"],
+    name: ["*RADAR.*"],
+    last: "An analyst for everything you own.",
   },
 } as const;
 

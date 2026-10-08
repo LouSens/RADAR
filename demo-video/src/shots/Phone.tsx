@@ -18,7 +18,7 @@ const RIGHT = Math.PI / 2;
 
 /** The glide along the edge, the swing round to face us, and the slow settle after. */
 const GLIDE = [0, 34] as const;
-const TURN = [22, 46] as const;
+export const TURN = [22, 46] as const;
 const REST = [42, 90] as const;
 
 /** How the phone is held at a moment of the shot. */
@@ -68,7 +68,7 @@ const moveAt = (frame: number, scene: Scene): void => {
 };
 
 /** What the account holds, as the three colours the app gives them. */
-const BLIPS = [
+export const BLIPS = [
   { colour: C.btc, angle: 1.3, at: 50 },
   { colour: C.gold, angle: -0.3, at: 57 },
   { colour: C.stock, angle: -1.5, at: 64 },
