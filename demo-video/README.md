@@ -1,39 +1,49 @@
 # The RADAR reel
 
-A 24-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
-710 frames, cut to 120 beats a minute (15 frames a beat). Its words say what RADAR does
-and has. It has sound effects and no music.
+A 30-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
+900 frames, on a beat of 15 frames. One situation: Bitcoin falls, and the questions a
+holder asks are each answered by the app. It has sound effects and no music.
 
-| # | Frames | Picture | Headline | Small line |
-| --- | --- | --- | --- | --- |
-| 1 | 0 to 74 | A Bitcoin price that will not keep still | Buy now? Or wait? | |
-| 2 | 75 to 134 | The radar line clears the frame; the mark draws itself; the camera goes through its ring | Meet RADAR. | |
-| 3 | 135 to 224 | A glide along the phone's metal edge; it swings round showing Home, with a blip for each thing held | Every coin you hold. Live. | Synced from Binance by itself. |
-| 4 | 225 to 314 | The three market cards lift off the screen as panes of glass; the camera travels down the row | How every market feels today. | |
-| 5 | 315 to 419 | One price is cut into the low and high of the week's range, and the outcomes rise between | Next week's range. Today. | From 10,000 simulated weeks. |
-| 6 | 420 to 509 | The radar line again; one number in the middle of its rings counts to Bitcoin's share of the money, then on to its share of the risk | Of your money. Of your risk. (12%, then 62%) | |
-| 7 | 510 to 599 | The card with the next step, full width; the bar of shares becomes the plan; three blips land on three prices, one a beat | What to buy next. And at what price. | From the plan you set. |
-| 8 | 600 to 709 | Three phrases, one a beat; they leave together and the end card arrives in the middle: the mark, the name, what RADAR is | Your account. Your risk. Your plan. RADAR. An analyst for everything you own. | |
+**Three things are objects** (3D): the Bitcoin coin, the mark and the phone. **All the
+data is the app's own interface in two dimensions**, rebuilt from `frontend/src` and
+moving: numbers count, lines draw on, beads slide, cards open.
 
-The figure of shot 6 is read from the example portfolio, so it changes if that does.
+| # | Frames | Question | Picture |
+| --- | --- | --- | --- |
+| 1 | 0 to 104 | Bitcoin fell 2.6%. Sell? Hold? Buy more? | The coin spins on its edge, falls and wobbles; each word knocks it. The price falls through the day's real hours. The coin rolls out of the frame |
+| 2 | 105 to 224 | Meet RADAR. | The radar's line; the mark draws itself, shrinks and lands as the logo of the sidebar; Home builds itself round it, placeholders first |
+| 3 | 225 to 329 | Why did it fall? | Thirty days as bars about a line, a pale band for a usual day; a crosshair slides to the day; its bar drops in red; the Why it moved card draws itself round the chart |
+| 4 | 330 to 419 | Is this price high or low? | Five range bars; a bead slides to its place in each; the Before you buy card draws itself round them |
+| 5 | 420 to 524 | How far could it go? | The price is cut into the low and high of the week's range; the outcomes grow between; the range card draws itself round the chart |
+| 6 | 525 to 629 | How risky is my mix? | The app's two rings, large: money, then risk; the number counts 12% to 67%; the rows arrive one by one |
+| 7 | 630 to 734 | So what do I buy? | The What to do now card; the bar reshapes into the plan; three coins drop on to the ladder's three prices, one a beat |
+| 8 | 735 to 794 | What's coming up? | The calendar's rows slide up; the Fed's count of days rolls down to what it is |
+| 9 | 795 to 839 | On your desk. On your phone. | Home reflows into the phone's layout; the phone comes up and the layout lands on its screen |
+| 10 | 840 to 899 | | A fast turn of the radar's line; the mark, RADAR., An analyst for everything you own. |
+
+Every answer opens out of the card of Home that leads to it, after a tap on that card,
+and goes back into it when the next question arrives (`src/Beat.tsx`). A ring of the
+radar marks each answer. The film never cuts to an empty frame.
+
+**Every figure is true.** Market figures are the app's own, recorded from its market
+addresses; shot 1's fall is the recent day on which Bitcoin fell furthest against a
+usual day. Portfolio figures are a made-up example, worked out by the app's own code,
+and say "Example portfolio".
 
 ## Type
 
-All of it is in `src/Type.tsx`, and there is nothing else:
+The film's own type is in `src/Type.tsx`:
 
-- **Three sizes.** Headline: Inter Bold, 140, tracking -3%. Hero number: 260, with every
-  digit the same width. Small line: Inter Medium, 40, in `#9ea2b0`.
-- **One grid.** Headlines start at a left margin of 128, in the upper third. Two
-  exceptions: shot 3's words stand beside the phone, level with its top edge, and shot
-  8's end card is centred, with its second line at 80, the only use of that size.
-- **One way in and out.** Each word rises out of a mask at the foot of its line over 8
-  frames, half a beat after the word before, and a line leaves by rising out through the
-  top. Type is never faded and never blurred.
-- **One accent word a line**, in the colour of what is on screen.
-- In shots 3 and 4 the headline is behind the phone and the panes, which pass in front.
+- **A question** lands in the middle of the frame at 180 (Inter Bold, tracking -3%), a
+  word at a time out of a mask, then shrinks to 88 and docks top left as its answer
+  opens. It leaves by rising out through the top when the next arrives.
+- **One accent word a question**, never two.
+- **The end card** is centred: the name at 140, and one line at 80.
+- Type is never faded and never blurred, and nothing covers a question at rest.
 
-Words inside a rebuilt piece of the app (a card's label, a chart's ends) keep the app's
-own sizes: they are the interface, not the film's type.
+Words and numbers inside a piece of the app keep the app's own sizes, enlarged with the
+piece: they are the interface, not the film's type. Every number uses tabular figures,
+and a number that changes counts as a meter does (`Ticker` in `src/ui/motion.tsx`).
 
 ## Where things are
 
@@ -41,18 +51,22 @@ own sizes: they are the interface, not the film's type.
 | --- | --- |
 | `src/shots.json` | The one place a shot's start and length are written |
 | `src/timing.ts` | The beat, the film's words, and the curves everything moves on |
-| `src/Reel.tsx` | One sequence a shot, each mounted a second early, over one ground |
+| `src/Reel.tsx` | The film: the layers, and the two turns of the radar's line |
+| `src/DeskLayer.tsx` | Home, behind the film from shot 2 to shot 9: it builds itself, is tapped, stands back, and reflows on to the phone |
+| `src/Beat.tsx` | What every answer shares: the tap, the card opening out, the edge that draws itself round the data, the way back |
+| `src/Questions.tsx` | Every word before the end card, on the film's own clock |
 | `src/shots/` | One file a shot |
-| `src/Ground.tsx` | The dark ground and its one light, whose colour follows the subject and is never cut |
+| `src/ui/kit.tsx`, `src/ui/Desk.tsx` | The app's interface rebuilt from `frontend/src`: its cards, and Home at desktop size |
+| `src/ui/motion.tsx` | The app's elements as things that move: the counting number, the rings, the range bar, the segmented control, placeholders, the tap and the ping |
+| `src/three/` | The 3D stage (motion blur and depth of field by sampling), the coin, the phone's materials, and the mark |
+| `src/Ground.tsx`, `src/Grain.tsx` | The dark ground and its one light; a faint grain over everything |
+| `src/Sweep.tsx` | The radar's line as a change of scene (into shot 2 and into the end card) |
 | `src/Sound.tsx` | Every sound cue, each taking its frame from the animation it belongs to; the mix is the `LEVEL` table |
 | `sound/make_sfx.py` | Makes every sound from arithmetic (numpy only) into `public/sfx/` |
-| `src/Sweep.tsx` | The radar line as a change of scene (shots 2 and 6) |
-| `src/Type.tsx` | The film's type: three sizes, one grid, words rising out of a mask |
-| `src/ui/` | The app's interface rebuilt from `frontend/src` (`kit.tsx`), and its Home screen (`Home.tsx`) |
-| `src/three/` | The 3D stage, the phone's materials, and the mark |
-| `src/fixtures/` | The figures: `market.json` from the app's market pages, `portfolio.json` a made-up example |
-| `blender/build_assets.py` | Builds the phone (`public/assets/phone.glb`) |
-| `scripts/` | `stills.mjs` renders chosen frames; `sheet.py` lays them on one sheet |
+| `src/fixtures/` | The figures: `film.json` (written by `scripts/fixtures.mjs` from the mock API's data) and `fall.json` (the day of shot 1) |
+| `mock-api/` | A stand-in for the app's API with recorded market data and an example account |
+| `blender/build_assets.py` | Builds the phone and the coin (`public/assets/`) |
+| `scripts/` | `stills.mjs` renders chosen frames; `sheet.py` lays them on one sheet; `capture.mjs` photographs the app; `fixtures.mjs` writes the figures |
 | `ASSETS.md` | Every file from elsewhere, with its source and licence |
 
 ## Commands
@@ -110,6 +124,7 @@ uv run python mock-api/make_account.py        # the example account, from ../ (t
 node mock-api/server.mjs                      # the stand-in, on 127.0.0.1:8010
 RADAR_API_URL=http://127.0.0.1:8010 npm --prefix ../frontend run dev -- --port 5180
 node scripts/capture.mjs                      # every still; name some to redo only those
+node scripts/fixtures.mjs                     # the film's figures, from the same data
 ```
 
 - `record.mjs` refuses any address that names the portfolio, the account, the brief or
@@ -117,21 +132,24 @@ node scripts/capture.mjs                      # every still; name some to redo o
   list of markets also names what the account holds. What it records
   (`mock-api/data/recorded/`) is not committed.
 - `make_account.py` works the example account out with the app's own code from the
-  holdings in `src/fixtures/portfolio.json`. It opens the database read-only and never
+  holdings in `mock-api/example.json`. It opens the database read-only and never
   reads the stored portfolio, plan or account record.
 - `capture.mjs` will not take a still unless the app it is pointed at is showing the
   example portfolio.
 - Look at every still before using it: no loading placeholders, no fault, no figure
   that is not the example's.
+- The film draws the app's pieces itself (`src/ui/`); of the stills it uses only Home at
+  phone size, on the phone's screen. The desktop stills are the reference those pieces
+  are checked against.
 
 ## Rules this film keeps
 
 - **Every moving thing is a function of the frame.** No CSS transitions or keyframes, no
   timers, nothing random. The interface in `src/ui/` takes its animated values as props.
-- **Nothing from an account.** Market figures may come from the app's market pages.
-  Portfolio figures are the made-up example in `fixtures/portfolio.json`, and the shots
-  that use it say "Example portfolio". The phone's Home is the film's own rebuild showing
-  that example, not a photograph of the running app.
+- **Nothing from an account.** Market figures come from the app's market addresses.
+  Portfolio figures are the made-up example in `mock-api/example.json`, worked out by the
+  app's own code, and what shows them says "Example portfolio". The app that shows an
+  account is never photographed.
 - **Nothing downloaded goes in `public/` before it is in `ASSETS.md`.** CC0 only.
 - **No music and no downloaded audio.** Sounds are generated, each at its own level; the
   whole mix is never normalised. The room tone is turned off by `ROOM` in `Sound.tsx`.
@@ -145,8 +163,10 @@ node scripts/capture.mjs                      # every still; name some to redo o
 - **While rendering, the canvas only draws when told to.** After the reflections are set
   the scene is drawn once more by hand (`Studio` in `three/Stage.tsx`), or a render tab's
   first frame has black metal.
-- **One 3D object can stand in only one scene.** Two shots are mounted at once around a
-  cut, so the second shot to use the phone takes a copy of it (`shots/Cards.tsx`).
+- **`zoom` enlarges an element's own placing too.** A piece of the app is placed by an
+  outer element and enlarged by an inner one (`Answer` in `src/Beat.tsx`).
+- **The mock API must keep its connections open.** Closing them stalled answers larger
+  than 64 KB on this machine, and pages were photographed still loading.
 
 ## How the blur is made
 
