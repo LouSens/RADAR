@@ -1,9 +1,12 @@
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
+import { Grain } from "./Grain";
 import { Ground } from "./Ground";
 import { PINGS, Questions } from "./Questions";
 import { Close } from "./shots/Close";
 import { Meet } from "./shots/Meet";
 import { Question } from "./shots/Question";
+import { Range } from "./shots/Range";
+import { Risk } from "./shots/Risk";
 import { Sound } from "./Sound";
 import { SweepLine, Swept } from "./Sweep";
 import { AssetsProvider, useAssets } from "./three/assets";
@@ -48,6 +51,17 @@ export const Reel: React.FC = () => {
           >
             <Meet />
           </Sequence>
+          {(["range", "risk"] as const).map((id) => (
+            <Sequence
+              key={id}
+              name={id}
+              from={shot(id).from}
+              durationInFrames={shot(id).duration}
+              premountFor={FPS}
+            >
+              {id === "range" ? <Range /> : <Risk />}
+            </Sequence>
+          ))}
           <Questions />
         </Swept>
         <Sequence
@@ -61,6 +75,7 @@ export const Reel: React.FC = () => {
           </Swept>
         </Sequence>
         <SweepLine since={frame - close.from} />
+        <Grain />
       </AbsoluteFill>
     </AssetsProvider>
   );

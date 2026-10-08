@@ -182,12 +182,24 @@ export const Ask: React.FC<{
   readonly size?: number;
   /** The middle of the block while it stands in the frame, from the top. */
   readonly middle?: number;
-}> = ({ lines, at, dock, out, accent = C.accent, size = ASK, middle = HEIGHT / 2 }) => {
+  /** The frame each word rises, in order, where they do not simply follow one another. */
+  readonly wordsAt?: readonly number[];
+}> = ({
+  lines,
+  at,
+  dock,
+  out,
+  accent = C.accent,
+  size = ASK,
+  middle = HEIGHT / 2,
+  wordsAt,
+}) => {
   const frame = useCurrentFrame();
   const t =
     dock === undefined ? 0 : tween(frame, dock, dock + 18, 0, 1, EASE_IN_OUT);
   let next = at;
   let lit = false;
+  let count = 0;
   return (
     <div
       style={{
@@ -231,7 +243,7 @@ export const Ask: React.FC<{
               return (
                 <Rise
                   key={raw + i}
-                  at={start + i * 4}
+                  at={wordsAt?.[count++] ?? start + i * 4}
                   out={out}
                   style={{ color: marked ? accent : undefined }}
                 >

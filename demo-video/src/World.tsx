@@ -115,11 +115,9 @@ export const LEGS: readonly Leg[] = [
   { at: start.why + ASKED + ONWARD, kind: "dive", from: "bitcoin", to: "moves", card: CARD.onward },
   { at: start.level - 2, kind: "pull", from: "moves", to: "home", card: CARD.bitcoin },
   { at: start.level + ASKED, kind: "dive", from: "home", to: "check", card: CARD.check },
+  // Shots 5 and 6 are acted out by objects (shots/Range, shots/Risk): the pages give way
+  // to them, and Home is there again when they are over.
   { at: start.range - 2, kind: "pull", from: "check", to: "home", card: CARD.check },
-  { at: start.range + ASKED, kind: "dive", from: "home", to: "range", card: CARD.bitcoin },
-  { at: start.risk - 2, kind: "pull", from: "range", to: "home", card: CARD.bitcoin },
-  { at: start.risk + ASKED, kind: "dive", from: "home", to: "risk", card: CARD.risk },
-  { at: start.plan - 2, kind: "pull", from: "risk", to: "home", card: CARD.risk },
   { at: start.plan + ASKED, kind: "dive", from: "home", to: "todo", card: CARD.todo },
   { at: start.calendar - 2, kind: "pull", from: "todo", to: "home", card: CARD.todo },
   { at: start.calendar + 14, kind: "dive", from: "home", to: "calendar", card: CARD.calendar },
@@ -237,7 +235,7 @@ const turnAt = (frame: number): number =>
 
 /** How much the page is dimmed while a question stands in the middle of the frame. */
 const dimAt = (frame: number): number =>
-  [start.why, start.level, start.range, start.risk, start.plan, start.calendar].reduce(
+  [start.why, start.level, start.plan, start.calendar].reduce(
     (most, at) =>
       Math.max(
         most,
@@ -313,30 +311,37 @@ export interface PingAt {
 /** How long a ping takes to spread and go. */
 export const PING = 20;
 
-const Ping: React.FC<{ readonly ping: PingAt; readonly frame: number }> = ({ ping, frame }) => {
-  const since = frame - ping.at;
-  const point = onScreen(frame, ping.page, ping.x, ping.y);
-  if (since < 0 || since > PING || !point) {
+/**
+ * The ring itself, spreading from a point of the frame, `since` frames after it starts.
+ * The 3D shots use it too, with the point their own camera puts the answer at.
+ */
+export const Ring: React.FC<{
+  readonly since: number;
+  readonly x: number;
+  readonly y: number;
+  readonly reach?: number;
+}> = ({ since, x, y, reach = 150 }) => {
+  if (since < 0 || since > PING) {
     return null;
   }
   const spread = tween(since, 0, PING, 0, 1, EASE);
   return (
     <>
-      {[1, 0.55].map((reach) => {
-        const r = 14 + spread * 120 * reach;
+      {[1, 0.55].map((part) => {
+        const r = 14 + spread * reach * part;
         return (
           <div
-            key={reach}
+            key={part}
             style={{
               position: "absolute",
-              left: point.x - r,
-              top: point.y - r,
+              left: x - r,
+              top: y - r,
               width: r * 2,
               height: r * 2,
               borderRadius: "50%",
-              border: `${3 * reach + 1}px solid ${C.accent}`,
-              boxShadow: `0 0 24px ${fade(C.accent, 0.5)}, inset 0 0 24px ${fade(C.accent, 0.25)}`,
-              opacity: (1 - spread) * 0.95,
+              border: `${4 * part + 1.5}px solid ${C.accent}`,
+              boxShadow: `0 0 28px ${fade(C.accent, 0.6)}, inset 0 0 28px ${fade(C.accent, 0.3)}`,
+              opacity: 1 - spread * spread,
             }}
           />
         );
@@ -345,10 +350,24 @@ const Ping: React.FC<{ readonly ping: PingAt; readonly frame: number }> = ({ pin
   );
 };
 
+const Ping: React.FC<{ readonly ping: PingAt; readonly frame: number }> = ({
+  ping,
+  frame,
+}) => {
+  const point = onScreen(frame, ping.page, ping.x, ping.y);
+  return point ? (
+    <Ring since={frame - ping.at} x={point.x} y={point.y} />
+  ) : null;
+};
+
 export const World: React.FC<{ readonly pings: readonly PingAt[] }> = ({ pings }) => {
   const frame = useCurrentFrame();
   const drawn = drawnAt(frame);
-  if (drawn.length === 0) {
+  const present =
+    1 -
+    tween(frame, start.range - 6, start.range, 0, 1, (v) => v) +
+    tween(frame, start.plan - 4, start.plan + 2, 0, 1, (v) => v);
+  if (drawn.length === 0 || present <= 0) {
     return null;
   }
   const turn = turnAt(frame);
@@ -363,7 +382,7 @@ export const World: React.FC<{ readonly pings: readonly PingAt[] }> = ({ pings }
   const both = tween(frame, start.both, start.both + 20, 0, 1, EASE_IN_OUT);
   const drift = Math.sin((frame - start.meet) / 46);
   return (
-    <AbsoluteFill style={{ perspective: 2600 }}>
+    <AbsoluteFill style={{ perspective: 2600, opacity: present }}>
       <AbsoluteFill
         style={{
           transform: `translateY(${both * 120}px) scale(${1 - 0.1 * turn - 0.06 * both}) rotateY(${turn * (-9 + drift * 2.5)}deg) rotateX(${turn * (4.5 + drift)}deg)`,

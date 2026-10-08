@@ -1,6 +1,8 @@
 import { Html5Audio, Sequence, staticFile } from "remotion";
 import { MARK } from "./shots/Close";
-import { HOURS, TICK } from "./shots/Question";
+import * as Coin from "./shots/Question";
+import * as Far from "./shots/Range";
+import * as Mix from "./shots/Risk";
 import { FPS, TOTAL, shot } from "./timing";
 
 /**
@@ -26,6 +28,17 @@ const LENGTH: Readonly<Record<string, number>> = {
   click: 0.3,
   hit: 0.3,
   impact: 2.2,
+  spin: 0.9,
+  topple: 1.6,
+  clink: 0.5,
+  chip: 0.3,
+  flip: 0.45,
+  bars: 1.3,
+  slide: 0.35,
+  flap: 0.7,
+  thunk: 0.3,
+  ping: 1.4,
+  dive: 0.6,
 };
 
 /** How loud each kind of sound is in the film, from 0 to 1. This is the mix. */
@@ -43,6 +56,19 @@ const LEVEL: Readonly<Record<string, number>> = {
   click: 0.75,
   hit: 0.8,
   impact: 1,
+  spin: 0.6,
+  topple: 0.55,
+  // The hits sit near -6 dB of full scale and the pings near -16 (sound/make_sfx.py
+  // gives each file's own peak).
+  clink: 0.8,
+  chip: 0.8,
+  flip: 0.7,
+  bars: 0.7,
+  slide: 0.6,
+  flap: 0.7,
+  thunk: 0.85,
+  ping: 0.4,
+  dive: 0.6,
 };
 
 interface Cue {
@@ -50,22 +76,54 @@ interface Cue {
   readonly file: string;
   /** The frame of the film it starts on. */
   readonly at: number;
+  /** Its level here, where it is not the usual one for its kind. */
+  readonly level?: number;
 }
 
 const question = shot("question").from;
 const meet = shot("meet").from;
+const range = shot("range").from;
+const risk = shot("risk").from;
 const close = shot("close").from;
 
-// The animatic's sheet: only the sounds whose pictures are already in the film. The
-// pings, the dives and the live pictures' own sounds are cued when those are built.
+/** How long before its loudest moment a whoosh starts, in frames. */
+const SWELL = 9;
+
+// The sheet so far: shots 1, 5, 6 and the end card are whole. The other shots get
+// their sounds when their pictures are built.
 const CUES: readonly Cue[] = [
-  // Shot 1: a tick on each new price.
-  ...Array.from({ length: HOURS - 1 }, (_, i) => ({
+  // Shot 1: the coin spinning, going over and rattling round its rim; its landing; and
+  // a knock from each of the three words. Under it, quietly, a tick on each new price.
+  { file: "spin", at: question },
+  { file: "topple", at: question + Coin.TOPPLE + 4 },
+  { file: "clink", at: question + Coin.LANDS },
+  ...Coin.WORDS.map((at) => ({ file: "clink", at: question + at, level: 0.4 })),
+  ...Array.from({ length: Coin.HOURS - 1 }, (_, i) => ({
     file: `tick-${i % 5}`,
-    at: question + (i + 1) * TICK,
+    at: question + (i + 1) * Coin.TICK,
+    level: 0.2,
   })).filter((cue) => cue.at < meet),
   // Shot 2: the mark drawing.
   { file: "shimmer", at: meet + 8 },
+  // Shot 5: the cut opening, the two figures counting, the bars rising, the picture
+  // folding into the card, and the ring on the range.
+  { file: "shink", at: range + Far.OPEN[0] },
+  { file: "roll", at: range + Far.OPEN[0] + 10 },
+  { file: "bars", at: range + Far.RISE },
+  { file: "flip", at: range + Far.FOLD[0] },
+  { file: "ping", at: range + Far.PINGED },
+  // Shot 6: each holding arriving, the change to shares of the risk, the number
+  // landing with its ring, and the picture folding into the card.
+  ...[0, 1, 2, 3].map((i) => ({
+    file: `pop-${i}`,
+    at: risk + Mix.MONEY[0] + i * 3,
+    level: 0.4,
+  })),
+  { file: "whoosh", at: risk + Mix.RISK[0] - SWELL },
+  { file: "roll", at: risk + Mix.RISK[0] },
+  { file: "hit", at: risk + Mix.RISK[1] - 2 },
+  { file: "ping", at: risk + Mix.RISK[1] },
+  { file: "flip", at: risk + Mix.FOLD[0] },
   // Shot 10: the radar line, and the mark.
   { file: "sweep", at: close },
   { file: "impact", at: close + MARK },
@@ -84,7 +142,7 @@ export const Sound: React.FC = () => (
       </Sequence>
     )}
     {CUES.map((cue) => {
-      const level = LEVEL[kind(cue.file)];
+      const level = cue.level ?? LEVEL[kind(cue.file)];
       const frames = Math.ceil(LENGTH[kind(cue.file)] * FPS) + 1;
       const from = Math.round(cue.at);
       return (

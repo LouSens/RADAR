@@ -1,5 +1,6 @@
 import fall from "./fixtures/fall.json";
 import { C } from "./theme";
+import { WORDS } from "./shots/Question";
 import { COPY, shot } from "./timing";
 import { Ask, MARGIN, Small } from "./Type";
 import { ASKED, type PingAt, landed } from "./World";
@@ -35,7 +36,9 @@ export const Questions: React.FC = () => (
     />
     <Ask
       lines={[COPY.question.what]}
-      at={at.question + 45}
+      at={at.question + WORDS[0]}
+      // A word a beat: each one knocks the coin (shots/Question).
+      wordsAt={[WORDS[0], WORDS[1], WORDS[2], WORDS[2] + 3].map((w) => at.question + w)}
       out={at.meet - 9}
       size={140}
       middle={400}
@@ -70,12 +73,11 @@ export const Questions: React.FC = () => (
 /**
  * The radar's ring on the figure that answers each question, in the page's own pixels.
  * Bitcoin's day had no scheduled event and no change of state, so shot 3 has one ring.
+ * Shots 5 and 6 place their own, on the objects that answer them.
  */
 export const PINGS: readonly PingAt[] = [
   { at: landed("moves") + 16, page: "moves", x: 376, y: 373 },
   { at: landed("check") + 34, page: "check", x: 635, y: 507 },
-  { at: landed("range") + 40, page: "range", x: 425, y: 428 },
-  { at: landed("risk") + 45, page: "risk", x: 995, y: 301 },
   { at: landed("todo") + 40, page: "todo", x: 430, y: 324 },
   { at: landed("calendar") + 12, page: "calendar", x: 460, y: 346 },
 ];
