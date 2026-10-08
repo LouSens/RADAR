@@ -32,6 +32,15 @@ export const RemotionRoot: React.FC = () => {
         height={844}
         defaultProps={{ path: "markets" }}
       />
+      <Composition
+        id="Desk"
+        component={Capture}
+        durationInFrames={1}
+        fps={30}
+        width={1440}
+        height={900}
+        defaultProps={{ path: "" }}
+      />
     </>
   );
 };

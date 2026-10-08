@@ -31,3 +31,6 @@ frontend/dist/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# The film's mock API: market data recorded from a running app, never committed
+demo-video/mock-api/data/recorded/

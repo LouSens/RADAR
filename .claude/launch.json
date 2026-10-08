@@ -36,6 +36,21 @@
         "3123"
       ],
       "port": 3123
+    },
+    {
+      "name": "mock-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["demo-video/mock-api/server.mjs"],
+      "port": 8010
+    },
+    {
+      "name": "radar-web-mock",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set RADAR_API_URL=http://127.0.0.1:8010&& npm --prefix frontend run dev -- --port 5180 --strictPort"
+      ],
+      "port": 5180
     }
   ]
 }
