@@ -1,21 +1,20 @@
-"""Make the reel's 3D objects as GLBs: the phone, and the kit of things the data becomes.
+"""Make the reel's 3D objects as GLBs: the phone, and the Bitcoin coin.
 
     blender -b -P demo-video/blender/build_assets.py
 
-The kit (kit.glb) is a coin, a gold ingot, a block of rising bars for stocks, a cash chip
-and a set of extruded numerals. Each stands at the origin under its own name and carries
-materials named for what they are; Remotion swaps those names for its own materials. The
-kit's lengths are the film's own units, and its numerals' widths are written beside it
-(src/three/kit.json).
+These two and the mark (drawn in code) are the only objects in the film; everything else
+is the app's interface in two dimensions.
 
-A generic modern phone with no maker's shapes or marks: a metal frame with rounded
-corners, glass front and back, a small camera bump and two side buttons. Each part is
-its own object and carries a material named for what it is (metal, glass, back, screen,
-sheen, lens, flash); Remotion swaps those names for its own materials and puts the
-interface on "screen". This script places no camera and makes no shot.
+The phone is a generic modern one with no maker's shapes or marks: a metal frame with
+rounded corners, glass front and back, a small camera bump and two side buttons. The
+coin (kit.glb) is struck with the Bitcoin sign on both faces and has a reeded edge. Each
+part is its own object and carries a material named for what it is; Remotion swaps those
+names for its own materials and puts the interface on the phone's "screen". This script
+places no camera and makes no shot.
 
-Lengths are metres. The face looks along +Z and the top is +Y, and the file is written
-without the usual axis swap, so the same holds in Remotion.
+The phone's lengths are metres; the coin's are the film's own units, and its size is
+written beside it (src/three/kit.json). The face looks along +Z and the top is +Y, and
+the files are written without the usual axis swap, so the same holds in Remotion.
 """
 
 import json
@@ -309,86 +308,6 @@ def coin():
     return join("coin", parts)
 
 
-def ingot():
-    """A cast bar of gold, lying along X with its foot on y = 0: wider at the foot than
-    the top, every edge rounded, a shallow stamp sunk in its top."""
-    gold = material("gold")
-    mesh = bpy.data.meshes.new("ingot")
-    bm = bmesh.new()
-    bmesh.ops.create_cube(bm, size=1.0)
-    for vert in bm.verts:
-        top = vert.co.y > 0
-        vert.co.x *= 0.84 if top else 1.0
-        vert.co.z *= 0.30 if top else 0.44
-        vert.co.y = 0.27 if top else 0.0
-    bm.to_mesh(mesh)
-    bm.free()
-    bar = add("ingot", mesh, gold, bevel=0.035, segments=6)
-    stamp = box("stamp", (0.42, 0.012, 0.13), (0, 0.27, 0), gold, 0.004)
-    return join("ingot", [bar, stamp])
-
-
-def stocks():
-    """Four bars of rising height carved from one block, standing on y = 0."""
-    glass = material("stock")
-    heights = (0.26, 0.42, 0.56, 0.78)
-    width, gap, deep = 0.19, 0.035, 0.30
-    span = len(heights) * width + (len(heights) - 1) * gap
-    parts = [box("base", (span + 0.08, 0.06, deep + 0.08), (0, 0.03, 0), glass, 0.018)]
-    for i, tall in enumerate(heights):
-        x = -span / 2 + width / 2 + i * (width + gap)
-        parts.append(box("bar", (width, tall, deep), (x, 0.06 + tall / 2, 0), glass, 0.022, 5))
-    return join("stocks", parts)
-
-
-CHIP_RADIUS, CHIP_DEPTH = 0.32, 0.075
-
-
-def chip():
-    """A cash chip lying flat on y = 0, a ring pressed into its top."""
-    cash, mark = material("cash"), material("cash mark")
-    body = disc("chip body", CHIP_RADIUS, CHIP_DEPTH, (0, 0, 0), cash, bevel=0.016)
-    bpy.ops.mesh.primitive_torus_add(
-        major_radius=CHIP_RADIUS * 0.66,
-        minor_radius=0.008,
-        major_segments=96,
-        minor_segments=8,
-        location=(0, 0, CHIP_DEPTH / 2),
-    )
-    ring = bpy.context.object
-    ring.data.materials.append(mark)
-    bpy.ops.object.shade_smooth()
-    whole = join("chip", [body, ring])
-    # Made in the XY plane like the coin; laid flat with its foot on the floor.
-    whole.rotation_euler = (-math.pi / 2, 0, 0)
-    whole.location = (0, CHIP_DEPTH / 2, 0)
-    return whole
-
-
-GLYPHS = {"dollar": "$", "comma": ",", "percent": "%", **{f"d{i}": str(i) for i in range(10)}}
-
-
-def numerals():
-    """The figures as solids one unit tall, each centred on x = 0 with its foot on y = 0.
-    Returns each one's width, and the width every digit is given so that a count does not
-    shake. The face is Blender's own bundled font (see ASSETS.md)."""
-    solid = material("numeral")
-    widths = {}
-    made = []
-    probe = letters("probe", "0", 1.0, 0.2, solid)
-    _, tall = centre(probe)
-    bpy.data.objects.remove(probe)
-    size = 1.0 / tall
-    for name, text in GLYPHS.items():
-        glyph = letters(name, text, size, 0.22, solid, bevel=0.012)
-        wide, _ = centre(glyph, y=False)
-        widths[name] = round(wide, 4)
-        glyph.name = name
-        made.append(glyph)
-    cell = round(max(widths[f"d{i}"] for i in range(10)) * 1.1, 4)
-    return made, {"cell": cell, "widths": widths}
-
-
 def export(name):
     OUT.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.gltf(
@@ -407,13 +326,8 @@ def main():
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     coin()
-    ingot()
-    stocks()
-    chip()
-    _, sizes = numerals()
     export("kit.glb")
-    sizes["coin"] = {"radius": COIN_RADIUS, "depth": COIN_DEPTH}
-    sizes["chip"] = {"radius": CHIP_RADIUS, "depth": CHIP_DEPTH}
+    sizes = {"coin": {"radius": COIN_RADIUS, "depth": COIN_DEPTH}}
     notes = OUT.parent.parent / "src" / "three" / "kit.json"
     notes.write_text(json.dumps(sizes, indent=2) + "\n", encoding="utf8")
 
