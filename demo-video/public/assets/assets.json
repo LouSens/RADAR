@@ -1,0 +1,73 @@
+{
+  "logo": {
+    "size": 1200,
+    "glb": "logo.glb",
+    "image": "logo.png"
+  },
+  "phone": {
+    "size": 1200,
+    "glb": "phone.glb",
+    "image": "phone.png",
+    "face": [
+      [
+        425.2,
+        200.6
+      ],
+      [
+        769.8,
+        199.6
+      ],
+      [
+        763.8,
+        968.9
+      ],
+      [
+        431.6,
+        1004.7
+      ]
+    ]
+  },
+  "card": {
+    "size": 1200,
+    "glb": "card.glb",
+    "image": "card.png",
+    "face": [
+      [
+        91.3,
+        291.9
+      ],
+      [
+        1059.2,
+        280.7
+      ],
+      [
+        1046.7,
+        870.5
+      ],
+      [
+        106.6,
+        943.8
+      ]
+    ]
+  },
+  "bitcoin": {
+    "size": 1200,
+    "glb": "bitcoin.glb",
+    "image": "bitcoin.png"
+  },
+  "stocks": {
+    "size": 1200,
+    "glb": "stocks.glb",
+    "image": "stocks.png"
+  },
+  "cash": {
+    "size": 1200,
+    "glb": "cash.glb",
+    "image": "cash.png"
+  },
+  "gold": {
+    "size": 1200,
+    "glb": "gold.glb",
+    "image": "gold.png"
+  }
+}
