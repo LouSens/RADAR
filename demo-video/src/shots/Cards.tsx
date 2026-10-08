@@ -13,6 +13,7 @@ import { Phone as PhoneObject } from "../three/Phone";
 import { Stage, type View } from "../three/Stage";
 import { useLoaded } from "../three/assets";
 import {
+  COPY,
   EASE,
   EASE_IN,
   EASE_IN_OUT,
@@ -22,12 +23,10 @@ import {
   tween,
 } from "../timing";
 import { MarketCard, TONE, TopEdge } from "../ui/kit";
-import { Words } from "../Words";
+import { Headline, MARGIN, TOP } from "../Type";
 
 const markets = market.markets;
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
-const title = (word: string): string =>
-  `${word.charAt(0).toUpperCase()}${word.slice(1)}.`;
 
 // ---- The phone the cards leave: its lower half, where Home's three markets are.
 
@@ -136,6 +135,14 @@ export const Cards: React.FC = () => {
 
   return (
     <AbsoluteFill>
+      {/* Behind everything: the phone and the panes pass in front of it. The accent
+          word takes the colour of the market in view. */}
+      <Headline
+        lines={COPY.cards}
+        at={4}
+        accent={light}
+        style={{ position: "absolute", left: MARGIN, top: TOP }}
+      />
       <Stage
         room={assets.room}
         strength={0.62}
@@ -153,7 +160,7 @@ export const Cards: React.FC = () => {
       </Stage>
 
       <AbsoluteFill
-        style={{ perspective: DEPTH, perspectiveOrigin: "50% 42%" }}
+        style={{ perspective: DEPTH, perspectiveOrigin: "66% 60%" }}
       >
         {markets.map((m, i) => {
           const tone = TONE[m.tone];
@@ -165,8 +172,8 @@ export const Cards: React.FC = () => {
           const dz = i * ROW.z - cameraZ;
           const dx = i * ROW.x - cameraX;
           const seen = DEPTH / (DEPTH - dz);
-          const x = mix(from.x, WIDTH / 2 + dx * seen, lift);
-          const y = mix(from.y, HEIGHT * 0.42, lift);
+          const x = mix(from.x, WIDTH / 2 + 310 + dx * seen, lift);
+          const y = mix(from.y, HEIGHT * 0.6, lift);
           const size = mix(small, seen, lift);
           const turn = mix(-12, ROW.turn + (where - i) * 9, lift);
           // The pane being looked at is sharp; the others fall out of focus.
@@ -243,15 +250,6 @@ export const Cards: React.FC = () => {
             </div>
           );
         })}
-      </AbsoluteFill>
-
-      <AbsoluteFill style={{ alignItems: "center", top: 880 }}>
-        <Words
-          text={markets.map((m) => title(m.state)).join(" ")}
-          at={LOOK[0] + 3}
-          stagger={LOOK[1] - LOOK[0]}
-          size={112}
-        />
       </AbsoluteFill>
     </AbsoluteFill>
   );

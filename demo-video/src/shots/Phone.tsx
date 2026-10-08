@@ -11,7 +11,7 @@ import { Phone as PhoneObject, PHONE } from "../three/Phone";
 import { Stage, type View } from "../three/Stage";
 import { useLoaded } from "../three/assets";
 import { COPY, EASE, EASE_IN_OUT, shot, tween } from "../timing";
-import { Words } from "../Words";
+import { Headline, Small } from "../Type";
 
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 const RIGHT = Math.PI / 2;
@@ -73,6 +73,9 @@ const BLIPS = [
   { colour: C.gold, angle: -0.3, at: 57 },
   { colour: C.stock, angle: -1.5, at: 64 },
 ] as const;
+/** Where the words stand: right of the phone, their top at the phone's. */
+const COPY_LEFT = 900;
+const COPY_TOP = 104;
 const ORBIT = 0.53;
 
 /**
@@ -102,6 +105,19 @@ export const Phone: React.FC = () => {
           opacity: turn,
         }}
       />
+      {/* Out of the ring: the light it left in the lens dies away over the first frames. */}
+      <AbsoluteFill
+        style={{
+          background: `radial-gradient(70% 70% at 50% 50%, ${fade(C.accent, 0.5)}, ${fade(C.accent, 0.12)} 70%)`,
+          opacity: 1 - tween(frame, 0, 7, 0, 1, (t) => t),
+        }}
+      />
+      {/* The one headline off the grid: beside the phone, level with its top edge, and
+          behind it, so the phone swings across the words as it turns. */}
+      <div style={{ position: "absolute", left: COPY_LEFT, top: COPY_TOP }}>
+        <Headline lines={COPY.phone.lines} at={30} />
+        <Small text={COPY.phone.small} at={66} style={{ marginTop: 28 }} />
+      </div>
       <Stage
         room={assets.room}
         strength={mix(0.42, 0.62, turn)}
@@ -176,12 +192,6 @@ export const Phone: React.FC = () => {
           </group>
         </group>
       </Stage>
-      <AbsoluteFill
-        style={{ left: 900, top: 372, gap: 14, flexDirection: "column" }}
-      >
-        <Words text={COPY.phone[0]} at={42} size={98} />
-        <Words text={COPY.phone[1]} at={54} size={98} />
-      </AbsoluteFill>
     </AbsoluteFill>
   );
 };

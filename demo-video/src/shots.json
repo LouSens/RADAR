@@ -6,5 +6,5 @@
   { "id": "range", "from": 315, "duration": 105, "sweep": false },
   { "id": "risk", "from": 420, "duration": 90, "sweep": true },
   { "id": "plan", "from": 510, "duration": 90, "sweep": false },
-  { "id": "refusals", "from": 600, "duration": 90, "sweep": false }
+  { "id": "close", "from": 600, "duration": 150, "sweep": false }
 ]

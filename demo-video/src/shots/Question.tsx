@@ -1,9 +1,9 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import market from "../fixtures/market.json";
-import { C, FONT, NUM_FEATURES, fade } from "../theme";
+import { C, fade } from "../theme";
 import { COPY, EASE, tween } from "../timing";
-import { formatPrice, label } from "../ui/kit";
-import { Words } from "../Words";
+import { Headline, MARGIN, Small, TOP, hero } from "../Type";
+import { formatPrice } from "../ui/kit";
 
 const bitcoin = market.markets[0];
 const closes = bitcoin.weekCloses;
@@ -12,11 +12,10 @@ const closes = bitcoin.weekCloses;
 const TICK = 4;
 /** The hours the shot plays through: the last of the week, ending on the newest. */
 const HOURS = 30;
-const FIRST = closes.length - HOURS;
+const shown = closes.slice(closes.length - HOURS);
 
-// The trace under the price, in frame pixels.
-const TRACE = { left: 0, width: 1920, top: 742, height: 190 } as const;
-const shown = closes.slice(FIRST);
+// The trace beside the price, in frame pixels.
+const TRACE = { left: 1240, width: 552, top: 600, height: 230 } as const;
 const LOW = Math.min(...shown);
 const HIGH = Math.max(...shown);
 const point = (i: number): readonly [number, number] => [
@@ -27,6 +26,7 @@ const point = (i: number): readonly [number, number] => [
 /**
  * Shot 1. A Bitcoin price that will not keep still, and the question it puts. The prices
  * are real: the last hours of the week in fixtures/market.json, one every few frames.
+ * The picture is there from the first frame.
  */
 export const Question: React.FC = () => {
   const frame = useCurrentFrame();
@@ -40,7 +40,6 @@ export const Question: React.FC = () => {
     step === 0 || step === HOURS - 1
       ? 0
       : 1 - tween(since, 0, TICK, 0, 1, EASE);
-  const arrive = tween(frame, 0, 12, 0, 1, EASE);
 
   const head = point(step);
   const path = shown
@@ -57,13 +56,12 @@ export const Question: React.FC = () => {
       <svg
         width={1920}
         height={1080}
-        style={{ position: "absolute", inset: 0, opacity: 0.5 * arrive }}
+        style={{ position: "absolute", inset: 0 }}
       >
         <defs>
           <linearGradient id="question-trace" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor={C.btc} stopOpacity="0" />
-            <stop offset="0.35" stopColor={C.btc} stopOpacity="0.55" />
-            <stop offset="1" stopColor={C.btc} stopOpacity="1" />
+            <stop offset="0" stopColor={C.btc} stopOpacity="0.1" />
+            <stop offset="1" stopColor={C.btc} stopOpacity="0.9" />
           </linearGradient>
         </defs>
         {step > 0 && (
@@ -71,112 +69,60 @@ export const Question: React.FC = () => {
             d={path}
             fill="none"
             stroke="url(#question-trace)"
-            strokeWidth={3}
+            strokeWidth={4}
             strokeLinejoin="round"
             strokeLinecap="round"
           />
         )}
-        <circle cx={head[0]} cy={head[1]} r={7 + knock * 5} fill={C.btc} />
         <circle
           cx={head[0]}
           cy={head[1]}
-          r={16 + knock * 22}
-          fill={fade(C.btc, 0.25 * (1 - knock * 0.5))}
+          r={18 + knock * 22}
+          fill={fade(C.btc, 0.22)}
         />
+        <circle cx={head[0]} cy={head[1]} r={8 + knock * 4} fill={C.btc} />
       </svg>
 
+      <Headline
+        lines={COPY.question}
+        at={8}
+        lineAt={[8, 30]}
+        accent={C.btc}
+        style={{ position: "absolute", left: MARGIN, top: TOP }}
+      />
+
+      <Small
+        at={-20}
+        text={
+          <span style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <span
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: C.btc,
+              }}
+            />
+            Bitcoin
+            <span style={{ color: up ? C.calm : C.alert }}>
+              {step === 0
+                ? ""
+                : `${up ? "▲" : "▼"} ${Math.abs((price / before - 1) * 100).toFixed(2)}% this hour`}
+            </span>
+          </span>
+        }
+        style={{ position: "absolute", left: MARGIN, top: 520 }}
+      />
       <div
         style={{
-          ...label,
-          fontFamily: FONT,
+          ...hero,
           position: "absolute",
-          left: 960,
-          top: 388,
-          translate: "-50% 0",
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          fontSize: 26,
-          opacity: arrive,
-        }}
-      >
-        <span
-          style={{
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            background: C.btc,
-          }}
-        />
-        Bitcoin
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          left: 960,
-          top: 540,
-          translate: `-50% calc(-50% + ${(up ? -1 : 1) * knock * 9}px)`,
-          fontFamily: FONT,
-          fontFeatureSettings: NUM_FEATURES,
-          fontVariantNumeric: "tabular-nums",
-          fontSize: 176,
-          fontWeight: 600,
-          letterSpacing: "-0.04em",
-          lineHeight: 1,
-          whiteSpace: "nowrap",
-          color: C.ink,
-          opacity: arrive,
-          filter: arrive < 1 ? `blur(${(1 - arrive) * 14}px)` : undefined,
+          left: MARGIN - 8,
+          top: 592,
+          translate: `0 ${(up ? -1 : 1) * knock * 10}px`,
         }}
       >
         {formatPrice(price)}
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          left: 960,
-          top: 652,
-          translate: "-50% 0",
-          fontFamily: FONT,
-          fontFeatureSettings: NUM_FEATURES,
-          fontVariantNumeric: "tabular-nums",
-          fontSize: 34,
-          fontWeight: 500,
-          whiteSpace: "nowrap",
-          color: up ? C.calm : C.alert,
-          opacity: arrive * (step === 0 ? 0 : 1),
-        }}
-      >
-        {up ? "▲" : "▼"} {Math.abs((price / before - 1) * 100).toFixed(2)}% this
-        hour
-      </div>
-
-      {/* The two answers, one each side of the price. */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          width: 620,
-          top: 540,
-          translate: "0 -50%",
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
-        <Words text={COPY.question[0]} at={12} size={96} accent={C.btc} />
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          width: 620,
-          top: 540,
-          translate: "0 -50%",
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
-        <Words text={COPY.question[1]} at={36} size={96} accent={C.btc} />
       </div>
     </AbsoluteFill>
   );

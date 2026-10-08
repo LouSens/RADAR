@@ -1,9 +1,4 @@
-import {
-  AbsoluteFill,
-  interpolate,
-  interpolateColors,
-  useCurrentFrame,
-} from "remotion";
+import { AbsoluteFill, interpolateColors, useCurrentFrame } from "remotion";
 import { C, fade } from "./theme";
 import { shot } from "./timing";
 
@@ -25,21 +20,8 @@ const LIGHT: readonly (readonly [number, string])[] = [
   [shot("range").from + 10, C.btc],
   [shot("plan").from - 6, C.btc],
   [shot("plan").from + 14, C.accent],
-  [shot("refusals").from + 90, C.accent],
+  [shot("close").from + 150, C.accent],
 ];
-
-/**
- * How strong the light is. It sinks for the three refusals and comes back for the mark.
- */
-const strengthAt = (frame: number): number => {
-  const from = shot("refusals").from;
-  return interpolate(
-    frame,
-    [from - 8, from + 2, from + 48, from + 56],
-    [1, 0.3, 0.3, 1],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-  );
-};
 
 const hex = (colour: string): string => {
   const parts = colour.match(/[\d.]+/g) ?? ["0", "0", "0"];
@@ -74,7 +56,6 @@ export const Ground: React.FC = () => {
     <AbsoluteFill style={{ backgroundColor: C.bg }}>
       <AbsoluteFill
         style={{
-          opacity: strengthAt(frame),
           background: [
             `radial-gradient(${110 * breath}% ${62 * breath}% at 50% -14%, ${fade(light, 0.3)}, transparent 62%)`,
             `radial-gradient(50% 42% at 100% 0%, ${fade(light, 0.13)}, transparent 70%)`,

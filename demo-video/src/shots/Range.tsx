@@ -7,19 +7,27 @@ import {
 import market from "../fixtures/market.json";
 import { C, FEATURES, FONT, NUM_FEATURES, fade } from "../theme";
 import { COPY, EASE, EASE_IN_OUT, tween } from "../timing";
-import { Words } from "../Words";
+import { HERO, Headline, LINE, MARGIN, Small, TOP, hero } from "../Type";
 
 const { range } = market;
 
 const price = (value: number): string =>
   `$${Math.round(value).toLocaleString("en-US")}`;
 
-// The chart, in frame pixels.
+// The card under the headline, in frame pixels: its heading, the row the two ends of the
+// range come to rest on, and the chart.
 const LEFT = 210;
 const SPAN = 1500;
-const BASE = 866;
-const TALL = 372;
-const ROW = 372;
+const HEADING = 400;
+const ROW = 508;
+const BASE = 930;
+const TALL = 306;
+/** The size the two figures come down to, as figures of the card. */
+const RESTING = 92;
+/** Where the one price stands before it is cut. */
+const START = { x: 960, y: 690 } as const;
+/** How wide the cut between the two figures is once it has opened. */
+const CUT = 200;
 
 const first = range.edges[0];
 const last = range.edges[range.edges.length - 1];
@@ -33,35 +41,23 @@ const MOST = Math.max(...range.counts);
 const BAR = SPAN / range.counts.length;
 const NOW_BAR = Math.floor((X_NOW - LEFT) / BAR);
 
-/** How wide the cut between the two figures is once it has opened. */
-const CUT = 200;
-
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-/** One figure, centred on a point, in the app's figures. */
+/** One figure, centred on a point. It starts as a hero number. */
 const Figure: React.FC<{
   readonly value: number;
   readonly cx: number;
   readonly cy: number;
   readonly size: number;
-  readonly opacity?: number;
-}> = ({ value, cx, cy, size, opacity = 1 }) => (
+}> = ({ value, cx, cy, size }) => (
   <div
     style={{
+      ...hero,
       position: "absolute",
       left: cx,
       top: cy,
       translate: "-50% -50%",
-      fontFamily: FONT,
-      fontFeatureSettings: NUM_FEATURES,
-      fontVariantNumeric: "tabular-nums",
       fontSize: size,
-      fontWeight: 600,
-      letterSpacing: "-0.04em",
-      lineHeight: 1,
-      whiteSpace: "nowrap",
-      color: C.ink,
-      opacity,
     }}
   >
     {price(value)}
@@ -69,23 +65,22 @@ const Figure: React.FC<{
 );
 
 /**
- * Shot 5. One price slides apart into the low and the high of the week's range, and the
- * simulated outcomes grow between them. Figures: fixtures/market.json.
+ * Shot 5. One price is cut into the low and the high of the week's range, and the
+ * simulated outcomes rise in the cut. Figures: fixtures/market.json.
  */
 export const Range: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const arrive = tween(frame, 0, 10, 0, 1, EASE);
   // One move, on one curve. The price is two copies of itself lying exactly together,
   // the left one shown only left of a cut and the right one only right of it. As the cut
   // opens, each copy travels to its end of the range, shrinks to its place in the row and
   // counts to its value, so position, size and value all change together and none jumps.
   const open = tween(frame, 22, 56, 0, 1, EASE_IN_OUT);
-  const size = mix(250, 92, open);
-  const cy = mix(540, ROW, open);
-  const lowX = mix(960, X_LOW, open);
-  const highX = mix(960, X_HIGH, open);
+  const size = mix(HERO, RESTING, open);
+  const cy = mix(START.y, ROW, open);
+  const lowX = mix(START.x, X_LOW, open);
+  const highX = mix(START.x, X_HIGH, open);
   const seam = (lowX + highX) / 2;
   const cutLeft = seam - (CUT / 2) * open;
   const cutRight = seam + (CUT / 2) * open;
@@ -93,6 +88,7 @@ export const Range: React.FC = () => {
   const soft = 18 * open;
   const leftOnly = `linear-gradient(to right, #000 ${cutLeft - soft}px, transparent ${cutLeft}px)`;
   const rightOnly = `linear-gradient(to left, #000 ${1920 - cutRight - soft}px, transparent ${1920 - cutRight}px)`;
+  // While the price is still large and low in the frame, no bar rises into it.
   const room = BASE - (cy + size * 0.45 + 22);
   const guides = tween(frame, 54, 68, 0, 1, EASE);
   const now = tween(frame, 56, 68, 0, 1, EASE);
@@ -114,19 +110,23 @@ export const Range: React.FC = () => {
 
   return (
     <AbsoluteFill>
-      <AbsoluteFill style={{ alignItems: "center", top: 64 }}>
-        {/* The first sentence stands in the middle until the second joins it. */}
-        <div
-          style={{
-            display: "flex",
-            gap: 28,
-            translate: `${tween(frame, 42, 56, 196, 0, EASE_IN_OUT)}px 0`,
-          }}
-        >
-          <Words text={COPY.range[0]} at={8} size={92} accent={C.btc} />
-          <Words text={COPY.range[1]} at={46} size={92} accent={C.btc} />
-        </div>
-      </AbsoluteFill>
+      <Headline
+        lines={COPY.range.lines}
+        at={6}
+        lineAt={[6, 46]}
+        accent={C.btc}
+        style={{ position: "absolute", left: MARGIN, top: TOP }}
+      />
+      {/* The small line stands on the second line's baseline, after its one word. */}
+      <Small
+        text={COPY.range.small}
+        at={62}
+        style={{
+          position: "absolute",
+          left: MARGIN + 520,
+          top: TOP + LINE + 76,
+        }}
+      />
 
       {/* The card's own heading: whose range, and how far it can be leaned on. */}
       <div
@@ -134,7 +134,7 @@ export const Range: React.FC = () => {
           position: "absolute",
           left: LEFT,
           width: SPAN,
-          top: 236,
+          top: HEADING,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -184,18 +184,17 @@ export const Range: React.FC = () => {
         </div>
       </div>
 
-      {/* The outcomes: bright inside the range, dim outside it, as in the app. */}
+      {/* The outcomes: bright inside the range, dim outside it, as in the app. They rise
+          in the opening cut, from today's price outwards. */}
       {range.counts.map((count, i) => {
         const mid = (range.edges[i] + range.edges[i + 1]) / 2;
         const inside = mid >= range.low && mid <= range.high;
-        // The outcomes rise in the opening cut, from today's price outwards.
         const start = 27 + Math.abs(i - NOW_BAR) * 1.25;
         const grown = spring({
           frame: frame - start,
           fps,
           config: { damping: 14, mass: 0.6, stiffness: 140 },
         });
-        // While the price is still large and low in the frame, no bar rises into it.
         const height = Math.min((count / MOST) * TALL * grown, room);
         return (
           <div
@@ -247,7 +246,7 @@ export const Range: React.FC = () => {
         style={{
           position: "absolute",
           left: X_NOW,
-          top: BASE - TALL - 60,
+          top: BASE - TALL - 56,
           translate: "-50% 0",
           fontFamily: FONT,
           fontFeatureSettings: NUM_FEATURES,
@@ -263,38 +262,12 @@ export const Range: React.FC = () => {
         style={{
           position: "absolute",
           left: X_NOW - 1,
-          top: BASE - TALL - 16,
+          top: BASE - TALL - 14,
           width: 0,
-          height: (TALL + 16) * now,
+          height: (TALL + 14) * now,
           borderLeft: `2px dashed ${fade(C.ink, 0.6)}`,
         }}
       />
-
-      {/* What the big figure is, until it parts. */}
-      <div
-        style={{
-          ...label,
-          position: "absolute",
-          left: 960,
-          top: 356,
-          translate: "-50% 0",
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          fontSize: 30,
-          opacity: arrive * (1 - tween(frame, 18, 26, 0, 1)),
-        }}
-      >
-        <span
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: "50%",
-            background: C.btc,
-          }}
-        />
-        Bitcoin now
-      </div>
 
       {/* One figure and a cut: the left copy is only ever seen left of the cut and the
           right copy right of it, so two whole figures never touch. */}
@@ -304,7 +277,6 @@ export const Range: React.FC = () => {
           cx={lowX}
           cy={cy}
           size={size}
-          opacity={arrive}
         />
       </AbsoluteFill>
       <AbsoluteFill
@@ -315,7 +287,6 @@ export const Range: React.FC = () => {
           cx={highX}
           cy={cy}
           size={size}
-          opacity={arrive}
         />
       </AbsoluteFill>
       <div
@@ -353,7 +324,7 @@ export const Range: React.FC = () => {
           position: "absolute",
           left: LEFT,
           width: SPAN,
-          top: BASE + 18,
+          top: BASE + 16,
           display: "flex",
           justifyContent: "space-between",
           fontFamily: FONT,
@@ -366,15 +337,6 @@ export const Range: React.FC = () => {
         <span>{price(first)}</span>
         <span>{price(last)}</span>
       </div>
-      <AbsoluteFill style={{ alignItems: "center", top: BASE + 84 }}>
-        <Words
-          text={`${range.paths.toLocaleString("en-US")} simulated weeks.`}
-          at={64}
-          size={36}
-          weight={500}
-          colour={C.muted}
-        />
-      </AbsoluteFill>
     </AbsoluteFill>
   );
 };

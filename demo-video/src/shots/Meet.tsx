@@ -10,10 +10,10 @@ import { Mark, RING } from "../three/Mark";
 import { Stage, type View } from "../three/Stage";
 import { useLoaded } from "../three/assets";
 import { COPY, EASE, EASE_IN_OUT, shot, tween } from "../timing";
-import { Words } from "../Words";
+import { Headline, MARGIN, TOP } from "../Type";
 
-/** How far above the middle the mark sits, leaving room for the line of type below. */
-const LIFT = 0.5;
+/** How far below the middle the mark sits, clear of the headline above it. */
+const LIFT = -0.55;
 /** A clear way through the ring: inside it, and to one side of the rising line. */
 const GAP = [RING.centre.x - 0.34, RING.centre.y + 0.44 + LIFT] as const;
 /** When the camera sets off for the ring, and the shot's last frame, when it is through. */
@@ -78,9 +78,20 @@ export const Meet: React.FC = () => {
           <Mark ring={ring} line={line} dot={dot} />
         </group>
       </Stage>
-      <AbsoluteFill style={{ alignItems: "center", top: 770 }}>
-        <Words text={COPY.meet[0]} at={22} out={46} size={132} stagger={5} />
-      </AbsoluteFill>
+      {/* Going through the ring: its light fills the lens for a moment, so the frames
+          with the mark behind us are not empty, and shot 3 opens out of the same light. */}
+      <AbsoluteFill
+        style={{
+          background: `radial-gradient(70% 70% at 50% 50%, ${fade(C.accent, 0.5)}, ${fade(C.accent, 0.12)} 70%)`,
+          opacity: tween(frame, PUSH[1] - 5, PUSH[1], 0, 1, (t) => t * t),
+        }}
+      />
+      <Headline
+        lines={COPY.meet}
+        at={20}
+        out={PUSH[0] - 2}
+        style={{ position: "absolute", left: MARGIN, top: TOP }}
+      />
     </AbsoluteFill>
   );
 };

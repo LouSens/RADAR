@@ -2,6 +2,7 @@ import { AbsoluteFill, useCurrentFrame } from "remotion";
 import portfolio from "../fixtures/portfolio.json";
 import { C, FONT, NUM_FEATURES } from "../theme";
 import { COPY, EASE, EASE_IN_OUT, tween } from "../timing";
+import { Headline, LINE, MARGIN, Small, TOP } from "../Type";
 import {
   ExampleNote,
   Ladder,
@@ -12,31 +13,30 @@ import {
   glass,
   label,
 } from "../ui/kit";
-import { Words } from "../Words";
 
 const { holdings, step } = portfolio;
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-// The bar of shares (viz.tsx, StackBar), in frame pixels.
-const BAR = { left: 310, width: 1300, top: 452, height: 44 } as const;
+// The bar of shares (viz.tsx, StackBar), in frame pixels, under the headline.
+const BAR = { left: MARGIN, width: 1664, top: 548, height: 40 } as const;
 // The card the next step is on, before the camera moves in on it.
-const CARD = { width: 800, top: 650, zoom: 2 } as const;
-const CARD_MIDDLE = 824;
+const CARD = { width: 800, top: 690, zoom: 2 } as const;
+const CARD_MIDDLE = 842;
+/** Where the card's middle comes to, and how much larger it is, once the camera is in. */
+const CLOSE = { middle: 752, scale: 1.42 } as const;
 
 /**
  * Shot 7. The bar of what is held now reshapes into the plan, and the camera moves in on
  * the next step: three prices, lighting one by one. Figures: the made-up example in
- * fixtures/portfolio.json.
+ * fixtures/portfolio.json. The picture is there from the first frame.
  */
 export const Plan: React.FC = () => {
   const frame = useCurrentFrame();
-  const arrive = tween(frame, 0, 10, 0, 1, EASE);
-  const reshape = tween(frame, 16, 36, 0, 1, EASE_IN_OUT);
-  const push = tween(frame, 40, 60, 0, 1, EASE_IN_OUT);
-  const scale = mix(1, 1.6, push);
+  const reshape = tween(frame, 14, 34, 0, 1, EASE_IN_OUT);
+  const push = tween(frame, 38, 58, 0, 1, EASE_IN_OUT);
   // The price ladder runs right to left: today's price first, then each lower one.
   const lit = step.rungs.map((_, i) =>
-    tween(frame, 60 + i * 9, 68 + i * 9, 0, 1, EASE),
+    tween(frame, 58 + i * 8, 66 + i * 8, 0, 1, EASE),
   );
   const named = (text: string, shown: number): React.ReactNode => (
     <span
@@ -46,7 +46,6 @@ export const Plan: React.FC = () => {
         top: 0,
         whiteSpace: "nowrap",
         opacity: shown,
-        filter: shown < 1 ? `blur(${(1 - shown) * 10}px)` : undefined,
       }}
     >
       {text}
@@ -55,44 +54,40 @@ export const Plan: React.FC = () => {
 
   return (
     <AbsoluteFill>
-      <AbsoluteFill style={{ alignItems: "center", top: 96 }}>
-        {/* The first sentence stands in the middle until the second joins it. */}
-        <div
-          style={{
-            display: "flex",
-            gap: 28,
-            translate: `${tween(frame, 42, 56, 318, 0, EASE_IN_OUT)}px 0`,
-          }}
-        >
-          <Words text={COPY.plan[0]} at={4} size={92} />
-          <Words text={COPY.plan[1]} at={46} size={92} />
-        </div>
-      </AbsoluteFill>
+      <Headline
+        lines={COPY.plan.lines}
+        at={2}
+        lineAt={[2, 32]}
+        style={{ position: "absolute", left: MARGIN, top: TOP }}
+      />
+      <Small
+        text={COPY.plan.small}
+        at={16}
+        style={{ position: "absolute", left: MARGIN, top: TOP + LINE * 2 + 14 }}
+      />
 
       {/* Everything below is one picture the camera moves in on. */}
       <AbsoluteFill
         style={{
           transformOrigin: `960px ${CARD_MIDDLE}px`,
-          translate: `0 ${(610 - CARD_MIDDLE) * push}px`,
-          scale,
+          translate: `0 ${(CLOSE.middle - CARD_MIDDLE) * push}px`,
+          scale: mix(1, CLOSE.scale, push),
         }}
       >
-        <div style={{ opacity: arrive * (1 - Math.min(push * 2.4, 1)) }}>
+        <div style={{ opacity: 1 - Math.min(push * 2.4, 1) }}>
           <div
             style={{
               position: "absolute",
               left: BAR.left,
-              top: BAR.top - 64,
-              height: 48,
+              top: BAR.top - 50,
+              height: 40,
+              ...label,
               fontFamily: FONT,
-              fontSize: 34,
-              fontWeight: 600,
-              letterSpacing: "-0.02em",
-              color: C.ink,
+              fontSize: 22,
             }}
           >
-            {named("Now", 1 - tween(frame, 16, 26, 0, 1))}
-            {named("Your plan", tween(frame, 24, 34, 0, 1))}
+            {named("Now", 1 - tween(frame, 14, 24, 0, 1))}
+            {named("Your plan", tween(frame, 22, 32, 0, 1))}
           </div>
           <div
             style={{
@@ -122,7 +117,7 @@ export const Plan: React.FC = () => {
             style={{
               position: "absolute",
               left: BAR.left,
-              top: BAR.top + BAR.height + 22,
+              top: BAR.top + BAR.height + 18,
               width: BAR.width,
               display: "flex",
               gap: 44,
@@ -165,7 +160,6 @@ export const Plan: React.FC = () => {
             position: "absolute",
             left: 960 - CARD.width / 2,
             top: CARD.top,
-            opacity: tween(frame, 26, 40, 0, 1),
           }}
         >
           <div
@@ -196,7 +190,7 @@ export const Plan: React.FC = () => {
           </div>
         </div>
       </AbsoluteFill>
-      <ExampleNote opacity={arrive} />
+      <ExampleNote />
     </AbsoluteFill>
   );
 };

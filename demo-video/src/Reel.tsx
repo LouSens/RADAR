@@ -1,12 +1,12 @@
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
 import { Ground } from "./Ground";
 import { Cards } from "./shots/Cards";
+import { Close } from "./shots/Close";
 import { Meet } from "./shots/Meet";
 import { Phone } from "./shots/Phone";
 import { Plan } from "./shots/Plan";
 import { Question } from "./shots/Question";
 import { Range } from "./shots/Range";
-import { Refusals } from "./shots/Refusals";
 import { Risk } from "./shots/Risk";
 import { SweepLine, Swept } from "./Sweep";
 import { AssetsProvider, useAssets } from "./three/assets";
@@ -21,7 +21,7 @@ const PICTURE: Readonly<Record<ShotId, React.ReactNode>> = {
   range: <Range />,
   risk: <Risk />,
   plan: <Plan />,
-  refusals: <Refusals />,
+  close: <Close />,
 };
 
 /**

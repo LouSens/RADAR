@@ -19,7 +19,7 @@ export type ShotId =
   | "range"
   | "risk"
   | "plan"
-  | "refusals";
+  | "close";
 
 export interface Shot {
   readonly id: ShotId;
@@ -45,15 +45,32 @@ export const shot = (id: ShotId): Shot => {
   return found;
 };
 
-/** The film's words, as approved. Shots 4 and 6 take theirs from the fixtures. */
+/**
+ * The film's words, as approved: what RADAR does and has. A line here is a line on
+ * screen; the words between asterisks take the accent. The two figures of shot 6 come
+ * from the example portfolio and stand in front of their words.
+ */
 export const COPY = {
-  question: ["Buy now?", "Or wait?"],
+  question: ["Buy now?", "Or *wait?*"],
   meet: ["Meet *RADAR.*"],
-  phone: ["Reads your account.", "Touches *nothing.*"],
-  range: ["Not a guess.", "A *range.*"],
-  plan: ["Your plan.", "Your *next step.*"],
-  refusals: ["No tips.", "No trades.", "No promises."],
-  signoff: ["RADAR.", "It measures. *You decide.*"],
+  phone: {
+    lines: ["Every coin", "you hold.", "*Live.*"],
+    small: "Synced from Binance by itself.",
+  },
+  cards: ["How every market", "feels *today.*"],
+  range: {
+    lines: ["Next week's range.", "*Today.*"],
+    small: "From 10,000 simulated weeks.",
+  },
+  risk: ["of your money.", "of your risk."],
+  plan: {
+    lines: ["What to buy next.", "And at what *price.*"],
+    small: "From the plan you set.",
+  },
+  close: {
+    lines: ["Your account.", "Your risk.", "Your *plan.*"],
+    last: ["*RADAR. An analyst for*", "*everything you own.*"],
+  },
 } as const;
 
 /** The app's two curves (index.css), so the film moves the way the product does. */

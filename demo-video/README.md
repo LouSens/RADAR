@@ -1,20 +1,38 @@
 # The RADAR reel
 
-A 23-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
-690 frames, cut to 120 beats a minute (15 frames a beat).
+A 25-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
+750 frames, cut to 120 beats a minute (15 frames a beat). Its words say what RADAR does
+and has.
 
-| # | Frames | Picture | Words |
-| --- | --- | --- | --- |
-| 1 | 0 to 74 | A Bitcoin price that will not keep still | Buy now? Or wait? |
-| 2 | 75 to 134 | The radar line clears the frame; the mark draws itself; the camera goes through its ring | Meet RADAR. |
-| 3 | 135 to 224 | A glide along the phone's metal edge; it swings round showing Home, with a blip for each thing held | Reads your account. Touches nothing. |
-| 4 | 225 to 314 | The three market cards lift off the screen as panes of glass; the camera travels down the row | Calm. Calm. Normal. |
-| 5 | 315 to 419 | One price is cut into the low and high of the week's range, and the outcomes rise between | Not a guess. A range. |
-| 6 | 420 to 509 | The radar line again; the money ring, then the risk ring round it | 12% of your money. 62% of your risk. |
-| 7 | 510 to 599 | The bar of what is held reshapes into the plan; the camera moves in on three prices lighting in turn | Your plan. Your next step. |
-| 8 | 600 to 689 | Three lines, one a beat; then the mark | No tips. No trades. No promises. RADAR. It measures. You decide. |
+| # | Frames | Picture | Headline | Small line |
+| --- | --- | --- | --- | --- |
+| 1 | 0 to 74 | A Bitcoin price that will not keep still | Buy now? Or wait? | |
+| 2 | 75 to 134 | The radar line clears the frame; the mark draws itself; the camera goes through its ring | Meet RADAR. | |
+| 3 | 135 to 224 | A glide along the phone's metal edge; it swings round showing Home, with a blip for each thing held | Every coin you hold. Live. | Synced from Binance by itself. |
+| 4 | 225 to 314 | The three market cards lift off the screen as panes of glass; the camera travels down the row | How every market feels today. | |
+| 5 | 315 to 419 | One price is cut into the low and high of the week's range, and the outcomes rise between | Next week's range. Today. | From 10,000 simulated weeks. |
+| 6 | 420 to 509 | The radar line again; the money ring, then the risk ring round it | 12% of your money. 62% of your risk. | |
+| 7 | 510 to 599 | The bar of what is held reshapes into the plan; the camera moves in on three prices lighting in turn | What to buy next. And at what price. | From the plan you set. |
+| 8 | 600 to 749 | Three phrases, one a beat; they leave together and the mark draws itself over the last line | Your account. Your risk. Your plan. RADAR. An analyst for everything you own. | |
 
-The words of shots 4 and 6 are read from the fixtures, so they change if the figures do.
+The two figures of shot 6 are read from the example portfolio, so they change if it does.
+
+## Type
+
+All of it is in `src/Type.tsx`, and there is nothing else:
+
+- **Three sizes.** Headline: Inter Bold, 140, tracking -3%. Hero number: 260, with every
+  digit the same width. Small line: Inter Medium, 40, in `#9ea2b0`.
+- **One grid.** Headlines start at a left margin of 128, in the upper third. Shot 3 is the
+  one exception: its words stand beside the phone, level with its top edge.
+- **One way in and out.** Each word rises out of a mask at the foot of its line over 8
+  frames, half a beat after the word before, and a line leaves by rising out through the
+  top. Type is never faded and never blurred.
+- **One accent word a line**, in the colour of what is on screen.
+- In shots 3 and 4 the headline is behind the phone and the panes, which pass in front.
+
+Words inside a rebuilt piece of the app (a card's label, a chart's ends) keep the app's
+own sizes: they are the interface, not the film's type.
 
 ## Where things are
 
@@ -26,7 +44,7 @@ The words of shots 4 and 6 are read from the fixtures, so they change if the fig
 | `src/shots/` | One file a shot |
 | `src/Ground.tsx` | The dark ground and its one light, whose colour follows the subject and is never cut |
 | `src/Sweep.tsx` | The radar line as a change of scene (shots 2 and 6) |
-| `src/Words.tsx` | Type that arrives a word at a time out of a blur, with one accent colour |
+| `src/Type.tsx` | The film's type: three sizes, one grid, words rising out of a mask |
 | `src/ui/` | The app's interface rebuilt from `frontend/src` (`kit.tsx`), and its Home screen (`Home.tsx`) |
 | `src/three/` | The 3D stage, the phone's materials, and the mark |
 | `src/fixtures/` | The figures: `market.json` from the app's market pages, `portfolio.json` a made-up example |
