@@ -115,7 +115,7 @@ const CUES: readonly Cue[] = [
   // Shot 6: each holding arriving, the change to shares of the risk, the number
   // landing with its ring, and the picture folding into the card.
   ...[0, 1, 2, 3].map((i) => ({
-    file: `pop-${i}`,
+    file: `pop-${i % 3}`,
     at: risk + Mix.MONEY[0] + i * 3,
     level: 0.4,
   })),
