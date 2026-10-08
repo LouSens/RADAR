@@ -1,4 +1,5 @@
-import { ASKED } from "./Beat";
+import { DOCKS } from "./Beat";
+import { HANDOVER } from "./DeskLayer";
 import fall from "./fixtures/fall.json";
 import * as Cal from "./shots/Calendar";
 import { SHRINKS } from "./shots/Meet";
@@ -53,50 +54,53 @@ export const Questions: React.FC = () => (
   <>
     <Ask
       lines={[COPY.meet]}
-      at={at.meet + 22}
+      at={at.meet + 12}
       out={at.meet + SHRINKS - 2}
       middle={850}
     />
     <Ask
       lines={[COPY.why]}
       at={at.why}
-      dock={at.why + ASKED}
+      dock={at.why + DOCKS}
       out={at.level - 8}
     />
     <Ask
-      lines={["Is this price", "*high or low?*"]}
+      lines={[COPY.level]}
+      // On one line, so that docked it stays inside the top of the frame.
+      size={132}
       at={at.level}
-      dock={at.level + ASKED}
+      dock={at.level + DOCKS}
       out={at.range - 8}
     />
     <Ask
       lines={[COPY.range]}
       at={at.range}
-      dock={at.range + ASKED}
+      dock={at.range + DOCKS}
       out={at.risk - 8}
     />
     <Ask
       lines={[COPY.risk]}
       at={at.risk}
-      dock={at.risk + ASKED}
+      dock={at.risk + DOCKS}
       out={at.plan - 8}
     />
     <Ask
       lines={[COPY.plan.line]}
       at={at.plan}
-      dock={at.plan + ASKED}
+      dock={at.plan + DOCKS}
       out={at.calendar - 8}
     />
     <Ask
       lines={[COPY.calendar]}
       at={at.calendar}
-      dock={at.calendar + Cal.ASKED}
+      dock={at.calendar + Cal.DOCKS}
       out={at.both - 6}
     />
     <Ask
       lines={["On your desk.", "On your *phone.*"]}
-      // Once Home has started across to the phone and the left of the frame is clear.
-      at={at.both + 9}
+      // Once Home has gone across to the phone and the left of the frame is clear.
+      at={HANDOVER[0] + 1}
+      wordsAt={[0, 2, 4, 8, 10, 12].map((w) => HANDOVER[0] + 1 + w)}
       size={140}
       centre={620}
       middle={520}

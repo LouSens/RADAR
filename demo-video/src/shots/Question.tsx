@@ -31,6 +31,9 @@ export const EXIT = 88;
 export const WORDS = [BEAT * 3, BEAT * 4, BEAT * 5] as const;
 
 const FACE = new Vector3(0, 0, 1);
+/** Which way it rolls out, and how it leans as it goes: its axis is square to its way. */
+const ROLLS = new Vector3(1, 0, 0.9).normalize();
+const LEANS = new Vector3(-0.36, 0.84, 0.4).normalize();
 
 /**
  * The coin at a moment of the shot: where its middle is and how it is turned. It spins
@@ -76,14 +79,15 @@ const coinAt = (frame: number): { position: Vector3; turn: Quaternion } => {
     lift =
       0.2 * Math.exp(-since / 4) * Math.abs(Math.sin((Math.PI * since) / 6));
   }
-  // At the end it is flicked up on to its edge and rolls away to the right, out of the
-  // frame: its roll is what the radar's line picks up.
+  // At the end it is flicked up on to its rim and rolls away, to the right and towards
+  // us, leaning: so it leaves by the foot of the frame and never comes up among the
+  // words. Its roll is what the radar's line picks up.
   const leaving = frame - EXIT;
   let along = 0;
   if (leaving > 0) {
     const up = tween(leaving, 0, 8, 0, 1, EASE);
-    normal = normal.lerp(FACE, up).normalize();
-    along = 0.021 * Math.max(leaving - 3, 0) ** 2;
+    normal = normal.lerp(LEANS, up).normalize();
+    along = 0.024 * Math.max(leaving - 3, 0) ** 2;
     lift *= 1 - up;
   }
   // Its rim rests on the floor: the middle is as high as the tilt puts it.
@@ -95,7 +99,10 @@ const coinAt = (frame: number): { position: Vector3; turn: Quaternion } => {
   turn.multiply(
     new Quaternion().setFromAxisAngle(FACE, spin * 0.35 - along / RADIUS),
   );
-  return { position: new Vector3(along, height, 0), turn };
+  return {
+    position: new Vector3(ROLLS.x * along, height, ROLLS.z * along),
+    turn,
+  };
 };
 
 const move: MoveAt = (frame, scene) => {

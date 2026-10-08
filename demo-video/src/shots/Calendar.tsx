@@ -3,6 +3,7 @@ import { AREA, OPENS, Answer, ZOOM } from "../Beat";
 import film from "../fixtures/film.json";
 import { C } from "../theme";
 import { EASE_IN_OUT, shot, tween } from "../timing";
+import { DOCK } from "../Type";
 import { AT } from "../ui/Desk";
 import { base, num } from "../ui/kit";
 import { Ping, Ticker, settle } from "../ui/motion";
@@ -10,13 +11,14 @@ import { Ping, Ticker, settle } from "../ui/motion";
 const events = film.calendar.slice(0, 4);
 const FED = events.findIndex((event) => event.key === "fed");
 
-/** This shot is short: its question docks sooner than the others'. */
-export const ASKED = 12;
+/** This shot is short: its question starts for its dock sooner than the others'. */
+export const DOCKS = 4;
+export const ASKED = DOCKS + DOCK;
 /** When the first row slides up, and how long after it each other does. */
-export const ROWS = ASKED + OPENS - 4;
+export const ROWS = ASKED + OPENS - 6;
 export const EVERY = 3;
 /** The count of days on the Fed's row, rolling down to what it is. */
-export const ROLL = [ROWS + 4, ROWS + 20] as const;
+export const ROLL = [ROWS + 4, ROWS + 16] as const;
 export const PINGED = ROLL[1] + 2;
 
 const TOP = 76;

@@ -230,9 +230,11 @@ export type Built = (piece: Piece) => number;
 
 /**
  * Home. `built` says how far each piece has arrived, `frame` drives what moves inside
- * (the price, the lines, the chips), `pressed` is the piece or button being tapped, and
- * `towards` moves every piece `morph` of the way to its place in the phone's layout,
- * which is drawn at `phone` (a box in the frame's own pixels).
+ * (the price, the lines, the chips), and `lifted` is the card that answers a question:
+ * its edge lit, raised a little, and pressed as it opens. `view` draws Home smaller and
+ * elsewhere; `towards` says how far each piece has gone to its place in the phone's
+ * layout, which is at `phone` (a box in the frame's own pixels); with `arriving`, only
+ * the pieces on their way there are drawn.
  */
 export const Desk: React.FC<{
   readonly frame: number;
@@ -240,10 +242,33 @@ export const Desk: React.FC<{
   /** The frame the content of the cards started to arrive, for what counts and draws. */
   readonly alive: number;
   readonly logo?: number;
-  readonly pressed?: { readonly box: Box; readonly by: number };
-  readonly morph?: number;
+  readonly lifted?: {
+    readonly box: Box;
+    readonly by: number;
+    readonly press: number;
+  };
+  readonly towards?: (piece: Piece) => number;
   readonly phone?: Box;
-}> = ({ frame, built, alive, logo = 1, pressed, morph = 0, phone }) => {
+  readonly view?: {
+    readonly k: number;
+    readonly x: number;
+    readonly y: number;
+  };
+  readonly arriving?: boolean;
+  /** Tells two drawings of Home apart, so that their own drawings do not share names. */
+  readonly copy?: string;
+}> = ({
+  frame,
+  built,
+  alive,
+  logo = 1,
+  lifted,
+  towards,
+  phone,
+  view = { k: 1, x: 0, y: 0 },
+  arriving = false,
+  copy = "",
+}) => {
   const since = frame - alive;
   const btc = markets[0];
   // The Bitcoin price ticks through the last hours as the card arrives.
@@ -261,9 +286,10 @@ export const Desk: React.FC<{
     const from = AT[piece];
     const there = built(piece);
     const arrive = Math.min(there, 1);
-    let x = from.x * DESK.zoom;
-    let y = from.y * DESK.zoom;
-    let scale = DESK.zoom;
+    let scale = DESK.zoom * view.k;
+    let x = view.x + from.x * scale;
+    let y = view.y + from.y * scale;
+    const morph = towards?.(piece) ?? 0;
     if (morph > 0 && phone) {
       const to = ON_PHONE[piece];
       const k = phone.w / PHONE.width;
@@ -279,16 +305,20 @@ export const Desk: React.FC<{
       height: from.h,
       transformOrigin: "0 0",
       transform: `translate(${x}px, ${y + (1 - arrive) * 26}px) scale(${scale})`,
-      opacity: arrive,
+      opacity: arriving && morph <= 0 ? 0 : arrive,
     };
   };
   const content = (piece: Piece): number =>
     Math.min(Math.max(built(piece) - 1, 0), 1);
-  const press = (box: Box): React.CSSProperties | undefined =>
-    pressed && pressed.box === box
+  /** The card that answers the question: its edge lit, raised, and pressed as it opens. */
+  const press = (box: Box, round = 20): React.CSSProperties | undefined =>
+    lifted && lifted.box === box
       ? {
-          scale: 1 - 0.03 * pressed.by,
-          filter: `brightness(${1 + 0.35 * pressed.by})`,
+          translate: `0 ${-5 * lifted.by}px`,
+          scale: 1 + 0.012 * lifted.by - 0.03 * lifted.press,
+          borderRadius: round,
+          boxShadow: `0 0 0 1.5px ${fade(C.accent, 0.9 * Math.min(lifted.by, 1))}, 0 0 22px ${fade(C.accent, 0.22 * Math.min(lifted.by, 1))}, 0 ${16 * lifted.by}px ${34 * lifted.by}px -10px rgba(0,0,0,0.7)`,
+          filter: `brightness(${1 + 0.3 * lifted.press})`,
         }
       : undefined;
 
@@ -298,7 +328,7 @@ export const Desk: React.FC<{
   ): React.ReactNode => {
     const shown = content(piece);
     return (
-      <div key={m.slug} style={{ ...place(piece), ...press(AT[piece]) }}>
+      <div key={m.slug} style={{ ...place(piece), ...press(AT[piece], 18) }}>
         {shown <= 0 ? (
           <div style={{ ...card, borderRadius: 18, padding: 19 }}>
             <Skeleton frame={frame} style={{ width: 90, height: 14 }} />
@@ -315,7 +345,7 @@ export const Desk: React.FC<{
           <MarketCard
             market={piece === "btc" ? { ...m, price } : m}
             wide
-            copy="desk"
+            copy={`desk${copy}`}
             drawn={Math.min(Math.max((since - 4) / 22, 0), 1)}
             stated={pop(
               frame,
@@ -329,7 +359,10 @@ export const Desk: React.FC<{
   };
 
   // On the phone the places are a capsule at the foot: the sidebar becomes it.
-  const capsule = Math.min(Math.max((morph - 0.35) / 0.4, 0), 1);
+  const capsule = Math.min(
+    Math.max(((towards?.("side") ?? 0) - 0.08) / 0.34, 0),
+    1,
+  );
 
   return (
     <>
@@ -451,7 +484,7 @@ export const Desk: React.FC<{
                     background: "rgba(255,255,255,0.025)",
                     fontSize: 14,
                     fontWeight: 600,
-                    ...(box ? press(box) : undefined),
+                    ...(box ? press(box, 14) : undefined),
                   }}
                 >
                   <span

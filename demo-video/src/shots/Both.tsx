@@ -4,8 +4,7 @@ import { C } from "../theme";
 import { PHONE, Phone } from "../three/Phone";
 import { Stage, type View } from "../three/Stage";
 import { useLoaded } from "../three/assets";
-import { HEIGHT, WIDTH, shot, tween } from "../timing";
-import { settle } from "../ui/motion";
+import { EASE, HEIGHT, WIDTH, shot, tween } from "../timing";
 
 const both = shot("both").from;
 
@@ -27,29 +26,26 @@ const camera = (): View => ({
   fov: FOV,
 });
 
-/** When the phone starts up into the frame. */
-export const SLIDES = 7;
+/** The phone comes up into the frame first, before anything of Home moves. */
+export const SLIDES = [0, 12] as const;
 
 /**
- * Shot 9. Home has reflowed into the phone's layout (DeskLayer); the phone itself comes
- * up behind that layout, which lands on its screen, and then turns a few degrees.
+ * Shot 9. The phone comes up on the right; Home's pieces go across behind it and arrive
+ * on its screen (DeskLayer, DeskOnPhone); then its own screen takes over, and it stands
+ * clear and still until the radar's line.
  */
 export const Both: React.FC = () => {
   const frame = useCurrentFrame();
   const assets = useLoaded();
-  if (!assets || frame < SLIDES) {
+  if (!assets) {
     return null;
   }
-  const up = settle(frame, SLIDES, 16);
+  const up = tween(frame, SLIDES[0], SLIDES[1], 0, 1, EASE);
   const lit = tween(both + frame, HANDOVER[0], HANDOVER[1], 0, 1, (t) => t);
-  const turned = settle(frame, HANDOVER[1] - both, 18);
   return (
     <AbsoluteFill>
       <Stage room={assets.room} light={C.accent} camera={camera} turn={0.5}>
-        <group
-          position={[AT.x, AT.y - (1 - up) * 2.6, 0]}
-          rotation={[turned * 0.05, turned * -0.24, turned * 0.02]}
-        >
+        <group position={[AT.x, AT.y - (1 - up) * 2.6, 0]}>
           <Phone object={assets.phone} screen={assets.screens.home} lit={lit} />
         </group>
       </Stage>

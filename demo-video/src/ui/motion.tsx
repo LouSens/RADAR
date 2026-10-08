@@ -48,6 +48,28 @@ export const Pop: React.FC<{
 
 const LINE = 1.15;
 
+/** The name of the blur a turning wheel is given. The film draws it once (RollBlur). */
+const ROLL_BLUR = "roll-blur";
+
+/**
+ * A blur up and down only, as tall as a share of what it is laid on, for the wheels of
+ * a counting number. Drawn once, anywhere in the film.
+ */
+export const RollBlur: React.FC = () => (
+  <svg width={0} height={0} style={{ position: "absolute" }}>
+    <filter
+      id={ROLL_BLUR}
+      primitiveUnits="objectBoundingBox"
+      x="-0.2"
+      y="-0.2"
+      width="1.4"
+      height="1.4"
+    >
+      <feGaussianBlur stdDeviation="0 0.035" />
+    </filter>
+  </svg>
+);
+
 /**
  * A number that counts the way a meter does: every digit is a wheel, and a wheel turns
  * only while the wheels below it go from nine to nought. No digit jumps. Figures are
@@ -91,6 +113,9 @@ export const Ticker: React.FC<{
             display: "flex",
             flexDirection: "column",
             translate: `0 ${-turn * LINE}em`,
+            // A wheel caught turning is blurred along its turn, as a moving thing is.
+            filter:
+              turn > 0.02 && turn < 0.98 ? `url(#${ROLL_BLUR})` : undefined,
           }}
         >
           <span style={{ height: `${LINE}em` }}>{digit}</span>
@@ -179,46 +204,6 @@ export const Resolve: React.FC<{
     )}
   </span>
 );
-
-/** A soft ripple where a finger or a cursor taps, in the frame's own pixels. */
-export const Tap: React.FC<{
-  readonly since: number;
-  readonly x: number;
-  readonly y: number;
-}> = ({ since, x, y }) => {
-  if (since < 0 || since > 16) {
-    return null;
-  }
-  const spread = tween(since, 0, 16, 0, 1, EASE);
-  const r = 10 + spread * 70;
-  return (
-    <>
-      <span
-        style={{
-          position: "absolute",
-          left: x - r,
-          top: y - r,
-          width: r * 2,
-          height: r * 2,
-          borderRadius: "50%",
-          background: fade("#ffffff", 0.16 * (1 - spread)),
-          border: `2px solid ${fade("#ffffff", 0.5 * (1 - spread))}`,
-        }}
-      />
-      <span
-        style={{
-          position: "absolute",
-          left: x - 9,
-          top: y - 9,
-          width: 18,
-          height: 18,
-          borderRadius: "50%",
-          background: fade("#ffffff", 0.85 * (1 - tween(since, 4, 12, 0, 1))),
-        }}
-      />
-    </>
-  );
-};
 
 /** How long the radar's ring takes to spread and go. */
 export const PING = 20;

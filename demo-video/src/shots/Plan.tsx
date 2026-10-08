@@ -17,16 +17,18 @@ const { holdings, step } = film.portfolio;
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /** When the bar reshapes from what is held into the plan: half a second. */
-export const RESHAPE = [ASKED + OPENS + 2, ASKED + OPENS + 17] as const;
+export const RESHAPE = [ASKED + OPENS - 2, ASKED + OPENS + 13] as const;
 /** When each coin lands on its price: one a beat. */
 export const LANDS = [
-  RESHAPE[1] + 6,
-  RESHAPE[1] + 6 + BEAT,
-  RESHAPE[1] + 6 + BEAT * 2,
+  RESHAPE[1] + 4,
+  RESHAPE[1] + 4 + BEAT,
+  RESHAPE[1] + 4 + BEAT * 2,
 ] as const;
 /** How long a coin is in the air. */
-const FALL = 9;
-export const PINGED = LANDS[2] + 8;
+const FALL = 7;
+/** How far above its price a coin appears: inside the card, just over the ladder. */
+const DROP = 30;
+export const PINGED = LANDS[2] + 6;
 
 /** The ladder, in the app's pixels inside the answer, drawn half as large again. */
 const LADDER = { x: 28, y: 204, w: 776, zoom: 1.5 } as const;
@@ -144,7 +146,7 @@ export const Plan: React.FC = () => {
                     top: 28,
                     width: size,
                     height: size,
-                    translate: `-50% calc(-50% + ${-(1 - fallen) * 190 - bounce}px)`,
+                    translate: `-50% calc(-50% + ${-(1 - fallen) * DROP - bounce}px)`,
                     borderRadius: "50%",
                     background: `linear-gradient(180deg, ${lighter(C.accent)} 0%, ${C.accent} 45%, ${darker(C.accent)} 100%)`,
                     boxShadow: `0 0 12px ${fade(C.accent, 0.5)}, inset 0 0 0 1.5px ${fade("#ffffff", 0.35)}`,
@@ -154,7 +156,9 @@ export const Plan: React.FC = () => {
                     fontSize: 13,
                     fontWeight: 700,
                     color: "#0a2a33",
-                    opacity: rest > 0.9 ? 0 : 1,
+                    // It appears where it starts to fall, growing from nothing in a few frames.
+                    scale: tween(since, 0, 3, 0.2, 1),
+                    opacity: rest > 0.9 ? 0 : tween(since, 0, 2, 0, 1),
                   }}
                 >
                   {rest < 0.4 ? "$" : ""}

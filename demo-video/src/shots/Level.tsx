@@ -1,25 +1,23 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { ASKED, Answer, ZOOM } from "../Beat";
+import { ASKED, AREA, Answer, ZOOM } from "../Beat";
 import film from "../fixtures/film.json";
 import { C } from "../theme";
 import { EASE_IN_OUT, shot, tween } from "../timing";
-import { BUTTON, type Box } from "../ui/Desk";
+import { BUTTON } from "../ui/Desk";
 import { formatPrice } from "../ui/kit";
 import { Ping, RangeBar, pop, settle } from "../ui/motion";
 
 const { level } = film;
 
 /** When the first bead sets off, and how long after it each of the others does. */
-export const BEADS = ASKED + 8;
-export const EVERY = 6;
+export const BEADS = ASKED + 6;
+export const EVERY = 5;
 /** When the card draws itself round the bars, and when the ring spreads. */
-export const FRAMED = ASKED + 42;
-export const PINGED = ASKED + 54;
+export const FRAMED = ASKED + 36;
+export const PINGED = ASKED + 46;
 
-/** Its question stands on two lines, so its frame starts lower. */
-const AREA: Box = { x: 128, y: 300, w: 1664, h: 716 };
-const TOP = 86;
-const PITCH = 50;
+const TOP = 92;
+const PITCH = 55;
 const WORDS: Readonly<Record<string, string>> = {
   high: "The price is high right now",
   middle: "The price is in the middle right now",
@@ -40,7 +38,6 @@ export const Level: React.FC = () => {
       <Answer
         duration={duration}
         from={BUTTON.check}
-        area={AREA}
         framed={FRAMED}
         title="Before you buy"
         headline={

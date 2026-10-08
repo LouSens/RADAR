@@ -163,6 +163,8 @@ export const hero: React.CSSProperties = {
   color: C.ink,
 };
 
+/** How long a question takes to go from the middle of the frame to its dock. */
+export const DOCK = 14;
 /** A question as it arrives, and once it has docked as its page's heading. */
 export const ASK = 180;
 export const DOCKED = 88;
@@ -199,7 +201,7 @@ export const Ask: React.FC<{
 }) => {
   const frame = useCurrentFrame();
   const t =
-    dock === undefined ? 0 : tween(frame, dock, dock + 18, 0, 1, EASE_IN_OUT);
+    dock === undefined ? 0 : tween(frame, dock, dock + DOCK, 0, 1, EASE_IN_OUT);
   let next = at;
   let lit = false;
   let count = 0;

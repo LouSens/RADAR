@@ -23,7 +23,7 @@ const TABLE = { x: 462, y: 104, w: 342, row: 54 } as const;
 /** When the inner ring (money) sweeps in, and the number counts to it. */
 export const MONEY = [ASKED + OPENS - 4, ASKED + OPENS + 14] as const;
 /** When the outer ring (risk) sweeps in, and the number counts on. */
-export const RISK = [ASKED + 40, ASKED + 58] as const;
+export const RISK = [ASKED + 34, ASKED + 50] as const;
 /** When Bitcoin's piece of the outer ring swells. */
 export const SWELL = RISK[1] - 4;
 /** When the first row of the table slides in, and how long after it each other does. */

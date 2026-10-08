@@ -7,6 +7,6 @@
   { "id": "risk", "from": 525, "duration": 105, "sweep": false },
   { "id": "plan", "from": 630, "duration": 105, "sweep": false },
   { "id": "calendar", "from": 735, "duration": 60, "sweep": false },
-  { "id": "both", "from": 795, "duration": 45, "sweep": false },
-  { "id": "close", "from": 840, "duration": 60, "sweep": true }
+  { "id": "both", "from": 795, "duration": 75, "sweep": false },
+  { "id": "close", "from": 870, "duration": 60, "sweep": true }
 ]

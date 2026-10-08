@@ -1,22 +1,24 @@
 import { useCurrentFrame } from "remotion";
 import { C, fade } from "./theme";
 import { EASE, EASE_IN_OUT, tween } from "./timing";
-import { Rise } from "./Type";
+import { DOCK, Rise } from "./Type";
 import { DESK, type Box } from "./ui/Desk";
 import { TrustBadge, base, glass, label } from "./ui/kit";
 import { Pop, pop } from "./ui/motion";
 
 /**
  * What every answer has in common. A question lands in the middle of the frame over the
- * app's Home; a tap falls on the card that leads to its answer; the question docks, and
- * the answer opens out of that card into the frame below it. When the next question
+ * app's Home; the card that leads to its answer is lit and lifts; the question docks, and
+ * only then does the answer open out of that card, into the frame below the question.
+ * The top 200 pixels of the frame are the docked question's: nothing of an answer goes
+ * there. When the next question
  * arrives the answer goes back into its card. So the film never leaves the app.
  */
 
-/** A question stands in the middle this long before it docks. */
-export const ASKED = 20;
-/** When the tap falls on the card, before the question docks. */
-export const TAPPED = ASKED - 6;
+/** A question stands in the middle this long before it starts for its dock. */
+export const DOCKS = 14;
+/** When its card opens: not before the question has finished docking. */
+export const ASKED = DOCKS + DOCK;
 /** How long a card takes to open out into its answer. */
 export const OPENS = 14;
 /** How long an answer takes to go back into its card, after its shot is over. */

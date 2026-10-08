@@ -1,6 +1,13 @@
 import { Html5Audio, Sequence, staticFile } from "remotion";
-import { ASKED } from "./Beat";
-import { ALIVE, HANDOVER, LANDED, MORPH, RESOLVES, TAPS } from "./DeskLayer";
+import {
+  ALIVE,
+  HANDOVER,
+  LANDED,
+  LIFTS,
+  OPENINGS,
+  RESOLVES,
+  SETS_OFF,
+} from "./DeskLayer";
 import * as Phone from "./shots/Both";
 import * as Cal from "./shots/Calendar";
 import { MARK } from "./shots/Close";
@@ -102,8 +109,6 @@ const ANSWERED: readonly ShotId[] = [
   "plan",
   "calendar",
 ];
-const opens = (id: ShotId): number =>
-  at(id) + (id === "calendar" ? Cal.ASKED : ASKED);
 
 const CUES: readonly Cue[] = [
   // Shot 1: the coin spinning, going over and rattling round its rim; its landing; a
@@ -132,24 +137,30 @@ const CUES: readonly Cue[] = [
   })),
   { file: "rise", at: ALIVE },
 
-  // Every answered question: the tap on its card, the card opening out, and the answer
-  // going back into its card as the next question arrives.
-  ...TAPS.map((frame, i) => ({ file: `click-${i % 3}`, at: frame })),
-  ...ANSWERED.map((id) => ({ file: "dive", at: opens(id) - 2 })),
+  // Every answered question: its card lifting, a soft click as it is pressed and
+  // opens out, and the answer going back into its card as the next question arrives.
+  ...LIFTS.map((frame, i) => ({
+    file: `glass-${i % 3}`,
+    at: frame,
+    level: 0.3,
+  })),
+  ...OPENINGS.map((frame, i) => ({ file: `click-${i % 3}`, at: frame - 1 })),
+  ...OPENINGS.map((frame) => ({ file: "dive", at: frame })),
   ...ANSWERED.map((id) => ({
     file: "flip",
     at: at(id) + shot(id).duration - 4,
     level: 0.4,
   })),
 
-  // Shot 3: the days growing, the crosshair's slide, the day's bar dropping, its
-  // figures popping up, and the ring.
+  // Shot 3: the days growing, the crosshair's slide, the push in, the day's bar
+  // dropping, its figures popping up, the ring, and the card arriving.
   { file: "bars", at: at("why") + Why.BARS },
-  { file: "slide", at: at("why") + Why.CROSS[0] + 4 },
+  { file: "slide", at: at("why") + Why.CROSS[0] + 2 },
+  { file: "whoosh", at: at("why") + Why.PUSH[0] - 4, level: 0.45 },
   { file: "hit", at: at("why") + Why.DROP + 2 },
   { file: "pop-1", at: at("why") + Why.TIP },
-  { file: "glass-1", at: at("why") + Why.FRAMED + 10, level: 0.35 },
   { file: "ping", at: at("why") + Why.PINGED },
+  { file: "glass-1", at: at("why") + Why.FRAMED + 8, level: 0.35 },
 
   // Shot 4: each bead sliding to its place, and the ring.
   ...[0, 1, 2, 3, 4].map((i) => ({
@@ -196,10 +207,16 @@ const CUES: readonly Cue[] = [
   { file: "flap", at: at("calendar") + Cal.ROLL[0] },
   { file: "ping", at: at("calendar") + Cal.PINGED },
 
-  // Shot 9: Home reflowing, the phone coming up, and the layout landing on its screen.
-  { file: "whoosh", at: MORPH[0] - 2 },
-  { file: "dive", at: at("both") + Phone.SLIDES },
-  { file: "thunk", at: HANDOVER[0] + 2 },
+  // Shot 9: the phone coming up, the sidebar becoming the capsule, each card arriving
+  // on the screen, and the phone's own screen taking over.
+  { file: "dive", at: at("both") + Phone.SLIDES[0] },
+  { file: "whoosh", at: SETS_OFF.side, level: 0.4 },
+  ...(["worth", "todo", "btc", "gold", "stock"] as const).map((piece, i) => ({
+    file: `pop-${i % 3}`,
+    at: SETS_OFF[piece] + 7,
+    level: 0.35,
+  })),
+  { file: "thunk", at: HANDOVER[0] + 1 },
 
   // Shot 10: the radar's line, quickly, and the mark.
   { file: "sweep", at: at("close") - 4 },

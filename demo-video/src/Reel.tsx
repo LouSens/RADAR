@@ -1,6 +1,6 @@
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
 import { LEAVES } from "./Beat";
-import { DeskLayer } from "./DeskLayer";
+import { DeskLayer, DeskOnPhone } from "./DeskLayer";
 import { Grain } from "./Grain";
 import { Ground } from "./Ground";
 import { Opening, Questions } from "./Questions";
@@ -15,6 +15,7 @@ import { Range } from "./shots/Range";
 import { Risk } from "./shots/Risk";
 import { Why } from "./shots/Why";
 import { Sound } from "./Sound";
+import { RollBlur } from "./ui/motion";
 import { SweepLine, Swept } from "./Sweep";
 import { AssetsProvider, useAssets } from "./three/assets";
 import { FPS, LAST_SWEEP, SWEEP, shot, type ShotId } from "./timing";
@@ -49,6 +50,7 @@ export const Reel: React.FC = () => {
     <AssetsProvider value={assets}>
       <AbsoluteFill>
         <Ground />
+        <RollBlur />
         <Sound />
         <Swept since={frame - close.from} side="out" length={LAST_SWEEP}>
           <Swept since={frame - meet.from} side="out">
@@ -63,6 +65,8 @@ export const Reel: React.FC = () => {
             <Opening />
           </Swept>
           <Swept since={frame - meet.from} side="in">
+            {/* Home and the questions run on the film's own clock, not a shot's. */}
+            <DeskLayer />
             <Sequence
               name="9 both"
               from={both.from}
@@ -71,8 +75,7 @@ export const Reel: React.FC = () => {
             >
               <Both />
             </Sequence>
-            {/* Home and the questions run on the film's own clock, not a shot's. */}
-            <DeskLayer />
+            <DeskOnPhone />
             <Sequence
               name="2 meet"
               from={meet.from}
