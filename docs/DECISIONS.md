@@ -3433,3 +3433,68 @@ readers who cannot see it; the notebook's date, model version and sample in a he
 real result tables in `07_what_we_tested`; a Models page; the large-fall forecast redone
 once or retired; browser tests at phone, tablet and desktop widths; notebooks built in
 CI (they need a filled database, so this needs a small fixture first).
+
+## 095. Why it moved, and the bar a feature must clear: written before running (2026-10-08)
+
+The user's instruction of 2026-10-08: build "why it moved" (F13), and build the three
+features the audit named (why it moved, protection rules with alerts, the models for
+every holding) only where they have very good accuracy or credibility. So each part is
+given a bar here, before anything is run, and a part that misses its bar is not built or
+is shown without the claim it could not support.
+
+**What "why it moved" may say.** A day's move of a holding is split into what its wider
+market did and what was its own. The two always sum to the move, because the second is
+the move less the first. The question is whether the first part means anything.
+
+**The wider market, by kind of holding.**
+- A coin other than Bitcoin: Bitcoin.
+- A stock or fund other than the US stock index: the US stock index (SPY).
+- Bitcoin, gold and the US stock index themselves: none. They are the reference. The
+  macro drivers model is the only candidate for them, and its score on unseen days is
+  already on record (0.14 to 0.20 of the variance for Bitcoin and gold, and no better
+  than stocks alone for Bitcoin). That is far under the bar below, so no "market" part
+  is shown for these three. I knew these figures when writing this.
+
+**Test 1: the market part.** For each holding with a wider market and at least 150
+shared sessions: on each day `t`, the sensitivity is fitted on the 90 sessions before
+`t` (never including `t`) as the slope of the holding's daily return on the market's,
+and the market part is that slope times the market's return on `t`.
+- *Share explained on unseen days*: one less the squared error of the market part over
+  the squared size of the returns. **Bar: at least 0.50.**
+- *Large days*: on days when the holding moved more than twice its usual size (the
+  spread of the 30 sessions before), the market part has the move's sign. **Bar: at
+  least 80% of such days, on at least 20 of them.**
+- Both must hold in each half of the record, not only overall.
+A holding that misses either is shown with its move and "mostly its own: no reliable
+link to the wider market", and no percentage.
+
+**Test 2: how unusual the size is.** No model: the day's absolute move is ranked among
+the absolute moves of the 250 sessions before it ("larger than 97 of the last 100
+days"). It is a count, so it has no accuracy to fail, but it must not mislead: across
+all days, a move ranked in the top 5% should come up on about 5% of days. **Bar: between
+3% and 8% of days in each holding's record.** A holding with under 60 earlier sessions
+gets no ranking.
+
+**Facts that need no test.** A scheduled event on the day (the Calendar's dates). A
+change of the market's state (the state model's own reading, filtered, for the markets it
+runs on). Headlines published that day are listed as "published that day". Nothing says
+a headline or an event caused the move: decision 045 found no measurable link from news
+to swings, and decision 056 forbids a direction for events.
+
+**Feature 2, protection rules with alerts: the bar.** A rule is offered as RADAR's
+suggestion only if, on the later part of the record and on markets it was not chosen on,
+it beats a fixed share of the same average size (decision 065), on the worst point and
+without ending lower, in at least three markets of four. The record so far (decisions
+065 and 068): cutting when a gain turns to a loss had a better worst point in 21 of 27
+markets but ended lower in 20 of 27, and the trend rule did no better than a fixed share
+of its size. Those tests are not rerun with changed settings (decision 068). On that
+record no protection rule clears this bar, so none is built as a suggestion now.
+
+**Feature 3, the models for every holding: the bar.** A holding gets a swings figure,
+and the loss figures that rest on it, only if the forecast on unseen days beats both
+simple rivals (yesterday's size, and the average of the last 30 days) for that kind of
+holding, as it does for the three markets. This needs its own run and is not part of
+this piece of work.
+
+**My guesses.** Ethereum and Solana clear Test 1 comfortably (share explained about
+0.6). PURR against US stocks does not. Test 2 passes everywhere.
