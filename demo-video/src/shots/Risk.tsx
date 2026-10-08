@@ -122,7 +122,8 @@ export const Weighed: React.FC<{
           const digits = value >= 9.5 ? 2 : 1;
           const need = 72 * (digits * 0.62 + 0.85);
           const fits = clamp((share * box.w - need) / 30);
-          const there = clamp(share / 0.012) * Math.min(shown(i), 1) * figures;
+          const there =
+            clamp((share - 0.01) / 0.01) * Math.min(shown(i), 1) * figures;
           const cash = holding.tone === "cash";
           const figure = <Ticker value={value} suffix="%" places={digits} />;
           return (
@@ -183,7 +184,7 @@ export const Weighed: React.FC<{
               fontWeight: 500,
               whiteSpace: "nowrap",
               opacity:
-                clamp(Math.max(shares[i], 0) / 0.012) *
+                clamp((shares[i] - 0.01) / 0.01) *
                 Math.min(shown(i), 1) *
                 names,
             }}
