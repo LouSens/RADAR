@@ -2,7 +2,13 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { ThreeCanvas } from "@remotion/three";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useCurrentFrame } from "remotion";
-import type { DataTexture, PerspectiveCamera, Scene } from "three";
+import {
+  PerspectiveCamera as ThreePerspectiveCamera,
+  Vector3,
+  type DataTexture,
+  type PerspectiveCamera,
+  type Scene,
+} from "three";
 import { HEIGHT, WIDTH } from "../timing";
 
 type Vec = readonly [number, number, number];
@@ -14,6 +20,12 @@ export interface View {
   readonly fov?: number;
   /** Tilt of the horizon, in radians. */
   readonly roll?: number;
+  /**
+   * What the lens is focused on, and how wide it is open. With an aperture, things
+   * nearer or farther than the focus go soft. Without `focus`, the target is in focus.
+   */
+  readonly focus?: Vec;
+  readonly aperture?: number;
 }
 
 /** The camera at a moment of the shot. The moment may fall between two frames. */
@@ -23,6 +35,9 @@ export type MoveAt = (frame: number, scene: Scene) => void;
 
 /** How many moments of a frame are drawn and averaged when it is blurred. */
 const SAMPLES = 28;
+
+const AXIS = new Vector3();
+const POINT = new Vector3();
 
 /**
  * The light every object is seen in: a photographed studio for the metal and glass to
@@ -80,15 +95,35 @@ const Draw: React.FC<{
       return;
     }
     const lens = state.camera as PerspectiveCamera;
-    const count = shutter > 0 ? SAMPLES : 1;
+    const open = (camera(frame).aperture ?? 0) > 0;
+    const count = shutter > 0 || open ? SAMPLES : 1;
     for (let i = 0; i < count; i++) {
       const moment =
-        count === 1 ? frame : frame + ((i + 0.5) / count - 0.5) * shutter;
+        shutter > 0 ? frame + ((i + 0.5) / count - 0.5) * shutter : frame;
       const view = camera(moment);
       const roll = view.roll ?? 0;
       lens.position.set(view.position[0], view.position[1], view.position[2]);
       lens.up.set(Math.sin(roll), Math.cos(roll), 0);
       lens.lookAt(view.target[0], view.target[1], view.target[2]);
+      const aperture = view.aperture ?? 0;
+      if (aperture > 0) {
+        // Each drawing is taken from a different point of the open lens, all of them
+        // aimed at the same point at the distance of what is in focus. Whatever is at
+        // that distance falls in the same place every time and stays sharp.
+        const focus = view.focus ?? view.target;
+        const far = Math.hypot(
+          focus[0] - view.position[0],
+          focus[1] - view.position[1],
+          focus[2] - view.position[2],
+        );
+        lens.getWorldDirection(AXIS);
+        POINT.copy(lens.position).addScaledVector(AXIS, far);
+        const turn = i * 2.39996;
+        const reach = aperture * Math.sqrt((i + 0.5) / count);
+        lens.translateX(Math.cos(turn) * reach);
+        lens.translateY(Math.sin(turn) * reach);
+        lens.lookAt(POINT);
+      }
       lens.fov = view.fov ?? 28;
       lens.updateProjectionMatrix();
       move?.(moment, state.scene);
@@ -161,4 +196,26 @@ export const Stage: React.FC<{
       />
     </>
   );
+};
+
+const PROBE = new ThreePerspectiveCamera();
+const SPOT = new Vector3();
+
+/** Where a point of the scene falls in the frame, in pixels, for a given view. */
+export const project = (
+  view: View,
+  point: Vec,
+): { readonly x: number; readonly y: number } => {
+  const roll = view.roll ?? 0;
+  PROBE.fov = view.fov ?? 28;
+  PROBE.aspect = WIDTH / HEIGHT;
+  PROBE.near = 0.02;
+  PROBE.far = 200;
+  PROBE.position.set(view.position[0], view.position[1], view.position[2]);
+  PROBE.up.set(Math.sin(roll), Math.cos(roll), 0);
+  PROBE.lookAt(view.target[0], view.target[1], view.target[2]);
+  PROBE.updateProjectionMatrix();
+  PROBE.updateMatrixWorld();
+  SPOT.set(point[0], point[1], point[2]).project(PROBE);
+  return { x: (SPOT.x * 0.5 + 0.5) * WIDTH, y: (0.5 - SPOT.y * 0.5) * HEIGHT };
 };

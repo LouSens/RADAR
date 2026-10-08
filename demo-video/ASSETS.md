@@ -17,7 +17,9 @@ Open Font License 1.1).
 | File | What | Made by |
 | --- | --- | --- |
 | `public/assets/phone.glb` | A generic phone: metal frame, glass, camera bump, no maker's shapes or marks | `blender/build_assets.py` (Blender 5.0) |
-| `public/sfx/*.wav` | Every sound in the film: 23 short effects and a room tone. Generated, not recorded or downloaded | `sound/make_sfx.py` (numpy) |
+| `public/assets/kit.glb` | The things the figures become: a coin struck with the Bitcoin sign, a gold ingot, a block of rising bars, a cash chip, and solid numerals. No maker's shapes or marks. The numerals are cut from Blender's own bundled font (Bfont, which ships with Blender under its free licence); the film's type everywhere else is Inter | `blender/build_assets.py` (Blender 5.0) |
+| `public/cards/*.png` | Cards of the app cut from the stills in `public/desk/`, for the faces of the glass cards | `scripts/cards.py` |
+| `public/sfx/*.wav` | Every sound in the film: short effects and a room tone. Generated, not recorded or downloaded | `sound/make_sfx.py` (numpy) |
 | `public/ui/home.png` | The film's own rebuild of the app's Home, showing the made-up example portfolio | The `Home` composition (`src/ui/Home.tsx`) |
 | `public/ui/*.png` (the rest) | Pages of the running app at phone size, kept as reference. Market data only | The `Capture` composition |
 | `public/desk/*.png` | The app's pages at desktop size (and Home at phone size), showing the made-up example portfolio and recorded market data. Never photographed from the app that shows an account | `scripts/capture.mjs`, from the app fed by `mock-api/server.mjs` |
