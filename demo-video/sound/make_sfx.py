@@ -18,8 +18,8 @@ import numpy as np
 
 RATE = 48_000
 OUT = Path(__file__).resolve().parent.parent / "public" / "sfx"
-#: How long the room tone is: the film's length, 710 frames at 30 a second.
-FILM = 710 / 30
+#: How long the room tone is: the film's length, 900 frames at 30 a second.
+FILM = 900 / 30
 
 
 def seconds(length):
@@ -228,6 +228,134 @@ def impact():
     save("impact", sides[0], sides[1], peak=0.7)
 
 
+def struck(t, pitch, partials, time, seed=0):
+    """Something small and hard being struck: a few partials that are not in tune with
+    each other, the higher ones dying sooner, with a very short knock at the front."""
+    body = sum(
+        level * tone(np.full_like(t, pitch * ratio)) * fall(t, time / (1 + 0.7 * i))
+        for i, (ratio, level) in enumerate(partials)
+    )
+    knock = noise(t[-1] + 1 / RATE, 2500, 9000, seed)[: len(t)] * fall(t, 0.004)
+    return body + 0.25 * knock
+
+
+METAL = ((1.0, 1.0), (2.76, 0.55), (5.4, 0.3), (8.93, 0.14))
+
+
+def spin():
+    """A coin spinning on its edge: a thin ring of metal that flutters, slower and lower
+    as the coin loses its speed."""
+    t = seconds(0.9)
+    flutter = 0.5 + 0.5 * np.sin(2 * np.pi * np.cumsum(glide(t, 34, 9, 0.7)) / RATE)
+    ring = tone(glide(t, 3900, 3300)) + 0.5 * tone(glide(t, 6100, 5200))
+    air = 0.3 * noise(0.9, 3000, 9000, 31)
+    save("spin", (ring * 0.6 + air) * flutter * edges(t, 0.03, 0.25), peak=0.2)
+
+
+def topple():
+    """A coin going over and rolling round its rim: a rattle that quickens as it
+    settles, as a dropped coin's does."""
+    t = seconds(1.6)
+    rate = glide(t, 9, 60, 1.6)
+    beat = np.maximum(np.sin(2 * np.pi * np.cumsum(rate) / RATE), 0) ** 6
+    ring = tone(np.full_like(t, 2950)) + 0.6 * tone(np.full_like(t, 4720))
+    grit = 0.35 * noise(1.6, 2500, 8000, 32)
+    save("topple", (ring + grit) * beat * fall(t, 0.55) * edges(t, 0.002, 0.2), peak=0.3)
+
+
+def clink():
+    """A coin landing on glass: soft, metallic, short."""
+    t = seconds(0.5)
+    save("clink", struck(t, 2350, METAL, 0.12, 33) * edges(t, 0.0008, 0.1), peak=0.6)
+
+
+def chip():
+    """Three chips landing, each a little higher than the one before."""
+    t = seconds(0.3)
+    for i, pitch in enumerate((1480, 1760, 2090)):
+        body = struck(t, pitch, ((1.0, 1.0), (2.3, 0.4), (4.1, 0.15)), 0.06, 40 + i)
+        save(f"chip-{i}", body * edges(t, 0.0008, 0.06), peak=0.45)
+
+
+def flip():
+    """A card turning over: a short push of air, and a click as it lands."""
+    t = seconds(0.45)
+    air = noise(0.45, 300, 2600, 34) * np.sin(np.pi * np.clip(t / 0.32, 0, 1)) ** 2
+    at = np.clip(t - 0.3, 0, None)
+    click = (tone(np.full_like(t, 1250)) + 0.5 * tone(np.full_like(t, 2900))) * fall(at, 0.012)
+    click = click * (t >= 0.3)
+    lean = t / t[-1]
+    save("flip", (air + 0.6 * click) * (1.3 - lean), (air + 0.6 * click) * (0.3 + lean), peak=0.4)
+
+
+def bars():
+    """Bars rising: soft glassy clicks, one after another, each a little higher, the
+    way a row of glasses rings when a finger runs along it."""
+    t = seconds(1.3)
+    out = np.zeros_like(t)
+    steps = 14
+    for i in range(steps):
+        start = 0.06 * i
+        since = np.clip(t - start, 0, None)
+        pitch = 880 * 2 ** (i / 7)
+        note = tone(np.full_like(t, pitch)) + 0.35 * tone(np.full_like(t, pitch * 2.7))
+        out += note * fall(since, 0.07) * (t >= start) * (0.6 + 0.4 * i / steps)
+    save("bars", out * edges(t, 0.002, 0.2), peak=0.3)
+
+
+def slide():
+    """A bead sliding along a glass rail and settling."""
+    t = seconds(0.35)
+    glidey = tone(glide(t, 1500, 2300, 0.6)) + 0.4 * noise(0.35, 2500, 7000, 35)
+    save("slide", glidey * np.clip(np.sin(np.pi * t / t[-1]), 0, None) ** 1.5, peak=0.25)
+
+
+def flap():
+    """A split-flap display turning over: a quick clatter of light flaps, slowing."""
+    t = seconds(0.7)
+    out = np.zeros_like(t)
+    start = 0.0
+    gap = 0.028
+    seed = 50
+    while start < 0.6:
+        since = np.clip(t - start, 0, None)
+        clack = noise(0.7, 900, 5000, seed) * fall(since, 0.006) * (t >= start)
+        out += clack * (0.6 + 0.4 * np.cos(seed))
+        start += gap
+        gap *= 1.09
+        seed += 1
+    save("flap", out * edges(t, 0.001, 0.05), peak=0.35)
+
+
+def thunk():
+    """Cards locking into place: low, soft and short, like a magnet catching."""
+    t = seconds(0.3)
+    body = tone(glide(t, 150, 88, 0.5)) * fall(t, 0.07)
+    snap = 0.2 * noise(0.3, 600, 2400, 36) * fall(t, 0.008)
+    save("thunk", (body + snap) * edges(t, 0.001, 0.08), peak=0.55)
+
+
+def ping():
+    """The radar's ping: one clear note, and a tail that shimmers as it dies away."""
+    t = seconds(1.4)
+    note = tone(np.full_like(t, 1320)) * fall(t, 0.22)
+    shimmer = 1 + 0.5 * np.sin(2 * np.pi * 7 * t)
+    tail = (tone(np.full_like(t, 1980)) + 0.6 * tone(np.full_like(t, 2643))) * shimmer
+    tail = 0.3 * tail * fall(t, 0.4)
+    body = (note + tail) * edges(t, 0.004, 0.4)
+    # The tail wanders a little between the two sides.
+    lean = 0.5 + 0.2 * np.sin(2 * np.pi * 1.5 * t)
+    save("ping", body * (1.2 - lean), body * (0.2 + lean), peak=0.4)
+
+
+def dive():
+    """The camera going into or out of something: a smooth push of air."""
+    t = seconds(0.6)
+    air = noise(0.6, 120, 1500, 37) * np.sin(np.pi * t / t[-1]) ** 2
+    lean = t / t[-1]
+    save("dive", air * (1.2 - lean), air * (0.2 + lean), peak=0.4)
+
+
 if __name__ == "__main__":
     for make in (
         room,
@@ -243,5 +371,16 @@ if __name__ == "__main__":
         click,
         hit,
         impact,
+        spin,
+        topple,
+        clink,
+        chip,
+        flip,
+        bars,
+        slide,
+        flap,
+        thunk,
+        ping,
+        dive,
     ):
         make()
