@@ -6,27 +6,33 @@ holder asks are each answered by the app. It has sound effects and no music.
 
 **Three things are objects** (3D): the Bitcoin coin, the mark and the phone. **All the
 data is the app's own interface in two dimensions**, rebuilt from `frontend/src` and
-moving: numbers count, lines draw on, beads slide, cards open.
+moving. The film is one chain of changes: each picture turns into the next, and nothing
+goes back to Home between questions.
 
 | # | Frames | Question | Picture |
 | --- | --- | --- | --- |
-| 1 | 0 to 104 | Bitcoin fell 2.6%. Sell? Hold? Buy more? | The coin spins on its edge, falls and wobbles; each word knocks it. The price falls through the day's real hours. The coin rolls out of the frame |
-| 2 | 105 to 224 | Meet RADAR. | The radar's line; the mark draws itself, shrinks and lands as the logo of the sidebar; Home builds itself round it, placeholders first |
-| 3 | 225 to 329 | Why did it fall? | Thirty days as bars about a line at their true scale, a pale band for a usual day; a crosshair slides to the day and the picture pushes in on it; its bar drops in red and its figures pop up; the Why it moved card draws itself round the chart |
-| 4 | 330 to 419 | Is this price high or low? | Five range bars; a bead slides to its place in each; the Before you buy card draws itself round them |
-| 5 | 420 to 524 | How far could it go? | The price is cut into the low and high of the week's range; the outcomes grow between; the range card draws itself round the chart |
-| 6 | 525 to 629 | How risky is my mix? | The app's two rings, large: money, then risk; the number counts 12% to 67%; the rows arrive one by one |
-| 7 | 630 to 734 | So what do I buy? | The What to do now card; the bar reshapes into the plan; three coins drop on to the ladder's three prices, one a beat |
-| 8 | 735 to 794 | What's coming up? | The calendar's rows slide up; the Fed's count of days rolls down to what it is |
+| 1 | 0 to 104 | Bitcoin fell 2.6%. Sell? Hold? Buy more? | The coin spins on its edge, falls and wobbles; each word knocks it. The price falls through the day's real hours. The words leave; the coin comes up on to its rim, spins round and stops facing the camera, which goes in |
+| 2 | 105 to 224 | Meet RADAR. | The coin's rim is the mark's ring: copper turns to the mark's colour as the sign goes. The radar's line turns once inside the ring, the rising line is drawn, the dot lands. The mark lands as the logo of the sidebar and Home builds itself round it |
+| 3 | 225 to 329 | Why did it fall? | The camera pushes into Home's Bitcoin card; its line stretches to the frame's width, falls flat, and thirty days grow about it as bars at their true scale; a crosshair slides to the day, its bar drops in red, its figures pop up |
+| 4 | 330 to 419 | Is this price high or low? | The bars fall flat into a line and the line splits into five range bars; a bead slides to its place in each |
+| 5 | 420 to 524 | How far could it go? | The five beads fly together and the price rises out of them; it is cut into the low and high of the week's range; the outcomes grow between |
+| 6 | 525 to 629 | How risky is my mix? | The outcomes slide sideways into one thick bar; it fills by money (12, 4, 24, 60), then the same bar is weighed again by risk and Bitcoin's share pushes out to 67% |
+| 7 | 630 to 734 | So what do I buy? | That bar thins into the plan bar, Now then Your plan; the ladder's line comes down out of it and runs both ways; three coins drop on to its three prices |
+| 8 | 735 to 794 | What's coming up? | The ladder's line swings up into the calendar's timeline and the rows hang off it; the Fed's count of days rolls down; the rows fly to their places in Home's own card as Home comes back round them |
 | 9 | 795 to 869 | On your desk. On your phone. | The phone comes up first and Home steps aside; the sidebar becomes the capsule of places; the cards go across one at a time and arrive on the phone's screen; the phone stands still for a second |
 | 10 | 870 to 929 | | A fast turn of the radar's line; the mark, RADAR., An analyst for everything you own. |
 
-Every answer opens out of the card of Home that leads to it. While the question stands
-over the dimmed Home, that one card comes back to full brightness, its edge lights and
-it lifts; once the question has docked, the card opens out; and the answer goes back
-into it when the next question arrives (`src/Beat.tsx`, `src/DeskLayer.tsx`). The top
-200 pixels of the frame belong to the docked question. A ring of the radar marks each
-answer and nothing else. The film never cuts to an empty frame.
+**Proof.** Near the end of shots 3 to 7 the picture pulls back and the answer is seen to
+be a card of the app, on its page: in a desktop window (shots 3 and 6) or on the phone
+(shots 4, 5 and 7). It comes forward again as it turns into the next answer
+(`src/Chain.tsx`, `src/Devices.tsx`). The pages are built from the app's own pieces
+with the example portfolio; they are not photographs. Shot 8 is proved on Home itself.
+
+**The lock.** Each answer is marked by four corners in the accent that start wide of it
+and snap in to frame it, with a soft tick. There is no ring, ripple or tap anywhere.
+
+**Questions** rise in the space beside their answer, above it or below it by turns, stand
+still, and have left before the answer pulls back. Nothing crosses a question.
 
 **Every figure is true.** Market figures are the app's own, recorded from its market
 addresses; shot 1's fall is the recent day on which Bitcoin fell furthest against a
@@ -37,9 +43,9 @@ and say "Example portfolio".
 
 The film's own type is in `src/Type.tsx`:
 
-- **A question** lands in the middle of the frame at 180 (Inter Bold, tracking -3%), a
-  word at a time out of a mask, then shrinks to 88 and docks top left as its answer
-  opens. It leaves by rising out through the top when the next arrives.
+- **A question** is Inter Bold at 96, tracking -3%: it rises a word at a time out of a
+  mask where it will stand, and leaves by rising out through the top. Shot 1's lines
+  and the last two are larger and centred.
 - **One accent word a question**, never two.
 - **The end card** is centred: the name at 140, and one line at 80.
 - Type is never faded and never blurred, and nothing covers a question at rest.
@@ -54,16 +60,17 @@ and a number that changes counts as a meter does (`Ticker` in `src/ui/motion.tsx
 | --- | --- |
 | `src/shots.json` | The one place a shot's start and length are written |
 | `src/timing.ts` | The beat, the film's words, and the curves everything moves on |
-| `src/Reel.tsx` | The film: the layers, and the two turns of the radar's line |
-| `src/DeskLayer.tsx` | Home, behind the film from shot 2 to shot 9: it builds itself, is tapped, stands back, and reflows on to the phone |
-| `src/Beat.tsx` | What every answer shares: the tap, the card opening out, the edge that draws itself round the data, the way back |
+| `src/Reel.tsx` | The film: the layers, and the radar's line into the end card |
+| `src/DeskLayer.tsx` | Home: it builds itself in shot 2 and is pushed into; it comes back round the calendar's rows and reflows on to the phone |
+| `src/Chain.tsx` | What the answers share: the lens that pulls an answer back into its card, the lock's corners, a question's place, motion blur for flat pieces |
+| `src/Devices.tsx` | The desktop window and the phone an answer is proved on, and the phone of shot 9 |
 | `src/Questions.tsx` | Every word before the end card, on the film's own clock |
 | `src/shots/` | One file a shot |
 | `src/ui/kit.tsx`, `src/ui/Desk.tsx` | The app's interface rebuilt from `frontend/src`: its cards, and Home at desktop size |
-| `src/ui/motion.tsx` | The app's elements as things that move: the counting number, the rings, the range bar, the segmented control, placeholders, the tap and the ping |
+| `src/ui/motion.tsx` | The app's elements as things that move: the counting number, placeholders, pops and landings |
 | `src/three/` | The 3D stage (motion blur and depth of field by sampling), the coin, the phone's materials, and the mark |
 | `src/Ground.tsx`, `src/Grain.tsx` | The dark ground and its one light; a faint grain over everything |
-| `src/Sweep.tsx` | The radar's line as a change of scene (into shot 2 and into the end card) |
+| `src/Sweep.tsx` | The radar's line as a change of scene (into the end card) |
 | `src/Sound.tsx` | Every sound cue, each taking its frame from the animation it belongs to; the mix is the `LEVEL` table |
 | `sound/make_sfx.py` | Makes every sound from arithmetic (numpy only) into `public/sfx/` |
 | `src/fixtures/` | The figures: `film.json` (written by `scripts/fixtures.mjs` from the mock API's data) and `fall.json` (the day of shot 1) |
@@ -167,7 +174,7 @@ node scripts/fixtures.mjs                     # the film's figures, from the sam
   the scene is drawn once more by hand (`Studio` in `three/Stage.tsx`), or a render tab's
   first frame has black metal.
 - **`zoom` enlarges an element's own placing too.** A piece of the app is placed by an
-  outer element and enlarged by an inner one (`Answer` in `src/Beat.tsx`).
+  outer element and enlarged by an inner one (`src/shots/Range.tsx`).
 - **The mock API must keep its connections open.** Closing them stalled answers larger
   than 64 KB on this machine, and pages were photographed still loading.
 
