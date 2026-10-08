@@ -1,8 +1,8 @@
 import shots from "./shots.json";
 
 /**
- * The film's fixed facts. Shot timing lives in shots.json, which the Blender scene
- * reads as well, so the plates and the edit cannot drift apart.
+ * The film's fixed facts. shots.json is the one place a shot's start and length are
+ * written; everything else reads it.
  */
 export const FPS = shots.fps;
 export const WIDTH = shots.width;
@@ -30,9 +30,6 @@ export type Shot = {
 export const SHOTS = Object.fromEntries(
   shots.shots.map((shot) => [shot.id, shot]),
 ) as Record<ShotId, Shot>;
-
-/** Where a shot's rendered plate lives under public/. */
-export const plateOf = (id: ShotId): string => `plates/${id}.mp4`;
 
 /**
  * The approved copy, word for word, with the frames it is on screen within its shot.

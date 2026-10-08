@@ -1,23 +1,17 @@
-import { Video } from "@remotion/media";
-import { AbsoluteFill, staticFile } from "remotion";
-import { COPY, plateOf, type ShotId } from "./timing";
+import { AbsoluteFill } from "remotion";
+import { COPY, type ShotId } from "./timing";
 import { Super } from "./Super";
 
 /**
- * One shot of the film: its rendered plate, and its line of copy if it has one.
- * The plate is picture only. Sound is laid on the film's own timeline.
+ * One shot of the film. For now only its place in the edit and its line of copy: the
+ * picture is composed here from Blender-made assets, shot by shot, as each is staged
+ * (docs/DEMO_STAGING.md).
  */
 export const ShotLayer: React.FC<{ readonly id: ShotId }> = ({ id }) => {
   const copy = COPY[id];
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "black" }}>
-      <Video
-        src={staticFile(plateOf(id))}
-        muted
-        objectFit="cover"
-        style={{ position: "absolute", width: "100%", height: "100%" }}
-      />
+    <AbsoluteFill style={{ backgroundColor: "#14161b" }}>
       {copy ? <Super text={copy.text} from={copy.from} to={copy.to} /> : null}
     </AbsoluteFill>
   );

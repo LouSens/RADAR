@@ -4,6 +4,12 @@ Final storyboard and production specification for the 30-second advertisement.
 Written 2026-10-08. This replaces the first storyboard (eight scenes of animated type),
 which survives only as a timing sketch in `demo-video/`. Nothing here is implemented.
 
+> **Staging superseded.** The story, timing and copy below stand. How each picture is
+> made does not: the room is no longer modelled and no camera travels through it. Blender
+> makes isolated assets and Remotion composes them. Read `DEMO_STAGING.md` for camera,
+> space, hands and the asset list; sections 3, 4 (camera and lens lines), 8 and 9 here are
+> kept as the record of the first intent.
+
 - **Format:** 1920 × 1080, 30 frames a second, 900 frames.
 - **One idea:** we asked which way, could not find a reliable answer, and found that
   how far could be measured as a range. The person still decides.
