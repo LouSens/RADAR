@@ -27,7 +27,8 @@ export const useObjects = (names: readonly string[]): Objects | null => {
         const file = await loader.loadAsync(staticFile(`assets/${name}.glb`));
         file.scene.traverse((child) => {
           if ((child as Mesh).isMesh) {
-            child.castShadow = true;
+            // The phone is held up, not standing on the surface: it throws no shadow.
+            child.castShadow = name !== "phone";
           }
         });
         return [name, file.scene] as const;
@@ -48,12 +49,14 @@ export const Model: React.FC<{
   readonly position: readonly [number, number, number];
   readonly rotation?: readonly [number, number, number];
   readonly scale?: number;
-}> = ({ object, position, rotation = [0, 0, 0], scale = 1 }) => (
+  readonly children?: React.ReactNode;
+}> = ({ object, position, rotation = [0, 0, 0], scale = 1, children }) => (
   <group
     position={[position[0], position[1], position[2]]}
     rotation={[rotation[0], rotation[1], rotation[2]]}
     scale={scale}
   >
     <primitive object={object} />
+    {children}
   </group>
 );

@@ -37,10 +37,10 @@ export const COPY: Record<
   BeatId,
   { readonly text: string; readonly from: number; readonly to: number }
 > = {
-  beat1: { text: "Payday.", from: 24, to: 84 },
+  beat1: { text: "Payday. Now what?", from: 10, to: 92 },
   beat2: { text: "Everyone has a tip.", from: 22, to: 112 },
   beat3: {
-    text: "RADAR starts with what you already own.",
+    text: "Meet RADAR. It starts with what you already own.",
     from: 30,
     to: 88,
   },

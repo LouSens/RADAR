@@ -45,7 +45,7 @@ export const Studio: React.FC<{ readonly onReady: () => void }> = ({
       <directionalLight
         position={[0.9, 0.4, -0.6]}
         intensity={0.9}
-        color="#62cfe8"
+        color="#bfeaf5"
       />
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
@@ -53,7 +53,8 @@ export const Studio: React.FC<{ readonly onReady: () => void }> = ({
         receiveShadow
       >
         <planeGeometry args={[6, 6]} />
-        <shadowMaterial opacity={0.42} />
+        {/* It must not hide what stands behind or below it: only shadow shows. */}
+        <shadowMaterial opacity={0.2} depthWrite={false} />
       </mesh>
     </>
   );
