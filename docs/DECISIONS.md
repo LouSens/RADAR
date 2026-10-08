@@ -3613,3 +3613,37 @@ headlines. Agreement with a single labeller on three classes has a ceiling well 
 labeller, which is the largest remaining lever and needs the user's time or an outside
 service.
 
+
+## 098. Further rounds on tone accuracy, to run unattended: written before decision 097's test result exists (2026-10-09)
+
+The user asked for the research to continue by itself overnight if the first round's
+accuracy is still low. Trying things until the test figure looks good would make that
+figure meaningless, so the rules are fixed here, before the sealed tests of decision 097
+have been read.
+
+**How later rounds are judged.** On the validation part only, as before. The two sealed
+test sets are read once for decision 097 and **once more** at the very end, for the
+single candidate that validation prefers. Because that is a second look at the same 700
+headlines, the bar for adopting is stricter: right more often than `finbert-radar-1`
+and McNemar p below 0.025.
+
+**Round 2: different kinds of model.** Beside the five FinBERT models, five seeds each of
+`microsoft/deberta-v3-base` and `cardiffnlp/twitter-roberta-base-sentiment-latest`,
+trained the same way on the same headlines. Candidates are the ensembles of one, two
+and three families; validation picks. If a model cannot be loaded with the packages
+already installed, it is left out: nothing is installed.
+
+**Round 3: more unlabelled text, then one model.** The best ensemble labels up to 60,000
+stored articles of the training period under the rules of decision 097 step 4, and is
+trained again. Then one FinBERT is trained on the ensemble's answers for those articles
+(its probabilities, not its top label), so the app could run a single model. The single
+model is a candidate only if it is within half a point of the ensemble on validation.
+
+**Stopping.** At most these rounds. Stop when a round adds under half a point of
+validation accuracy over the round before, or at 08:00 local time, whichever is first.
+
+**Not done unattended.** No new labels, no outside service, no new packages, no change
+to the model the app uses, nothing pushed.
+
+**My guess.** Round 2 adds about a point. Round 3 adds less than a point and the single
+model lands about a point under the ensemble.
