@@ -3,6 +3,11 @@
 A full description of this directory for someone who has never seen it. Written
 2026-10-07. For the criticism of all this, read `AUDIT.md` beside it.
 
+> **A record of that day, not the current map.** Pages and counts here are as they
+> were on 2026-10-07. Since then "Markets together" has left the app (its address
+> leads to Markets), gold is followed as PAX Gold, and the portfolio pages were cut
+> down. For what exists now read `README.md`; for why, `DECISIONS.md` from 071 on.
+
 ## 1. In one paragraph
 
 RADAR is a private web app for one person. It collects prices and news for Bitcoin,

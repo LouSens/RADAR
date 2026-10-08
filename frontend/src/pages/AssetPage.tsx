@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 
 import { useMarket } from "../api/market";
 import { useAssets, useSummary } from "../api/queries";
@@ -27,7 +27,15 @@ export function AssetPage() {
   const trust = summary?.trust;
 
   if (assets.isPending) return <PageSkeleton cards={3} />;
-  if (!asset) return <Message>That market could not be found.</Message>;
+  if (!asset)
+    return (
+      <Message>
+        That market could not be found.{" "}
+        <Link to="/markets" className="font-medium text-ink underline underline-offset-2">
+          See the markets RADAR follows
+        </Link>
+      </Message>
+    );
 
   const price = (value: number | undefined) => (value === undefined ? "–" : formatPrice(value));
 

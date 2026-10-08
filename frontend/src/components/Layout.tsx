@@ -110,7 +110,8 @@ function Icon({ children }: { children: ReactNode }) {
 function useSystemGood(): boolean {
   const stream = useStreamStatus();
   const health = useHealth().data?.status;
-  return stream === "open" && health === "ok";
+  // Still loading or still connecting is not a fault: only a known problem is.
+  return stream !== "closed" && (health === undefined || health === "ok");
 }
 
 /**
@@ -149,7 +150,8 @@ function isAt(place: (typeof PLACES)[number], pathname: string): boolean {
 
 const WIDE = "(min-width: 1024px)";
 
-/** True when there is room for the full sidebar; narrower screens get the icon rail. */
+/** True when there is room for the sidebar. Narrower screens, tablets included, keep
+ * the bottom bar with its labels: an icon-only rail hid what each place was. */
 function useWide(): boolean {
   const [wide, setWide] = useState(
     () => typeof window.matchMedia !== "function" || window.matchMedia(WIDE).matches,
@@ -235,7 +237,7 @@ function Sidebar({
   const hidden = collapsed ? "sr-only" : "truncate";
   return (
     <aside
-      className={`capsule fixed inset-y-3 left-3 z-40 hidden flex-col rounded-3xl p-3 transition-[width] duration-300 md:flex ${
+      className={`capsule fixed inset-y-3 left-3 z-40 hidden flex-col rounded-3xl p-3 transition-[width] duration-300 lg:flex ${
         collapsed ? "w-[68px]" : "w-[252px]"
       }`}
     >
@@ -343,7 +345,7 @@ export function Layout() {
       {/* Phones navigate with the tabs at the bottom, within thumb reach; nothing on top. */}
       <div
         className={`flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ${
-          collapsed ? "md:pl-[80px]" : "md:pl-[264px]"
+          collapsed ? "lg:pl-[80px]" : "lg:pl-[264px]"
         }`}
       >
         <main className="page pb-tabbar @container mx-auto w-full max-w-[1280px] flex-1">
@@ -354,21 +356,24 @@ export function Layout() {
           {!good && (
             <Link
               to="/system"
-              className="mt-12 inline-flex items-center gap-2 text-xs text-muted hover:text-ink md:hidden"
+              className="mt-12 inline-flex items-center gap-2 text-xs text-muted hover:text-ink lg:hidden"
             >
               <span className="h-2 w-2 rounded-full bg-alert" aria-hidden="true" />
               Something needs attention
             </Link>
           )}
-          <p className="mt-4 prose text-xs leading-relaxed text-faint md:mt-12">
-            For information only. Not financial advice; RADAR places no trades.
+          <p className="mt-4 prose text-xs leading-relaxed text-faint lg:mt-12">
+            For information only. Not financial advice; RADAR places no trades.{" "}
+            <Link to="/system" className="underline-offset-2 hover:text-muted hover:underline">
+              Where the data comes from
+            </Link>
           </p>
         </main>
       </div>
 
       <nav
         aria-label="Main, phone"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:hidden"
       >
         <div className="capsule capsule-solid pointer-events-auto mx-auto flex max-w-md gap-1 rounded-full p-1.5">
           {PLACES.map((place) => {

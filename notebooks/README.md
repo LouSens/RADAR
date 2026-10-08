@@ -15,6 +15,8 @@ Every example portfolio and every trader in them is made up.
 | `07_what_we_tested` | What was tried and did not work, and why? | (summary) | Not in the app, by decision |
 
 `archive/` holds the seven full research notebooks that `07_what_we_tested` summarises.
+They were run when gold was followed as the gold fund (before decision 087) and are
+kept as they were: their figures are evidence for the conclusions, not current readings.
 `docs/DECISIONS.md` refers to them by their old numbers (08, 10, 11 to 15).
 
 Old numbers, for reading older decisions: 02 and 03 are now `02_state_and_range`; 04 is

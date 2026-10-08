@@ -317,7 +317,8 @@ for ax, name in zip(axes, MARKETS.values()):
     ax.plot([45, 100], [45, 100], color=INK, lw=0.7)
     ax.set(title=f"{name}: {int(group['n'].max()):,} past days", xlabel="the range says, %")
 axes[0].set(ylabel="it held, %")
-axes[-1].legend(loc="center left", bbox_to_anchor=(1.0, 0.5), fontsize=8);
+fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.18), fontsize=8)
+fig.tight_layout()
 
 # %%
 # The claim in the summary, checked: how far off the stated figure each kind of range was.

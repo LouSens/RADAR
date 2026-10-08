@@ -57,7 +57,8 @@ export function MarketsPage() {
         <h1 className="title">Markets</h1>
       </header>
       {assets.isError && <Message>Markets are unavailable right now.</Message>}
-      <div className="grid grid-cols-3 gap-2 @xl:gap-4">
+      {/* One card a row on a phone: three across cut the names and squeezed the charts. */}
+      <div className="grid grid-cols-1 gap-2 @md:grid-cols-3 @xl:gap-4">
         {primary.map((asset) => (
           <MarketCard key={asset.slug} asset={asset} />
         ))}
