@@ -10,3 +10,5 @@ import { Config } from "@remotion/cli/config";
 Config.setRspack(true);
 Config.setVideoImageFormat("jpeg");
 Config.setOverwriteOutput(true);
+// The 3D shots need a real graphics pipeline in the render browser.
+Config.setChromiumOpenGlRenderer("angle");

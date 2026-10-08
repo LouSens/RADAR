@@ -1,0 +1,10 @@
+[
+  { "id": "question", "from": 0, "duration": 75, "sweep": false },
+  { "id": "meet", "from": 75, "duration": 60, "sweep": true },
+  { "id": "phone", "from": 135, "duration": 90, "sweep": false },
+  { "id": "cards", "from": 225, "duration": 90, "sweep": false },
+  { "id": "range", "from": 315, "duration": 105, "sweep": false },
+  { "id": "risk", "from": 420, "duration": 90, "sweep": true },
+  { "id": "plan", "from": 510, "duration": 90, "sweep": false },
+  { "id": "refusals", "from": 600, "duration": 90, "sweep": false }
+]
