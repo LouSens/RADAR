@@ -51,8 +51,19 @@ const answer = (method, url) => {
 const server = createServer((request, response) => {
   const url = new URL(request.url ?? "/", "http://localhost");
   const send = (status, body) => {
-    response.writeHead(status, { "Content-Type": "application/json" });
-    response.end(JSON.stringify(body));
+    // The whole answer in one piece with its length, on a connection of its own: a
+    // proxy that reuses a connection this server has let go of gets an error, and the
+    // page then waits through its retries.
+    const text = Buffer.from(JSON.stringify(body), "utf8");
+    response.shouldKeepAlive = true;
+    response.writeHead(status, {
+      "Content-Type": "application/json",
+      "Content-Length": text.length,
+      Connection: "keep-alive",
+    });
+    // Written first and ended after: ending in the same call has been seen to stall an
+    // answer larger than the socket's buffer when the caller asked to close afterwards.
+    response.write(text, () => response.end());
   };
   if (!url.pathname.startsWith(`${BASE}/`)) return send(404, { detail: "Not found" });
   const body = answer(request.method ?? "GET", url);
@@ -102,6 +113,9 @@ server.on("upgrade", (request, socket) => {
   socket.on("data", () => {});
 });
 
+// Idle connections are kept longer than any proxy keeps its own, so a proxy never
+// writes to one this server has already closed.
+server.keepAliveTimeout = 120_000;
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`mock API on http://127.0.0.1:${PORT}${BASE}`);
 });
