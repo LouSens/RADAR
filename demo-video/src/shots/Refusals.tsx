@@ -90,10 +90,10 @@ export const Refusals: React.FC = () => {
         <AbsoluteFill style={{ alignItems: "center", top: 768 }}>
           <Words
             text={COPY.signoff[1]}
-            at={MARK + 5}
+            at={MARK + 2}
             size={76}
             weight={600}
-            stagger={4}
+            stagger={2}
           />
         </AbsoluteFill>
       </AbsoluteFill>
