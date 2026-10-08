@@ -59,9 +59,9 @@ export const TAPS = QUESTIONS.map((id) => shot(id).from + tapped(id));
 /** The phone's screen in the frame, which Home reflows into in shot 9 (shots/Both). */
 export const SCREEN: Box = { x: 1262, y: 168, w: 352, h: 762 };
 /** When Home reflows into the phone's layout. */
-export const MORPH = [both + 6, both + 26] as const;
+export const MORPH = [both + 2, both + 20] as const;
 /** When the phone's own screen takes over from the reflowed pieces. */
-export const HANDOVER = [both + 26, both + 34] as const;
+export const HANDOVER = [both + 20, both + 27] as const;
 
 export const DeskLayer: React.FC = () => {
   const frame = useCurrentFrame();
@@ -134,7 +134,7 @@ export const DeskLayer: React.FC = () => {
       <AbsoluteFill
         style={{
           backgroundColor: fade(C.bg, 1),
-          opacity: under * 0.7 + back * 0.24,
+          opacity: under * 0.7 + back * 0.275,
         }}
       />
       {tap && spot && (

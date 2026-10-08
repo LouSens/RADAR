@@ -28,7 +28,7 @@ const camera = (): View => ({
 });
 
 /** When the phone starts up into the frame. */
-export const SLIDES = 12;
+export const SLIDES = 7;
 
 /**
  * Shot 9. Home has reflowed into the phone's layout (DeskLayer); the phone itself comes

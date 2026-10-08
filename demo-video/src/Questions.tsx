@@ -96,7 +96,7 @@ export const Questions: React.FC = () => (
     <Ask
       lines={["On your desk.", "On your *phone.*"]}
       // Once Home has started across to the phone and the left of the frame is clear.
-      at={at.both + 13}
+      at={at.both + 9}
       size={140}
       centre={620}
       middle={520}

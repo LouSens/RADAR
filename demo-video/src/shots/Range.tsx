@@ -54,8 +54,8 @@ const DIGIT = 0.62;
 /** The clear space between the two copies, `open` of the way through the move. */
 const gapAt = (open: number): number =>
   (X_HIGH - X_LOW) * open - WIDE * mix(HERO, RESTING, open);
-/** How far through the move the space first exceeds one digit: counting starts there. */
-const COUNT_FROM = (() => {
+/** How far through the move the two whole figures would first stand clear. */
+const CLEAR = (() => {
   for (let open = 0; open <= 1; open += 0.001) {
     if (gapAt(open) > DIGIT * mix(HERO, RESTING, open)) {
       return open;
@@ -63,6 +63,8 @@ const COUNT_FROM = (() => {
   }
   return 1;
 })();
+/** By when each half has been made whole again, and counting starts. */
+const COUNT_FROM = Math.min(CLEAR + 0.14, 0.9);
 
 /** One figure, centred on a point, counting as a meter does. */
 const Figure: React.FC<{
@@ -107,20 +109,22 @@ export const Range: React.FC = () => {
   const frame = useCurrentFrame();
   const duration = shot("range").duration;
 
-  // One move, on one curve. The price is two copies of itself lying exactly together,
-  // the left one shown only left of a cut and the right one only right of it. Both show
-  // the same value while they part, so no frame has a figure made of two different
-  // numbers. Once they stand clear of each other, with more than a digit of space
-  // between them, each counts to its end of the range as it finishes its journey.
+  // One move, on one curve. The price is two copies of itself lying exactly together.
+  // Each copy shows only its own half, cut at its own middle: the left copy its left
+  // half, the right copy its right half. So what parts is one figure in two halves,
+  // and it still reads $83,276. Only when the two would stand clear of each other as
+  // whole figures is each half made whole, and only then does each count to its end of
+  // the range. No frame has a figure made of two different numbers.
   const open = tween(frame, OPEN[0], OPEN[1], 0, 1, EASE_IN_OUT);
   const size = mix(HERO, RESTING, open);
   const cy = mix(START.y, ROW, open);
   const lowX = mix(START.x, X_LOW, open);
   const highX = mix(START.x, X_HIGH, open);
   const seam = (lowX + highX) / 2;
-  const gap = Math.max(gapAt(open), 0);
-  const cutLeft = seam - gap / 2 + Math.min(gap, 3);
-  const cutRight = seam + gap / 2 - Math.min(gap, 3);
+  const whole = tween(open, CLEAR, COUNT_FROM, 0, 1, EASE_IN_OUT);
+  const half = (WIDE * size) / 2 + 6;
+  const cutLeft = lowX + half * whole;
+  const cutRight = highX - half * whole;
   const leftOnly = `linear-gradient(to right, #000 ${cutLeft}px, transparent ${cutLeft}px)`;
   const rightOnly = `linear-gradient(to right, transparent ${cutRight}px, #000 ${cutRight}px)`;
   const counted = tween(open, COUNT_FROM, 1, 0, 1, (t) => t);
@@ -268,7 +272,7 @@ export const Range: React.FC = () => {
             boxShadow: `0 0 16px 4px ${fade(C.btc, 0.6)}`,
             opacity:
               tween(frame, OPEN[0] - 4, OPEN[0], 0, 1) *
-              (1 - tween(open, COUNT_FROM * 0.6, COUNT_FROM, 0, 1)),
+              (1 - tween(open, 0.02, 0.12, 0, 1)),
           }}
         />
         <span
