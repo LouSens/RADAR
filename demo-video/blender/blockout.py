@@ -102,7 +102,9 @@ def cylinder(name, radius, depth, location, mat, rotation=(0, 0, 0), vertices=24
 
 
 def sphere(name, location, mat, radius=BALL):
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=12, ring_count=6)
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        radius=radius, location=location, segments=12, ring_count=6
+    )
     obj = bpy.context.object
     obj.name = name
     obj.data.materials.append(mat)
@@ -204,7 +206,9 @@ for side in (-1.25, 1.25):
 box("tower top beam", (2.6, 0.06, 0.06), (0, 0.45, 2.78), STEEL)
 box("tower mount beam", (2.6, 0.04, 0.04), (0, 0.45, 1.78), STEEL)
 box("tower base", (2.6, 0.3, 0.14), (0, 0.5, 1.02), STEEL)
-bpy.ops.mesh.primitive_cone_add(radius1=0.2, radius2=0.03, depth=0.3, location=(0, DROP_Y, 2.66), rotation=(math.pi, 0, 0))
+bpy.ops.mesh.primitive_cone_add(
+    radius1=0.2, radius2=0.03, depth=0.3, location=(0, DROP_Y, 2.66), rotation=(math.pi, 0, 0)
+)
 bpy.context.object.name = "hopper"
 bpy.context.object.data.materials.append(BRASS)
 box("mount cradle", (0.22, 0.08, 0.05), (MOUNT.x, MOUNT.y, MOUNT.z - 0.09), BRASS)
@@ -215,7 +219,9 @@ box("board glass", (2.4, 0.006, BOARD[1] - BOARD[0] + 0.1), (0, 0.155, sum(BOARD
 flag = box("flag", (0.012, 0.004, 0.07), (0.16, 0.3, 2.0), BRASS)
 PLATE = Vector((0.05, -0.384, 0.918))
 plate = box("maker's plate", (0.16, 0.006, 0.04), PLATE, BRASS)
-bpy.ops.object.text_add(location=(PLATE.x - 0.052, PLATE.y - 0.004, PLATE.z - 0.011), rotation=(math.pi / 2, 0, 0))
+bpy.ops.object.text_add(
+    location=(PLATE.x - 0.052, PLATE.y - 0.004, PLATE.z - 0.011), rotation=(math.pi / 2, 0, 0)
+)
 name = bpy.context.object
 name.name, name.data.body, name.data.size, name.data.extrude = "engraving", "RADAR", 0.028, 0.0006
 name.data.materials.append(STEEL)
@@ -224,7 +230,14 @@ paddles = []
 for row in range(4):
     for column in range(10):
         x = -1.08 + column * 0.24 + (0.12 if row % 2 else 0.0)
-        paddles.append(box(f"paddle {row}.{column}", (0.012, 0.03, 0.08), (x, DROP_Y, BOARD[1] - 0.09 - row * 0.14), BRASS))
+        paddles.append(
+            box(
+                f"paddle {row}.{column}",
+                (0.012, 0.03, 0.08),
+                (x, DROP_Y, BOARD[1] - 0.09 - row * 0.14),
+                BRASS,
+            )
+        )
 
 # The shelf and its six instruments. Rough stand-ins, one silhouette each.
 box("shelf", (4.0, 0.3, 0.04), (0, SHELF_Y, SHELF_Z - 0.02), WALNUT)
@@ -243,17 +256,25 @@ def instrument(index, label):
         box("glass plate", (0.18, 0.012, 0.2), (0, 0, 0.12), GLASS, root)
     elif label == "rail":
         box("rail post", (0.02, 0.02, 0.16), (-0.07, 0, 0.08), BRASS, root)
-        box("rail channel", (0.2, 0.03, 0.015), (0.02, 0, 0.15), BRASS, root).rotation_euler = (0, 0.35, 0)
+        box("rail channel", (0.2, 0.03, 0.015), (0.02, 0, 0.15), BRASS, root).rotation_euler = (
+            0,
+            0.35,
+            0,
+        )
     elif label == "vane":
         cylinder("vane ring", 0.09, 0.02, (0, 0, 0.02), BRASS).parent = root
         box("vane post", (0.012, 0.012, 0.16), (0, 0, 0.1), STEEL, root)
         box("vane blade", (0.14, 0.006, 0.05), (0, 0, 0.18), BRASS, root)
     elif label == "clockwork":
         for step, radius in enumerate((0.08, 0.055, 0.035)):
-            cylinder(f"wheel {step}", radius, 0.025, (0, 0, 0.02 + step * 0.045), BRASS).parent = root
+            cylinder(
+                f"wheel {step}", radius, 0.025, (0, 0, 0.02 + step * 0.045), BRASS
+            ).parent = root
     else:  # the seismograph: plain, and last on the shelf
         box("seismograph base", (0.22, 0.12, 0.02), (0, 0, 0.01), WALNUT, root)
-        cylinder("drum", 0.045, 0.14, (0, 0, 0.07), PAPER, rotation=(0, math.pi / 2, 0)).parent = root
+        cylinder(
+            "drum", 0.045, 0.14, (0, 0, 0.07), PAPER, rotation=(0, math.pi / 2, 0)
+        ).parent = root
         box("stylus arm", (0.006, 0.09, 0.006), (0.03, -0.04, 0.12), STEEL, root)
     tag = box(f"tag {index}", (0.05, 0.002, 0.03), (0.09, -0.14, -0.03), PAPER, root)
     return root, tag
@@ -261,7 +282,9 @@ def instrument(index, label):
 
 INSTRUMENTS = [
     instrument(i, label)
-    for i, label in enumerate(["pendulum gauge", "etched glass", "rail", "vane", "clockwork", "seismograph"])
+    for i, label in enumerate(
+        ["pendulum gauge", "etched glass", "rail", "vane", "clockwork", "seismograph"]
+    )
 ]
 
 # The drawers of past days: three cabinets on the right wall, one drawer that works.
@@ -270,7 +293,9 @@ for index, y in enumerate((-1.0, 0.0, 1.0)):
     box(f"cabinet plate {index}", (0.004, 0.2, 0.04), (2.655, y, 1.62), BRASS)
 drawer = box("drawer", (0.3, 0.24, 0.09), (2.72, 0.0, 1.2), WALNUT)
 for index in range(14):
-    sphere(f"drawer ball {index}", (RNG.uniform(-0.3, 0.3), RNG.uniform(-0.3, 0.3), 0.75), BRIGHT, 0.14).parent = drawer
+    sphere(
+        f"drawer ball {index}", (RNG.uniform(-0.3, 0.3), RNG.uniform(-0.3, 0.3), 0.75), BRIGHT, 0.14
+    ).parent = drawer
 
 
 # Hands: crude stand-ins, a forearm and a palm with one slab for the fingers.
@@ -314,7 +339,9 @@ hero_lands = fall(hero, S["shot2"][0] + 56, (0.22, 0.05))  # and it lands right
 
 
 def crater(index, spot, frame):
-    disc = cylinder(f"crater {index}", 0.022, 0.004, (spot[0], spot[1], SAND_TOP + 0.002), CRATER, vertices=16)
+    disc = cylinder(
+        f"crater {index}", 0.022, 0.004, (spot[0], spot[1], SAND_TOP + 0.002), CRATER, vertices=16
+    )
     appear(disc, frame)
 
 
@@ -333,7 +360,16 @@ drops = [frame for frame in drops if frame < last - 16]
 for slot, (root, tag) in enumerate(INSTRUMENTS[1:5], start=1):
     start = swaps[slot - 1]
     end = swaps[slot] if slot < 4 else last + 1
-    path(root, [(0, shelf_spot(slot)), (start - 1, shelf_spot(slot)), (start, MOUNT), (end - 1, MOUNT), (end, shelf_spot(slot))])
+    path(
+        root,
+        [
+            (0, shelf_spot(slot)),
+            (start - 1, shelf_spot(slot)),
+            (start, MOUNT),
+            (end - 1, MOUNT),
+            (end, shelf_spot(slot)),
+        ],
+    )
     appear(tag, end)
 
 interpolation("BEZIER")
@@ -364,7 +400,10 @@ for far in (-1.1, -0.98, 1.02, 1.12):  # the few that lie a long way out
 # ---------------------------------------------------------------- shot 6: the second measurement
 seismograph, seismograph_tag = INSTRUMENTS[5]
 bench_spot = Vector((-1.32, -0.2, 0.96))
-path(seismograph, [(0, shelf_spot(5)), (S["shot6"][0] + 14, shelf_spot(5)), (S["shot6"][0] + 15, bench_spot)])
+path(
+    seismograph,
+    [(0, shelf_spot(5)), (S["shot6"][0] + 14, shelf_spot(5)), (S["shot6"][0] + 15, bench_spot)],
+)
 appear(seismograph_tag, S["shot6"][0] + 15)
 strip = box("paper strip", (2.3, 0.07, 0.002), (0, -0.345, 0.952), PAPER)
 interpolation("LINEAR")
@@ -375,7 +414,18 @@ key(strip, S["shot6"][0] + 72, location=(0, -0.345, 0.952), scale=(2.3, 0.07, 0.
 # ---------------------------------------------------------------- shot 7: many outcomes
 first, last = S["shot7"]
 pour, release = first + 50, first + 62
-path(drawer, [(0, (2.72, 0, 1.2)), (first + 14, (2.72, 0, 1.2)), (first + 28, (2.45, 0, 1.2)), (first + 38, (2.45, 0, 1.2)), (first + 50, (0.12, 0.05, 2.9)), (first + 60, (0.12, 0.05, 2.9)), (first + 70, (1.6, -0.6, 1.5))])
+path(
+    drawer,
+    [
+        (0, (2.72, 0, 1.2)),
+        (first + 14, (2.72, 0, 1.2)),
+        (first + 28, (2.45, 0, 1.2)),
+        (first + 38, (2.45, 0, 1.2)),
+        (first + 50, (0.12, 0.05, 2.9)),
+        (first + 60, (0.12, 0.05, 2.9)),
+        (first + 70, (1.6, -0.6, 1.5)),
+    ],
+)
 
 interpolation("BEZIER")
 for paddle in paddles:  # re-set before each run: the pushes are never the same twice
@@ -433,14 +483,32 @@ for sheet in range(5):
 
 # ---------------------------------------------------------------- shot 8: one ball
 first, last = S["shot8"]
-markers = [box(f"marker {side}", (0.006, 0.5, 0.09), (side * 0.47, 0, 1.2), BRASS) for side in (-1, 1)]
-for marker, press in zip(markers, (first + 10, first + 22)):
+markers = [
+    box(f"marker {side}", (0.006, 0.5, 0.09), (side * 0.47, 0, 1.2), BRASS) for side in (-1, 1)
+]
+for marker, press in zip(markers, (first + 10, first + 22), strict=True):
     x = marker.location.x
-    path(marker, [(0, (x, -0.9, 0.5)), (press - 9, (x, -0.9, 0.5)), (press - 8, (x, 0, 1.16)), (press, (x, 0, SAND_TOP + 0.03))])
+    path(
+        marker,
+        [
+            (0, (x, -0.9, 0.5)),
+            (press - 9, (x, -0.9, 0.5)),
+            (press - 8, (x, 0, 1.16)),
+            (press, (x, 0, SAND_TOP + 0.03)),
+        ],
+    )
 PALM = Vector((-0.28, -0.42, 1.06))
 chosen = sphere("the one ball", (0.04, 0.02, REST + 0.12), BRIGHT)
 appear(chosen, first + 30)
-path(chosen, [(first + 30, (0.04, 0.02, REST + 0.12)), (first + 34, (0.04, 0.02, REST + 0.12)), (first + 48, PALM + Vector((0, 0.02, 0.03))), (S["shot9"][1], PALM + Vector((0, 0.02, 0.03)))])
+path(
+    chosen,
+    [
+        (first + 30, (0.04, 0.02, REST + 0.12)),
+        (first + 34, (0.04, 0.02, REST + 0.12)),
+        (first + 48, PALM + Vector((0, 0.02, 0.03))),
+        (S["shot9"][1], PALM + Vector((0, 0.02, 0.03))),
+    ],
+)
 
 # ---------------------------------------------------------------- the hands, through the film
 REST_R, REST_L = Vector((0.42, 0.33, 1.82)), Vector((-0.42, 0.33, 1.82))
@@ -498,6 +566,7 @@ interpolation("BEZIER")
 key(RIGHT_FINGERS, S["shot8"][0] + 60, rotation=(0, 0, 0))
 key(RIGHT_FINGERS, S["shot8"][0] + 78, rotation=(-2.1, 0, 0))  # the hand closes
 
+
 # ---------------------------------------------------------------- nine cameras
 def camera(shot, keys, stop=2.8):
     """One camera for one shot. Each key is (offset, position, look-at, lens in mm)."""
@@ -506,7 +575,9 @@ def camera(shot, keys, stop=2.8):
     data.clip_start, data.sensor_width = 0.02, 36
     data.dof.use_dof = True
     # Wide and travelling shots stay sharp; only the close ones have thin focus.
-    data.dof.aperture_fstop = {"shot3": 11, "shot5": 11, "shot7": 11, "shot4": 5.6, "shot6": 8}.get(shot, stop)
+    data.dof.aperture_fstop = {"shot3": 11, "shot5": 11, "shot7": 11, "shot4": 5.6, "shot6": 8}.get(
+        shot, stop
+    )
     cam = bpy.data.objects.new(f"{shot} camera", data)
     target = bpy.data.objects.new(f"{shot} look-at", None)
     for obj in (cam, target):
@@ -526,56 +597,87 @@ def camera(shot, keys, stop=2.8):
     return cam
 
 
-orbit = lambda degrees, radius=2.3, height=1.55: (radius * math.cos(math.radians(degrees)), radius * math.sin(math.radians(degrees)), height)  # noqa: E731
+orbit = lambda degrees, radius=2.3, height=1.55: (
+    radius * math.cos(math.radians(degrees)),
+    radius * math.sin(math.radians(degrees)),
+    height,
+)  # noqa: E731
 
-camera("shot1", [
-    (0, (-1.62, 1.28, 2.06), (-1.5, 1.82, 2.03), 85),
-    (80, (1.05, 1.4, 2.06), (1.2, 1.82, 2.03), 85),
-    (119, (2.1, -2.3, 1.9), (0.0, 0.3, 1.75), 28),
-])
-camera("shot2", [
-    (0, (0.55, -0.75, 2.02), (0.0, 0.3, 1.94), 50),
-    (56, (0.5, -0.7, 2.0), (0.0, 0.25, 1.95), 50),
-    (hero_lands - S["shot2"][0], (0.5, -0.62, 1.12), (0.2, 0.08, 0.98), 50),
-    (119, (0.46, -0.5, 1.07), (0.2, 0.08, 0.97), 60),
-])
-camera("shot3", [
-    (0, orbit(-118), (0.0, 0.25, 1.5), 35),
-    (52, orbit(-93), (0.0, 0.25, 1.45), 35),
-    (104, orbit(-68), (0.0, 0.25, 1.4), 35),
-])
-camera("shot4", [
-    (0, (0.2, -0.7, 1.98), (-0.05, 1.82, 1.9), 35),
-    (74, (0.2, -0.7, 1.98), (-0.05, 1.82, 1.9), 35),
-])
-camera("shot5", [
-    (0, (0.2, -0.7, 1.98), (-0.05, 1.82, 1.9), 35),
-    (40, (0.12, -0.5, 2.3), (0.0, 0.1, 0.95), 35),
-    (74, (0.0, -0.22, 2.55), (0.0, 0.0, 0.95), 35),
-])
-camera("shot6", [
-    (0, (-1.15, -0.62, 1.05), (-0.55, -0.05, 0.96), 70),
-    (89, (-0.45, -0.62, 1.05), (0.15, -0.05, 0.96), 70),
-])
-camera("shot7", [
-    (0, (0.9, -1.3, 1.5), (1.4, -0.1, 1.15), 35),
-    (26, (1.5, -1.2, 1.5), (2.5, 0.0, 1.2), 35),
-    (52, (0.55, -1.0, 2.75), (0.05, 0.15, 2.72), 28),
-    (64, (0.05, -0.2, 2.5), (0.0, 0.2, 2.2), 18),
-    (96, (0.03, -0.16, 1.2), (0.0, 0.2, 1.0), 18),
-    (128, (-1.0, -1.6, 1.6), (0.0, 0.05, 1.0), 24),
-    (164, (-1.6, -2.3, 2.15), (0.0, 0.05, 1.05), 24),
-])
-camera("shot8", [
-    (0, (-1.6, -2.3, 2.15), (0.0, 0.05, 1.05), 28),
-    (34, (-0.45, -1.3, 1.3), (0.05, -0.05, 1.02), 50),
-    (89, (-0.3, -1.15, 1.16), (PALM.x, PALM.y, PALM.z + 0.02), 85),
-])
-camera("shot9", [
-    (0, (-0.3, -1.15, 1.16), (PALM.x, PALM.y, PALM.z + 0.02), 85),
-    (26, (-0.22, -1.13, 1.1), PLATE, 85),
-    (59, (-0.18, -1.08, 1.08), PLATE, 85),
-])
+camera(
+    "shot1",
+    [
+        (0, (-1.62, 1.28, 2.06), (-1.5, 1.82, 2.03), 85),
+        (80, (1.05, 1.4, 2.06), (1.2, 1.82, 2.03), 85),
+        (119, (2.1, -2.3, 1.9), (0.0, 0.3, 1.75), 28),
+    ],
+)
+camera(
+    "shot2",
+    [
+        (0, (0.55, -0.75, 2.02), (0.0, 0.3, 1.94), 50),
+        (56, (0.5, -0.7, 2.0), (0.0, 0.25, 1.95), 50),
+        (hero_lands - S["shot2"][0], (0.5, -0.62, 1.12), (0.2, 0.08, 0.98), 50),
+        (119, (0.46, -0.5, 1.07), (0.2, 0.08, 0.97), 60),
+    ],
+)
+camera(
+    "shot3",
+    [
+        (0, orbit(-118), (0.0, 0.25, 1.5), 35),
+        (52, orbit(-93), (0.0, 0.25, 1.45), 35),
+        (104, orbit(-68), (0.0, 0.25, 1.4), 35),
+    ],
+)
+camera(
+    "shot4",
+    [
+        (0, (0.2, -0.7, 1.98), (-0.05, 1.82, 1.9), 35),
+        (74, (0.2, -0.7, 1.98), (-0.05, 1.82, 1.9), 35),
+    ],
+)
+camera(
+    "shot5",
+    [
+        (0, (0.2, -0.7, 1.98), (-0.05, 1.82, 1.9), 35),
+        (40, (0.12, -0.5, 2.3), (0.0, 0.1, 0.95), 35),
+        (74, (0.0, -0.22, 2.55), (0.0, 0.0, 0.95), 35),
+    ],
+)
+camera(
+    "shot6",
+    [
+        (0, (-1.15, -0.62, 1.05), (-0.55, -0.05, 0.96), 70),
+        (89, (-0.45, -0.62, 1.05), (0.15, -0.05, 0.96), 70),
+    ],
+)
+camera(
+    "shot7",
+    [
+        (0, (0.9, -1.3, 1.5), (1.4, -0.1, 1.15), 35),
+        (26, (1.5, -1.2, 1.5), (2.5, 0.0, 1.2), 35),
+        (52, (0.55, -1.0, 2.75), (0.05, 0.15, 2.72), 28),
+        (64, (0.05, -0.2, 2.5), (0.0, 0.2, 2.2), 18),
+        (96, (0.03, -0.16, 1.2), (0.0, 0.2, 1.0), 18),
+        (128, (-1.0, -1.6, 1.6), (0.0, 0.05, 1.0), 24),
+        (164, (-1.6, -2.3, 2.15), (0.0, 0.05, 1.05), 24),
+    ],
+)
+camera(
+    "shot8",
+    [
+        (0, (-1.6, -2.3, 2.15), (0.0, 0.05, 1.05), 28),
+        (34, (-0.45, -1.3, 1.3), (0.05, -0.05, 1.02), 50),
+        (89, (-0.3, -1.15, 1.16), (PALM.x, PALM.y, PALM.z + 0.02), 85),
+    ],
+)
+camera(
+    "shot9",
+    [
+        (0, (-0.3, -1.15, 1.16), (PALM.x, PALM.y, PALM.z + 0.02), 85),
+        (26, (-0.22, -1.13, 1.1), PLATE, 85),
+        (59, (-0.18, -1.08, 1.08), PLATE, 85),
+    ],
+)
 
 # ---------------------------------------------------------------- look, save, render
 scene.render.engine = "BLENDER_WORKBENCH"
