@@ -292,6 +292,17 @@ def relationships() -> int:
     return 0
 
 
+def outside_hours() -> int:
+    """Read hourly prices from a second source for the assets that name one."""
+    from radar.db.session import make_engine
+    from radar.pipelines import outside_hours as job
+    from radar.universe import get_universe
+
+    changed = job.run(make_engine(), get_universe())
+    log.info("outside_hours_done", rows_changed=changed)
+    return 0
+
+
 def news_swings() -> int:
     """Test whether news improves the swings forecast, and store the verdict."""
     from radar.db.session import make_engine
@@ -318,9 +329,10 @@ def brief() -> int:
     """Write today's brief from stored results."""
     from radar.db.session import make_engine
     from radar.pipelines import brief as job
+    from radar.pipelines import prices
     from radar.universe import get_universe
 
-    stored = job.run(make_engine(), get_universe())
+    stored = job.run(make_engine(), get_universe(), live=prices.live)
     log.info("brief_done", items_stored=stored)
     return 0
 
@@ -365,6 +377,7 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "portfolio": (portfolio, "recompute the portfolio analysis with the latest prices"),
     "record": (record, "rebuild the account record from the Binance history"),
     "relationships": (relationships, "recompute how the markets move together"),
+    "outside-hours": (outside_hours, "read hourly prices from a second source where named"),
     "news-swings": (news_swings, "test whether news improves the swings forecast"),
     "signals": (signals, "detect signals and recompute what followed them in the past"),
     "events": (events, "measure the markets around scheduled economic events"),

@@ -104,8 +104,19 @@ def _register(
     )
 
 
-def forecast(engine: Engine, asset: Asset, *, min_train: int = 500, refit_every: int = 63) -> int:
-    """Store forecasts for every day not yet covered. Returns the number of rows changed."""
+def forecast(
+    engine: Engine,
+    asset: Asset,
+    *,
+    min_train: int = 500,
+    refit_every: int = 63,
+    refit: bool = False,
+) -> int:
+    """Store forecasts for every day not yet covered. Returns the number of rows changed.
+
+    `refit` works every day out again even when none is new: for when the measure of a
+    day's movement itself has changed (decision 091).
+    """
     with session_scope(engine) as session:
         observations = build_regime_observations(session, asset)
         newest = session.scalar(
@@ -116,7 +127,8 @@ def forecast(engine: Engine, asset: Asset, *, min_train: int = 500, refit_every:
         log.warning("volatility_skipped", symbol=asset.symbol, days=len(clean))
         return 0
     stamps = day_end(asset, pd.DatetimeIndex(clean.index))
-    if newest is not None and not pd.isna(stamps[-1]) and stamps[-1] <= pd.Timestamp(newest):
+    covered = newest is not None and not pd.isna(stamps[-1]) and stamps[-1] <= pd.Timestamp(newest)
+    if covered and not refit:
         return 0  # nothing new since the last run
 
     steps = HORIZON_STEPS[asset.asset_class]
@@ -155,5 +167,5 @@ def forecast(engine: Engine, asset: Asset, *, min_train: int = 500, refit_every:
     return changed
 
 
-def run(engine: Engine, universe: Universe) -> int:
-    return sum(forecast(engine, asset) for asset in universe.primary)
+def run(engine: Engine, universe: Universe, *, refit: bool = False) -> int:
+    return sum(forecast(engine, asset, refit=refit) for asset in universe.primary)

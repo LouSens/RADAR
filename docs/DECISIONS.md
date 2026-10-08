@@ -3337,3 +3337,59 @@ The user reported two things about the to-do list.
   within the cash that is over. A gap of pennies is still left alone.
 
 Nothing here forecasts or times a purchase; both are corrections to arithmetic.
+
+## 091. Gold's daily movement is measured on Binance's hourly prices (2026-10-07)
+
+Decision 089 found that PAX Gold has no trade on Alpaca's venue in about 4% of hours,
+which left about 8% of its days without a usable measure of how much the day moved. The
+user agreed to fill this from Binance.
+
+- **Measured first.** Binance's hourly PAXGUSDT prices from January 2021: 14 hours
+  missing out of 50,520, and no day short of hours.
+- **What changed.** An asset may name a Binance pair in `hours_from` (`universe.toml`;
+  crypto only). Its hours are read through the public read agreed in decision 067
+  (`/api/v3/klines`, no key), stored in their own table `outside_hours`, and used for one
+  thing: how much each day moved (`build_realised_volatility`). The worker reads new
+  hours three minutes past each hour.
+- **What did not change.** Prices, returns, charts and everything shown as a price still
+  come from the asset's own bars, so `bars` still holds one provider's data. The whole
+  movement measure for gold comes from one venue, not a patchwork of two, so no day mixes
+  a dollar price with a tether price.
+- **Re-run for gold:** the state model (refitted), past ranges (measured again), the
+  movement forecast and the loss limits (both worked out again for every day; the two
+  jobs gained a `refit`/`force` option on `run`), signals, and notebooks 01 to 03.
+
+## 092. The worker was dropping its scheduled jobs; late jobs now run (2026-10-07)
+
+The user reported that "Today in brief" and other things did not follow the account or
+the market. The cause was not on any screen. The scheduler's own default drops a job
+that starts more than one second late, and in the Docker worker every job was starting 5
+to 14 seconds late, so the hourly work (models, signals, the brief, the data-quality
+check, which had last run two days before) was silently never happening. Screens showed
+whatever the last hand-run had stored.
+
+- The scheduler is made with a grace of 15 minutes and runs a missed job once
+  (`worker.make_scheduler`, with a test). Why the jobs start late was not found; it is
+  harmless with the grace in place.
+- Coming back to the app's window now asks again for anything older than half a minute.
+
+## 093. The brief opens with what is true now (2026-10-07)
+
+The brief restated each model's stored answer, which changes rarely, so it read the same
+from one day to the next. It now opens, for each market, with the price now and its
+move since the last daily close, then the number of news articles in the last 24 hours;
+and for the account, with what there is to do under the plan, or that nothing is.
+
+- Prices are the newest there are (decision 090). The account's value is Binance's own
+  total where there is one, as on every screen.
+- The to-do sentence states the plan's arithmetic ("cash over your plan to put in: …")
+  and links to the page with the prices. It is not a call on direction, and the brief's
+  banned words stay banned.
+- News is counted, not characterised: tone stays out of the brief (decision 052).
+- Every number is in the payload; the grounding test covers the new sentences.
+- Still open: the next scheduled event in the brief, and a plain account of why a
+  holding moved (spec F13).
+
+Also from the same request: the price chart gained a one-day range (the latest 24 hourly
+prices, so a closed market still shows its last day of trading); it used to start at a
+week.

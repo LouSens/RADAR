@@ -196,5 +196,5 @@ def assess(
     return changed
 
 
-def run(engine: Engine, universe: Universe) -> int:
-    return sum(assess(engine, asset) for asset in universe.primary)
+def run(engine: Engine, universe: Universe, *, force: bool = False) -> int:
+    return sum(assess(engine, asset, force=force) for asset in universe.primary)

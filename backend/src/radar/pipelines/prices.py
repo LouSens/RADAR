@@ -26,6 +26,11 @@ Latest = tuple[float, datetime]
 Reader = Callable[[Iterable[Asset], str], dict[str, Latest]]
 
 
+def none(assets: Iterable[Asset], crypto_location: str) -> dict[str, Latest]:
+    """A reader that asks no one: stored prices only."""
+    return {}
+
+
 def stored(session: Session, symbols: Iterable[str]) -> dict[str, Latest]:
     """The close of the newest stored bar of each symbol, hourly or daily."""
     wanted = list(symbols)

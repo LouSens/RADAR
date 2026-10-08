@@ -7,7 +7,9 @@ import { App } from "./App";
 import "./index.css";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  // Coming back to the window asks again for anything older than half a minute, so a
+  // screen left open does not show an hour-old account.
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true, staleTime: 30_000 } },
 });
 
 const root = document.getElementById("root");

@@ -15,6 +15,7 @@ from radar.features.volatility import (
     realised_volatility_stock,
     smoothed_log_volatility,
 )
+from radar.pipelines import outside_hours
 from radar.universe import Asset, Universe
 
 
@@ -60,6 +61,12 @@ def build_mixed_panel(session: Session, universe: Universe) -> MixedPanel:
 
 
 def build_realised_volatility(session: Session, asset: Asset) -> pd.DataFrame:
+    """How much each day moved, from hourly prices. A coin that names a second source
+    for its hours is measured on those where any are stored (decision 091)."""
+    if asset.hours_from is not None:
+        outside = outside_hours.hourly_close(session, asset)
+        if len(outside):
+            return realised_volatility_crypto(outside)
     hourly = load_field(session, [asset.symbol], "1Hour")[asset.symbol].dropna()
     if asset.asset_class == "crypto":
         return realised_volatility_crypto(hourly)

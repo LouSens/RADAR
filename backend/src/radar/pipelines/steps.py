@@ -16,10 +16,15 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 from pydantic import AwareDatetime, BaseModel
+from sqlalchemy.orm import Session
 
 from radar.analytics import buying
 from radar.models.holdings import CASH
+from radar.pipelines import discover
 from radar.pipelines import portfolio as portfolio_job
+from radar.pipelines import prices as prices_job
+from radar.pipelines.signals import daily_close
+from radar.universe import Universe
 
 VERSION = "steps-1"
 # Cash over the plan is acted on from this share of the account, or this many dollars.
@@ -218,3 +223,26 @@ def build(
         steps=steps,
         by=now + DEADLINE,
     )
+
+
+def current(
+    session: Session, universe: Universe, live: prices_job.Reader, now: datetime
+) -> Steps | None:
+    """The steps for the stored account at the prices now, or None before any analysis.
+
+    The prices to act on are the newest there are: the latest trade where `live` can
+    give one, otherwise the newest stored hour. Never the last daily close.
+    """
+    analysis = portfolio_job.stored_analysis(session)
+    if analysis is None:
+        return None
+    weights = None
+    if analysis.plan is not None and analysis.plan.moves:
+        weights = {m.symbol: m.target_weight for m in analysis.plan.moves if m.symbol != CASH}
+    wanted = set(weights or {}) | {p.symbol for p in analysis.positions if p.symbol != CASH}
+    assets = [a for a in discover.extend(universe, session).assets if a.symbol in wanted]
+    closes = {a.symbol: daily_close(session, a) for a in assets if a.symbol in (weights or {})}
+    latest = prices_job.newest(
+        prices_job.stored(session, wanted), live(assets, universe.crypto_location)
+    )
+    return build(analysis, weights, closes, now, latest)

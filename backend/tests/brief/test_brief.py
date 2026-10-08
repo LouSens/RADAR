@@ -194,3 +194,40 @@ def test_a_writer_that_returns_ungrounded_text_is_overruled() -> None:
     assert "40%" not in bitcoin.text
     # A grounded sentence from another writer is kept.
     assert (portfolio.writer, portfolio.text) == ("careless", "Worth about $400.63 today.")
+
+
+def test_the_brief_opens_with_the_price_now_and_what_there_is_to_do() -> None:
+    from radar.brief.payload import TodayFacts
+
+    moved = BITCOIN.model_copy(
+        update={"today": TodayFacts(price=65120.0, change_percent=-1.4, articles=12)}
+    )
+    account = PORTFOLIO.model_copy(
+        update={"has_plan": True, "to_buy": ["US stocks $49.20", "Gold $36.10"]}
+    )
+    payload = Payload(day="2026-10-07", assets=[moved], portfolio=account)
+    bitcoin, portfolio = writer.write(payload)
+    assert bitcoin.sentences[0].text == "Bitcoin: $65,120 now, down 1.4% since the last close."
+    assert bitcoin.sentences[1].text == "12 news articles in the last 24 hours."
+    assert [s.section for s in bitcoin.sentences[:2]] == ["price", "news"]
+    assert portfolio.sentences[1].text == (
+        "Cash over your plan to put in: US stocks $49.20, Gold $36.10."
+    )
+    assert portfolio.sentences[1].section == "todo"
+    # Every number is still one the payload holds, and the wording rules still hold.
+    assert bitcoin.writer == portfolio.writer == "template"
+    assert not grounding.ungrounded(bitcoin.text, moved)
+    assert not grounding.ungrounded(portfolio.text, account)
+    everything = (bitcoin.text + " " + portfolio.text).lower()
+    assert not any(word in everything for word in writer.BANNED)
+
+
+def test_a_flat_price_and_a_matched_plan_are_said_plainly() -> None:
+    from radar.brief.payload import TodayFacts
+
+    flat = BITCOIN.model_copy(update={"today": TodayFacts(price=64850.0, change_percent=0.0)})
+    matched = PORTFOLIO.model_copy(update={"has_plan": True})
+    bitcoin, portfolio = writer.write(Payload(day="2026-10-07", assets=[flat], portfolio=matched))
+    assert bitcoin.sentences[0].text == "Bitcoin: $64,850 now, unchanged since the last close."
+    assert bitcoin.sentences[1].section == "state"  # no news count when there is none
+    assert portfolio.sentences[1].text == "Nothing to do: your account matches your plan."

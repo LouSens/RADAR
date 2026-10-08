@@ -10,7 +10,9 @@ from typing import Literal
 from pydantic import BaseModel
 
 # Where a sentence's evidence lives on the screen: a tab of a market or portfolio page.
-Section = Literal["state", "outlook", "swings", "risk", "signals", "portfolio", "target"]
+Section = Literal[
+    "price", "news", "state", "outlook", "swings", "risk", "signals", "portfolio", "target", "todo"
+]
 
 
 class StateFacts(BaseModel):
@@ -54,9 +56,20 @@ class SignalFacts(BaseModel):
     size_verdict: str
 
 
+class TodayFacts(BaseModel):
+    """Where the price is now against the last daily close."""
+
+    price: float
+    change_percent: float
+    # Articles about the market in the last 24 hours, where its news is followed.
+    articles: int | None = None
+    articles_hours: int = 24
+
+
 class AssetFacts(BaseModel):
     symbol: str
     name: str
+    today: TodayFacts | None = None
     state: StateFacts | None = None
     outlook: OutlookFacts | None = None
     swings: SwingsFacts | None = None
@@ -81,6 +94,11 @@ class PortfolioFacts(BaseModel):
     # Where it stands against the user's target: plain descriptions, already worded.
     target: str | None = None
     off_target: list[str] = []
+    # What there is to do with cash over the plan, already worded ("US stocks $49.20"),
+    # and whether there is a plan to measure against at all.
+    has_plan: bool = False
+    to_buy: list[str] = []
+    to_trim: list[str] = []
 
 
 class Payload(BaseModel):

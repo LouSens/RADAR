@@ -3969,13 +3969,16 @@
         "properties": {
           "section": {
             "enum": [
+              "price",
+              "news",
               "state",
               "outlook",
               "swings",
               "risk",
               "signals",
               "portfolio",
-              "target"
+              "target",
+              "todo"
             ],
             "title": "Section",
             "type": "string"
