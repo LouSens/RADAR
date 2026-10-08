@@ -1,9 +1,9 @@
-import { DOCKS } from "./Beat";
+import { Asked, QUESTION_FOOT, QUESTION_TOP, pullsBack } from "./Chain";
 import { HANDOVER } from "./DeskLayer";
 import fall from "./fixtures/fall.json";
 import * as Cal from "./shots/Calendar";
 import { SHRINKS } from "./shots/Meet";
-import { WORDS } from "./shots/Question";
+import { CLEARS, WORDS } from "./shots/Question";
 import { C } from "./theme";
 import { COPY, shot } from "./timing";
 import { Ask } from "./Type";
@@ -17,24 +17,28 @@ const at = {
   risk: shot("risk").from,
   plan: shot("plan").from,
   calendar: shot("calendar").from,
-  both: shot("both").from,
 };
 
 /** The day's fall as the film says it: one decimal, from the market's own figure. */
 const FELL = Math.abs(fall.move * 100).toFixed(1);
+/** A question has left by the time its answer pulls back into its card. */
+const leaves = (id: Parameters<typeof pullsBack>[0]): number =>
+  pullsBack(id)[0] - 8;
 
-/** Shot 1's words. They are swept away with its picture. */
+/** Shot 1's words. They leave for the coin to stand alone. */
 export const Opening: React.FC = () => (
   <>
     <Ask
       lines={[COPY.question.fell.replace("{fall}", FELL)]}
       at={at.question + 6}
+      out={at.question + CLEARS}
       accent={C.alert}
       middle={210}
     />
     <Ask
       lines={[COPY.question.what]}
       at={at.question + WORDS[0]}
+      out={at.question + CLEARS}
       // A word a beat: each one knocks the coin (shots/Question).
       wordsAt={[WORDS[0], WORDS[1], WORDS[2], WORDS[2] + 3].map(
         (w) => at.question + w,
@@ -47,54 +51,48 @@ export const Opening: React.FC = () => (
 
 /**
  * Every other word in the film before the end card, on the film's own clock. A question
- * arrives on its shot's first beat, docks as its answer opens, and leaves, upwards, as
- * the next one arrives.
+ * rises in the space beside its answer, above it or below it by turns, stands still,
+ * and has left by the time its answer pulls back to be proved, so nothing crosses it.
  */
 export const Questions: React.FC = () => (
   <>
     <Ask
       lines={[COPY.meet]}
-      at={at.meet + 12}
+      at={at.meet + 22}
       out={at.meet + SHRINKS - 2}
       middle={850}
     />
-    <Ask
-      lines={[COPY.why]}
-      at={at.why}
-      dock={at.why + DOCKS}
-      out={at.level - 8}
+    <Asked line={COPY.why} at={at.why} out={leaves("why")} top={QUESTION_TOP} />
+    <Asked
+      line={COPY.level}
+      at={at.level + 6}
+      out={leaves("level")}
+      top={QUESTION_FOOT}
     />
-    <Ask
-      lines={[COPY.level]}
-      // On one line, so that docked it stays inside the top of the frame.
-      size={132}
-      at={at.level}
-      dock={at.level + DOCKS}
-      out={at.range - 8}
+    <Asked
+      line={COPY.range}
+      at={at.range + 8}
+      out={leaves("range")}
+      top={QUESTION_TOP}
     />
-    <Ask
-      lines={[COPY.range]}
-      at={at.range}
-      dock={at.range + DOCKS}
-      out={at.risk - 8}
+    <Asked
+      line={COPY.risk}
+      // Once the outcomes of shot 5 have left the foot of the frame.
+      at={at.risk + 12}
+      out={leaves("risk")}
+      top={QUESTION_FOOT}
     />
-    <Ask
-      lines={[COPY.risk]}
-      at={at.risk}
-      dock={at.risk + DOCKS}
-      out={at.plan - 8}
+    <Asked
+      line={COPY.plan.line}
+      at={at.plan + 6}
+      out={leaves("plan")}
+      top={QUESTION_TOP}
     />
-    <Ask
-      lines={[COPY.plan.line]}
-      at={at.plan}
-      dock={at.plan + DOCKS}
-      out={at.calendar - 8}
-    />
-    <Ask
-      lines={[COPY.calendar]}
-      at={at.calendar}
-      dock={at.calendar + Cal.DOCKS}
-      out={at.both - 6}
+    <Asked
+      line={COPY.calendar}
+      at={at.calendar + 3}
+      out={at.calendar + Cal.FLIES - 6}
+      top={QUESTION_FOOT}
     />
     <Ask
       lines={["On your desk.", "On your *phone.*"]}

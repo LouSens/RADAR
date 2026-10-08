@@ -335,17 +335,16 @@ def thunk():
     save("thunk", (body + snap) * edges(t, 0.001, 0.08), peak=0.55)
 
 
-def ping():
-    """The radar's ping: one clear note, and a tail that shimmers as it dies away."""
-    t = seconds(1.4)
-    note = tone(np.full_like(t, 1320)) * fall(t, 0.22)
-    shimmer = 1 + 0.5 * np.sin(2 * np.pi * 7 * t)
-    tail = (tone(np.full_like(t, 1980)) + 0.6 * tone(np.full_like(t, 2643))) * shimmer
-    tail = 0.3 * tail * fall(t, 0.4)
-    body = (note + tail) * edges(t, 0.004, 0.4)
-    # The tail wanders a little between the two sides.
-    lean = 0.5 + 0.2 * np.sin(2 * np.pi * 1.5 * t)
-    save("ping", body * (1.2 - lean), body * (0.2 + lean), peak=0.4)
+def lock():
+    """The corners closing on an answer: a short, soft tick, and a softer one just after
+    it as they come to rest."""
+    t = seconds(0.14)
+    first = tone(glide(t, 1900, 1300, 0.5)) * fall(t, 0.013)
+    first = first + 0.3 * noise(0.14, 2500, 7000, 41) * fall(t, 0.004)
+    late = int(RATE * 0.045)
+    second = np.zeros_like(first)
+    second[late:] = 0.5 * (tone(glide(t, 1500, 1100, 0.5)) * fall(t, 0.016))[:-late]
+    save("lock", (first + second) * edges(t, 0.0008, 0.03), peak=0.35)
 
 
 def dive():
@@ -380,7 +379,7 @@ if __name__ == "__main__":
         slide,
         flap,
         thunk,
-        ping,
+        lock,
         dive,
     ):
         make()

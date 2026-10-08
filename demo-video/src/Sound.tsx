@@ -1,18 +1,18 @@
 import { Html5Audio, Sequence, staticFile } from "remotion";
+import { comesForward, PROVED, pullsBack } from "./Chain";
 import {
   ALIVE,
+  COLLAPSES,
   HANDOVER,
   LANDED,
-  LIFTS,
-  OPENINGS,
   RESOLVES,
   SETS_OFF,
-  COLLAPSES,
 } from "./DeskLayer";
-import * as Phone from "./shots/Both";
+import { SLIDES } from "./Devices";
 import * as Cal from "./shots/Calendar";
 import { MARK } from "./shots/Close";
 import * as Level from "./shots/Level";
+import * as Mark from "./shots/Meet";
 import * as Plan from "./shots/Plan";
 import * as Coin from "./shots/Question";
 import * as Far from "./shots/Range";
@@ -52,14 +52,14 @@ const LENGTH: Readonly<Record<string, number>> = {
   slide: 0.35,
   flap: 0.7,
   thunk: 0.3,
-  ping: 1.4,
+  lock: 0.14,
   dive: 0.6,
 };
 
 /**
  * How loud each kind of sound is in the film, from 0 to 1. This is the mix. With each
  * file's own peak (sound/make_sfx.py), the hits sit near -6 dB of full scale and the
- * pings near -16.
+ * lock's tick near -14.
  */
 const LEVEL: Readonly<Record<string, number>> = {
   room: 0.04,
@@ -84,7 +84,7 @@ const LEVEL: Readonly<Record<string, number>> = {
   slide: 0.6,
   flap: 0.6,
   thunk: 0.85,
-  ping: 0.4,
+  lock: 0.55,
   dive: 0.55,
 };
 
@@ -101,34 +101,37 @@ const at = (id: ShotId): number => shot(id).from;
 const question = at("question");
 const meet = at("meet");
 
-/** The questions that are answered out of a card, and when each one's card opens. */
-const ANSWERED: readonly ShotId[] = [
-  "why",
-  "level",
-  "range",
-  "risk",
-  "plan",
-  "calendar",
+/** The answers, and how early the change into each one starts. */
+const TURNS_INTO: readonly (readonly [ShotId, number])[] = [
+  ["why", Why.LEAD],
+  ["level", 0],
+  ["range", 0],
+  ["risk", 0],
+  ["plan", 0],
+  ["calendar", 0],
 ];
 
 const CUES: readonly Cue[] = [
   // Shot 1: the coin spinning, going over and rattling round its rim; its landing; a
-  // knock from each of the three words; and its roll out of the frame. Under it,
-  // quietly, a tick on each new price.
+  // knock from each of the three words; its flick back up on to its rim and its spin
+  // round to face us. Under it, quietly, a tick on each new price.
   { file: "spin", at: question },
   { file: "topple", at: question + Coin.TOPPLE + 4 },
   { file: "clink", at: question + Coin.LANDS },
   ...Coin.WORDS.map((w) => ({ file: "clink", at: question + w, level: 0.4 })),
-  { file: "roll", at: question + Coin.EXIT + 2 },
+  { file: "flip", at: question + Coin.EXIT - 1 },
+  { file: "spin", at: question + Coin.EXIT + 1, level: 0.5 },
   ...Array.from({ length: Coin.HOURS - 1 }, (_, i) => ({
     file: `tick-${i % 5}`,
     at: question + (i + 1) * Coin.TICK,
-  })).filter((cue) => cue.at < question + Coin.EXIT),
+  })),
 
-  // Shot 2: the radar's line; the mark drawing; its flight to the sidebar and its
-  // landing there; and each card's content arriving.
-  { file: "sweep", at: meet },
-  { file: "shimmer", at: meet + 8 },
+  // Shot 2: the coin turning into the mark; the radar's line inside the ring; the dot
+  // landing; the mark's flight to the sidebar and its landing there; and each card's
+  // content arriving.
+  { file: "shimmer", at: meet - 4 },
+  { file: "sweep", at: meet + Mark.TURNS[0], level: 0.4 },
+  { file: "pop-1", at: meet + Mark.DOT },
   { file: "dive", at: LANDED - 18 },
   { file: "thunk", at: LANDED - 1 },
   ...RESOLVES.map((frame, i) => ({
@@ -138,79 +141,78 @@ const CUES: readonly Cue[] = [
   })),
   { file: "rise", at: ALIVE },
 
-  // Every answered question: its card lifting, a soft click as it is pressed and
-  // opens out, and the answer going back into its card as the next question arrives.
-  ...LIFTS.map((frame, i) => ({
-    file: `glass-${i % 3}`,
-    at: frame,
-    level: 0.3,
-  })),
-  ...OPENINGS.map((frame, i) => ({ file: `click-${i % 3}`, at: frame - 1 })),
-  ...OPENINGS.map((frame) => ({ file: "dive", at: frame })),
-  ...ANSWERED.map((id) => ({
-    file: "flip",
-    at: at(id) + shot(id).duration - 4,
+  // Every change of one answer into the next: a soft rush of air.
+  ...TURNS_INTO.map(([id, lead]) => ({
+    file: "whoosh",
+    at: at(id) - lead - 1,
     level: 0.4,
   })),
+  // Every proof: the camera pulling back, and the answer settling into its card.
+  ...PROVED.flatMap((id) => [
+    { file: "dive", at: pullsBack(id)[0], level: 0.4 },
+    {
+      file: `glass-${PROVED.indexOf(id) % 3}`,
+      at: pullsBack(id)[1],
+      level: 0.3,
+    },
+    { file: "dive", at: comesForward(id)[0], level: 0.3 },
+  ]),
 
-  // Shot 3: the days growing, the crosshair's slide, the push in, the day's bar
-  // dropping, its figures popping up, the ring, and the card arriving.
+  // Shot 3: the days growing, the crosshair's slide, the day's bar dropping, its
+  // figures popping up, and the lock on them.
   { file: "bars", at: at("why") + Why.BARS },
   { file: "slide", at: at("why") + Why.CROSS[0] + 2 },
-  { file: "whoosh", at: at("why") + Why.PUSH[0] - 4, level: 0.45 },
   { file: "hit", at: at("why") + Why.DROP + 2 },
   { file: "pop-1", at: at("why") + Why.TIP },
-  { file: "ping", at: at("why") + Why.PINGED },
-  { file: "glass-1", at: at("why") + Why.FRAMED + 8, level: 0.35 },
+  { file: "lock", at: at("why") + Why.LOCKED },
 
-  // Shot 4: each bead sliding to its place, and the ring.
+  // Shot 4: each bead sliding to its place, and the lock.
   ...[0, 1, 2, 3, 4].map((i) => ({
     file: "slide",
     at: at("level") + Level.BEADS + i * Level.EVERY,
   })),
-  { file: "glass-2", at: at("level") + Level.FRAMED + 10, level: 0.35 },
-  { file: "ping", at: at("level") + Level.PINGED },
+  { file: "lock", at: at("level") + Level.LOCKED },
 
-  // Shot 5: the cut opening, the two figures counting, the outcomes growing, the badge,
-  // and the ring on the range.
+  // Shot 5: the beads meeting, the cut opening, the two figures counting, the outcomes
+  // growing, and the lock on the range.
+  { file: "pop-2", at: at("range") + 9 },
   { file: "shink", at: at("range") + Far.OPEN[0] },
   { file: "roll", at: at("range") + Far.OPEN[0] + 12 },
   { file: "bars", at: at("range") + Far.RISE },
-  { file: "pop-0", at: at("range") + Far.FRAMED + 10 },
-  { file: "ping", at: at("range") + Far.PINGED },
+  { file: "lock", at: at("range") + Far.LOCKED },
 
-  // Shot 6: the money ring and the count to it, each row, the risk ring and the count
-  // on, Bitcoin's piece swelling, and the ring on its row.
-  { file: "roll", at: at("risk") + Mix.MONEY[0] },
-  ...[0, 1, 2, 3].map((i) => ({
-    file: `pop-${i % 3}`,
-    at: at("risk") + Mix.ROWS + i * Mix.EVERY,
-    level: 0.3,
-  })),
-  { file: "roll", at: at("risk") + Mix.RISK[0] },
-  { file: "hit", at: at("risk") + Mix.SWELL + 2 },
-  { file: "ping", at: at("risk") + Mix.PINGED },
+  // Shot 6: the bar filling, the same bar weighed again and its figures rolling, and
+  // the lock on Bitcoin's share.
+  { file: "slide", at: at("risk") + Mix.FILL[0] },
+  { file: "roll", at: at("risk") + Mix.REWEIGH - 1 },
+  { file: "hit", at: at("risk") + Mix.REWEIGH + 4, level: 0.5 },
+  { file: "lock", at: at("risk") + Mix.LOCKED },
 
-  // Shot 7: the bar reshaping, each coin landing on its price, and the ring.
+  // Shot 7: the bar reshaping, the ladder's line running out, each coin landing on its
+  // price, and the lock.
   { file: "slide", at: at("plan") + Plan.RESHAPE[0] },
+  { file: "slide", at: at("plan") + Plan.RUNS[0] },
   ...Plan.LANDS.map((frame, i) => ({
     file: `chip-${i}`,
     at: at("plan") + frame,
   })),
-  { file: "ping", at: at("plan") + Plan.PINGED },
+  { file: "lock", at: at("plan") + Plan.LOCKED },
 
-  // Shot 8: the rows, the count of days rolling down, and the ring.
+  // Shot 8: the rows, the count of days rolling down, the lock, and the rows flying to
+  // their places on Home.
   ...[0, 1, 2, 3].map((i) => ({
     file: `pop-${i % 3}`,
     at: at("calendar") + Cal.ROWS + i * Cal.EVERY,
     level: 0.3,
   })),
   { file: "flap", at: at("calendar") + Cal.ROLL[0] },
-  { file: "ping", at: at("calendar") + Cal.PINGED },
+  { file: "lock", at: at("calendar") + Cal.LOCKED },
+  { file: "dive", at: at("calendar") + Cal.FLIES, level: 0.4 },
+  { file: "thunk", at: at("calendar") + Cal.LANDED - 1, level: 0.5 },
 
   // Shot 9: the phone coming up, the sidebar becoming the capsule, each card arriving
   // on the screen, and the phone's own screen taking over.
-  { file: "dive", at: at("both") + Phone.SLIDES[0] },
+  { file: "dive", at: at("both") + SLIDES[0] },
   { file: "whoosh", at: COLLAPSES[0], level: 0.4 },
   ...(["worth", "todo", "btc", "gold", "stock"] as const).map((piece, i) => ({
     file: `pop-${i % 3}`,
@@ -236,7 +238,7 @@ export const Sound: React.FC = () => (
         />
       </Sequence>
     )}
-    {CUES.map((cue) => {
+    {CUES.map((cue, i) => {
       const level = cue.level ?? LEVEL[kind(cue.file)];
       const frames = Math.ceil(LENGTH[kind(cue.file)] * FPS) + 1;
       const from = Math.round(cue.at);
@@ -245,7 +247,7 @@ export const Sound: React.FC = () => (
       }
       return (
         <Sequence
-          key={`${cue.file}-${from}`}
+          key={`${cue.file}-${from}-${i}`}
           from={from}
           durationInFrames={Math.min(frames, TOTAL - from)}
           layout="none"

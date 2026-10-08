@@ -1,21 +1,25 @@
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { ASKED, AREA, Answer, ZOOM } from "../Beat";
+import { AbsoluteFill, interpolateColors, useCurrentFrame } from "remotion";
+import { Lock, Pulled, Smear, filmFrame, rate } from "../Chain";
 import film from "../fixtures/film.json";
 import { C, fade } from "../theme";
 import { EASE_IN_OUT, shot, tween } from "../timing";
-import { AT } from "../ui/Desk";
 import { base, num } from "../ui/kit";
-import { Ping, Pop, pop, settle } from "../ui/motion";
+import { Pop, pop, settle } from "../ui/motion";
 
 const days = film.moves.days;
 const worst = days[days.length - 1];
+const week = film.markets[0].weekCloses.filter((_, i) => i % 2 === 0);
 
-// The chart, in the app's pixels inside the answer's frame (832 by 388).
-const LEFT = 44;
-const RIGHT = 788;
-const MIDDLE = 236;
-const HALF = 118;
+/** This shot starts early: its first frames are the push into Home's Bitcoin card. */
+export const LEAD = 14;
+
+// The chart, in the frame's own pixels, under its question.
+export const LEFT = 128;
+export const RIGHT = 1792;
+export const MIDDLE = 590;
+const HALF = 270;
 const SLOT = (RIGHT - LEFT) / days.length;
+const WIDE = 34;
 const usual = (d: (typeof days)[number]): number =>
   d.timesUsual ? Math.abs(d.move) / d.timesUsual : 0;
 const MOST = Math.max(...days.map((d) => Math.max(Math.abs(d.move), usual(d))));
@@ -23,23 +27,38 @@ const y = (move: number): number => MIDDLE - (move / MOST) * HALF;
 const x = (i: number): number => LEFT + (i + 0.5) * SLOT;
 const last = days.length - 1;
 
-/** When the band of a usual day is laid in, and when the first bar grows. */
-export const BAND = ASKED + 2;
-export const BARS = ASKED + 5;
-/** The crosshair's slide along the days, to the day of the fall. */
-export const CROSS = [ASKED + 24, ASKED + 36] as const;
-/** The push in on that day's bar, as the crosshair reaches it. */
-export const PUSH = [CROSS[1] - 6, CROSS[1] + 6] as const;
-/** When that day's bar drops, and when its figures pop up. */
-export const DROP = CROSS[1] + 2;
-export const TIP = DROP + 4;
-export const PINGED = TIP + 6;
-/** When the picture pulls back out and the card draws itself round the chart. */
-export const FRAMED = PINGED + 8;
+/**
+ * The week's line in Home's Bitcoin card, in the frame (ui/Desk and ui/kit put it
+ * there), and the push that makes it as wide as the chart. Home is pushed by the same
+ * move (DeskLayer), so the line never leaves its place on the card.
+ */
+const SPARK = { x: 415, y: 680, w: 429, h: 59 } as const;
+const CLOSE = (RIGHT - LEFT) / SPARK.w;
+const FROM = { x: SPARK.x + SPARK.w / 2, y: SPARK.y + SPARK.h / 2 } as const;
+export const pushAt = (film: number): { k: number; x: number; y: number } => {
+  const at = shot("why").from;
+  const t = tween(film, at - LEAD, at, 0, 1, EASE_IN_OUT);
+  const k = 1 + (CLOSE - 1) * t;
+  return {
+    k,
+    x: FROM.x + ((LEFT + RIGHT) / 2 - FROM.x) * t,
+    y: FROM.y + (MIDDLE - FROM.y) * t,
+  };
+};
+/** The point of Home the push holds on to. */
+export const PUSHED_FROM = FROM;
 
-/** How close the push comes, and where it puts the day's bar in the answer's frame. */
-const CLOSE = 4.2;
-const BAR_AT = { x: 610, y: 150 } as const;
+/** When the line has fallen flat and is the chart's own line. */
+const FLAT = [0, 9] as const;
+/** When the first bar grows, and the band of a usual day is laid in. */
+export const BARS = 5;
+const BAND = 6;
+/** The crosshair's slide along the days, to the day of the fall. */
+export const CROSS = [28, 40] as const;
+/** When that day's bar drops, when its figures pop up, and when they are marked. */
+export const DROP = CROSS[1];
+export const TIP = DROP + 4;
+export const LOCKED = TIP + 6;
 
 const short = (iso: string): string =>
   new Date(iso).toLocaleDateString("en-GB", {
@@ -49,9 +68,7 @@ const short = (iso: string): string =>
   });
 const percent = (move: number): string =>
   `${move < 0 ? "−" : "+"}${Math.abs(move * 100).toFixed(2)}%`;
-const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-/** The pale band: the size of a usual day, above and below the line, day by day. */
 const band = (): string => {
   const top = days.map(
     (d, i) => `${x(i).toFixed(1)},${y(usual(d)).toFixed(1)}`,
@@ -63,232 +80,273 @@ const band = (): string => {
 };
 
 /**
- * Shot 3. Bitcoin's last thirty days as bars about a line, at their true scale, with a
- * pale band for the size of a usual day. A crosshair slides to the day it fell and the
- * picture pushes in on that day: its bar drops out of the band in red, and its figures
- * pop up beside it. Then the picture pulls back and the app's own card draws itself
- * round the chart. Figures: the app's "why it moved" data for Bitcoin
- * (fixtures/film.json).
+ * The thirty days: a bar a day about a line, at their true scale, in the app's green
+ * and red, with a pale band for the size of a usual day. The next shot draws them too,
+ * to flatten them.
+ */
+export const Chart: React.FC<{
+  /** How far each day's bar has grown. */
+  readonly grown: (i: number) => number;
+  /** How far the band has been laid in, and how strongly it and the labels show. */
+  readonly laid: number;
+  readonly notes: number;
+  /** The day the crosshair is on, if it is on one. */
+  readonly under?: number;
+  /** How thick the line is, and its colour. */
+  readonly line?: number;
+  readonly colour?: string;
+}> = ({
+  grown,
+  laid,
+  notes,
+  under,
+  line = 4,
+  colour = "rgba(255,255,255,0.3)",
+}) => (
+  <>
+    <svg
+      width={1920}
+      height={1080}
+      style={{ position: "absolute", left: 0, top: 0 }}
+    >
+      <defs>
+        <clipPath id="why-band">
+          <rect x={LEFT} y={0} width={(RIGHT - LEFT) * laid} height={1080} />
+        </clipPath>
+      </defs>
+      <polygon
+        points={band()}
+        fill={fade(C.ink, 0.09)}
+        stroke={fade(C.ink, 0.22)}
+        strokeWidth={2}
+        clipPath="url(#why-band)"
+        opacity={notes}
+      />
+      <line
+        x1={LEFT}
+        x2={RIGHT}
+        y1={MIDDLE}
+        y2={MIDDLE}
+        stroke={colour}
+        strokeWidth={line}
+        strokeLinecap="round"
+      />
+      {days.map((d, i) => {
+        const fell = i === last;
+        const tall = Math.max(Math.abs(y(d.move) - MIDDLE) * grown(i), 0);
+        const tint = d.move < 0 ? C.alert : C.calm;
+        return (
+          <rect
+            key={d.day}
+            x={x(i) - WIDE / 2}
+            width={WIDE}
+            y={d.move < 0 ? MIDDLE : MIDDLE - tall}
+            height={tall}
+            rx={Math.min(7, tall / 2)}
+            fill={fell || i === under ? tint : fade(tint, 0.7)}
+          />
+        );
+      })}
+    </svg>
+    <span
+      style={{
+        ...base,
+        position: "absolute",
+        left: LEFT,
+        top: y(usual(days[0])) - 58,
+        fontSize: 34,
+        color: C.muted,
+        opacity: laid * notes,
+      }}
+    >
+      A usual day
+    </span>
+    {[0, Math.floor(last / 2), last].map((i) => (
+      <span
+        key={i}
+        style={{
+          ...base,
+          ...num,
+          position: "absolute",
+          left: x(i),
+          top: MIDDLE + HALF + 20,
+          translate: i === last ? "-100% 0" : i === 0 ? "0 0" : "-50% 0",
+          fontSize: 34,
+          color: C.muted,
+          opacity: laid * notes,
+        }}
+      >
+        {short(days[i].day)}
+      </span>
+    ))}
+  </>
+);
+
+/** Where the day's figures stand: beside its bar, half way down it. */
+const TIP_AT = {
+  right: 1920 - (x(last) - WIDE / 2 - 30),
+  y: (MIDDLE + y(worst.move)) / 2,
+} as const;
+
+/** The day's fall, and how large it was against a usual day. */
+export const Tip: React.FC<{
+  readonly by: number;
+  readonly children?: React.ReactNode;
+}> = ({ by, children }) => (
+  <Pop
+    by={by}
+    origin="100% 50%"
+    style={{
+      position: "absolute",
+      right: TIP_AT.right,
+      top: TIP_AT.y,
+      translate: "0 -50%",
+    }}
+  >
+    <span
+      style={{
+        ...base,
+        ...num,
+        position: "relative",
+        padding: "14px 28px",
+        borderRadius: 22,
+        background: "#1d2029",
+        border: `2px solid ${fade(C.alert, 0.6)}`,
+        boxShadow: "0 18px 44px rgba(0,0,0,0.55)",
+        fontSize: 46,
+        fontWeight: 600,
+        lineHeight: 1.3,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ color: C.alert }}>{percent(worst.move)}</span>
+      <span style={{ color: C.faint }}> · </span>
+      {(worst.timesUsual ?? 0).toFixed(1)}× a usual day
+      {children}
+    </span>
+  </Pop>
+);
+
+/**
+ * Shot 3. The camera pushes into Home's Bitcoin card and the week's line there is
+ * stretched to the width of the frame, falls flat, and thirty days grow about it as
+ * bars, at their true scale. A crosshair slides to the day it fell: its bar drops in
+ * red, and its figures pop up beside it and are marked. Figures: the app's "why it
+ * moved" data for Bitcoin (fixtures/film.json).
  */
 export const Why: React.FC = () => {
-  const frame = useCurrentFrame();
-  const duration = shot("why").duration;
+  const frame = useCurrentFrame() - LEAD;
+  const at = filmFrame("why", frame);
+  const out = shot("why").duration - 5;
+
+  const push = pushAt(at);
+  const box = {
+    x: push.x - (SPARK.w * push.k) / 2,
+    y: push.y - (SPARK.h * push.k) / 2,
+    w: SPARK.w * push.k,
+    h: SPARK.h * push.k,
+  };
+  const flat = tween(frame, FLAT[0], FLAT[1], 0, 1, EASE_IN_OUT);
+  const low = Math.min(...week);
+  const high = Math.max(...week);
+  const path = week
+    .map((value, i) => {
+      const px = box.x + (i / (week.length - 1)) * box.w;
+      const py = box.y + box.h - ((value - low) / (high - low)) * box.h;
+      return `${i === 0 ? "M" : "L"}${px.toFixed(1)} ${(py + (MIDDLE - py) * flat).toFixed(1)}`;
+    })
+    .join(" ");
+
   const laid = tween(frame, BAND, BAND + 12, 0, 1, EASE_IN_OUT);
   const slide = tween(frame, CROSS[0], CROSS[1], 0, 1, EASE_IN_OUT);
+  const sliding = slide > 0 && slide < 1;
   const under = Math.round(slide * last);
   const crossX = LEFT + (0.5 + slide * last) * SLOT;
-  const tip = pop(frame, TIP);
-  // In on the day, and back out as the card arrives.
-  const pushed =
-    tween(frame, PUSH[0], PUSH[1], 0, 1, EASE_IN_OUT) *
-    (1 - tween(frame, FRAMED - 2, FRAMED + 12, 0, 1, EASE_IN_OUT));
-  const zoom = mix(1, CLOSE, pushed);
-  // The day's bar is the fixed point of the push, and is carried towards its place.
-  const barX = mix(x(last), BAR_AT.x, pushed);
-  const barY = mix(MIDDLE, BAR_AT.y, pushed);
-  const foot = barY + (y(worst.move) - MIDDLE) * zoom;
-  const dropped = settle(frame, DROP, 11);
 
   return (
-    <AbsoluteFill>
-      <Answer
-        duration={duration}
-        from={AT.btc}
-        framed={FRAMED}
-        title="Why it moved"
-        headline={`Down ${Math.abs(worst.move * 100).toFixed(2)}% on ${short(worst.day)}: larger than ${Math.round((worst.rank ?? 0) * 100)} of 100 days before it`}
-        badge={film.moves.trust}
-      >
-        {/* The chart is cut to the answer's frame, so the push never leaves it. */}
+    <Pulled film={at}>
+      {frame >= FLAT[1] ? (
+        <Chart
+          grown={(i) =>
+            i === last
+              ? settle(frame, DROP, 11)
+              : settle(frame, BARS + i * 0.5, 14)
+          }
+          laid={laid}
+          notes={1}
+          under={sliding ? under : undefined}
+        />
+      ) : (
+        <>
+          <Smear y={rate(frame, FLAT[0], FLAT[1]) * box.h}>
+            <svg width={1920} height={1080}>
+              <path
+                d={path}
+                fill="none"
+                stroke={interpolateColors(
+                  flat,
+                  [0, 1],
+                  [C.btc, "rgba(255,255,255,0.3)"],
+                )}
+                strokeWidth={2.2 + 3.8 * tween(frame, -LEAD, 0) - 2 * flat}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                opacity={tween(frame, -LEAD, -LEAD + 3, 0, 1, (t) => t)}
+              />
+            </svg>
+          </Smear>
+          <AbsoluteFill>
+            <Chart
+              grown={(i) =>
+                i === last ? 0 : settle(frame, BARS + i * 0.5, 14)
+              }
+              laid={laid}
+              notes={1}
+              line={0}
+            />
+          </AbsoluteFill>
+        </>
+      )}
+
+      {/* The crosshair, and what it is on while it slides. */}
+      {slide > 0 && frame < out + 6 && (
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            overflow: "hidden",
-            borderRadius: 20,
+            left: crossX - 1.5,
+            top: MIDDLE - HALF - 10,
+            width: 3,
+            height: HALF * 2 + 20,
+            backgroundImage: `linear-gradient(${fade(C.ink, 0.7)} 55%, transparent 55%)`,
+            backgroundSize: "3px 14px",
+            opacity: 1 - tween(frame, TIP, TIP + 8, 0, 0.6, (t) => t),
           }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              transformOrigin: `${x(last)}px ${MIDDLE}px`,
-              transform: `translate(${barX - x(last)}px, ${barY - MIDDLE}px) scale(${zoom})`,
-            }}
-          >
-            {frame >= BAND && (
-              <svg
-                width={832}
-                height={388}
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  overflow: "visible",
-                }}
-              >
-                <defs>
-                  <clipPath id="why-band">
-                    <rect
-                      x={LEFT}
-                      y={0}
-                      width={(RIGHT - LEFT) * laid}
-                      height={388}
-                    />
-                  </clipPath>
-                </defs>
-                <polygon
-                  points={band()}
-                  fill={fade(C.ink, 0.07)}
-                  stroke={fade(C.ink, 0.16)}
-                  strokeWidth={0.75}
-                  vectorEffect="non-scaling-stroke"
-                  clipPath="url(#why-band)"
-                />
-                <line
-                  x1={LEFT}
-                  x2={LEFT + (RIGHT - LEFT) * laid}
-                  y1={MIDDLE}
-                  y2={MIDDLE}
-                  stroke={C.lineStrong}
-                  strokeWidth={1}
-                  vectorEffect="non-scaling-stroke"
-                />
-                {days.map((d, i) => {
-                  const fell = i === last;
-                  // The days grow one after another; the day of the fall waits for the
-                  // crosshair, then drops.
-                  const grown = fell
-                    ? dropped
-                    : settle(frame, BARS + i * 0.6, 14);
-                  const tall = Math.abs(y(d.move) - MIDDLE) * grown;
-                  const quiet =
-                    d.move < 0 ? fade(C.alert, 0.5) : fade(C.calm, 0.5);
-                  const lit = d.move < 0 ? C.alert : C.calm;
-                  return (
-                    <rect
-                      key={d.day}
-                      x={x(i) - SLOT * 0.3}
-                      width={SLOT * 0.6}
-                      y={d.move < 0 ? MIDDLE : MIDDLE - tall}
-                      height={Math.max(tall, 0)}
-                      rx={2.5 / zoom}
-                      fill={
-                        fell || (i === under && slide > 0 && slide < 1)
-                          ? lit
-                          : quiet
-                      }
-                    />
-                  );
-                })}
-                {slide > 0 && (
-                  <line
-                    x1={crossX}
-                    x2={crossX}
-                    y1={MIDDLE - HALF - 6}
-                    y2={MIDDLE + HALF + 6}
-                    stroke={fade(C.ink, 0.5)}
-                    strokeWidth={1}
-                    strokeDasharray="3 3"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                )}
-              </svg>
-            )}
-          </div>
-        </div>
-        {/* A usual day, named once at the band's edge, and the ends of the thirty days.
-            They stand aside while the picture is pushed in. */}
+        />
+      )}
+      {sliding && (
         <span
           style={{
             ...base,
+            ...num,
             position: "absolute",
-            left: LEFT,
-            top: y(usual(days[0])) - 22,
-            fontSize: 11,
-            color: C.faint,
-            opacity: laid * (1 - Math.min(pushed * 3, 1)),
+            left: Math.min(Math.max(crossX, LEFT + 150), RIGHT - 150),
+            top: MIDDLE - HALF - 76,
+            translate: "-50% 0",
+            padding: "4px 18px",
+            borderRadius: 16,
+            background: "#1d2029",
+            border: `2px solid ${C.line}`,
+            fontSize: 34,
+            lineHeight: 1.4,
+            whiteSpace: "nowrap",
           }}
         >
-          A usual day
+          {short(days[under].day)} · {percent(days[under].move)}
         </span>
-        {[0, Math.floor(last / 2), last].map((i) => (
-          <span
-            key={i}
-            style={{
-              ...base,
-              ...num,
-              position: "absolute",
-              left: x(i),
-              top: MIDDLE + HALF + 10,
-              translate: i === last ? "-100% 0" : i === 0 ? "0 0" : "-50% 0",
-              fontSize: 11,
-              color: C.faint,
-              opacity: laid * (1 - Math.min(pushed * 3, 1)),
-            }}
-          >
-            {short(days[i].day)}
-          </span>
-        ))}
-        {/* What the crosshair is on, while it slides. */}
-        {slide > 0 && slide < 1 && pushed < 0.3 && (
-          <span
-            style={{
-              ...base,
-              ...num,
-              position: "absolute",
-              left: crossX,
-              top: MIDDLE - HALF - 30,
-              translate: "-50% 0",
-              padding: "1px 8px",
-              borderRadius: 8,
-              background: "#1b1d24",
-              border: `1px solid ${C.line}`,
-              fontSize: 12,
-              whiteSpace: "nowrap",
-            }}
-          >
-            {short(days[under].day)} · {percent(days[under].move)}
-          </span>
-        )}
-        {/* Where it stops: the day's fall, and how large it was against a usual day,
-            beside the bar and large enough to read. */}
-        <Pop
-          by={tip}
-          origin="100% 50%"
-          style={{
-            position: "absolute",
-            left: barX - (SLOT * 0.3 * zoom + 14),
-            top: (barY + foot) / 2,
-            translate: "-100% -50%",
-          }}
-        >
-          <span
-            style={{
-              ...base,
-              ...num,
-              padding: `${mix(7, 12, pushed)}px ${mix(14, 22, pushed)}px`,
-              borderRadius: 14,
-              background: "#1b1d24",
-              border: `1px solid ${fade(C.alert, 0.5)}`,
-              boxShadow: "0 12px 30px rgba(0,0,0,0.5)",
-              fontSize: mix(18, 34, pushed),
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-            }}
-          >
-            <span style={{ color: C.alert }}>{percent(worst.move)}</span>
-            <span style={{ color: C.faint }}> · </span>
-            {(worst.timesUsual ?? 0).toFixed(1)}× a usual day
-          </span>
-        </Pop>
-      </Answer>
-      <Ping
-        since={frame - PINGED}
-        x={AREA.x + (barX - (SLOT * 0.3 * zoom + 14) - 250) * ZOOM}
-        y={AREA.y + ((barY + foot) / 2) * ZOOM}
-        reach={200}
-      />
-    </AbsoluteFill>
+      )}
+      <Tip by={pop(frame, TIP)}>
+        <Lock frame={frame} at={LOCKED} out={out - 1} />
+      </Tip>
+    </Pulled>
   );
 };

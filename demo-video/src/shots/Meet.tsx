@@ -7,17 +7,37 @@ import {
 import { LANDED } from "../DeskLayer";
 import { lightAt } from "../Ground";
 import { C, fade } from "../theme";
-import { Mark } from "../three/Mark";
+import { Mark, RING } from "../three/Mark";
 import { Stage, type View } from "../three/Stage";
 import { useLoaded } from "../three/assets";
-import { EASE, EASE_IN_OUT, shot, tween } from "../timing";
+import { EASE_IN_OUT, HEIGHT, shot, tween } from "../timing";
 import { AT as HOME, DESK } from "../ui/Desk";
+import { GIVES, RESTS } from "./Question";
 
-/** The mark in the middle of the frame, about 300 pixels across. */
-const camera = (): View => ({
-  position: [0.12, -0.9, 14.6],
-  target: [0.12, -0.9, 0],
+const FOV = 28;
+/** Pixels to a unit of the scene, for a camera one unit away. */
+const PER_UNIT = HEIGHT / 2 / Math.tan((FOV * Math.PI) / 360);
+/** Where the camera stands once the mark is drawn: about 300 pixels across. */
+const STANDS = { x: 0.12, y: -0.9, z: 14.6 } as const;
+
+interface Circle {
+  readonly x: number;
+  readonly y: number;
+  readonly r: number;
+}
+/** The ring in the frame for a camera, and the camera that puts the ring on a circle. */
+const ringFrom = (at: typeof STANDS): Circle => ({
+  x: 960 + ((RING.centre.x - at.x) * PER_UNIT) / at.z,
+  y: 540 - ((RING.centre.y - at.y) * PER_UNIT) / at.z,
+  r: (RING.radius * PER_UNIT) / at.z,
 });
+const cameraFor = (ring: Circle): View => {
+  const each = ring.r / RING.radius;
+  const x = RING.centre.x - (ring.x - 960) / each;
+  const y = RING.centre.y + (ring.y - 540) / each;
+  return { position: [x, y, PER_UNIT / each], target: [x, y, 0], fov: FOV };
+};
+const DRAWN_RING = ringFrom(STANDS);
 
 /**
  * The mark on screen as it is drawn: the centre and width of the square the app's logo
@@ -32,12 +52,23 @@ const LOGO = {
 } as const;
 
 const meet = shot("meet").from;
+/** The ring comes back from the size of the coin to the size the mark is drawn at. */
+const SETTLES = [8, 26] as const;
+/** The radar's line, turning once inside the ring. */
+export const TURNS = [5, 19] as const;
+/** When the rising line is drawn, and when the dot lands. */
+export const LINE = [18, 30] as const;
+export const DOT = 29;
 /** When the mark sets off for the sidebar. It has landed at LANDED (DeskLayer). */
 export const SHRINKS = LANDED - meet - 18;
 
+const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
+
 /**
- * Shot 2. The mark draws itself, ring then line then dot; then it shrinks and lands as
- * the logo at the top of the app's sidebar, and Home builds itself round it (DeskLayer).
+ * Shot 2. The coin's rim is the mark's ring: the ring is there where the coin stood, in
+ * the mark's colour, as the coin goes. The radar's line turns once inside it, the
+ * rising line is drawn and the dot lands. Then the mark shrinks and lands as the logo
+ * at the top of the app's sidebar, and Home builds itself round it (DeskLayer).
  */
 export const Meet: React.FC = () => {
   const frame = useCurrentFrame();
@@ -52,15 +83,18 @@ export const Meet: React.FC = () => {
     return null;
   }
 
-  const ring = tween(frame, 8, 27, 0, 1, EASE_IN_OUT);
-  const line = tween(frame, 21, 36, 0, 1, EASE_IN_OUT);
+  const settled = tween(frame, SETTLES[0], SETTLES[1], 0, 1, EASE_IN_OUT);
+  const ring: Circle = {
+    x: mix(RESTS.x, DRAWN_RING.x, settled),
+    y: mix(RESTS.y, DRAWN_RING.y, settled),
+    r: mix(RESTS.r, DRAWN_RING.r, settled),
+  };
+  const line = tween(frame, LINE[0], LINE[1], 0, 1, EASE_IN_OUT);
   const dot = spring({
-    frame: frame - 34,
+    frame: frame - DOT,
     fps,
     config: { damping: 9, mass: 0.45, stiffness: 170 },
   });
-  // The mark turns to face us as it is drawn.
-  const turned = tween(frame, 4, 40, 1, 0, EASE);
 
   // One move to the sidebar: it shrinks as it goes, and its centre goes straight there.
   const go = tween(frame, SHRINKS, LANDED - meet, 0, 1, EASE_IN_OUT);
@@ -68,25 +102,61 @@ export const Meet: React.FC = () => {
   const x = DRAWN.x + (LOGO.x - DRAWN.x) * go;
   const y = DRAWN.y + (LOGO.y - DRAWN.y) * go;
 
+  const angle = tween(frame, TURNS[0], TURNS[1], 0, 360, EASE_IN_OUT);
+  const turning =
+    tween(frame, TURNS[0] - 2, TURNS[0] + 2, 0, 1, (t) => t) *
+    (1 - tween(frame, TURNS[1] - 2, TURNS[1] + 5, 0, 1, (t) => t));
+  const trail = 90;
+  const inside = ring.r * 0.97;
+
   return (
     <AbsoluteFill
       style={{
         transformOrigin: "0 0",
         transform: `translate(${x - DRAWN.x * k}px, ${y - DRAWN.y * k}px) scale(${k})`,
-        opacity: 1 - gone,
+        opacity: (1 - gone) * tween(frame, 2, GIVES, 0, 1, (t) => t),
       }}
     >
+      {/* The radar's line, once round, inside the ring and nowhere else. */}
+      {turning > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            left: ring.x - inside,
+            top: ring.y - inside,
+            width: inside * 2,
+            height: inside * 2,
+            borderRadius: "50%",
+            overflow: "hidden",
+            opacity: turning,
+            background: `conic-gradient(from ${angle - trail}deg, transparent 0deg, ${fade(C.accent, 0.04)} ${trail * 0.4}deg, ${fade(C.accent, 0.4)} ${trail}deg, transparent ${trail}deg)`,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              left: inside - 2.5,
+              top: 0,
+              width: 5,
+              height: inside,
+              transformOrigin: "50% 100%",
+              rotate: `${angle}deg`,
+              borderRadius: 3,
+              background: `linear-gradient(to top, ${C.accent}, ${fade(C.accent, 0.8)})`,
+              boxShadow: `0 0 18px 3px ${fade(C.accent, 0.65)}`,
+            }}
+          />
+        </div>
+      )}
       <Stage
         room={assets.room}
         light={lightAt(film)}
-        camera={camera}
+        camera={() => cameraFor(ring)}
         style={{
           filter: `drop-shadow(0 0 22px ${fade(C.accent, 0.42)})`,
         }}
       >
-        <group rotation={[turned * 0.3, turned * -0.75, turned * 0.08]}>
-          <Mark ring={ring} line={line} dot={dot} />
-        </group>
+        <Mark ring={1} line={line} dot={dot} />
       </Stage>
     </AbsoluteFill>
   );

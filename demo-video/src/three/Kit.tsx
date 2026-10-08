@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
   CanvasTexture,
+  Color,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
   SRGBColorSpace,
@@ -30,6 +31,8 @@ const metal = (tint: string, rough: number): MeshPhysicalMaterial =>
     envMapIntensity: 1.25,
   });
 
+const ACCENT = new Color(C.accent);
+
 const materials = (): Record<string, Material> => ({
   coin: metal(C.btc, 0.34),
   "coin relief": metal("#e2a67c", 0.2),
@@ -43,8 +46,12 @@ export const Coin: React.FC<{
   readonly kit: Object3D;
   readonly name?: string;
   readonly scale?: number;
-}> = ({ kit, name, scale }) => {
-  const object = useMemo(() => {
+  /** How far its copper has turned to the mark's colour, from 0 to 1. */
+  readonly tint?: number;
+  /** How much of the sign struck on its faces is left, from 1 to 0. */
+  readonly relief?: number;
+}> = ({ kit, name, scale, tint = 0, relief = 1 }) => {
+  const [object, mine] = useMemo(() => {
     const found = kit.getObjectByName("coin");
     if (!found) {
       throw new Error("The kit has no coin");
@@ -63,8 +70,16 @@ export const Coin: React.FC<{
     });
     // The copy gives up its name: a shot finds the group around it, once.
     copy.name = "";
-    return copy;
+    return [copy, mine] as const;
   }, [kit]);
+  const body = mine.coin as MeshPhysicalMaterial;
+  const sign = mine["coin relief"] as MeshPhysicalMaterial;
+  body.color.set(C.btc).lerp(ACCENT, tint);
+  body.emissive.set(C.accent);
+  body.emissiveIntensity = 0.5 * tint;
+  sign.color.set("#e2a67c").lerp(ACCENT, tint);
+  sign.transparent = relief < 1;
+  sign.opacity = relief;
   return (
     <group name={name} scale={scale}>
       <primitive object={object} />

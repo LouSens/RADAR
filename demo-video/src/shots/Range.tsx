@@ -1,15 +1,23 @@
-import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { ASKED, AREA, Answer, ZOOM } from "../Beat";
+import { useCurrentFrame } from "remotion";
+import {
+  BELOW_QUESTION as AREA,
+  Lock,
+  Pulled,
+  Smear,
+  filmFrame,
+  rate,
+} from "../Chain";
 import film from "../fixtures/film.json";
 import { C, fade } from "../theme";
-import { EASE, EASE_IN_OUT, shot, tween } from "../timing";
-import { AT } from "../ui/Desk";
+import { EASE, EASE_IN, EASE_IN_OUT, shot, tween } from "../timing";
 import { base, formatPrice, num } from "../ui/kit";
-import { Ping, Segmented, Ticker, settle } from "../ui/motion";
+import { Ticker, settle } from "../ui/motion";
+import { BEAD, Bead, THICK, Track, beadAt, trackY } from "./Level";
 
 const { range } = film;
 
-// The chart, in the app's pixels inside the answer's frame (832 by 388).
+/** The chart is laid out at half size and drawn at twice that, inside its zone. */
+const ZOOM = 2;
 const LEFT = 40;
 const SPAN = 752;
 const BASE = 346;
@@ -40,17 +48,20 @@ const HIGH = Math.round(range.high);
 
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
+/** When the five beads have come together, and the price has risen out of them. */
+const MEET = 10;
+const ARRIVES = [8, 16] as const;
 /** When the cut starts to open and when the two figures land. */
-export const OPEN = [ASKED + 18, ASKED + 44] as const;
-/** When the first bar starts to grow. */
-export const RISE = ASKED + 26;
-/** When the card draws itself round the chart, and when the ring spreads. */
-export const FRAMED = ASKED + 50;
-export const PINGED = ASKED + 62;
+export const OPEN = [26, 52] as const;
+/** When the first bar starts to grow, and when the range is marked. */
+export const RISE = 34;
+export const LOCKED = OPEN[1] + 8;
 
 /** How wide the price is, and one digit of it, as multiples of its size. */
 const WIDE = 3.9;
 const DIGIT = 0.62;
+/** Where each of the price's five digits is, from its middle, in its own size. */
+const DIGITS = [-1.06, -0.44, 0.42, 1.04, 1.66] as const;
 /** The clear space between the two copies, `open` of the way through the move. */
 const gapAt = (open: number): number =>
   (X_HIGH - X_LOW) * open - WIDE * mix(HERO, RESTING, open);
@@ -65,6 +76,20 @@ const CLEAR = (() => {
 })();
 /** By when each half has been made whole again, and counting starts. */
 const COUNT_FROM = Math.min(CLEAR + 0.14, 0.9);
+
+/** The outcomes as they stand at the end of the shot, in the frame's own pixels. */
+export const OUTCOMES = range.counts.map((count, i) => {
+  const mid = (range.edges[i] + range.edges[i + 1]) / 2;
+  const tall = (count / MOST) * TALL;
+  return {
+    x: AREA.x + (LEFT + i * BAR + 1) * ZOOM,
+    y: AREA.y + (BASE - tall) * ZOOM,
+    w: (BAR - 2) * ZOOM,
+    h: tall * ZOOM,
+    inside: mid >= range.low && mid <= range.high,
+  };
+});
+export const DIM = 0.38;
 
 /** One figure, centred on a point, counting as a meter does. */
 const Figure: React.FC<{
@@ -100,14 +125,17 @@ const Figure: React.FC<{
 );
 
 /**
- * Shot 5. One price is cut down the middle into the low and the high of the week's
- * range, the simulated outcomes grow between them from today's price outwards, and the
- * app's own card draws itself round the chart. Figures: the app's simulation of
- * Bitcoin's next seven days (fixtures/film.json).
+ * Shot 5. The five beads of shot 4 fly together and the price rises out of them, one
+ * bead a digit. The price is cut down the middle into the low and the high of the
+ * week's range, and the simulated outcomes grow between them from today's price
+ * outwards. Figures: the app's simulation of Bitcoin's next seven days
+ * (fixtures/film.json).
  */
 export const Range: React.FC = () => {
   const frame = useCurrentFrame();
   const duration = shot("range").duration;
+  const leaves = duration - 8;
+  const gone = tween(frame, leaves, duration, 0, 1, EASE_IN);
 
   // One move, on one curve. The price is two copies of itself lying exactly together.
   // Each copy shows only its own half, cut at its own middle: the left copy its left
@@ -128,192 +156,229 @@ export const Range: React.FC = () => {
   const leftOnly = `linear-gradient(to right, #000 ${cutLeft}px, transparent ${cutLeft}px)`;
   const rightOnly = `linear-gradient(to right, transparent ${cutRight}px, #000 ${cutRight}px)`;
   const counted = tween(open, COUNT_FROM, 1, 0, 1, (t) => t);
-  // The price rises into the frame once its question has docked above it and Home
-  // has stood back, so that it is never read against a lit card.
-  const arrived = tween(frame, ASKED + 9, ASKED + 17, 0, 1, EASE);
+  const arrived = tween(frame, ARRIVES[0], ARRIVES[1], 0, 1, EASE);
   // While the price is still large and low in the frame, no bar grows into it.
   const room = BASE - (cy + size * 0.5 + 10);
-  const guides = tween(frame, OPEN[1] - 4, OPEN[1] + 10, 0, 1, EASE);
-  const chosen = tween(frame, FRAMED + 8, FRAMED + 18, 0, 1, EASE_IN_OUT);
+  const guides =
+    tween(frame, OPEN[1] - 4, OPEN[1] + 10, 0, 1, EASE) * (1 - gone);
+  const thinned = tween(frame, 0, 6, 0, 1, EASE_IN_OUT);
 
   return (
-    <AbsoluteFill>
-      <Answer
-        duration={duration}
-        from={AT.btc}
-        framed={FRAMED}
-        title="Price range ahead"
-        badge="solid"
-        aside={
-          frame >= FRAMED + 4 ? (
-            <Segmented options={["1 day", "1 week", "1 month"]} at={chosen} />
-          ) : null
-        }
-      >
-        {/* The outcomes: bright inside the range, dim outside it, as in the app. */}
-        {frame >= RISE &&
-          range.counts.map((count, i) => {
-            const mid = (range.edges[i] + range.edges[i + 1]) / 2;
-            const inside = mid >= range.low && mid <= range.high;
-            const grown = settle(
+    <Pulled film={filmFrame("range", frame)}>
+      {/* What is left of shot 4: its bars thin away and its beads fly together. */}
+      {thinned < 1 &&
+        [0, 1, 2, 3, 4].map((i) => (
+          <Track
+            key={i}
+            y={trackY(i) + (THICK / 2) * thinned}
+            thick={THICK * (1 - thinned)}
+            opacity={1 - thinned}
+          />
+        ))}
+      {frame < MEET + 7 && (
+        <Smear x={rate(frame, 0, MEET) * 500} y={rate(frame, 0, MEET) * 300}>
+          {DIGITS.map((offset, i) => {
+            const from = beadAt(i);
+            const flown = tween(
               frame,
-              RISE + Math.abs(i - NOW_BAR) * 1.25,
-              14,
-            );
-            const height = Math.max(
-              Math.min((count / MOST) * TALL * grown, room),
+              i * 0.5,
+              MEET + i * 0.5,
               0,
+              1,
+              EASE_IN_OUT,
             );
-            // The range lights once both of its ends have landed.
-            const lit = inside
-              ? tween(frame, OPEN[1] - 6, OPEN[1] + 6, 0.45, 1)
-              : 0.28;
+            const burst = tween(frame, MEET, MEET + 6, 0, 1, EASE);
             return (
-              <div
-                key={range.edges[i]}
-                style={{
-                  position: "absolute",
-                  left: LEFT + i * BAR + 1,
-                  width: BAR - 2,
-                  top: BASE - height,
-                  height,
-                  borderRadius: "2px 2px 0 0",
-                  background: fade(C.btc, lit),
-                }}
+              <Bead
+                key={offset}
+                x={mix(
+                  from.x,
+                  AREA.x + (START.x + offset * HERO) * ZOOM,
+                  flown,
+                )}
+                y={mix(from.y, AREA.y + START.y * ZOOM, flown)}
+                size={BEAD + 30 * flown + 150 * burst}
+                opacity={1 - burst}
               />
             );
           })}
+        </Smear>
+      )}
+
+      {/* Placed first and enlarged inside: `zoom` would enlarge the placing as well. */}
+      <div style={{ position: "absolute", left: AREA.x, top: AREA.y }}>
         <div
           style={{
-            position: "absolute",
-            left: LEFT,
-            width: SPAN * tween(frame, RISE - 4, RISE + 26, 0, 1, EASE),
-            top: BASE,
-            height: 1,
-            background: C.lineStrong,
+            ...base,
+            position: "relative",
+            width: AREA.w / ZOOM,
+            height: AREA.h / ZOOM,
+            zoom: ZOOM,
           }}
-        />
-        {/* Where each end of the range falls among the outcomes. */}
-        {[X_LOW, X_HIGH].map((at) => (
+        >
+          {/* The outcomes: bright inside the range, dim outside it, as in the app. */}
+          {frame >= RISE &&
+            range.counts.map((count, i) => {
+              const grown = settle(
+                frame,
+                RISE + Math.abs(i - NOW_BAR) * 1.25,
+                14,
+              );
+              const height = Math.max(
+                Math.min((count / MOST) * TALL * grown, room),
+                0,
+              );
+              // The range lights once both of its ends have landed.
+              const lit = OUTCOMES[i].inside
+                ? tween(frame, OPEN[1] - 6, OPEN[1] + 6, 0.5, 1)
+                : DIM;
+              return (
+                <div
+                  key={range.edges[i]}
+                  style={{
+                    position: "absolute",
+                    left: LEFT + i * BAR + 1,
+                    width: BAR - 2,
+                    top: BASE - height,
+                    height,
+                    borderRadius: "2px 2px 0 0",
+                    background: fade(C.btc, lit),
+                  }}
+                />
+              );
+            })}
           <div
-            key={at}
             style={{
               position: "absolute",
-              left: at - 0.5,
-              top: ROW + 32,
-              width: 1,
-              height: (BASE - ROW - 32) * guides,
-              background: `linear-gradient(${C.ink}, ${fade(C.ink, 0.25)})`,
-              opacity: 0.7,
+              left: LEFT,
+              width: SPAN * tween(frame, RISE - 4, RISE + 26, 0, 1, EASE),
+              top: BASE,
+              height: 2,
+              background: "rgba(255,255,255,0.3)",
+              opacity: 1 - gone,
             }}
           />
-        ))}
-        {[first, last].map((edge, i) => (
+          {/* Where each end of the range falls among the outcomes. */}
+          {[X_LOW, X_HIGH].map((at) => (
+            <div
+              key={at}
+              style={{
+                position: "absolute",
+                left: at - 1,
+                top: ROW + 32,
+                width: 2,
+                height: (BASE - ROW - 32) * guides,
+                background: `linear-gradient(${C.ink}, ${fade(C.ink, 0.25)})`,
+                opacity: 0.7 * (1 - gone),
+              }}
+            />
+          ))}
+          {[first, last].map((edge, i) => (
+            <span
+              key={edge}
+              style={{
+                ...base,
+                ...num,
+                position: "absolute",
+                left: i ? undefined : LEFT,
+                right: i ? 832 - LEFT - SPAN : undefined,
+                top: BASE + 5,
+                fontSize: 17,
+                color: C.muted,
+                opacity: guides,
+              }}
+            >
+              {formatPrice(edge)}
+            </span>
+          ))}
+
+          {/* One figure and a cut: the left copy is only ever seen left of the cut and
+              the right copy right of it, so two whole figures never touch. */}
+          <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                translate: `0 ${(1 - arrived) * 110 - gone * 110}%`,
+              }}
+            >
+              <Figure
+                value={mix(PRICE, LOW, counted)}
+                cx={lowX}
+                cy={cy}
+                size={size}
+                mask={leftOnly}
+              />
+              <Figure
+                value={mix(PRICE, HIGH, counted)}
+                cx={highX}
+                cy={cy}
+                size={size}
+                mask={rightOnly}
+              />
+            </div>
+          </div>
+          {/* The cut itself: a lit line where the price parts, so that the two halves
+              are read as one figure being opened and not as a longer one. */}
+          <div
+            style={{
+              position: "absolute",
+              left: seam - 1.5,
+              top: cy - size * 0.62,
+              width: 3,
+              height: size * 1.24,
+              borderRadius: 2,
+              background: C.btc,
+              boxShadow: `0 0 16px 4px ${fade(C.btc, 0.6)}`,
+              opacity:
+                tween(frame, OPEN[0] - 4, OPEN[0], 0, 1) *
+                (1 - tween(open, 0.02, 0.12, 0, 1)),
+            }}
+          />
           <span
-            key={edge}
             style={{
               ...base,
-              ...num,
               position: "absolute",
-              left: i ? undefined : LEFT,
-              right: i ? 832 - LEFT - SPAN : undefined,
-              top: BASE + 6,
-              fontSize: 12,
-              color: C.faint,
+              left: (X_LOW + X_HIGH) / 2,
+              top: ROW,
+              translate: "-50% -50%",
+              fontSize: 22,
+              fontWeight: 500,
+              color: C.muted,
               opacity: guides,
             }}
           >
-            {formatPrice(edge)}
+            to
           </span>
-        ))}
-
-        {/* One figure and a cut: the left copy is only ever seen left of the cut and the
-            right copy right of it, so two whole figures never touch. */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            overflow: "hidden",
-          }}
-        >
-          <div
+          <span
             style={{
+              ...base,
               position: "absolute",
-              inset: 0,
-              translate: `0 ${(1 - arrived) * 110}%`,
+              left: LEFT,
+              top: ROW - 72,
+              fontSize: 17,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: C.muted,
+              opacity: guides,
             }}
           >
-            <Figure
-              value={mix(PRICE, LOW, counted)}
-              cx={lowX}
-              cy={cy}
-              size={size}
-              mask={leftOnly}
-            />
-            <Figure
-              value={mix(PRICE, HIGH, counted)}
-              cx={highX}
-              cy={cy}
-              size={size}
-              mask={rightOnly}
-            />
-          </div>
+            80% of simulated outcomes after {range.days} days
+          </span>
         </div>
-        {/* The cut itself: a lit line where the price parts, so that the two halves are
-            read as one figure being opened and not as a longer one. */}
-        <div
-          style={{
-            position: "absolute",
-            left: seam - 1.5,
-            top: cy - size * 0.62,
-            width: 3,
-            height: size * 1.24,
-            borderRadius: 2,
-            background: C.btc,
-            boxShadow: `0 0 16px 4px ${fade(C.btc, 0.6)}`,
-            opacity:
-              tween(frame, OPEN[0] - 4, OPEN[0], 0, 1) *
-              (1 - tween(open, 0.02, 0.12, 0, 1)),
-          }}
-        />
-        <span
-          style={{
-            ...base,
-            position: "absolute",
-            left: (X_LOW + X_HIGH) / 2,
-            top: ROW,
-            translate: "-50% -50%",
-            fontSize: 22,
-            fontWeight: 500,
-            color: C.muted,
-            opacity: guides,
-          }}
-        >
-          to
-        </span>
-        <span
-          style={{
-            ...base,
-            position: "absolute",
-            left: LEFT,
-            top: ROW - 62,
-            fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: "0.075em",
-            textTransform: "uppercase",
-            color: C.muted,
-            opacity: guides,
-          }}
-        >
-          80% of simulated outcomes after {range.days} days
-        </span>
-      </Answer>
-      <Ping
-        since={frame - PINGED}
-        x={AREA.x + ((X_LOW + X_HIGH) / 2) * ZOOM}
-        y={AREA.y + ROW * ZOOM}
-        reach={240}
-      />
-    </AbsoluteFill>
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          left: AREA.x + (X_LOW - (WIDE * RESTING) / 2) * ZOOM,
+          top: AREA.y + (ROW - 34) * ZOOM,
+          width: (X_HIGH - X_LOW + WIDE * RESTING) * ZOOM,
+          height: 68 * ZOOM,
+        }}
+      >
+        <Lock frame={frame} at={LOCKED} out={leaves} pad={12} />
+      </div>
+    </Pulled>
   );
 };

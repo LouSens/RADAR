@@ -19,7 +19,7 @@ import { Pop, Resolve, Skeleton, Swatch, Ticker, pop } from "./motion";
 
 /**
  * The app's Home at desktop size (pages/Overview.tsx, components/Layout.tsx), rebuilt
- * from the app's own pieces so that it can build itself, be tapped, and reflow into the
+ * from the app's own pieces so that it can build itself and reflow into the
  * phone's layout. It shows the made-up example portfolio. Its own pixels are the app's:
  * 1440 wide, drawn at four thirds of that to fill the frame.
  */
@@ -49,12 +49,6 @@ export const AT = {
 } as const satisfies Record<string, Box>;
 
 export type Piece = keyof typeof AT;
-
-/** The buttons inside the portfolio card, for a tap to land on. */
-export const BUTTON = {
-  risk: { x: 321, y: 236, w: 286, h: 46 },
-  check: { x: 618, y: 236, w: 286, h: 46 },
-} as const satisfies Record<string, Box>;
 
 /**
  * The phone's layout of the same pieces (one column, the places in a capsule at the
@@ -123,7 +117,11 @@ const card: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const Sidebar: React.FC<{ readonly logo: number }> = ({ logo }) => (
+/** The app's sidebar (components/Layout.tsx). `here` is the place it has lit. */
+export const Sidebar: React.FC<{
+  readonly logo?: number;
+  readonly here?: number;
+}> = ({ logo = 1, here = 0 }) => (
   <div
     style={{
       ...card,
@@ -164,13 +162,13 @@ const Sidebar: React.FC<{ readonly logo: number }> = ({ logo }) => (
           borderRadius: 12,
           fontSize: 14,
           fontWeight: 500,
-          color: i === 0 ? C.ink : C.muted,
+          color: i === here ? C.ink : C.muted,
           background:
-            i === 0
+            i === here
               ? `color-mix(in srgb, ${C.accent} 16%, rgba(255,255,255,0.05))`
               : undefined,
           boxShadow:
-            i === 0 ? `inset 0 0 0 1px ${fade(C.accent, 0.34)}` : undefined,
+            i === here ? `inset 0 0 0 1px ${fade(C.accent, 0.34)}` : undefined,
         }}
       >
         <Stroke>{place.icon}</Stroke>
@@ -230,8 +228,7 @@ export type Built = (piece: Piece) => number;
 
 /**
  * Home. `built` says how far each piece has arrived, `frame` drives what moves inside
- * (the price, the lines, the chips), and `lifted` is the card that answers a question:
- * its edge lit, raised a little, and pressed as it opens. `view` draws Home smaller and
+ * (the price, the lines, the chips). `view` draws Home smaller and
  * elsewhere; `towards` says how far each piece has gone to its place in the phone's
  * layout, which is at `phone` (a box in the frame's own pixels); with `arriving`, only
  * the pieces on their way there are drawn.
@@ -242,11 +239,6 @@ export const Desk: React.FC<{
   /** The frame the content of the cards started to arrive, for what counts and draws. */
   readonly alive: number;
   readonly logo?: number;
-  readonly lifted?: {
-    readonly box: Box;
-    readonly by: number;
-    readonly press: number;
-  };
   readonly towards?: (piece: Piece) => number;
   readonly phone?: Box;
   readonly view?: {
@@ -257,6 +249,8 @@ export const Desk: React.FC<{
   readonly arriving?: boolean;
   /** How far the sidebar has collapsed into the phone's capsule of places. */
   readonly capsule?: number;
+  /** How much the rows of "Coming up" show, where they are waited for. */
+  readonly coming?: number;
   /** Tells two drawings of Home apart, so that their own drawings do not share names. */
   readonly copy?: string;
 }> = ({
@@ -264,12 +258,12 @@ export const Desk: React.FC<{
   built,
   alive,
   logo = 1,
-  lifted,
   towards,
   phone,
   view = { k: 1, x: 0, y: 0 },
   arriving = false,
   capsule = 0,
+  coming = 1,
   copy = "",
 }) => {
   const since = frame - alive;
@@ -313,25 +307,13 @@ export const Desk: React.FC<{
   };
   const content = (piece: Piece): number =>
     Math.min(Math.max(built(piece) - 1, 0), 1);
-  /** The card that answers the question: its edge lit, raised, and pressed as it opens. */
-  const press = (box: Box, round = 20): React.CSSProperties | undefined =>
-    lifted && lifted.box === box
-      ? {
-          translate: `0 ${-5 * lifted.by}px`,
-          scale: 1 + 0.012 * lifted.by - 0.03 * lifted.press,
-          borderRadius: round,
-          boxShadow: `0 0 0 1.5px ${fade(C.accent, 0.9 * Math.min(lifted.by, 1))}, 0 0 22px ${fade(C.accent, 0.22 * Math.min(lifted.by, 1))}, 0 ${16 * lifted.by}px ${34 * lifted.by}px -10px rgba(0,0,0,0.7)`,
-          filter: `brightness(${1 + 0.3 * lifted.press})`,
-        }
-      : undefined;
-
   const market = (
     m: Market,
     piece: "btc" | "gold" | "stock",
   ): React.ReactNode => {
     const shown = content(piece);
     return (
-      <div key={m.slug} style={{ ...place(piece), ...press(AT[piece], 18) }}>
+      <div key={m.slug} style={{ ...place(piece) }}>
         {shown <= 0 ? (
           <div style={{ ...card, borderRadius: 18, padding: 19 }}>
             <Skeleton frame={frame} style={{ width: 90, height: 14 }} />
@@ -470,9 +452,7 @@ export const Desk: React.FC<{
               opacity: content("worth"),
             }}
           >
-            {ACTIONS.map(([name, icon], i) => {
-              const box =
-                i === 0 ? BUTTON.risk : i === 1 ? BUTTON.check : undefined;
+            {ACTIONS.map(([name, icon]) => {
               return (
                 <span
                   key={name}
@@ -487,7 +467,6 @@ export const Desk: React.FC<{
                     background: "rgba(255,255,255,0.025)",
                     fontSize: 14,
                     fontWeight: 600,
-                    ...(box ? press(box, 14) : undefined),
                   }}
                 >
                   <span
@@ -512,7 +491,7 @@ export const Desk: React.FC<{
         </div>
       </div>
 
-      <div style={{ ...place("todo"), ...press(AT.todo) }}>
+      <div style={place("todo")}>
         <div style={{ ...card, padding: "26px 28px" }}>
           <TopEdge />
           <span style={label}>What to do now</span>
@@ -556,7 +535,7 @@ export const Desk: React.FC<{
       {market(markets[1], "gold")}
       {market(markets[2], "stock")}
 
-      <div style={{ ...place("coming"), ...press(AT.coming) }}>
+      <div style={place("coming")}>
         <div style={{ ...card, padding: "22px 28px" }}>
           <TopEdge />
           <div
@@ -569,29 +548,31 @@ export const Desk: React.FC<{
             <span style={{ fontSize: 16, fontWeight: 600 }}>Coming up</span>
             <span style={{ fontSize: 14, color: C.muted }}>Calendar</span>
           </div>
-          {calendar.slice(0, 3).map((event, i) => (
-            <Resolve
-              key={event.at}
-              by={content("coming")}
-              frame={frame}
-              shape={{ height: 16, top: 12 }}
-            >
-              <span
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "10px 0",
-                  borderTop: i ? `1px solid ${C.line}` : undefined,
-                  fontSize: 14,
-                }}
+          <div style={{ opacity: coming }}>
+            {calendar.slice(0, 3).map((event, i) => (
+              <Resolve
+                key={event.at}
+                by={content("coming")}
+                frame={frame}
+                shape={{ height: 16, top: 12 }}
               >
-                <span style={{ fontWeight: 600 }}>{event.name}</span>
-                <span style={{ ...num, color: C.muted }}>
-                  In {event.days} days
+                <span
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    padding: "10px 0",
+                    borderTop: i ? `1px solid ${C.line}` : undefined,
+                    fontSize: 14,
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>{event.name}</span>
+                  <span style={{ ...num, color: C.muted }}>
+                    In {event.days} days
+                  </span>
                 </span>
-              </span>
-            </Resolve>
-          ))}
+              </Resolve>
+            ))}
+          </div>
         </div>
       </div>
 
