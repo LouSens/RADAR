@@ -1,17 +1,50 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { PORTFOLIO_SECTIONS } from "../lib/portfolio";
 import { SECTIONS } from "../lib/sections";
 import { SIGNAL_PAGES } from "../lib/signals";
+import { forgetTrail } from "../lib/trail";
 import { SectionMenu, Tabs } from "./Tabs";
 
 const at = (path: string, node: React.ReactNode) =>
   render(<MemoryRouter initialEntries={[path]}>{node}</MemoryRouter>);
 
+/** A market's pages with its way back, and the address shown, as the app lays them out. */
+function Market() {
+  const { pathname } = useLocation();
+  return (
+    <>
+      <p data-testid="address">{pathname}</p>
+      <Tabs
+        base="/asset/btc-usd"
+        items={SECTIONS}
+        label="Bitcoin pages"
+        parent="Bitcoin"
+        up={{ to: "/markets", label: "Markets" }}
+      />
+    </>
+  );
+}
+
 describe("Tabs", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    forgetTrail();
+  });
+
+  it("goes up, not back down, after coming up from an inner page", () => {
+    // An inner page opened directly: there is no page before it.
+    at("/asset/btc-usd/moves", <Market />);
+    fireEvent.click(screen.getByRole("link", { name: "Back to Bitcoin" }));
+    expect(screen.getByTestId("address")).toHaveTextContent("/asset/btc-usd");
+    // The page before this one is the inner page just left. "Back" must not return to it.
+    const up = screen.getByRole("link", { name: "Back to Markets" });
+    expect(up).toHaveAttribute("href", "/markets");
+    fireEvent.click(up);
+    expect(screen.getByTestId("address")).toHaveTextContent("/markets");
+  });
 
   it("shows nothing on a subject's own page: there is nowhere to go back to", () => {
     const { container } = at(

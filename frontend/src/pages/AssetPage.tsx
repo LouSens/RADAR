@@ -4,6 +4,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { useMarket } from "../api/market";
 import { useAssets, useSummary } from "../api/queries";
 import { MarketStage } from "../components/MarketStage";
+import { MovesPanel } from "../components/MovesPanel";
 import { NewsPanel } from "../components/NewsPanel";
 import { OutlookPanel } from "../components/OutlookPanel";
 import { RegimePanel } from "../components/RegimePanel";
@@ -113,6 +114,7 @@ export function AssetPage() {
         </>
       ) : (
         <div className="section-body" key={`${asset.slug}-${section}`}>
+          {section === "moves" && <MovesPanel asset={asset} />}
           {section === "state" && <RegimePanel asset={asset} trust={trust?.state} />}
           {section === "outlook" && <OutlookPanel asset={asset} trust={trust?.outlook} />}
           {section === "swings" && <VolatilityPanel asset={asset} trust={trust?.swings} />}

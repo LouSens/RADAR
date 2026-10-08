@@ -29,7 +29,7 @@ export function Tile({
     <Link
       to={to}
       aria-label={label}
-      className={`tile group flex min-w-0 flex-col ${wide ? "@2xl:col-span-2" : ""}`}
+      className={`tile group flex min-w-0 flex-col ${wide ? "@lg:col-span-2" : ""}`}
     >
       <span className="flex items-center justify-between gap-2">
         <span className="label">{label}</span>
@@ -41,7 +41,7 @@ export function Tile({
         </span>
       )}
       {note && <span className="mt-0.5 block text-sm text-muted">{note}</span>}
-      {children && <span className="mt-auto block pt-4">{children}</span>}
+      {children && <span className="block pt-4">{children}</span>}
     </Link>
   );
 }

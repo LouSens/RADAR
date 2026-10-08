@@ -1,6 +1,7 @@
 /** The pages of one market. The first, with no path, is the market's own page. */
 export const SECTIONS = [
   { path: "", label: "Summary" },
+  { path: "moves", label: "Why it moved", hint: "Each recent day, and what went with it" },
   { path: "state", label: "Current state", hint: "Calm, normal or turbulent right now" },
   {
     path: "outlook",

@@ -3433,3 +3433,124 @@ readers who cannot see it; the notebook's date, model version and sample in a he
 real result tables in `07_what_we_tested`; a Models page; the large-fall forecast redone
 once or retired; browser tests at phone, tablet and desktop widths; notebooks built in
 CI (they need a filled database, so this needs a small fixture first).
+
+## 095. Why it moved, and the bar a feature must clear: written before running (2026-10-08)
+
+The user's instruction of 2026-10-08: build "why it moved" (F13), and build the three
+features the audit named (why it moved, protection rules with alerts, the models for
+every holding) only where they have very good accuracy or credibility. So each part is
+given a bar here, before anything is run, and a part that misses its bar is not built or
+is shown without the claim it could not support.
+
+**What "why it moved" may say.** A day's move of a holding is split into what its wider
+market did and what was its own. The two always sum to the move, because the second is
+the move less the first. The question is whether the first part means anything.
+
+**The wider market, by kind of holding.**
+- A coin other than Bitcoin: Bitcoin.
+- A stock or fund other than the US stock index: the US stock index (SPY).
+- Bitcoin, gold and the US stock index themselves: none. They are the reference. The
+  macro drivers model is the only candidate for them, and its score on unseen days is
+  already on record (0.14 to 0.20 of the variance for Bitcoin and gold, and no better
+  than stocks alone for Bitcoin). That is far under the bar below, so no "market" part
+  is shown for these three. I knew these figures when writing this.
+
+**Test 1: the market part.** For each holding with a wider market and at least 150
+shared sessions: on each day `t`, the sensitivity is fitted on the 90 sessions before
+`t` (never including `t`) as the slope of the holding's daily return on the market's,
+and the market part is that slope times the market's return on `t`.
+- *Share explained on unseen days*: one less the squared error of the market part over
+  the squared size of the returns. **Bar: at least 0.50.**
+- *Large days*: on days when the holding moved more than twice its usual size (the
+  spread of the 30 sessions before), the market part has the move's sign. **Bar: at
+  least 80% of such days, on at least 20 of them.**
+- Both must hold in each half of the record, not only overall.
+A holding that misses either is shown with its move and "mostly its own: no reliable
+link to the wider market", and no percentage.
+
+**Test 2: how unusual the size is.** No model: the day's absolute move is ranked among
+the absolute moves of the 250 sessions before it ("larger than 97 of the last 100
+days"). It is a count, so it has no accuracy to fail, but it must not mislead: across
+all days, a move ranked in the top 5% should come up on about 5% of days. **Bar: between
+3% and 8% of days in each holding's record.** A holding with under 60 earlier sessions
+gets no ranking.
+
+**Facts that need no test.** A scheduled event on the day (the Calendar's dates). A
+change of the market's state (the state model's own reading, filtered, for the markets it
+runs on). Headlines published that day are listed as "published that day". Nothing says
+a headline or an event caused the move: decision 045 found no measurable link from news
+to swings, and decision 056 forbids a direction for events.
+
+**Feature 2, protection rules with alerts: the bar.** A rule is offered as RADAR's
+suggestion only if, on the later part of the record and on markets it was not chosen on,
+it beats a fixed share of the same average size (decision 065), on the worst point and
+without ending lower, in at least three markets of four. The record so far (decisions
+065 and 068): cutting when a gain turns to a loss had a better worst point in 21 of 27
+markets but ended lower in 20 of 27, and the trend rule did no better than a fixed share
+of its size. Those tests are not rerun with changed settings (decision 068). On that
+record no protection rule clears this bar, so none is built as a suggestion now.
+
+**Feature 3, the models for every holding: the bar.** A holding gets a swings figure,
+and the loss figures that rest on it, only if the forecast on unseen days beats both
+simple rivals (yesterday's size, and the average of the last 30 days) for that kind of
+holding, as it does for the three markets. This needs its own run and is not part of
+this piece of work.
+
+**My guesses.** Ethereum and Solana clear Test 1 comfortably (share explained about
+0.6). PURR against US stocks does not. Test 2 passes everywhere.
+
+## 096. Why it moved: the result, and what was built (2026-10-08)
+
+The tests of decision 095, run once, on the daily closes stored for each market.
+
+**Test 1, the market part** (bars: at least 0.50 of the moves explained on unseen days,
+and the move's sign on at least 80% of large days, overall and in each half).
+
+| Holding | Against | Days | Explained | Right sign on large days | Halves (explained) | |
+|---|---|---|---|---|---|---|
+| Ethereum | Bitcoin | 1,985 | 0.70 | 100% of 139 | 0.71, 0.69 | Passed |
+| Solana | Bitcoin | 1,818 | 0.55 | 98% of 116 | 0.50, 0.63 | Passed |
+| Stock volatility fund | US stocks | 2,585 | 0.61 | 99% of 168 | 0.62, 0.60 | Passed |
+| Gold fund | US stocks | 2,585 | 0.03 | 58% of 188 | −0.02, 0.05 | Failed |
+| Long bonds | US stocks | 2,585 | 0.04 | 66% of 157 | 0.09, 0.01 | Failed |
+| US dollar | US stocks | 2,585 | 0.05 | 67% of 143 | −0.01, 0.10 | Failed |
+| Inflation-linked bonds | US stocks | 2,585 | 0.00 | 62% of 159 | −0.04, 0.03 | Failed |
+| PURR | US stocks | 121 | | | | Not judged: under 150 days |
+
+Solana's first half is at the bar to two decimal places (0.50). It passed as written and
+is the nearest to failing.
+
+**Test 2, how unusual the size is** (bar: a day ranks in the top 5% of the days before it
+on 3% to 8% of days). Bitcoin 4.8%, Ethereum 4.8%, Solana 4.4%, gold 5.3%, US stocks
+5.9%, the gold fund 5.8%, PURR 4.0% of 151 days. All passed.
+
+**My guesses, checked.** Right that Ethereum and Solana would pass and that the ranking
+would pass everywhere. I said Ethereum's share would be about 0.6 and it was 0.70. I said
+PURR would fail against US stocks; it could not be judged at all.
+
+**What was built on this.**
+- `analytics/moves.py`: the split, the size of a usual day, the ranking, and `evidence`,
+  which applies the bars above to any holding each time it is asked. A holding's split is
+  shown only while its own record clears them, so a link that weakens stops being shown
+  without anyone deciding it.
+- `pipelines/moves.py` and `GET /assets/{symbol}/moves`: each recent day with its move,
+  the two parts where allowed, the multiple of a usual day, the ranking, scheduled events
+  on the day, a change of the market's state, and up to three headlines of the day.
+  Nothing is stored: it is arithmetic on stored prices.
+- The page "Why it moved" on every market, with its own address and a trust mark from
+  `summary.grade_moves`: Solid where the split cleared its bar or where no split is made
+  (Bitcoin, gold, US stocks), Fair where a split was wanted and could not be supported.
+- Events and headlines are worded as "that day", never as the cause.
+
+**Not built, and why.**
+- *Protection rules with alerts.* The bar in decision 095 is not met by anything on
+  record, and those tests are not to be rerun with changed settings. No rule is offered.
+- *The models for every holding.* The test in decision 095 has not been run. It is the
+  next piece of work if the user wants it; until then a holding outside the three markets
+  has this page, its price and its place in the portfolio figures.
+
+**Two layout faults fixed in the same piece of work**, reported by the user: a short tile
+beside a tall one was stretched with its picture pushed to the foot, leaving an empty
+middle (a wide tile now takes the row from two columns up, and a tile's picture follows
+its figure); and the Binance wallets filled only half of their card (two columns are used
+only when there are two things to compare).

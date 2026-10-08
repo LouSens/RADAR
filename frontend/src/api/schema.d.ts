@@ -84,6 +84,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{symbol}/moves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Moves
+         * @description Each recent day of an asset: its move, the wider market's part where that link
+         *     holds up, how unusual the size was, and what else is known about the day.
+         */
+        get: operations["get_moves_api_v1_assets__symbol__moves_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{symbol}/regime": {
         parameters: {
             query?: never;
@@ -1018,6 +1039,37 @@ export interface components {
             /** Csv */
             csv: string;
         };
+        /**
+         * Day
+         * @description One day of one asset. Every share is a fraction: 0.031 is 3.1%.
+         */
+        Day: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Events */
+            events: string[];
+            /** Headlines */
+            headlines: components["schemas"]["Headline"][];
+            /** Market */
+            market: number | null;
+            /** Move */
+            move: number;
+            /** Own */
+            own: number | null;
+            /** Rank */
+            rank: number | null;
+            /** Sensitivity */
+            sensitivity: number | null;
+            /** State From */
+            state_from: string | null;
+            /** State To */
+            state_to: string | null;
+            /** Times Usual */
+            times_usual: number | null;
+        };
         /** DirectionOut */
         DirectionOut: {
             /** Both Polar */
@@ -1102,6 +1154,25 @@ export interface components {
             /** Name */
             name: string;
         };
+        /**
+         * Evidence
+         * @description Whether a holding's market part may be shown, and what that rests on.
+         */
+        Evidence: {
+            /** First Day */
+            first_day: string | null;
+            /** Halves */
+            halves: components["schemas"]["Slice"][];
+            /** Last Day */
+            last_day: string | null;
+            /** N Days */
+            n_days: number;
+            /** Passed */
+            passed: boolean;
+            /** Reason */
+            reason: string | null;
+            whole: components["schemas"]["Slice"] | null;
+        };
         /** Fall */
         Fall: {
             /** Depth */
@@ -1166,6 +1237,20 @@ export interface components {
             place: number;
             /** Trades */
             trades: number;
+        };
+        /** Headline */
+        Headline: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Headline */
+            headline: string;
+            /** Source */
+            source: string;
+            /** Url */
+            url: string | null;
         };
         /** HealthOut */
         HealthOut: {
@@ -2440,6 +2525,20 @@ export interface components {
             /** Weight */
             weight: number;
         };
+        /**
+         * Slice
+         * @description The link to the wider market over one stretch of days.
+         */
+        Slice: {
+            /** N Days */
+            n_days: number;
+            /** N Large */
+            n_large: number;
+            /** Share Explained */
+            share_explained: number;
+            /** Sign Agreement */
+            sign_agreement: number | null;
+        };
         /** Spillover */
         Spillover: {
             /** After */
@@ -3104,6 +3203,21 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** WhyItMovedOut */
+        WhyItMovedOut: {
+            /** Days */
+            days: components["schemas"]["Day"][];
+            evidence: components["schemas"]["Evidence"] | null;
+            /** Reference */
+            reference: string | null;
+            /** Reference Name */
+            reference_name: string | null;
+            /** Split Shown */
+            split_shown: boolean;
+            /** Symbol */
+            symbol: string;
+            trust: components["schemas"]["Trust"];
+        };
         /** WindowResult */
         WindowResult: {
             /** Baseline */
@@ -3402,6 +3516,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Drivers"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_moves_api_v1_assets__symbol__moves_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                symbol: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhyItMovedOut"];
                 };
             };
             /** @description Validation Error */
