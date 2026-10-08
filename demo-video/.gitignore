@@ -5,3 +5,9 @@ dist
 
 # Ignore the output video from Git but not videos you import into src/.
 out
+
+# Built by blender/blockout.py: regenerate, do not commit.
+blender/*.blend
+blender/*.blend1
+blender/stills
+public/plates
