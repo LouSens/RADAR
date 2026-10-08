@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import portfolio from "../fixtures/portfolio.json";
-import { C } from "../theme";
+import { C, metal } from "../theme";
 import { BEAT, COPY, EASE, EASE_IN_OUT, tween } from "../timing";
 import { Headline, LINE, MARGIN, Small, TOP } from "../Type";
 import {
@@ -67,18 +67,20 @@ export const Plan: React.FC = () => {
           width: WIDE * (1 - leaves),
           height: BAR.height,
           display: "flex",
-          overflow: "hidden",
-          borderRadius: 999,
-          background: "rgba(255,255,255,0.08)",
+          gap: 8,
         }}
       >
         {holdings.map((holding) => (
           <span
             key={holding.symbol}
             style={{
-              flex: `0 0 ${mix(holding.money, holding.plan, reshape) * WIDE}px`,
-              background: TONE[holding.tone],
-              boxShadow: `inset -3px 0 0 ${C.bg}`,
+              flex: `${mix(holding.money, holding.plan, reshape)} 1 0%`,
+              borderRadius: 999,
+              // Cash is not a colour: it is the track left unfilled, as in the app.
+              background:
+                holding.symbol === "USD"
+                  ? "rgba(255,255,255,0.08)"
+                  : metal(TONE[holding.tone]),
             }}
           />
         ))}
