@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { AbsoluteFill, spring } from "remotion";
 import { C, FEATURES, FONT, fade } from "./theme";
-import { EASE_IN_OUT, FPS, shot, tween, type ShotId } from "./timing";
+import { EASE_IN, EASE_IN_OUT, FPS, shot, tween, type ShotId } from "./timing";
 import { Rise } from "./Type";
 import type { Box } from "./ui/Desk";
 
@@ -18,8 +18,11 @@ export const MORPH = 16;
 
 export type Proved = "why" | "level" | "range" | "risk" | "plan";
 
-/** The phone's screen in the frame while it proves an answer: in the middle. */
-export const PROOF_SCREEN: Box = { x: 810, y: 214, w: 300, h: 649.4 };
+/**
+ * The phone's screen in the frame while it proves an answer: in the middle and close,
+ * the phone 85% of the frame's height.
+ */
+export const PROOF_SCREEN: Box = { x: 756.6, y: 99.6, w: 406.8, h: 880.7 };
 /** The desktop window while it proves an answer, under a question or over one. */
 const WINDOW_LOW: Box = { x: 348, y: 262, w: 1224, h: 719 };
 const WINDOW_HIGH: Box = { x: 348, y: 96, w: 1224, h: 719 };
@@ -28,7 +31,7 @@ export const BAR = 30;
 export const IN_WINDOW = WINDOW_LOW.w / 1440;
 /** Where a card's content goes, in the app's pixels: on a desk page, on a phone page. */
 export const DESK_CONTENT: Box = { x: 320, y: 196, w: 1064, h: 404 };
-export const PHONE_CONTENT: Box = { x: 28, y: 204, w: 334, h: 210 };
+export const PHONE_CONTENT: Box = { x: 28, y: 348, w: 334, h: 160 };
 const IN_PHONE = PROOF_SCREEN.w / 390;
 
 const inWindow = (window: Box): Box => ({
@@ -91,24 +94,17 @@ export const PROOFS: Readonly<Record<Proved, Proof>> = {
 };
 export const PROVED = Object.keys(PROOFS) as Proved[];
 
-/** When an answer pulls back into its card, and when it comes forward again. */
+/**
+ * When an answer pulls back into its card, and when it comes out of it again. It is
+ * out by the end of its shot, which is when it starts to turn into the next.
+ */
 export const pullsBack = (id: ShotId): readonly [number, number] => {
   const end = shot(id).from + shot(id).duration;
-  return [end - 30, end - 15];
+  return [end - 32, end - 17];
 };
 export const comesForward = (id: ShotId): readonly [number, number] => {
   const end = shot(id).from + shot(id).duration;
-  return [end - 5, end + 9];
-};
-
-/** How far an answer has pulled back at a frame of the film, from 0 to 1. */
-export const pulled = (id: Proved, film: number): number => {
-  const [a, b] = pullsBack(id);
-  const [c, d] = comesForward(id);
-  return (
-    tween(film, a, b, 0, 1, EASE_IN_OUT) *
-    (1 - tween(film, c, d, 0, 1, EASE_IN_OUT))
-  );
+  return [end - 8, end];
 };
 
 const middle = (box: Box): { x: number; y: number } => ({
@@ -118,8 +114,10 @@ const middle = (box: Box): { x: number; y: number } => ({
 
 export interface Lens {
   readonly id: Proved;
-  /** How far back, from 0 to 1. */
-  readonly back: number;
+  /** How far back the device has been shown, from 0 to 1: it never comes forward. */
+  readonly held: number;
+  /** How far the device has dropped away, as the answer comes out of it. */
+  readonly away: number;
   /** How the answer is drawn: `translate(x, y) scale(k)` about the frame's corner. */
   readonly answer: string;
   /** How much larger than it stands the device is drawn, and about which point. */
@@ -133,28 +131,45 @@ export interface Lens {
 /**
  * The film's one lens over the answers. Pulling back is one move: the answer becomes
  * small about a point that goes straight to its place in the card, and the device is
- * drawn by the same move, so the answer never leaves its card on the way.
+ * drawn by the same move, so the answer never leaves its card on the way. Coming out
+ * is the answer's move alone: the device does not come forward with it but drops away,
+ * and is gone by the time the answer starts to turn into the next.
  */
 export const lensAt = (film: number): Lens | null => {
   for (const id of PROVED) {
-    const back = pulled(id, film);
-    if (back <= 0) {
+    const [a, b] = pullsBack(id);
+    const [c, d] = comesForward(id);
+    if (film <= a || film >= d) {
       continue;
     }
+    const held = tween(film, a, b, 0, 1, EASE_IN_OUT);
+    const back = held * (1 - tween(film, c, d, 0, 1, EASE_IN_OUT));
     const { zone, into } = PROOFS[id];
     const rest = Math.min(into.w / zone.w, into.h / zone.h);
-    const k = rest ** back;
     const from = middle(zone);
     const to = middle(into);
-    const along = (1 - k) / (1 - rest);
-    const x = from.x + (to.x - from.x) * along;
-    const y = from.y + (to.y - from.y) * along;
-    const larger = k / rest;
+    const at = (far: number): { k: number; x: number; y: number } => {
+      const k = rest ** far;
+      const along = (1 - k) / (1 - rest);
+      return {
+        k,
+        x: from.x + (to.x - from.x) * along,
+        y: from.y + (to.y - from.y) * along,
+      };
+    };
+    const answer = at(back);
+    const shown = at(held);
+    const larger = shown.k / rest;
     return {
       id,
-      back,
-      answer: `translate(${x - k * from.x}px, ${y - k * from.y}px) scale(${k})`,
-      device: { k: larger, x: x - larger * to.x, y: y - larger * to.y },
+      held,
+      away: tween(film, c, d, 0, 1, EASE_IN),
+      answer: `translate(${answer.x - answer.k * from.x}px, ${answer.y - answer.k * from.y}px) scale(${answer.k})`,
+      device: {
+        k: larger,
+        x: shown.x - larger * to.x,
+        y: shown.y - larger * to.y,
+      },
     };
   }
   return null;

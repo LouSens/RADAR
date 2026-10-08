@@ -1,12 +1,12 @@
 [
-  { "id": "question", "from": 0, "duration": 105, "sweep": false },
-  { "id": "meet", "from": 105, "duration": 120, "sweep": false },
-  { "id": "why", "from": 225, "duration": 105, "sweep": false },
-  { "id": "level", "from": 330, "duration": 90, "sweep": false },
-  { "id": "range", "from": 420, "duration": 105, "sweep": false },
-  { "id": "risk", "from": 525, "duration": 105, "sweep": false },
-  { "id": "plan", "from": 630, "duration": 105, "sweep": false },
-  { "id": "calendar", "from": 735, "duration": 60, "sweep": false },
-  { "id": "both", "from": 795, "duration": 75, "sweep": false },
-  { "id": "close", "from": 870, "duration": 60, "sweep": true }
+  { "id": "question", "from": 0, "duration": 115, "sweep": false },
+  { "id": "meet", "from": 115, "duration": 135, "sweep": false },
+  { "id": "why", "from": 250, "duration": 105, "sweep": false },
+  { "id": "level", "from": 355, "duration": 90, "sweep": false },
+  { "id": "range", "from": 445, "duration": 105, "sweep": false },
+  { "id": "risk", "from": 550, "duration": 105, "sweep": false },
+  { "id": "plan", "from": 655, "duration": 105, "sweep": false },
+  { "id": "calendar", "from": 760, "duration": 65, "sweep": false },
+  { "id": "both", "from": 825, "duration": 75, "sweep": false },
+  { "id": "close", "from": 900, "duration": 60, "sweep": true }
 ]

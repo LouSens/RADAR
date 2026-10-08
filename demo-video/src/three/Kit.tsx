@@ -31,12 +31,58 @@ const metal = (tint: string, rough: number): MeshPhysicalMaterial =>
     envMapIntensity: 1.25,
   });
 
-const ACCENT = new Color(C.accent);
+/**
+ * How the coin turns into the mark's ring, shared by its metal and its sign. The copper
+ * is never mixed with the mark's colour across the whole coin, which would pass through
+ * grey: the colour comes in from the rim as a light of its own behind a narrow edge,
+ * and the face then goes, from the middle outwards, until only the rim is left.
+ */
+interface Turning {
+  readonly uTurn: { value: number };
+  readonly uGone: { value: number };
+  readonly uLit: { value: Color };
+  /** The brightest the metal may be. */
+  readonly uShade: { value: number };
+}
 
-const materials = (): Record<string, Material> => ({
-  coin: metal(C.btc, 0.34),
-  "coin relief": metal("#e2a67c", 0.2),
-});
+const turning = (material: MeshPhysicalMaterial, shared: Turning): void => {
+  material.transparent = true;
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, shared);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vAt;")
+      .replace(
+        "#include <begin_vertex>",
+        "#include <begin_vertex>\nvAt = position;",
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nvarying vec3 vAt;\nuniform float uTurn;\nuniform float uGone;\nuniform vec3 uLit;\nuniform float uShade;",
+      )
+      .replace(
+        "#include <tonemapping_fragment>",
+        `float fromMiddle = length(vAt.xy) / ${sizes.coin.radius.toFixed(3)};
+         float edge = 1.0 - uTurn * 1.2;
+         float lit = smoothstep(edge - 0.05, edge, fromMiddle) * step(0.0001, uTurn);
+         float peak = max(gl_FragColor.r, max(gl_FragColor.g, gl_FragColor.b));
+         vec3 held = gl_FragColor.rgb * min(1.0, uShade / max(peak, 0.0001));
+         gl_FragColor.rgb = mix(held * (1.0 - 0.3 * uTurn), uLit * 0.72, lit);
+         float hole = uGone * 0.93;
+         gl_FragColor.a *= uGone > 0.0001 ? smoothstep(hole - 0.05, hole, fromMiddle) : 1.0;
+         #include <tonemapping_fragment>`,
+      );
+  };
+};
+
+const materials = (shared: Turning): Record<string, Material> => {
+  const made = {
+    coin: metal(C.btc, 0.34),
+    "coin relief": metal("#e2a67c", 0.2),
+  };
+  Object.values(made).forEach((material) => turning(material, shared));
+  return made;
+};
 
 /**
  * The coin, as its own copy. `name` lets a shot find it again to move it between frames
@@ -46,18 +92,26 @@ export const Coin: React.FC<{
   readonly kit: Object3D;
   readonly name?: string;
   readonly scale?: number;
-  /** How far its copper has turned to the mark's colour, from 0 to 1. */
-  readonly tint?: number;
-  /** How much of the sign struck on its faces is left, from 1 to 0. */
-  readonly relief?: number;
-}> = ({ kit, name, scale, tint = 0, relief = 1 }) => {
-  const [object, mine] = useMemo(() => {
+  /** How far the mark's colour has come in from the rim, from 0 to 1. */
+  readonly turn?: number;
+  /** How far the face has gone, from the middle out, leaving the rim: 0 to 1. */
+  readonly gone?: number;
+  /** How strongly it mirrors the studio: less, square on to the camera. */
+  readonly shine?: number;
+}> = ({ kit, name, scale, turn = 0, gone = 0, shine = 1 }) => {
+  const [object, shared, mine] = useMemo(() => {
     const found = kit.getObjectByName("coin");
     if (!found) {
       throw new Error("The kit has no coin");
     }
     const copy = found.clone(true);
-    const mine = materials();
+    const shared: Turning = {
+      uTurn: { value: 0 },
+      uGone: { value: 0 },
+      uLit: { value: new Color(C.accent) },
+      uShade: { value: 1 },
+    };
+    const mine = materials(shared);
     copy.traverse((child) => {
       const mesh = child as Mesh;
       if (!mesh.isMesh) {
@@ -70,16 +124,16 @@ export const Coin: React.FC<{
     });
     // The copy gives up its name: a shot finds the group around it, once.
     copy.name = "";
-    return [copy, mine] as const;
+    return [copy, shared, mine] as const;
   }, [kit]);
-  const body = mine.coin as MeshPhysicalMaterial;
-  const sign = mine["coin relief"] as MeshPhysicalMaterial;
-  body.color.set(C.btc).lerp(ACCENT, tint);
-  body.emissive.set(C.accent);
-  body.emissiveIntensity = 0.5 * tint;
-  sign.color.set("#e2a67c").lerp(ACCENT, tint);
-  sign.transparent = relief < 1;
-  sign.opacity = relief;
+  shared.uTurn.value = turn;
+  shared.uGone.value = gone;
+  // Square on to the lamp a mirror of copper burns out to cream: its brightest is
+  // held down, in its own colour, so that copper stays copper.
+  shared.uShade.value = shine >= 1 ? 100 : 0.42 + (shine - 0.3) * 6;
+  Object.values(mine).forEach((material) => {
+    (material as MeshPhysicalMaterial).envMapIntensity = 1.25 * shine;
+  });
   return (
     <group name={name} scale={scale}>
       <primitive object={object} />

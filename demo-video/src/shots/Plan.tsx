@@ -14,36 +14,34 @@ export const PLAN = HOLDINGS.map((h) => h.plan);
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /** The plan bar, under its question and its headline. */
-export const PLAN_BAR: Box = { x: 128, y: 456, w: 1664, h: 64 };
+export const PLAN_BAR: Box = { x: 128, y: 444, w: 1664, h: 92 };
 /** The ladder's line, and where each of its prices is along it: today's on the right. */
-export const RAIL = { y: 820, left: 128, right: 1792 } as const;
+/** The legend under the bar, and the ladder 48 pixels under that. */
+const LEGEND = { top: PLAN_BAR.y + PLAN_BAR.h + 22, tall: 70 } as const;
+export const STOP = 40;
+export const RAIL = {
+  y: LEGEND.top + LEGEND.tall + 48 + STOP / 2,
+  left: 128,
+  right: 1792,
+} as const;
 const deepest = Math.max(...step.rungs.map((r) => r.below));
 export const STOPS = step.rungs.map(
   (rung) =>
     RAIL.left + (RAIL.right - RAIL.left) * (1 - (rung.below / deepest) * 0.84),
 );
-export const STOP = 30;
 export const LINE = "rgba(255,255,255,0.34)";
 
 /** When the bar reshapes from what is held into the plan. */
-export const RESHAPE = [20, 32] as const;
+export const RESHAPE = [37, 47] as const;
 /** When the ladder's line comes down out of the bar, and runs out both ways. */
-export const DROPS = [32, 37] as const;
-export const RUNS = [36, 45] as const;
+export const DROPS = [47, 51] as const;
+export const RUNS = [50, 57] as const;
 /** When each coin lands on its price. */
-export const LANDS = [48, 55, 62] as const;
+export const LANDS = [59, 64, 69] as const;
 /** How long a coin is in the air, and how far above its price it appears. */
 const FALL = 7;
-const DROP = 96;
+const DROP = 52;
 export const LOCKED = LANDS[2] + 3;
-
-/** Where the line leaves the bar: the middle of the share that the plan adds to. */
-const bought = HOLDINGS.findIndex((h) => h.symbol === step.symbol);
-const LEAVES_AT =
-  PLAN_BAR.x +
-  (PLAN.slice(0, bought).reduce((sum, share) => sum + share, 0) +
-    PLAN[bought] / 2) *
-    PLAN_BAR.w;
 
 /** One of the ladder's prices: a ring on the line that fills when its coin lands. */
 export const Stop: React.FC<{
@@ -75,9 +73,8 @@ export const Stop: React.FC<{
 
 /**
  * Shot 7. The bar of shot 6 goes back from risk to money and thins into the app's plan
- * bar: what is held now, then the plan. The ladder's line comes down out of the share
- * the plan adds to and runs out both ways, and a coin drops on to each of its three
- * prices. Figures: the made-up example portfolio (fixtures/film.json).
+ * bar: what is held now, then the plan. The ladder's line comes down out of the bar's
+ * end and runs along under it, and a coin drops on to each of its three prices. Figures: the made-up example portfolio (fixtures/film.json).
  */
 export const Plan: React.FC = () => {
   const frame = useCurrentFrame();
@@ -134,8 +131,8 @@ export const Plan: React.FC = () => {
           ...num,
           position: "absolute",
           left: PLAN_BAR.x,
-          top: 262,
-          fontSize: 76,
+          top: 244,
+          fontSize: 92,
           fontWeight: 700,
           letterSpacing: "-0.03em",
           lineHeight: 1.15,
@@ -152,7 +149,7 @@ export const Plan: React.FC = () => {
           ...base,
           position: "absolute",
           right: 1920 - PLAN_BAR.x - PLAN_BAR.w,
-          top: 290,
+          top: 280,
           fontSize: 40,
           fontWeight: 500,
           color: C.muted,
@@ -168,20 +165,20 @@ export const Plan: React.FC = () => {
           ...base,
           position: "absolute",
           left: PLAN_BAR.x,
-          top: 386,
-          fontSize: 40,
+          top: 368,
+          fontSize: 46,
           fontWeight: 600,
           lineHeight: 1.3,
           whiteSpace: "nowrap",
         }}
       >
         <span style={{ position: "absolute", color: C.muted }}>
-          <Rise at={9} out={RESHAPE[0] - 1}>
+          <Rise at={8} out={RESHAPE[0] - 1}>
             Now
           </Rise>
         </span>
         <span style={{ position: "absolute", color: C.accent }}>
-          <Rise at={RESHAPE[0] + 5} out={leaves}>
+          <Rise at={RESHAPE[0] + 4} out={leaves}>
             Your plan
           </Rise>
         </span>
@@ -189,7 +186,7 @@ export const Plan: React.FC = () => {
       <Example
         at={12}
         out={leaves}
-        style={{ right: 1920 - PLAN_BAR.x - PLAN_BAR.w, top: 396 }}
+        style={{ right: 1920 - PLAN_BAR.x - PLAN_BAR.w, top: 380 }}
       />
       {/* What each holding is of the whole, counting as the bar reshapes. */}
       <div
@@ -197,10 +194,10 @@ export const Plan: React.FC = () => {
           ...base,
           position: "absolute",
           left: PLAN_BAR.x,
-          top: foot + 22,
+          top: LEGEND.top,
           display: "flex",
-          gap: 56,
-          fontSize: 36,
+          gap: 60,
+          fontSize: 44,
           whiteSpace: "nowrap",
         }}
       >
@@ -209,8 +206,8 @@ export const Plan: React.FC = () => {
             <span style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span
                 style={{
-                  width: 16,
-                  height: 16,
+                  width: 20,
+                  height: 20,
                   borderRadius: "50%",
                   boxSizing: "border-box",
                   background:
@@ -244,7 +241,7 @@ export const Plan: React.FC = () => {
           <span
             style={{
               position: "absolute",
-              left: LEAVES_AT - 2,
+              left: RAIL.right - 4,
               top: foot,
               width: 4,
               height: (RAIL.y - foot) * dropped,
@@ -255,7 +252,7 @@ export const Plan: React.FC = () => {
           <span
             style={{
               position: "absolute",
-              left: mix(LEAVES_AT, RAIL.left, run),
+              left: mix(RAIL.right, RAIL.left, run),
               top: RAIL.y - 2,
               width: mix(0, RAIL.right - RAIL.left, run),
               height: 4,
@@ -283,9 +280,9 @@ export const Plan: React.FC = () => {
                 ...num,
                 position: "absolute",
                 left: STOPS[i] + edge,
-                top: RAIL.y - 84,
+                top: RAIL.y + 30,
                 translate: `${align} 0`,
-                fontSize: 36,
+                fontSize: 44,
                 lineHeight: 1.3,
                 color: C.muted,
                 whiteSpace: "nowrap",
@@ -302,9 +299,9 @@ export const Plan: React.FC = () => {
                 ...num,
                 position: "absolute",
                 left: STOPS[i] + edge,
-                top: RAIL.y + 28,
+                top: RAIL.y + 88,
                 translate: `${align} 0`,
-                fontSize: 46,
+                fontSize: 58,
                 fontWeight: 700,
                 lineHeight: 1.3,
                 whiteSpace: "nowrap",
@@ -335,7 +332,7 @@ export const Plan: React.FC = () => {
           fps: FPS,
           config: { damping: 16, mass: 0.5, stiffness: 160 },
         });
-        const size = mix(54, STOP, rest);
+        const size = mix(60, STOP, rest);
         return (
           <span
             key={`coin-${rung.price}`}
@@ -373,8 +370,8 @@ export const Plan: React.FC = () => {
             position: "absolute",
             left: i ? undefined : RAIL.left,
             right: i ? 1920 - RAIL.right : undefined,
-            top: RAIL.y + 110,
-            fontSize: 34,
+            top: RAIL.y + 186,
+            fontSize: 40,
             color: C.muted,
             whiteSpace: "nowrap",
           }}

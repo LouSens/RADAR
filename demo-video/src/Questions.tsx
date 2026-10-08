@@ -33,7 +33,9 @@ export const Opening: React.FC = () => (
       at={at.question + 6}
       out={at.question + CLEARS}
       accent={C.alert}
-      middle={210}
+      size={150}
+      middle={150}
+      left
     />
     <Ask
       lines={[COPY.question.what]}
@@ -43,8 +45,9 @@ export const Opening: React.FC = () => (
       wordsAt={[WORDS[0], WORDS[1], WORDS[2], WORDS[2] + 3].map(
         (w) => at.question + w,
       )}
-      size={140}
-      middle={400}
+      size={104}
+      middle={296}
+      left
     />
   </>
 );
@@ -58,8 +61,9 @@ export const Questions: React.FC = () => (
   <>
     <Ask
       lines={[COPY.meet]}
-      at={at.meet + 22}
-      out={at.meet + SHRINKS - 2}
+      at={at.meet + 24}
+      // It stays as the mark flies to the sidebar, and has gone before the cards come.
+      out={at.meet + SHRINKS + 10}
       middle={850}
     />
     <Asked line={COPY.why} at={at.why} out={leaves("why")} top={QUESTION_TOP} />
@@ -96,9 +100,10 @@ export const Questions: React.FC = () => (
     />
     <Ask
       lines={["On your desk.", "On your *phone.*"]}
-      // Once Home has gone across to the phone and the left of the frame is clear.
-      at={HANDOVER[0] + 1}
-      wordsAt={[0, 2, 4, 8, 10, 12].map((w) => HANDOVER[0] + 1 + w)}
+      // As the last cards leave the left of the frame for the phone: the words are
+      // rising while the phone's screen settles, so the phone is never there alone.
+      at={HANDOVER[0] - 6}
+      wordsAt={[0, 2, 4, 8, 10, 12].map((w) => HANDOVER[0] - 6 + w)}
       size={140}
       centre={620}
       middle={520}

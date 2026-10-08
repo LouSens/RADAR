@@ -22,6 +22,7 @@ import { useLoaded } from "./three/assets";
 import { COPY, EASE, HEIGHT, LAST_SWEEP, WIDTH, shot, tween } from "./timing";
 import { AT, PHONE, Sidebar } from "./ui/Desk";
 import {
+  MarketCard,
   TabBar,
   TopEdge,
   TrustBadge,
@@ -124,16 +125,28 @@ const card: React.CSSProperties = {
 const light = (frame: number): string =>
   `radial-gradient(110% 62% at 50% -14%, ${fade(lightAt(frame), 0.26)}, transparent 62%), ${C.bg}`;
 
-/** How the device is drawn at a moment of the pull back. */
-const moved = (lens: Lens, k = 1, x = 0, y = 0): React.CSSProperties => ({
+/**
+ * How the device is drawn at a moment of the proof: by the answer's own move as it
+ * pulls back, and then dropping away from the camera, smaller and down and out, as the
+ * answer comes out of it.
+ */
+const moved = (lens: Lens): React.CSSProperties => ({
   position: "absolute",
   left: 0,
   top: 0,
   width: WIDTH,
   height: HEIGHT,
   transformOrigin: "0 0",
-  transform: `translate(${lens.device.x + lens.device.k * x}px, ${lens.device.y + lens.device.k * y}px) scale(${lens.device.k * k})`,
-  opacity: tween(lens.back, 0.03, 0.4, 0, 1, (t) => t),
+  transform: [
+    `translate(${WIDTH / 2}px, ${HEIGHT / 2 + lens.away * 520}px)`,
+    `scale(${1 - 0.4 * lens.away})`,
+    `translate(${-WIDTH / 2}px, ${-HEIGHT / 2}px)`,
+    `translate(${lens.device.x}px, ${lens.device.y}px)`,
+    `scale(${lens.device.k})`,
+  ].join(" "),
+  opacity:
+    tween(lens.held, 0.03, 0.4, 0, 1, (t) => t) *
+    (1 - tween(lens.away, 0.35, 1, 0, 1, (t) => t)),
 });
 
 /** The page's own heading and its card, with room in the card for the answer. */
@@ -372,12 +385,45 @@ const camera = (): View => ({
 export const SLIDES = [0, 12] as const;
 /** When the phone is first wanted. It is made a little before. */
 export const PHONE_FROM = pullsBack("level")[0] - 4;
-/** Proving an answer, the phone stands smaller and in the middle. */
-const SMALLER = PROOF_SCREEN.w / SCREEN.w;
-const MOVED = {
-  x: PROOF_SCREEN.x - SMALLER * SCREEN.x,
-  y: PROOF_SCREEN.y - SMALLER * SCREEN.y,
-} as const;
+/** Proving an answer, the phone stands in the middle and near: the camera is close. */
+const NEARER = PROOF_SCREEN.h / SCREEN.h;
+const close_ = (): View => ({
+  position: [0, 0, FAR / NEARER],
+  target: [0, 0, 0],
+  fov: FOV,
+});
+
+/** The card above the answer's own on a phone page, which is scrolled down to it. */
+const Above: React.FC<{ readonly page: Page }> = ({ page }) =>
+  page.place === 1 ? (
+    <MarketCard
+      market={film.markets[0]}
+      copy="proof"
+      style={{ position: "absolute", left: 16, top: 116, width: 358 }}
+    />
+  ) : (
+    <div
+      style={{ ...card, left: 16, top: 116, width: 358, padding: "14px 12px" }}
+    >
+      <TopEdge />
+      <div style={label}>Your portfolio</div>
+      <div
+        style={{
+          fontSize: 30,
+          fontWeight: 700,
+          letterSpacing: "-0.04em",
+          lineHeight: 1.2,
+        }}
+      >
+        {formatMoney(portfolio.value)}
+      </div>
+      <div
+        style={{ fontSize: 13, color: C.muted, textTransform: "capitalize" }}
+      >
+        {portfolio.riskLevel} risk · {COPY.example}
+      </div>
+    </div>
+  );
 
 /**
  * The phone. It proves the answers of shots 4, 5 and 7, with the answer's page on its
@@ -398,15 +444,22 @@ export const PhoneLayer: React.FC<{ readonly from: number }> = ({ from }) => {
   const lit = nine ? tween(frame, HANDOVER[0], HANDOVER[1], 0, 1, (t) => t) : 0;
   const page = proving ? PAGES[proving.id] : null;
   const wrap: React.CSSProperties = proving
-    ? moved(proving, SMALLER, MOVED.x, MOVED.y)
+    ? moved(proving)
     : { position: "absolute", inset: 0, opacity: nine ? 1 : 0 };
 
   return (
     <AbsoluteFill>
       <div style={wrap}>
-        <Stage room={assets.room} light={C.accent} camera={camera} turn={0.5}>
+        <Stage
+          room={assets.room}
+          light={C.accent}
+          camera={proving ? close_ : camera}
+          turn={0.5}
+        >
           <group
-            position={[STANDS.x, STANDS.y - (nine ? (1 - up) * 2.6 : 0), 0]}
+            position={
+              proving ? [0, 0, 0] : [STANDS.x, STANDS.y - (1 - up) * 2.6, 0]
+            }
           >
             <Phone
               object={assets.phone}
@@ -419,11 +472,11 @@ export const PhoneLayer: React.FC<{ readonly from: number }> = ({ from }) => {
           <div
             style={{
               position: "absolute",
-              left: SCREEN.x,
-              top: SCREEN.y,
-              width: SCREEN.w,
-              height: SCREEN.h,
-              borderRadius: 46,
+              left: PROOF_SCREEN.x,
+              top: PROOF_SCREEN.y,
+              width: PROOF_SCREEN.w,
+              height: PROOF_SCREEN.h,
+              borderRadius: 46 * NEARER,
               overflow: "hidden",
               background: light(frame),
             }}
@@ -436,24 +489,25 @@ export const PhoneLayer: React.FC<{ readonly from: number }> = ({ from }) => {
                 width: PHONE.width,
                 height: PHONE.height,
                 transformOrigin: "0 0",
-                scale: String(SCREEN.w / PHONE.width),
+                scale: String(PROOF_SCREEN.w / PHONE.width),
               }}
             >
               <Heading page={page} phone />
+              <Above page={page} />
               <Card
                 page={page}
                 phone
                 box={{
                   left: 16,
-                  top: 124,
+                  top: 296,
                   width: 358,
-                  height: PHONE_CONTENT.y + PHONE_CONTENT.h + 14 - 124,
+                  height: PHONE_CONTENT.y + PHONE_CONTENT.h + 16 - 296,
                 }}
               />
               <More
                 page={page}
                 phone
-                box={{ left: 16, top: 446, width: 358, height: 192 }}
+                box={{ left: 16, top: 542, width: 358, height: 192 }}
               />
               <div
                 style={{ position: "absolute", left: 20, top: 772, width: 350 }}

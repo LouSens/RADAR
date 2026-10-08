@@ -249,6 +249,8 @@ export const Desk: React.FC<{
   readonly arriving?: boolean;
   /** How far the sidebar has collapsed into the phone's capsule of places. */
   readonly capsule?: number;
+  /** The week's line of the Bitcoin card has been handed to the film's own copy. */
+  readonly handed?: boolean;
   /** How much the rows of "Coming up" show, where they are waited for. */
   readonly coming?: number;
   /** Tells two drawings of Home apart, so that their own drawings do not share names. */
@@ -264,17 +266,18 @@ export const Desk: React.FC<{
   arriving = false,
   capsule = 0,
   coming = 1,
+  handed = false,
   copy = "",
 }) => {
   const since = frame - alive;
   const btc = markets[0];
-  // The Bitcoin price ticks through the last hours as the card arrives.
+  // The Bitcoin price ticks through the last hours, for as long as Home is held.
   const hours = btc.weekCloses;
   const price =
     hours[
       Math.min(
         hours.length - 1,
-        hours.length - 12 + Math.max(Math.floor(since / 3), 0),
+        hours.length - 17 + Math.max(Math.floor(since / 3), 0),
       )
     ];
 
@@ -331,10 +334,11 @@ export const Desk: React.FC<{
             market={piece === "btc" ? { ...m, price } : m}
             wide
             copy={`desk${copy}`}
-            drawn={Math.min(Math.max((since - 4) / 22, 0), 1)}
+            drawn={Math.min(Math.max((since - 4) / 16, 0), 1)}
+            line={!(handed && piece === "btc")}
             stated={pop(
               frame,
-              alive + 24 + (piece === "btc" ? 0 : piece === "gold" ? 3 : 6),
+              alive + 12 + (piece === "btc" ? 0 : piece === "gold" ? 3 : 6),
             )}
             style={{ height: "100%", boxSizing: "border-box", opacity: shown }}
           />

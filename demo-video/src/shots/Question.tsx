@@ -26,11 +26,11 @@ const HALF = (KIT.coin.depth * SIZE) / 2;
 export const TOPPLE = 26;
 export const LANDS = 41;
 /** When the coin is flicked up on to its rim, to spin round and face us. */
-export const EXIT = 92;
+export const EXIT = 80;
 /** The three words, a beat apart: each one tips the coin the other way. */
 export const WORDS = [BEAT * 3, BEAT * 3 + 13, BEAT * 3 + 26] as const;
 /** When the shot's words and its price leave, for the coin to stand alone. */
-export const CLEARS = EXIT - 6;
+export const CLEARS = 102;
 /** When the coin gives way to the mark (shots/Meet): its length, past the shot's end. */
 export const GIVES = 12;
 
@@ -40,7 +40,6 @@ const UP = new Vector3(0, 1, 0);
 const FOV = 30;
 /** Where the camera ends, square on to the coin, and how the coin faces it. */
 const LAST = { x: 0, y: RADIUS + 0.35, z: 5.2 } as const;
-const FACING = new Vector3(LAST.x, LAST.y - RADIUS, LAST.z).normalize();
 /** How far round it spins as it comes up, before it stops facing us. */
 const TURNS = 3 * Math.PI;
 
@@ -56,6 +55,30 @@ export const RESTS = {
     Math.tan((FOV * Math.PI) / 360) /
     Math.hypot(LAST.y - RADIUS, LAST.z),
 } as const;
+
+const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+/**
+ * A slow push towards the coin, a little round it; then, as the coin comes up, one
+ * move in to stand square in front of it, the coin in the middle of the frame.
+ */
+const camera = (frame: number): View => {
+  const push = tween(frame, 0, 105, 0, 1, (t) => t);
+  const round = -0.34 + push * 0.2;
+  const far = 7.4 - push * 1.1;
+  const in_ = tween(frame, CLEARS, END + 2, 0, 1, EASE_IN_OUT);
+  return {
+    position: [
+      mix(-1.75 + Math.sin(round) * far, LAST.x, in_),
+      mix(2.5 - push * 0.5, LAST.y, in_),
+      mix(Math.cos(round) * far, LAST.z, in_),
+    ],
+    target: [mix(-1.75, 0, in_), mix(0.95, RADIUS, in_), 0],
+    focus: [0, mix(0.3, RADIUS, in_), 0],
+    aperture: mix(0.045, 0.012, in_),
+    fov: FOV,
+  };
+};
 
 /**
  * The coin at a moment of the shot: where its middle is and how it is turned. It spins
@@ -115,7 +138,12 @@ const coinAt = (frame: number): { position: Vector3; turn: Quaternion } => {
       fps: FPS,
       config: { damping: 15, mass: 0.9, stiffness: 120 },
     });
-    const facing = FACING.clone().applyAxisAngle(UP, (round - 1) * TURNS);
+    // It faces the camera wherever the camera is, so it is square on before the
+    // camera comes in.
+    const eye = camera(frame).position;
+    const facing = new Vector3(eye[0], eye[1] - RADIUS, eye[2])
+      .normalize()
+      .applyAxisAngle(UP, (round - 1) * TURNS);
     const side = new Vector3().crossVectors(UP, facing).normalize();
     const top = new Vector3().crossVectors(facing, side);
     const upright = new Quaternion().setFromRotationMatrix(
@@ -137,30 +165,6 @@ const move: MoveAt = (frame, scene) => {
     coin.position.copy(position);
     coin.quaternion.copy(turn);
   });
-};
-
-const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
-
-/**
- * A slow push towards the coin, a little round it; then, as the coin comes up, one
- * move in to stand square in front of it, the coin in the middle of the frame.
- */
-const camera = (frame: number): View => {
-  const push = tween(frame, 0, 105, 0, 1, (t) => t);
-  const round = -0.34 + push * 0.2;
-  const far = 7.4 - push * 1.1;
-  const in_ = tween(frame, EXIT + 3, END + 2, 0, 1, EASE_IN_OUT);
-  return {
-    position: [
-      mix(-1.75 + Math.sin(round) * far, LAST.x, in_),
-      mix(2.5 - push * 0.5, LAST.y, in_),
-      mix(Math.cos(round) * far, LAST.z, in_),
-    ],
-    target: [mix(-1.75, 0, in_), mix(0.95, RADIUS, in_), 0],
-    focus: [0, mix(0.3, RADIUS, in_), 0],
-    aperture: mix(0.045, 0.012, in_),
-    fov: FOV,
-  };
 };
 
 /**
@@ -200,7 +204,7 @@ export const Question: React.FC = () => {
         shutter={fast ? 0.6 : 0.35}
         turn={0.6}
         style={{
-          opacity: 1 - tween(frame, END + 2, END + GIVES, 0, 1, (t) => t),
+          opacity: 1 - tween(frame, END + 7, END + GIVES, 0, 1, (t) => t),
         }}
       >
         <Floor tint={C.btc}>
@@ -208,8 +212,9 @@ export const Question: React.FC = () => {
             kit={assets.kit}
             name="coin"
             scale={SIZE}
-            tint={tween(frame, END, END + GIVES - 2, 0, 1, (t) => t)}
-            relief={1 - tween(frame, END - 2, END + 6, 0, 1, (t) => t)}
+            turn={tween(frame, END - 3, END + 5, 0, 1, (t) => t)}
+            gone={tween(frame, END + 1, END + 7, 0, 1, (t) => t)}
+            shine={tween(frame, EXIT, EXIT + 6, 1, 0.3, (t) => t)}
           />
         </Floor>
       </Stage>

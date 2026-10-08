@@ -188,6 +188,8 @@ export const Ask: React.FC<{
   readonly wordsAt?: readonly number[];
   /** The middle of the block from the left, where it is not the frame's. */
   readonly centre?: number;
+  /** Starts the lines at the left margin instead of centring them. */
+  readonly left?: boolean;
 }> = ({
   lines,
   at,
@@ -198,10 +200,13 @@ export const Ask: React.FC<{
   middle = HEIGHT / 2,
   wordsAt,
   centre = WIDTH / 2,
+  left = false,
 }) => {
   const frame = useCurrentFrame();
-  const t =
+  const docked =
     dock === undefined ? 0 : tween(frame, dock, dock + DOCK, 0, 1, EASE_IN_OUT);
+  // At the left margin a block is placed as a docked one is, at its own size.
+  const t = left ? 1 : docked;
   let next = at;
   let lit = false;
   let count = 0;
@@ -210,9 +215,9 @@ export const Ask: React.FC<{
       style={{
         position: "absolute",
         left: centre + (MARGIN - centre) * t,
-        top: middle + (TOP - middle) * t,
-        translate: `${-50 * (1 - t)}% ${-50 * (1 - t)}%`,
-        scale: String(1 + (DOCKED / size - 1) * t),
+        top: left ? middle : middle + (TOP - middle) * t,
+        translate: left ? "0 -50%" : `${-50 * (1 - t)}% ${-50 * (1 - t)}%`,
+        scale: left ? undefined : String(1 + (DOCKED / size - 1) * t),
         transformOrigin: "0 0",
         fontFamily: FONT,
         fontFeatureSettings: FEATURES,

@@ -53,12 +53,12 @@ const LOGO = {
 
 const meet = shot("meet").from;
 /** The ring comes back from the size of the coin to the size the mark is drawn at. */
-const SETTLES = [8, 26] as const;
+const SETTLES = [10, 26] as const;
 /** The radar's line, turning once inside the ring. */
-export const TURNS = [5, 19] as const;
+export const TURNS = [9, 23] as const;
 /** When the rising line is drawn, and when the dot lands. */
-export const LINE = [18, 30] as const;
-export const DOT = 29;
+export const LINE = [22, 34] as const;
+export const DOT = 33;
 /** When the mark sets off for the sidebar. It has landed at LANDED (DeskLayer). */
 export const SHRINKS = LANDED - meet - 18;
 
@@ -87,7 +87,8 @@ export const Meet: React.FC = () => {
   const ring: Circle = {
     x: mix(RESTS.x, DRAWN_RING.x, settled),
     y: mix(RESTS.y, DRAWN_RING.y, settled),
-    r: mix(RESTS.r, DRAWN_RING.r, settled),
+    // The coin's rim is a little inside its edge.
+    r: mix(RESTS.r * 0.965, DRAWN_RING.r, settled),
   };
   const line = tween(frame, LINE[0], LINE[1], 0, 1, EASE_IN_OUT);
   const dot = spring({
@@ -114,7 +115,7 @@ export const Meet: React.FC = () => {
       style={{
         transformOrigin: "0 0",
         transform: `translate(${x - DRAWN.x * k}px, ${y - DRAWN.y * k}px) scale(${k})`,
-        opacity: (1 - gone) * tween(frame, 2, GIVES, 0, 1, (t) => t),
+        opacity: (1 - gone) * tween(frame, 7, GIVES, 0, 1, (t) => t),
       }}
     >
       {/* The radar's line, once round, inside the ring and nowhere else. */}

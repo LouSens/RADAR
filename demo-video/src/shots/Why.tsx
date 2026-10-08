@@ -8,7 +8,7 @@ import { Pop, pop, settle } from "../ui/motion";
 
 const days = film.moves.days;
 const worst = days[days.length - 1];
-const week = film.markets[0].weekCloses.filter((_, i) => i % 2 === 0);
+const week = film.markets[0].weekCloses;
 
 /** This shot starts early: its first frames are the push into Home's Bitcoin card. */
 export const LEAD = 14;
@@ -32,7 +32,11 @@ const last = days.length - 1;
  * there), and the push that makes it as wide as the chart. Home is pushed by the same
  * move (DeskLayer), so the line never leaves its place on the card.
  */
-const SPARK = { x: 415, y: 680, w: 429, h: 59 } as const;
+const SPARK = { x: 416.27, y: 680.67, w: 428.8, h: 58.67 } as const;
+/** The card draws its line 2 in from the sides of a box 120 by 36 (ui/kit, Sparkline). */
+const INSET = { x: 2 / 120, y: 2 / 36 } as const;
+/** How thick the card's line is, in the frame. */
+const CARD_LINE = 1.6;
 const CLOSE = (RIGHT - LEFT) / SPARK.w;
 const FROM = { x: SPARK.x + SPARK.w / 2, y: SPARK.y + SPARK.h / 2 } as const;
 export const pushAt = (film: number): { k: number; x: number; y: number } => {
@@ -251,8 +255,12 @@ export const Why: React.FC = () => {
   const high = Math.max(...week);
   const path = week
     .map((value, i) => {
-      const px = box.x + (i / (week.length - 1)) * box.w;
-      const py = box.y + box.h - ((value - low) / (high - low)) * box.h;
+      const px =
+        box.x + (INSET.x + (i / (week.length - 1)) * (1 - 2 * INSET.x)) * box.w;
+      const py =
+        box.y +
+        (1 - INSET.y - ((value - low) / (high - low)) * (1 - 2 * INSET.y)) *
+          box.h;
       return `${i === 0 ? "M" : "L"}${px.toFixed(1)} ${(py + (MIDDLE - py) * flat).toFixed(1)}`;
     })
     .join(" ");
@@ -288,10 +296,13 @@ export const Why: React.FC = () => {
                   [0, 1],
                   [C.btc, "rgba(255,255,255,0.3)"],
                 )}
-                strokeWidth={2.2 + 3.8 * tween(frame, -LEAD, 0) - 2 * flat}
+                strokeWidth={
+                  CARD_LINE +
+                  (6 - CARD_LINE) * tween(frame, -LEAD, 0, 0, 1, EASE_IN_OUT) -
+                  2 * flat
+                }
                 strokeLinejoin="round"
                 strokeLinecap="round"
-                opacity={tween(frame, -LEAD, -LEAD + 3, 0, 1, (t) => t)}
               />
             </svg>
           </Smear>

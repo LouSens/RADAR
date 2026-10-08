@@ -18,8 +18,8 @@ import numpy as np
 
 RATE = 48_000
 OUT = Path(__file__).resolve().parent.parent / "public" / "sfx"
-#: How long the room tone is: the film's length, 930 frames at 30 a second.
-FILM = 930 / 30
+#: How long the room tone is: the film's length, 960 frames at 30 a second.
+FILM = 960 / 30
 
 
 def seconds(length):

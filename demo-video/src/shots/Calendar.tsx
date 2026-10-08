@@ -28,7 +28,7 @@ export const EVERY = 3;
 export const ROLL = [18, 30] as const;
 export const LOCKED = ROLL[1] + 2;
 /** When the rows fly to their places on Home, which comes back round them. */
-export const FLIES = 40;
+export const FLIES = 45;
 const FLIGHT = 14;
 export const LANDED = FLIES + FLIGHT;
 /** How many days above the real count the roll starts from. */

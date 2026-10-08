@@ -131,7 +131,9 @@ export const Sparkline: React.FC<{
   readonly values: readonly number[];
   readonly colour: string;
   readonly drawn?: number;
-}> = ({ id, values, colour, drawn = 1 }) => {
+  /** Without it only the fill under the line is drawn. */
+  readonly line?: boolean;
+}> = ({ id, values, colour, drawn = 1, line = true }) => {
   const width = 120;
   const height = 36;
   const path = sparklinePath(values, width, height);
@@ -159,6 +161,7 @@ export const Sparkline: React.FC<{
           d={path}
           fill="none"
           stroke={colour}
+          strokeOpacity={line ? 1 : 0}
           strokeWidth="1.6"
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -209,10 +212,20 @@ export const MarketCard: React.FC<{
   readonly wide?: boolean;
   readonly drawn?: number;
   readonly stated?: number;
+  /** Whether the week's line is drawn over its fill. */
+  readonly line?: boolean;
   /** Tells two copies of one card apart, so their drawings do not share names. */
   readonly copy?: string;
   readonly style?: React.CSSProperties;
-}> = ({ market, wide = false, drawn = 1, stated = 1, copy = "", style }) => {
+}> = ({
+  market,
+  wide = false,
+  drawn = 1,
+  stated = 1,
+  line = true,
+  copy = "",
+  style,
+}) => {
   const tone = TONE[market.tone];
   return (
     <div
@@ -264,6 +277,7 @@ export const MarketCard: React.FC<{
           values={market.weekCloses}
           colour={tone}
           drawn={drawn}
+          line={line}
         />
       </span>
       <span

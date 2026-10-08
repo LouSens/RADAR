@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import * as Cal from "./shots/Calendar";
-import { PUSHED_FROM, pushAt } from "./shots/Why";
+import { LEAD, PUSHED_FROM, pushAt } from "./shots/Why";
 import { EASE, EASE_IN_OUT, shot, tween } from "./timing";
 import { Desk, type Box, type Piece } from "./ui/Desk";
 
@@ -19,13 +19,13 @@ const both = shot("both").from;
 const close = shot("close").from;
 
 /** When the mark has landed as the logo. The sidebar is in a little before. */
-export const LANDED = meet + 62;
+export const LANDED = meet + 64;
 const SIDE = LANDED - 12;
 /** The cards' placeholders start this long after the sidebar, and follow each other. */
 const AFTER = 6;
 const first = SIDE + AFTER;
 /** How long a placeholder stands before its content arrives. */
-const WAIT = 14;
+const WAIT = 12;
 const CARDS = [
   "worth",
   "todo",
@@ -37,7 +37,7 @@ const CARDS = [
 ] as const;
 /** When a card's placeholder arrives, and when its content does. */
 const card = (piece: (typeof CARDS)[number]): readonly [number, number] => {
-  const at = first + CARDS.indexOf(piece) * 3;
+  const at = first + CARDS.indexOf(piece) * 2;
   return [at, at + WAIT];
 };
 /** When each piece's placeholder arrives, and when its content does. */
@@ -45,7 +45,7 @@ const ARRIVES: Readonly<Record<Piece, readonly [number, number]>> = {
   side: [SIDE, SIDE],
   title: [first, first],
   note: [first + 2, first + 2],
-  markets: [first + 6, first + 6],
+  markets: [first + 4, first + 4],
   worth: card("worth"),
   todo: card("todo"),
   btc: card("btc"),
@@ -148,9 +148,13 @@ export const DeskLayer: React.FC = () => {
   const home = Cal.homeAt(frame - calendar);
   const pulled = `translate(${home.x}px, ${home.y}px) scale(${home.k})`;
   // Home is never quite still: a slow drift, and a little nearer all the time.
-  const drift = early ? Math.sin((frame - meet) / 53) : 0;
+  // It is square and still by the time it is pushed into, so that the week's line
+  // in the Bitcoin card is exactly where the film's copy of it takes over.
+  const still =
+    1 - tween(frame, why - LEAD - 14, why - LEAD - 2, 0, 1, EASE_IN_OUT);
+  const drift = early ? Math.sin((frame - meet) / 53) * still : 0;
   const near = early
-    ? 1 + 0.012 * tween(frame, LANDED, why, 0, 1, (t) => t)
+    ? 1 + 0.012 * tween(frame, LANDED, why - LEAD, 0, 1, (t) => t) * still
     : 1;
 
   return (
@@ -184,6 +188,7 @@ export const DeskLayer: React.FC = () => {
             )}
             phone={SCREEN}
             view={viewAt(frame)}
+            handed={early && frame >= why - LEAD}
             coming={
               early ? 1 : tween(frame, ROWS_IN - 2, ROWS_IN + 2, 0, 1, (t) => t)
             }
