@@ -111,7 +111,7 @@ export function PlanPanel({ analysis, kinds }: { analysis: PortfolioAnalysis; ki
     setShares({ ...shares, [symbol]: Math.max(0, Math.min(value, cap, 100 - others)) });
     setTouched(true);
   };
-  const colour = (symbol: string) => holdingColour(symbol, symbols.indexOf(symbol));
+  const colour = (symbol: string) => holdingColour(symbol);
   const parts: Part[] = [
     ...holdings.map((p) => ({
       key: p.symbol,

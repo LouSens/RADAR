@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import type { AccountRecord, Portfolio, PortfolioAnalysis, Steps } from "../api/client";
 import { formatMoney } from "../lib/format";
 import { Ladder, stepLine } from "./StepsPanel";
-import { Legend, StackBar, holdingColour, type Part } from "./viz";
+import { Legend, StackBar, Swatch, holdingColour, type Part } from "./viz";
 
 const CASH = "USD";
 const shortName = (name: string) => name.split(" (")[0] ?? name;
@@ -44,13 +44,7 @@ export function PlanBars({ analysis }: { analysis: PortfolioAnalysis }) {
   const moves = analysis.plan?.moves ?? [];
   const planned = (symbol: string) => moves.find((m) => m.symbol === symbol)?.target_weight;
   const others = analysis.positions.filter((p) => p.symbol !== CASH);
-  const colour = (symbol: string) =>
-    symbol === CASH
-      ? "var(--faint)"
-      : holdingColour(
-          symbol,
-          others.findIndex((p) => p.symbol === symbol),
-        );
+  const colour = holdingColour;
   const now: Part[] = analysis.positions.map((p) => ({
     key: p.symbol,
     name: shortName(p.name),
@@ -91,11 +85,7 @@ export function PlanBars({ analysis }: { analysis: PortfolioAnalysis }) {
       <ul className="mt-1 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm @xl:grid-cols-3">
         {now.map((part, i) => (
           <li key={part.key} className="flex items-center gap-2">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: part.colour }}
-              aria-hidden="true"
-            />
+            <Swatch part={part} />
             <span className="min-w-0 truncate">{part.name}</span>
             <span className="num ml-auto shrink-0 text-muted">
               {Math.round(part.share * 100)}% → {Math.round((plan[i]?.share ?? 0) * 100)}%

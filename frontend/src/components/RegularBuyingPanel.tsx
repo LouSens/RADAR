@@ -265,11 +265,11 @@ export function RegularBuyingPanel({
         <div>
           <p className="label mb-2">What each purchase buys</p>
           <ul className="flex flex-col gap-2">
-            {rows.map((row, i) => (
+            {rows.map((row) => (
               <li key={row.symbol} className="flex items-center gap-3">
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: holdingColour(row.symbol, i) }}
+                  style={{ background: holdingColour(row.symbol) }}
                   aria-hidden="true"
                 />
                 <span className="min-w-0 flex-1 truncate text-sm">{row.name}</span>

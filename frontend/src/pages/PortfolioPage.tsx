@@ -32,6 +32,7 @@ import {
   StateChip,
   Tile,
   TileGrid,
+  Swatch,
   holdingColour,
   levelColour,
   type Part,
@@ -77,11 +78,11 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
   const name = (symbol: string) =>
     (analysis.positions.find((p) => p.symbol === symbol)?.name ?? symbol).split(" (")[0] ?? symbol;
   const parts = (pick: (h: (typeof xray.holdings)[number]) => number): Part[] =>
-    xray.holdings.map((holding, i) => ({
+    xray.holdings.map((holding) => ({
       key: holding.symbol,
       name: name(holding.symbol),
       share: pick(holding),
-      colour: holdingColour(holding.symbol, i),
+      colour: holdingColour(holding.symbol),
     }));
   const rough = analysis.states
     .filter((state) => state.label === "turbulent")
@@ -140,11 +141,7 @@ function Brief({ analysis }: { analysis: PortfolioAnalysis }) {
               {parts((h) => h.weight).map((part, i) => (
                 <Fragment key={part.key}>
                   <span className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ background: part.colour }}
-                      aria-hidden="true"
-                    />
+                    <Swatch part={part} />
                     <span className="truncate">{part.name}</span>
                   </span>
                   <span className="num text-right text-muted">{formatShare(part.share, 0)}</span>

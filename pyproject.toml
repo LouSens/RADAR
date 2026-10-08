@@ -68,6 +68,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "PT", "RUF", "S", "T2
 
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/**" = ["S101"]
+# Scene scripts run inside Blender: long coordinate rows, a seeded generator for where
+# things land, and progress written to its console.
 
 [tool.mypy]
 python_version = "3.12"

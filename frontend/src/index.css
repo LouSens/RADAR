@@ -38,9 +38,18 @@
   --accent: #62cfe8; /* radar cyan: anything you can act on */
   --calm: #64d599; /* up, passing, fine */
   --alert: #f46f68; /* down, failing, needs attention */
-  --btc: #eea65b;
-  --gold: #e1c981;
-  --stock: #97a0ef;
+  /* The three markets are metals: copper, gold and steel. These are each metal's flat
+     mid-tone, which is what a chart line or a dot uses; bars and rings lay it on with a
+     soft light from above (viz.tsx, `metal`). */
+  --btc: #ce8e64;
+  --gold: #d7bb65;
+  --stock: #a6b5ca;
+  /* Holdings that are not one of the three markets: pewter, bronze, platinum and rose
+     gold. Never green, red or the accent: those mean up, down and "you can act". */
+  --hold-a: #71778e;
+  --hold-b: #aa7e4b;
+  --hold-c: #ccc8c2;
+  --hold-d: #d1988a;
 
   --accent-ink: #002a33;
   --accent-dim: color-mix(in srgb, var(--accent) 12%, transparent);

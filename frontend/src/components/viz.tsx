@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import type { Trust } from "../api/client";
@@ -115,11 +115,46 @@ export interface Part {
   colour: string;
 }
 
-/** One bar split into parts that add up to the whole. */
+/** Cash, wherever holdings are drawn. It is not a colour: it is the part left unfilled. */
+const CASH = "USD";
+
+/**
+ * A holding's colour laid on as brushed metal: its own flat tone, a little lighter along
+ * the top and a little darker along the foot, as every card here is lit from above.
+ */
+const LIGHTER = (colour: string) => `color-mix(in srgb, ${colour} 83%, white)`;
+const DARKER = (colour: string) => `color-mix(in srgb, ${colour} 92%, black)`;
+
+function metal(colour: string) {
+  return {
+    background: `linear-gradient(180deg, ${LIGHTER(colour)} 0%, ${colour} 45%, ${DARKER(colour)} 100%)`,
+  };
+}
+
+/** The dot that names a holding beside a bar or a ring. Cash is an empty ring. */
+export function Swatch({ part }: { part: Pick<Part, "key" | "colour"> }) {
+  return part.key === CASH ? (
+    <span
+      className="h-2.5 w-2.5 shrink-0 rounded-full border-[1.5px] border-white/30"
+      aria-hidden="true"
+    />
+  ) : (
+    <span
+      className="h-2.5 w-2.5 shrink-0 rounded-full"
+      style={metal(part.colour)}
+      aria-hidden="true"
+    />
+  );
+}
+
+/**
+ * One bar split into parts that add up to the whole. Each holding is a rounded piece of
+ * its own; cash is the track showing through, as an unfilled share is on every other bar.
+ */
 export function StackBar({ parts, label }: { parts: Part[]; label: string }) {
   return (
     <span
-      className="flex h-3 overflow-hidden rounded-full bg-white/8"
+      className="flex h-2 gap-[3px]"
       role="img"
       aria-label={`${label}: ${parts.map((p) => `${p.name} ${(p.share * 100).toFixed(0)}%`).join(", ")}`}
     >
@@ -127,7 +162,11 @@ export function StackBar({ parts, label }: { parts: Part[]; label: string }) {
         <span
           key={part.key}
           title={`${part.name} ${(part.share * 100).toFixed(0)}%`}
-          style={{ width: `${Math.max(part.share, 0) * 100}%`, background: part.colour }}
+          className="min-w-[3px] rounded-full"
+          style={{
+            flex: `${Math.max(part.share, 0)} 1 0%`,
+            ...(part.key === CASH ? { background: "rgba(255,255,255,0.08)" } : metal(part.colour)),
+          }}
         />
       ))}
     </span>
@@ -139,11 +178,7 @@ export function Legend({ parts }: { parts: Part[] }) {
     <span className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
       {parts.map((part) => (
         <span key={part.key} className="flex items-center gap-1.5">
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{ background: part.colour }}
-            aria-hidden="true"
-          />
+          <Swatch part={part} />
           {part.name}
         </span>
       ))}
@@ -286,15 +321,22 @@ export function StateChip({ label, children }: { label: string; children?: React
   );
 }
 
-const PALETTE = ["--btc", "--gold", "--stock", "--accent", "--calm", "--alert"];
+/** Hues for holdings that are not one of the three markets (index.css). */
+const OTHERS = ["--hold-a", "--hold-b", "--hold-c", "--hold-d"];
 
-/** A stable colour for each holding. Cash is always the quiet one. */
-export function holdingColour(symbol: string, index: number): string {
-  if (symbol === "USD") return "rgba(255,255,255,0.28)";
+/**
+ * The colour of a holding, the same on every screen: it depends on the holding alone, not
+ * on where it falls in a list. The three markets keep their own. Green, red and the radar
+ * cyan are never given to a holding, because here they mean up, down and "you can act".
+ */
+export function holdingColour(symbol: string): string {
+  if (symbol === CASH) return "rgba(255,255,255,0.28)";
   if (symbol === "BTC/USD") return "var(--btc)";
   if (symbol === "GLD" || symbol === "PAXG/USD") return "var(--gold)";
   if (symbol === "SPY") return "var(--stock)";
-  return `var(${PALETTE[(index + 3) % PALETTE.length]})`;
+  let sum = 0;
+  for (const letter of symbol) sum = (sum * 31 + letter.charCodeAt(0)) % 9973;
+  return `var(${OTHERS[sum % OTHERS.length]})`;
 }
 
 /**
@@ -315,29 +357,38 @@ export function Donut({
   caption: ReactNode;
   label: string;
 }) {
-  const ring = (parts: Part[], radius: number, width: number) => {
+  const id = useId();
+  const paint = (part: Part) => `${id}-${part.key.replace(/[^a-zA-Z0-9]/g, "")}`;
+  // Each holding is an arc with round ends, like a piece of a bar bent round. Cash is not
+  // drawn: its share is the track left showing. `quiet` is the money ring, which stands
+  // back so that the risk ring is the one that is read.
+  const ring = (parts: Part[], radius: number, width: number, quiet: boolean) => {
     const round = 2 * Math.PI * radius;
     const total = parts.reduce((sum, part) => sum + Math.max(part.share, 0), 0) || 1;
+    const gap = width + 1.4;
     let used = 0;
     return parts.map((part) => {
       const length = (Math.max(part.share, 0) / total) * round;
-      const arc = (
+      const start = used;
+      used += length;
+      if (part.key === CASH || length <= 0) return null;
+      return (
         <circle
           key={part.key}
           cx="60"
           cy="60"
           r={radius}
           fill="none"
-          stroke={part.colour}
+          stroke={`url(#${paint(part)})`}
+          strokeOpacity={quiet ? 0.65 : 1}
           strokeWidth={width}
-          strokeDasharray={`${Math.max(length - 1.2, 0)} ${round}`}
-          strokeDashoffset={-used}
+          strokeLinecap="round"
+          strokeDasharray={`${Math.max(length - gap, 0.01)} ${round}`}
+          strokeDashoffset={-(start + Math.min(gap, length) / 2)}
         >
           <title>{`${part.name} ${(part.share * 100).toFixed(0)}%`}</title>
         </circle>
       );
-      used += length;
-      return arc;
     });
   };
   return (
@@ -349,24 +400,45 @@ export function Donut({
           role="img"
           aria-label={label}
         >
+          {/* The drawing is turned a quarter, so its right-hand side is the top: that is
+              where each metal is lightest. */}
+          <defs>
+            {inner
+              .filter((part) => part.key !== CASH)
+              .map((part) => (
+                <linearGradient
+                  key={part.key}
+                  id={paint(part)}
+                  gradientUnits="userSpaceOnUse"
+                  x1="116"
+                  y1="0"
+                  x2="4"
+                  y2="0"
+                >
+                  <stop offset="0" style={{ stopColor: LIGHTER(part.colour) }} />
+                  <stop offset="0.5" style={{ stopColor: part.colour }} />
+                  <stop offset="1" style={{ stopColor: DARKER(part.colour) }} />
+                </linearGradient>
+              ))}
+          </defs>
           <circle
             cx="60"
             cy="60"
-            r="38"
+            r="42"
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="9"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="3.4"
           />
           <circle
             cx="60"
             cy="60"
             r="52"
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
-            strokeWidth="9"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="5.6"
           />
-          {ring(inner, 38, 9)}
-          {ring(outer, 52, 9)}
+          {ring(inner, 42, 3.4, true)}
+          {ring(outer, 52, 5.6, false)}
         </svg>
         <span className="absolute inset-0 grid place-items-center text-center">
           <span>

@@ -114,7 +114,7 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
       </div>
 
       <ul className="flex flex-col gap-3">
-        {rows.map((row, i) => (
+        {rows.map((row) => (
           <li
             key={row.symbol}
             className="grid grid-cols-[minmax(0,1fr)_4.5rem_auto] items-center gap-x-3 gap-y-1 @xl:grid-cols-[9rem_minmax(0,1fr)_4.5rem_5.5rem_auto]"
@@ -122,7 +122,7 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
             <span className="flex min-w-0 items-center gap-2 text-sm">
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ background: holdingColour(row.symbol, i) }}
+                style={{ background: holdingColour(row.symbol) }}
                 aria-hidden="true"
               />
               <span className="truncate">{name(row.symbol)}</span>
@@ -168,7 +168,7 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
           <span className="flex items-center gap-2">
             <span
               className="h-2.5 w-2.5 rounded-full"
-              style={{ background: holdingColour(CASH, 0) }}
+              style={{ background: holdingColour(CASH) }}
               aria-hidden="true"
             />
             Cash, whatever is left
@@ -250,11 +250,11 @@ export function MixBuilder({ analysis }: { analysis: PortfolioAnalysis }) {
             label="Share of the risk in this mix"
             parts={Object.entries(result.risk_shares as Record<string, number>)
               .filter(([, share]) => share > 0.0005)
-              .map(([symbol, share], i) => ({
+              .map(([symbol, share]) => ({
                 key: symbol,
                 name: name(symbol),
                 share,
-                colour: holdingColour(symbol, i),
+                colour: holdingColour(symbol),
               }))}
           />
           <div className="grid grid-cols-1 gap-x-10 gap-y-5 @3xl:grid-cols-2">
