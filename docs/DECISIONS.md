@@ -3647,3 +3647,53 @@ to the model the app uses, nothing pushed.
 
 **My guess.** Round 2 adds about a point. Round 3 adds less than a point and the single
 model lands about a point under the ensemble.
+
+## 099. Tone accuracy, round 1: the result of decision 097 (2026-10-09)
+
+Run once, as written. Figures are the share of headlines given the labeller's label.
+
+| | Validation (270) | Test part (269) | The 700 of decision 032 |
+|---|---|---|---|
+| `finbert-radar-1`, in use | | 63.6% | 61.1% |
+| Corrected fine-tune, one model (mean of five) | 69.6% | 62.3% | 61.1% |
+| Five models averaged | 68.1% | 61.7% | 61.6% |
+| After dropping doubtful training labels | 68.1% | 62.5% | 61.3% |
+| After self-training (the final model) | 68.1% | 62.5% | 61.3% |
+
+**Bar 1, adopt the new model: failed.** On the 700 headlines the final model was right
+on 61.3% against 61.1%: 35 headlines only it got right, 34 only the model in use got
+right, McNemar p = 1.0. `finbert-radar-1` stays.
+
+**Bar 2, abstaining: passed.** With one temperature (1.6) and one threshold (0.726),
+both from the validation part, the model scored 53% of the 700 headlines and was right
+on 76.1% of those (bar: at least 75% on at least half). On the headlines it would not
+score it was right on 44.5%. On the 269-headline test part: 52% scored, 75.5% right.
+So confidence does separate the headlines the model can read from those it cannot.
+
+**What each step did.**
+- The two settings were a headline apart on validation (69.5% against 69.0%); the tuned
+  one was used.
+- Averaging five models did not help: 68.1% together against 69.6% as the mean of the
+  five alone. The models make the same mistakes, so there was little to average away.
+- Pruning dropped 223 of 1,261 training headlines (115 neutral, 54 negative, 54
+  positive). That is far more than a few label mistakes: with models right on only 67%
+  of held-out training headlines, "confidently disagrees" catches hard headlines as
+  well as wrong labels. Validation did not move.
+- Self-training added nothing, because the rule selected nothing: after calibration
+  no article in the pool reached 0.90. This is a fault in the plan as written, not a
+  finding about self-training, which has in effect not been tried.
+
+**My guesses, checked.** Wrong on accuracy: I said 63 to 65% and it stayed at 61%.
+Right on abstaining: about 75% on about half.
+
+**What this says.** Every model tried lands at 61 to 62% on newer headlines whatever
+the settings, the number of models, or the cleaning. Validation sits seven points
+higher than either test set, which points at headlines changing over time and at the
+labels themselves, not at training. The limit is the data.
+
+**Amendment to decision 098, written before round 3 can run.** Round 3 was to use the
+0.90 rule of step 4, which is now known to select nothing. It will instead take an
+article when the calibrated confidence is at or above the abstaining threshold found on
+validation, the level at which about four in five validation headlines were right. The
+reason is the fault above, seen in the count of articles selected, not in any test
+figure. Everything else in decision 098 stands.

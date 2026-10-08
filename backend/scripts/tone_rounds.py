@@ -255,7 +255,18 @@ def round_three(best: dict[str, str], log: dict[str, Any]) -> None:
     before = together(list(best.values()), "validation")
     t = base.temperature(before, truth)
     on_pool = base.cooled(np.mean(said, axis=0), t)
-    sure = on_pool.max(axis=1) >= base.SURE
+    # Decision 099's amendment: the 0.90 of the first round selected nothing. An article
+    # is taken at the confidence where about four in five validation headlines are right.
+    calm = base.cooled(before, t)
+    sureness = calm.max(axis=1)
+    correct = np.array(base.said(calm)) == np.array(truth)
+    level = float(np.quantile(sureness, 0.5))
+    for value in np.unique(np.round(sureness, 3)):
+        kept = sureness >= value
+        if kept.mean() >= base.WANTED_KEPT and correct[kept].mean() >= base.WANTED_RIGHT:
+            level = float(value)
+            break
+    sure = on_pool.max(axis=1) >= level
     picked = on_pool.argmax(axis=1)
     mix = pd.Series(human_labels).value_counts(normalize=True)
     rng = np.random.default_rng(98)
