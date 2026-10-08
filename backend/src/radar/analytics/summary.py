@@ -259,6 +259,33 @@ def grade_drivers(score: dict[str, object] | None) -> Trust:
     )
 
 
+def grade_moves(evidence: dict[str, object] | None, has_reference: bool) -> Trust:
+    """Solid when the split into the wider market and the asset's own cleared its bar on
+    unseen days, or when no split is made and only the count of each day's size is shown.
+    Fair when a split was wanted and could not be supported (decision 095)."""
+    counted = "How large each day was is a count against the days before it."
+    if not has_reference:
+        return Trust(
+            grade="solid",
+            reason=f"{counted} No split is made: this market is what others are measured against.",
+        )
+    whole = evidence.get("whole") if evidence else None
+    if evidence and evidence.get("passed") and isinstance(whole, dict):
+        agreed = float(str(whole["sign_agreement"]))
+        return Trust(
+            grade="solid",
+            reason=f"On {int(str(whole['n_days'])):,} unseen days the wider market accounted for "
+            f"{percent(float(str(whole['share_explained'])))} of its moves, and on "
+            f"{percent(agreed)} of its {int(str(whole['n_large'])):,} large days it moved the "
+            "same way.",
+        )
+    why = str(evidence["reason"]) if evidence and evidence.get("reason") else "it is untested"
+    return Trust(
+        grade="fair",
+        reason=f"No split into the wider market and its own is shown: {why}. {counted}",
+    )
+
+
 def grade_mixes(n_days: int) -> Trust:
     """Graded on how much history the mixes were run through: three years for solid."""
     if n_days <= 0:

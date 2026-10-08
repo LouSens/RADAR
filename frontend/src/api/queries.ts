@@ -23,6 +23,7 @@ import {
   type Steps,
   type Summary,
   type Timeframe,
+  type Moves,
   type Volatility,
   type Brief,
   type Calendar,
@@ -124,6 +125,16 @@ export function useLevel(slug: string) {
   return useMutation({
     mutationFn: (input: { level: number; horizon_days: number }) =>
       postJson<LevelAnswer>(`/assets/${slug}/simulation/level`, input),
+  });
+}
+
+/** Each recent day's move, split where that holds up, with what else fell on the day. */
+export function useMoves(slug: string | undefined) {
+  return useQuery({
+    queryKey: ["moves", slug],
+    queryFn: () => orNull(() => getJson<Moves>(`/assets/${slug}/moves`)),
+    enabled: slug !== undefined,
+    refetchInterval: 15 * 60_000,
   });
 }
 

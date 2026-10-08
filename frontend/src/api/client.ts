@@ -17,6 +17,7 @@ export type Calibration = components["schemas"]["CalibrationOut"];
 export type CalibrationRow = components["schemas"]["CalibrationRowOut"];
 export type LevelAnswer = components["schemas"]["LevelOut"];
 export type Volatility = components["schemas"]["VolatilityOut"];
+export type Moves = components["schemas"]["WhyItMovedOut"];
 export type VolatilityHorizon = components["schemas"]["VolatilityHorizonOut"];
 export type Risk = components["schemas"]["RiskOut"];
 export type RiskHorizon = components["schemas"]["RiskHorizonOut"];

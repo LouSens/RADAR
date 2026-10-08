@@ -84,6 +84,7 @@ from radar.models import simulator, topics
 from radar.pipelines import discover
 from radar.pipelines import event_study as event_study_job
 from radar.pipelines import finetune as finetune_job
+from radar.pipelines import moves as moves_job
 from radar.pipelines import risk as risk_job
 from radar.pipelines import sentiment as sentiment_job
 from radar.pipelines import simulation as simulation_job
@@ -595,6 +596,32 @@ def get_event_study(symbol: str, universe: UniverseDep, session: SessionDep) -> 
             "computed_at": stored.trained_at,
             "min_events": stored.params["min_events"],
         }
+    )
+
+
+class WhyItMovedOut(moves_job.WhyItMoved):
+    trust: summary.Trust
+
+
+@router.get("/assets/{symbol:path}/moves", response_model=WhyItMovedOut)
+def get_moves(
+    symbol: str,
+    universe: UniverseDep,
+    session: SessionDep,
+    days: Annotated[int, Query(ge=1, le=120)] = moves_job.DAYS,
+) -> WhyItMovedOut:
+    """Each recent day of an asset: its move, the wider market's part where that link
+    holds up, how unusual the size was, and what else is known about the day."""
+    asset = find_asset(universe, symbol)
+    built = moves_job.build(session, universe, asset, days)
+    if not built.days:
+        raise HTTPException(status_code=404, detail=f"No daily prices for {asset.symbol} yet")
+    return WhyItMovedOut(
+        **built.model_dump(),
+        trust=summary.grade_moves(
+            None if built.evidence is None else built.evidence.model_dump(),
+            built.reference is not None,
+        ),
     )
 
 

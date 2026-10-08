@@ -3498,3 +3498,59 @@ this piece of work.
 
 **My guesses.** Ethereum and Solana clear Test 1 comfortably (share explained about
 0.6). PURR against US stocks does not. Test 2 passes everywhere.
+
+## 096. Why it moved: the result, and what was built (2026-10-08)
+
+The tests of decision 095, run once, on the daily closes stored for each market.
+
+**Test 1, the market part** (bars: at least 0.50 of the moves explained on unseen days,
+and the move's sign on at least 80% of large days, overall and in each half).
+
+| Holding | Against | Days | Explained | Right sign on large days | Halves (explained) | |
+|---|---|---|---|---|---|---|
+| Ethereum | Bitcoin | 1,985 | 0.70 | 100% of 139 | 0.71, 0.69 | Passed |
+| Solana | Bitcoin | 1,818 | 0.55 | 98% of 116 | 0.50, 0.63 | Passed |
+| Stock volatility fund | US stocks | 2,585 | 0.61 | 99% of 168 | 0.62, 0.60 | Passed |
+| Gold fund | US stocks | 2,585 | 0.03 | 58% of 188 | −0.02, 0.05 | Failed |
+| Long bonds | US stocks | 2,585 | 0.04 | 66% of 157 | 0.09, 0.01 | Failed |
+| US dollar | US stocks | 2,585 | 0.05 | 67% of 143 | −0.01, 0.10 | Failed |
+| Inflation-linked bonds | US stocks | 2,585 | 0.00 | 62% of 159 | −0.04, 0.03 | Failed |
+| PURR | US stocks | 121 | | | | Not judged: under 150 days |
+
+Solana's first half is at the bar to two decimal places (0.50). It passed as written and
+is the nearest to failing.
+
+**Test 2, how unusual the size is** (bar: a day ranks in the top 5% of the days before it
+on 3% to 8% of days). Bitcoin 4.8%, Ethereum 4.8%, Solana 4.4%, gold 5.3%, US stocks
+5.9%, the gold fund 5.8%, PURR 4.0% of 151 days. All passed.
+
+**My guesses, checked.** Right that Ethereum and Solana would pass and that the ranking
+would pass everywhere. I said Ethereum's share would be about 0.6 and it was 0.70. I said
+PURR would fail against US stocks; it could not be judged at all.
+
+**What was built on this.**
+- `analytics/moves.py`: the split, the size of a usual day, the ranking, and `evidence`,
+  which applies the bars above to any holding each time it is asked. A holding's split is
+  shown only while its own record clears them, so a link that weakens stops being shown
+  without anyone deciding it.
+- `pipelines/moves.py` and `GET /assets/{symbol}/moves`: each recent day with its move,
+  the two parts where allowed, the multiple of a usual day, the ranking, scheduled events
+  on the day, a change of the market's state, and up to three headlines of the day.
+  Nothing is stored: it is arithmetic on stored prices.
+- The page "Why it moved" on every market, with its own address and a trust mark from
+  `summary.grade_moves`: Solid where the split cleared its bar or where no split is made
+  (Bitcoin, gold, US stocks), Fair where a split was wanted and could not be supported.
+- Events and headlines are worded as "that day", never as the cause.
+
+**Not built, and why.**
+- *Protection rules with alerts.* The bar in decision 095 is not met by anything on
+  record, and those tests are not to be rerun with changed settings. No rule is offered.
+- *The models for every holding.* The test in decision 095 has not been run. It is the
+  next piece of work if the user wants it; until then a holding outside the three markets
+  has this page, its price and its place in the portfolio figures.
+
+**Two layout faults fixed in the same piece of work**, reported by the user: a short tile
+beside a tall one was stretched with its picture pushed to the foot, leaving an empty
+middle (a wide tile now takes the row from two columns up, and a tile's picture follows
+its figure); and the Binance wallets filled only half of their card (two columns are used
+only when there are two things to compare).

@@ -1086,6 +1086,126 @@
         "title": "CsvIn",
         "type": "object"
       },
+      "Day": {
+        "description": "One day of one asset. Every share is a fraction: 0.031 is 3.1%.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "headlines": {
+            "items": {
+              "$ref": "#/components/schemas/Headline"
+            },
+            "title": "Headlines",
+            "type": "array"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market"
+          },
+          "move": {
+            "title": "Move",
+            "type": "number"
+          },
+          "own": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Own"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "sensitivity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sensitivity"
+          },
+          "state_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State From"
+          },
+          "state_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State To"
+          },
+          "times_usual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Usual"
+          }
+        },
+        "required": [
+          "day",
+          "move",
+          "market",
+          "own",
+          "sensitivity",
+          "times_usual",
+          "rank",
+          "events",
+          "state_from",
+          "state_to",
+          "headlines"
+        ],
+        "title": "Day",
+        "type": "object"
+      },
       "DirectionOut": {
         "properties": {
           "both_polar": {
@@ -1294,6 +1414,80 @@
         "title": "EventResult",
         "type": "object"
       },
+      "Evidence": {
+        "description": "Whether a holding's market part may be shown, and what that rests on.",
+        "properties": {
+          "first_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Day"
+          },
+          "halves": {
+            "items": {
+              "$ref": "#/components/schemas/Slice"
+            },
+            "title": "Halves",
+            "type": "array"
+          },
+          "last_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Day"
+          },
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "whole": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Slice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "n_days",
+          "first_day",
+          "last_day",
+          "whole",
+          "halves",
+          "passed",
+          "reason"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
       "Fall": {
         "properties": {
           "depth": {
@@ -1433,6 +1627,42 @@
           "after_week"
         ],
         "title": "Habit",
+        "type": "object"
+      },
+      "Headline": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "headline": {
+            "title": "Headline",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "headline",
+          "source",
+          "url",
+          "created_at"
+        ],
+        "title": "Headline",
         "type": "object"
       },
       "HealthOut": {
@@ -4840,6 +5070,42 @@
         "title": "Sleeve",
         "type": "object"
       },
+      "Slice": {
+        "description": "The link to the wider market over one stretch of days.",
+        "properties": {
+          "n_days": {
+            "title": "N Days",
+            "type": "integer"
+          },
+          "n_large": {
+            "title": "N Large",
+            "type": "integer"
+          },
+          "share_explained": {
+            "title": "Share Explained",
+            "type": "number"
+          },
+          "sign_agreement": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign Agreement"
+          }
+        },
+        "required": [
+          "n_days",
+          "share_explained",
+          "n_large",
+          "sign_agreement"
+        ],
+        "title": "Slice",
+        "type": "object"
+      },
       "Spillover": {
         "properties": {
           "after": {
@@ -6777,6 +7043,71 @@
         "title": "WhatIfIn",
         "type": "object"
       },
+      "WhyItMovedOut": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/Day"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Evidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "reference_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Name"
+          },
+          "split_shown": {
+            "title": "Split Shown",
+            "type": "boolean"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "trust": {
+            "$ref": "#/components/schemas/Trust"
+          }
+        },
+        "required": [
+          "symbol",
+          "reference",
+          "reference_name",
+          "evidence",
+          "split_shown",
+          "days",
+          "trust"
+        ],
+        "title": "WhyItMovedOut",
+        "type": "object"
+      },
       "WindowResult": {
         "properties": {
           "baseline": {
@@ -7444,6 +7775,58 @@
           }
         },
         "summary": "Get Drivers"
+      }
+    },
+    "/api/v1/assets/{symbol}/moves": {
+      "get": {
+        "description": "Each recent day of an asset: its move, the wider market's part where that link\nholds up, how unusual the size was, and what else is known about the day.",
+        "operationId": "get_moves_api_v1_assets__symbol__moves_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 120,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhyItMovedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Moves"
       }
     },
     "/api/v1/assets/{symbol}/regime": {
