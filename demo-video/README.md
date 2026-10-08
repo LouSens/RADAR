@@ -1,7 +1,7 @@
 # The RADAR reel
 
-A 30-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
-900 frames, on a beat of 15 frames. One situation: Bitcoin falls, and the questions a
+A 31-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
+930 frames, on a beat of 15 frames. One situation: Bitcoin falls, and the questions a
 holder asks are each answered by the app. It has sound effects and no music.
 
 **Three things are objects** (3D): the Bitcoin coin, the mark and the phone. **All the
@@ -12,18 +12,21 @@ moving: numbers count, lines draw on, beads slide, cards open.
 | --- | --- | --- | --- |
 | 1 | 0 to 104 | Bitcoin fell 2.6%. Sell? Hold? Buy more? | The coin spins on its edge, falls and wobbles; each word knocks it. The price falls through the day's real hours. The coin rolls out of the frame |
 | 2 | 105 to 224 | Meet RADAR. | The radar's line; the mark draws itself, shrinks and lands as the logo of the sidebar; Home builds itself round it, placeholders first |
-| 3 | 225 to 329 | Why did it fall? | Thirty days as bars about a line, a pale band for a usual day; a crosshair slides to the day; its bar drops in red; the Why it moved card draws itself round the chart |
+| 3 | 225 to 329 | Why did it fall? | Thirty days as bars about a line at their true scale, a pale band for a usual day; a crosshair slides to the day and the picture pushes in on it; its bar drops in red and its figures pop up; the Why it moved card draws itself round the chart |
 | 4 | 330 to 419 | Is this price high or low? | Five range bars; a bead slides to its place in each; the Before you buy card draws itself round them |
 | 5 | 420 to 524 | How far could it go? | The price is cut into the low and high of the week's range; the outcomes grow between; the range card draws itself round the chart |
 | 6 | 525 to 629 | How risky is my mix? | The app's two rings, large: money, then risk; the number counts 12% to 67%; the rows arrive one by one |
 | 7 | 630 to 734 | So what do I buy? | The What to do now card; the bar reshapes into the plan; three coins drop on to the ladder's three prices, one a beat |
 | 8 | 735 to 794 | What's coming up? | The calendar's rows slide up; the Fed's count of days rolls down to what it is |
-| 9 | 795 to 839 | On your desk. On your phone. | Home reflows into the phone's layout; the phone comes up and the layout lands on its screen |
-| 10 | 840 to 899 | | A fast turn of the radar's line; the mark, RADAR., An analyst for everything you own. |
+| 9 | 795 to 869 | On your desk. On your phone. | The phone comes up first and Home steps aside; the sidebar becomes the capsule of places; the cards go across one at a time and arrive on the phone's screen; the phone stands still for a second |
+| 10 | 870 to 929 | | A fast turn of the radar's line; the mark, RADAR., An analyst for everything you own. |
 
-Every answer opens out of the card of Home that leads to it, after a tap on that card,
-and goes back into it when the next question arrives (`src/Beat.tsx`). A ring of the
-radar marks each answer. The film never cuts to an empty frame.
+Every answer opens out of the card of Home that leads to it. While the question stands
+over the dimmed Home, that one card comes back to full brightness, its edge lights and
+it lifts; once the question has docked, the card opens out; and the answer goes back
+into it when the next question arrives (`src/Beat.tsx`, `src/DeskLayer.tsx`). The top
+200 pixels of the frame belong to the docked question. A ring of the radar marks each
+answer and nothing else. The film never cuts to an empty frame.
 
 **Every figure is true.** Market figures are the app's own, recorded from its market
 addresses; shot 1's fall is the recent day on which Bitcoin fell furthest against a
