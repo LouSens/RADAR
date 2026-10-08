@@ -5,6 +5,10 @@ after a full pass over the code and after the user restated what the product is 
 The companion `WHAT_RADAR_IS.md` describes the app; `PROJECT_SPEC.md` section 0 holds
 the new direction. This file is the criticism, including of my own work.
 
+> **A record of that day.** Counts here (tests, notebooks, the one-line README) were
+> true on 2026-10-07 and several no longer are. An outside review of 2026-10-08 and
+> what was done about it is in `DECISIONS.md` 094.
+
 **Corrections to the first version of this audit.** (1) I wrote that analysis is a chain
 of hand-run commands. Wrong: the worker schedules all 16 jobs. (2) I called the news
 pipeline "poor value" and proposed a minimal planner. That rested on a wrong picture of

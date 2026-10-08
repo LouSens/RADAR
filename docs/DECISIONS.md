@@ -3393,3 +3393,43 @@ and for the account, with what there is to do under the plan, or that nothing is
 Also from the same request: the price chart gained a one-day range (the latest 24 hourly
 prices, so a closed market still shows its last day of trading); it used to start at a
 week.
+
+## 094. An outside review of 2026-10-08: what was fixed, and what waits for the user
+
+The user passed on a review of the app, the notebooks and the documents.
+
+**Fixed.**
+
+- Markets on a phone: one card a row. Three across cut the names and squeezed the charts.
+- Home's four shortcuts: two a row on a phone.
+- Tablets (768 to 1023 px) had an icon-only rail with no labels. The bottom bar with its
+  labels now stays until there is room for the full sidebar (1024 px).
+- Loading is no longer shown as a fault: "needs attention" appears only for a known
+  problem (the feed closed, or the health check not ok).
+- A quiet "Where the data comes from" link in the page footer leads to the System page.
+  Decision 058 keeps operator things out of the navigation unless something is wrong;
+  that stands. The footer link is for provenance, which a reader may want when all is
+  well.
+- An unknown market address now offers the way to Markets.
+- Notebook 03's loss-limit chart had labels printed over each other: it is one panel a
+  market. Legends in 02 and 03 sit under the chart, not outside its right edge.
+- `WHAT_RADAR_IS.md` and `AUDIT.md` are marked as records of 2026-10-07, and the
+  archived notebooks as run before gold became PAX Gold.
+
+**Not done, because they are the user's to decide** (the review itself says not to
+delete before a decision):
+
+- The specification's section 0 says Markets and Signals leave the app and that
+  Holdings, Rules and Models pages replace them. The app still has the first two and
+  none of the last three. Either the section is the plan and is labelled so, or it is
+  revised to what the app became.
+- The models run for the three followed markets only, while the specification promises
+  them for every holding. This needs a rule for when a holding has enough history.
+- Whether the relationships, drivers and event-study jobs and endpoints, which no
+  screen reads, stay for "why it moved" or go.
+
+**Owed, agreed with but not built here:** a description beside each notebook chart for
+readers who cannot see it; the notebook's date, model version and sample in a header;
+real result tables in `07_what_we_tested`; a Models page; the large-fall forecast redone
+once or retired; browser tests at phone, tablet and desktop widths; notebooks built in
+CI (they need a filled database, so this needs a small fixture first).

@@ -208,7 +208,10 @@ function Hero() {
           </Link>
         </p>
       )}
-      <nav aria-label="Portfolio shortcuts" className="actions grid grid-cols-4 gap-2">
+      <nav
+        aria-label="Portfolio shortcuts"
+        className="actions grid grid-cols-2 gap-2 @md:grid-cols-4"
+      >
         {ACTIONS.map((action) => (
           <Link key={action.to} to={action.to} className="action press">
             <span className="action-icon">

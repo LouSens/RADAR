@@ -148,7 +148,8 @@ ax = next_day.loc[list(MARKETS.values())].plot.bar(
     rot=0, color=[ACCENT, INK, MUTED, "#c9952b"], figsize=(9, 3.2)
 )
 ax.set(title="Next-day forecast error by method (lower is better)", xlabel="")
-ax.legend(loc="center left", bbox_to_anchor=(1.0, 0.5));
+ax.grid(axis="x", visible=False)
+ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2);
 
 # %%
 # The claim in the summary, checked on the table rather than by eye.
@@ -234,10 +235,18 @@ ratio = (
     .xs(1, level="days ahead")["ratio"]
     .unstack("method")
 )
-ax = ratio.plot.bar(rot=0, color=[MUTED, ACCENT, INK], figsize=(10, 3.2))
-ax.axhline(1.0, color=INK, lw=0.8)
-ax.set(title="One-day limits: times broken, divided by times expected (1.0 is right)", xlabel="")
-ax.legend(loc="center left", bbox_to_anchor=(1.0, 0.5));
+# One panel a market, so no label has to share a line with another.
+fig, axes = plt.subplots(1, len(MARKETS), figsize=(10, 3), sharey=True)
+for ax, name in zip(axes, MARKETS.values()):
+    part = ratio.loc[name]
+    part.plot.bar(ax=ax, rot=0, color=[MUTED, ACCENT, INK], legend=False)
+    ax.axhline(1.0, color=INK, lw=0.8)
+    ax.set(title=name, xlabel="limit")
+    ax.grid(axis="x", visible=False)
+axes[0].set(ylabel="times broken / times expected")
+fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.08))
+fig.suptitle("One-day limits: 1.0 means broken exactly as often as stated", x=0.01, ha="left", fontweight="bold", fontsize=10.5)
+fig.tight_layout()
 
 # %%
 # The claim in the summary, checked: how many limits passed, by method.
@@ -245,8 +254,8 @@ passed = limits.groupby(level="method")["reliable"].agg(["sum", "count"])
 passed.columns = ["passed", "tested"]
 print(passed.to_string())
 chosen = limits[limits["shown in the app"]].reset_index()["method"].value_counts()
-print("
-shown in the app, by method:", chosen.to_dict())
+print()
+print("shown in the app, by method:", chosen.to_dict())
 failed = limits[limits["shown in the app"] & ~limits["reliable"]]
 print(f"\nlimits shown in the app that failed their test: {len(failed)}")
 if len(failed):
