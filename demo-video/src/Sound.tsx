@@ -36,7 +36,7 @@ const LENGTH: Readonly<Record<string, number>> = {
 
 /** How loud each kind of sound is in the film, from 0 to 1. This is the mix. */
 const LEVEL: Readonly<Record<string, number>> = {
-  room: 0.5,
+  room: 0.04,
   tick: 0.45,
   sweep: 0.7,
   shimmer: 0.55,

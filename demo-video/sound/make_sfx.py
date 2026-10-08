@@ -72,14 +72,16 @@ def save(name, left, right=None, peak=0.5):
 
 
 def room():
-    """A barely audible airy tone under the whole film: soft low air, two slow notes
-    a fifth apart, and a breath of height. Different in each ear, so it has width."""
+    """A barely audible tone under the whole film: two slow low notes a fifth apart over
+    a trace of low air. Different in each ear, so it has width."""
     t = seconds(FILM)
     shape = edges(t, 1.2, 1.5)
     sides = []
     for seed in (11, 12):
-        air = noise(FILM, 90, 900, seed) * 0.6 + noise(FILM, 2500, 7000, seed + 20) * 0.07
-        notes = 0.2 * np.sin(2 * np.pi * 110 * t) + 0.12 * np.sin(2 * np.pi * 165 * t + seed)
+        # Almost all of it is the two notes. The air is low and faint: any more of it, or
+        # any of it higher up, and the tone is heard as hiss or rain.
+        air = noise(FILM, 60, 260, seed) * 0.1
+        notes = 0.6 * np.sin(2 * np.pi * 110 * t) + 0.35 * np.sin(2 * np.pi * 165 * t + seed)
         swell = 1 + 0.15 * np.sin(2 * np.pi * t / 7.3 + seed)
         sides.append((air + notes) * swell * shape)
     save("room", sides[0], sides[1], peak=0.2)
