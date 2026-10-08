@@ -1,7 +1,7 @@
 # The RADAR reel
 
-A 31-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
-930 frames, on a beat of 15 frames. One situation: Bitcoin falls, and the questions a
+A 32-second advertisement for RADAR, made in Remotion: 1920 × 1080, 30 frames a second,
+960 frames, on a beat of 15 frames. One situation: Bitcoin falls, and the questions a
 holder asks are each answered by the app. It has sound effects and no music.
 
 **Three things are objects** (3D): the Bitcoin coin, the mark and the phone. **All the
@@ -11,28 +11,30 @@ goes back to Home between questions.
 
 | # | Frames | Question | Picture |
 | --- | --- | --- | --- |
-| 1 | 0 to 104 | Bitcoin fell 2.6%. Sell? Hold? Buy more? | The coin spins on its edge, falls and wobbles; each word knocks it. The price falls through the day's real hours. The words leave; the coin comes up on to its rim, spins round and stops facing the camera, which goes in |
-| 2 | 105 to 224 | Meet RADAR. | The coin's rim is the mark's ring: copper turns to the mark's colour as the sign goes. The radar's line turns once inside the ring, the rising line is drawn, the dot lands. The mark lands as the logo of the sidebar and Home builds itself round it |
-| 3 | 225 to 329 | Why did it fall? | The camera pushes into Home's Bitcoin card; its line stretches to the frame's width, falls flat, and thirty days grow about it as bars at their true scale; a crosshair slides to the day, its bar drops in red, its figures pop up |
-| 4 | 330 to 419 | Is this price high or low? | The bars fall flat into a line and the line splits into five range bars; a bead slides to its place in each |
-| 5 | 420 to 524 | How far could it go? | The five beads fly together and the price rises out of them; it is cut into the low and high of the week's range; the outcomes grow between |
-| 6 | 525 to 629 | How risky is my mix? | The outcomes slide sideways into one thick bar; it fills by money (12, 4, 24, 60), then the same bar is weighed again by risk and Bitcoin's share pushes out to 67% |
-| 7 | 630 to 734 | So what do I buy? | That bar thins into the plan bar, Now then Your plan; the ladder's line comes down out of it and runs both ways; three coins drop on to its three prices |
-| 8 | 735 to 794 | What's coming up? | The ladder's line swings up into the calendar's timeline and the rows hang off it; the Fed's count of days rolls down; the rows fly to their places in Home's own card as Home comes back round them |
-| 9 | 795 to 869 | On your desk. On your phone. | The phone comes up first and Home steps aside; the sidebar becomes the capsule of places; the cards go across one at a time and arrive on the phone's screen; the phone stands still for a second |
-| 10 | 870 to 929 | | A fast turn of the radar's line; the mark, RADAR., An analyst for everything you own. |
+| 1 | 0 to 114 | Bitcoin fell 2.6%. Sell? Hold? Buy more? | The coin spins on its edge, falls and wobbles; each word knocks it. The price falls through the day's real hours. The coin comes up on to its rim, spins round and stops facing the camera; then the words leave and the camera goes in |
+| 2 | 115 to 249 | Meet RADAR. | The coin's rim is the mark's ring: the mark's colour comes in from the rim and the face goes from the middle out, so no frame is grey. The radar's line turns once inside the ring, the rising line is drawn, the dot lands. The mark lands as the logo of the sidebar, Home builds itself round it and is held whole for a second |
+| 3 | 250 to 354 | Why did it fall? | The camera pushes into Home's Bitcoin card; its line stretches to the frame's width, falls flat, and thirty days grow about it as bars at their true scale; a crosshair slides to the day, its bar drops in red, its figures pop up |
+| 4 | 355 to 444 | Is this price high or low? | The bars fall flat into a line and the line splits into five range bars; a bead slides to its place in each |
+| 5 | 445 to 549 | How far could it go? | The five beads fly together and the price rises out of them; it is cut into the low and high of the week's range; the outcomes grow between |
+| 6 | 550 to 654 | How risky is my mix? | The outcomes slide sideways into one thick bar; it fills by money (12, 4, 24, 60), then the same bar is weighed again by risk and Bitcoin's share pushes out to 67% |
+| 7 | 655 to 759 | So what do I buy? | That bar thins into the plan bar, Now then Your plan; the ladder's line comes down out of its end and runs along under it; three coins drop on to its three prices |
+| 8 | 760 to 824 | What's coming up? | The ladder's line swings up into the calendar's timeline and the rows hang off it; the Fed's count of days rolls down; the rows fly to their places in Home's own card as Home comes back round them |
+| 9 | 825 to 899 | On your desk. On your phone. | The phone comes up first and Home steps aside; the sidebar becomes the capsule of places; the cards go across one at a time and arrive on the phone's screen; the phone stands still for a second |
+| 10 | 900 to 959 | | A fast turn of the radar's line; the mark, RADAR., An analyst for everything you own. |
 
 **Proof.** Near the end of shots 3 to 7 the picture pulls back and the answer is seen to
 be a card of the app, on its page: in a desktop window (shots 3 and 6) or on the phone
-(shots 4, 5 and 7). It comes forward again as it turns into the next answer
-(`src/Chain.tsx`, `src/Devices.tsx`). The pages are built from the app's own pieces
+(shots 4, 5 and 7). The phone is close, 85% of the frame's height, its page scrolled to the card. As the
+answer comes out of its card the device drops away from the camera and is gone before
+the answer starts to turn into the next (`src/Chain.tsx`, `src/Devices.tsx`). The pages are built from the app's own pieces
 with the example portfolio; they are not photographs. Shot 8 is proved on Home itself.
 
 **The lock.** Each answer is marked by four corners in the accent that start wide of it
 and snap in to frame it, with a soft tick. There is no ring, ripple or tap anywhere.
 
 **Questions** rise in the space beside their answer, above it or below it by turns, stand
-still, and have left before the answer pulls back. Nothing crosses a question.
+still, and have left before the answer pulls back. Nothing crosses a question, and
+every line of copy is whole on screen for at least 20 frames.
 
 **Every figure is true.** Market figures are the app's own, recorded from its market
 addresses; shot 1's fall is the recent day on which Bitcoin fell furthest against a

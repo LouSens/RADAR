@@ -102,6 +102,7 @@ export const Plan: React.FC = () => {
         <Weighed
           box={box}
           shares={shares}
+          values={RISK.map((share) => Math.round(share * 100) / 100)}
           figures={going}
           names={going}
           mark={<Lock frame={frame + 100} at={0} out={100} pad={20} />}
