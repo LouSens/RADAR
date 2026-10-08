@@ -320,7 +320,7 @@ export const RadarMark: React.FC<{ readonly size?: number }> = ({
   </svg>
 );
 
-const Stroke: React.FC<{ readonly children: React.ReactNode }> = ({
+export const Stroke: React.FC<{ readonly children: React.ReactNode }> = ({
   children,
 }) => (
   <svg
@@ -339,7 +339,7 @@ const Stroke: React.FC<{ readonly children: React.ReactNode }> = ({
 );
 
 /** Layout.tsx: the five places and their icons. */
-const PLACES = [
+export const PLACES = [
   {
     label: "Home",
     icon: (
