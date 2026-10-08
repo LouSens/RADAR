@@ -1,6 +1,7 @@
 import { Composition } from "remotion";
 import { Capture } from "./Capture";
 import { Reel } from "./Reel";
+import { Home } from "./ui/Home";
 import { FPS, HEIGHT, TOTAL, WIDTH } from "./timing";
 
 export const RemotionRoot: React.FC = () => {
@@ -13,6 +14,14 @@ export const RemotionRoot: React.FC = () => {
         fps={FPS}
         width={WIDTH}
         height={HEIGHT}
+      />
+      <Composition
+        id="Home"
+        component={Home}
+        durationInFrames={1}
+        fps={FPS}
+        width={390}
+        height={844}
       />
       <Composition
         id="Capture"
