@@ -12,6 +12,7 @@ import {
 } from "../api/queries";
 import { formatMoney } from "../lib/format";
 import { accountWorth } from "../lib/portfolio";
+import { useTrail } from "../lib/trail";
 import { assetColorVar } from "./ui";
 import { Skeleton } from "./Skeleton";
 
@@ -302,6 +303,8 @@ function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
 
 export function Layout() {
   useFollowHoldings();
+  // Every page is noted here, including those with no way back of their own.
+  useTrail();
   const { pathname } = useLocation();
   const [preferCollapsed, setCollapsed] = useState(readCollapsed);
 
