@@ -3554,3 +3554,62 @@ beside a tall one was stretched with its picture pushed to the foot, leaving an 
 middle (a wide tile now takes the row from two columns up, and a tile's picture follows
 its figure); and the Binance wallets filled only half of their card (two columns are used
 only when there are two things to compare).
+
+## 097. Raising the accuracy of news tone: the plan and its bars, written before running (2026-10-09)
+
+The user asked for the tone model's accuracy to be raised as far as it will go
+(`finbert-radar-1`: 61.1% right on the 700 unseen headlines of decision 032). This
+reopens the experiment decision 045 deferred. Tone still drives no forecast and no
+alert; this is about how often the tone shown beside a headline is right.
+
+**Faults found first, in the uncommitted "Step 6" of notebook 04 and in
+`models/finetune.py`, and fixed before any run:** the "baseline" run was oversampled
+(the argument defaults to on); the learning-rate schedule was sized on the headlines
+handed in while training ran over the larger oversampled set, so the rate reached zero
+early; class weights were computed from the original counts and applied to data already
+balanced by oversampling; and validation loss used the weighted, smoothed loss, so two
+runs could not be compared on one chart.
+
+**What is tried, in this order.** Every choice is made on the training and validation
+parts only. No new labels are written by hand, so the labeller does not change.
+
+1. A corrected fine-tune, its settings chosen between two written-down candidates by the
+   mean validation score over three seeds: the original settings, and class weights with
+   label smoothing 0.1, layer-wise rate decay 0.9 and early stopping. No oversampling:
+   the classes are 551, 361 and 349, which weights handle without repeating headlines.
+2. An ensemble: five seeds, probabilities averaged.
+3. Pruning likely label mistakes: five-fold out-of-fold predictions on the training
+   part; a training headline is dropped when the models give its label under 0.20 and
+   another label over 0.60. Validation and test labels are never touched.
+4. Self-training: the ensemble labels stored articles from the training period only
+   (none newer than the newest training headline, none sharing a headline key with any
+   labelled set). Those it is at least 0.90 sure of, after its confidence is calibrated
+   on the validation part, are added in the training part's class mix, up to three times
+   its size, and the ensemble is trained again.
+5. Abstaining: one temperature is fitted on the validation part, and a confidence
+   threshold is chosen there as the lowest that makes at least 80% of the kept
+   validation headlines right while keeping at least 40% of them.
+
+A step is kept only if it does not lower validation accuracy; the last kept step is the
+final model. It is then scored **once** on the 269-headline test part and on the
+700-headline set of decision 032. Both have been used once before, to judge
+`finbert-radar-1`; neither has been used to choose anything here.
+
+**Bars.**
+- *Adopt the new model* only if on the 700 headlines it is right more often than
+  `finbert-radar-1` and the difference is unlikely to be luck (McNemar p below 0.05).
+  The same rule as decision 032.
+- *Abstaining is worth building* only if on the 700 headlines, at the threshold chosen on
+  validation, at least 75% of the headlines it scores are right and it scores at least
+  half of them.
+
+**My guesses.** The ensemble with self-training gains two to four points (63 to 65%)
+and may not clear p below 0.05. Abstaining reaches about 75% on about half the
+headlines. Agreement with a single labeller on three classes has a ceiling well under
+90%, so 85 to 90% on every headline is not expected from any of this.
+
+**Not tried now, and why.** A larger base model (the graphics card has 6 GB, and with
+1,261 labels the data is the limit, not the model). More hand labels or a second
+labeller, which is the largest remaining lever and needs the user's time or an outside
+service.
+
