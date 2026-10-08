@@ -86,7 +86,8 @@ def predict(model_dir: Path, texts: list[str]) -> np.ndarray:
 class Data:
     """The labelled parts, the two sealed test sets, and the unlabelled pool."""
 
-    def __init__(self) -> None:
+    def __init__(self, pool_size: int = POOL, pool_file: str = "pool.json") -> None:
+        self.pool_size, self.pool_file = pool_size, pool_file
         engine = make_engine()
         with session_scope(engine) as session:
             training = job.with_text(session, job.load_training_labels())
@@ -105,7 +106,7 @@ class Data:
         self, session: Any, training: pd.DataFrame, reference: pd.DataFrame, fresh: pd.DataFrame
     ) -> pd.DataFrame:
         """Stored articles from the training period that no labelled set has, or echoes."""
-        path = OUT / "pool.json"
+        path = OUT / self.pool_file
         newest = self.parts["train"]["created_at"].max()
         labelled = pd.concat([training, reference, fresh])
         if path.is_file():
@@ -126,7 +127,9 @@ class Data:
             free_ids = [i for i in found if i not in taken]
             rng = np.random.default_rng(20261009)
             ids = sorted(
-                rng.choice(free_ids, size=min(POOL * 2, len(free_ids)), replace=False).tolist()
+                rng.choice(
+                    free_ids, size=min(self.pool_size * 2, len(free_ids)), replace=False
+                ).tolist()
             )
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(ids))
@@ -137,7 +140,7 @@ class Data:
         ).all()
         pool = pd.DataFrame(rows, columns=["article_id", "headline", "summary", "created_at"])
         pool = dataset.drop_repeats(pool, labelled["headline"].map(dataset.headline_key))
-        pool = pool.sort_values("article_id").head(POOL).reset_index(drop=True)
+        pool = pool.sort_values("article_id").head(self.pool_size).reset_index(drop=True)
         pool["text"] = [
             sentiment.article_text(h, s or "")
             for h, s in zip(pool["headline"], pool["summary"], strict=True)
@@ -329,6 +332,18 @@ def experiment() -> None:
     say(f"step 4: added {len(extra)}, five together {stages['4-self-trained']:.3f}")
     if stages["4-self-trained"] >= stages[{"2": "2-ensemble", "3": "3-pruned"}[final]]:
         final, members = "4", taught
+
+    # What the final model was trained on, for the rounds of decision 098.
+    (OUT / "final_train.json").write_text(
+        json.dumps(
+            {
+                "prefix": {"2": f"1-{chosen}", "3": "3", "4": "4"}[final],
+                "human": {"texts": texts, "labels": labels},
+                "texts": more_texts if final == "4" else texts,
+                "labels": more_labels if final == "4" else labels,
+            }
+        )
+    )
 
     # Step 5: one temperature and one threshold, both from the validation part.
     together = np.mean([m["validation"] for m in members], axis=0)
