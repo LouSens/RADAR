@@ -133,11 +133,17 @@ class Data:
             )
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(ids))
-        rows = session.execute(
-            select(
-                NewsArticle.id, NewsArticle.headline, NewsArticle.summary, NewsArticle.created_at
-            ).where(NewsArticle.id.in_(ids))
-        ).all()
+        # A query takes a limited number of values, so the articles are read in parts.
+        rows: list[Any] = []
+        for start in range(0, len(ids), 20_000):
+            rows += session.execute(
+                select(
+                    NewsArticle.id,
+                    NewsArticle.headline,
+                    NewsArticle.summary,
+                    NewsArticle.created_at,
+                ).where(NewsArticle.id.in_(ids[start : start + 20_000]))
+            ).all()
         pool = pd.DataFrame(rows, columns=["article_id", "headline", "summary", "created_at"])
         pool = dataset.drop_repeats(pool, labelled["headline"].map(dataset.headline_key))
         pool = pool.sort_values("article_id").head(self.pool_size).reset_index(drop=True)
