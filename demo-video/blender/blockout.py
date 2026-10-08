@@ -597,11 +597,14 @@ def camera(shot, keys, stop=2.8):
     return cam
 
 
-orbit = lambda degrees, radius=2.3, height=1.55: (
-    radius * math.cos(math.radians(degrees)),
-    radius * math.sin(math.radians(degrees)),
-    height,
-)  # noqa: E731
+def orbit(degrees, radius=2.3, height=1.55):
+    """A point on a circle around the tower."""
+    return (
+        radius * math.cos(math.radians(degrees)),
+        radius * math.sin(math.radians(degrees)),
+        height,
+    )
+
 
 camera(
     "shot1",
