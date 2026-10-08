@@ -3697,3 +3697,62 @@ article when the calibrated confidence is at or above the abstaining threshold f
 validation, the level at which about four in five validation headlines were right. The
 reason is the fault above, seen in the count of articles selected, not in any test
 figure. Everything else in decision 098 stands.
+
+## 100. Tone accuracy, rounds 2 and 3: the result of decision 098 (2026-10-09)
+
+Run unattended overnight, under the rules of decision 098 and the amendment in 099.
+
+**Round 2, other families of model.** `microsoft/deberta-v3-base` was left out: its
+tokenizer needs a package that is not installed. Five seeds of
+`cardiffnlp/twitter-roberta-base-sentiment-latest`, trained like the FinBERT models on
+the same headlines, were right on 74.4% of the validation part together, against 68.1%
+for round 1's final model. Validation preferred RoBERTa alone to RoBERTa with FinBERT.
+
+**Round 3, more unlabelled text.** The RoBERTa ensemble read 60,000 stored articles of
+the training period. At the amended confidence level it was sure of 53,293; 11,999 were
+added in the training part's class mix (the cap was 12,000) and five models were
+trained again: 76.7% on validation. One FinBERT taught by the ensemble reached 74.8%,
+more than half a point under it, so by the written rule it is not a candidate.
+
+**The one last reading of the sealed tests**, for the candidate validation preferred
+(round 3's five RoBERTa models, averaged):
+
+| | Test part (269) | The 700 of decision 032 |
+|---|---|---|
+| `finbert-radar-1`, in use | 63.6% | 61.1% |
+| Round 3, five RoBERTa models | 67.3% | 66.0% |
+| Only the model in use right / only the new one right | 21 / 31 | 56 / 90 |
+| McNemar p | 0.21 | 0.006 |
+
+**The bar of decision 098 is cleared.** On the 700 headlines the new model is right
+more often (66.0% against 61.1%) and p = 0.006 is below the 0.025 asked for a second
+look. On the smaller test part the gain is the same size (3.7 points) and is not
+measurable by itself with 269 headlines.
+
+**Abstaining, for this model.** The threshold rule of decision 097, applied to it on
+validation, gave a low threshold (0.572) that keeps 85% of the 700 headlines and is
+right on 69.4% of them. That is under the 75% of decision 097's bar. A higher threshold
+would trade headlines for accuracy, but choosing one now would be choosing after the
+test was read, so none is claimed here.
+
+**My guesses, checked.** Wrong twice, in the good direction: I said round 2 would add
+about a point (it added 6.3 on validation) and round 3 under a point (2.3). Right that
+the single model would land under the ensemble.
+
+**What this says.** The base model mattered far more than any training setting: a model
+first trained on social-media posts reads crypto and market headlines better than one
+trained on formal financial sentences. Self-training on the app's own unlabelled
+articles then helped, once its rule selected anything. Validation still runs about ten
+points above the newer test sets, so the labels and the drift of headlines over time
+remain the ceiling.
+
+**Not done, and for the user to decide.**
+- Nothing in the app has changed. `finbert-radar-1` is still the model in use.
+- Adopting the new model means five RoBERTa models scoring every article, about five
+  times the work of today, and scoring the stored articles again. The trained models
+  were not kept on disk (only what they said); they take about 40 minutes to train again.
+- A single RoBERTa taught by the ensemble was not in the written plan and has not been
+  tried. It is the natural next step if one model is wanted.
+- Installing `sentencepiece` would let DeBERTa be tried.
+- The largest remaining lever is still the labels: a second labelling pass on the test
+  sets, and more labelled headlines.
