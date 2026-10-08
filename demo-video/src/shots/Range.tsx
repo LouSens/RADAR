@@ -41,12 +41,12 @@ const HIGH = Math.round(range.high);
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /** When the cut starts to open and when the two figures land. */
-export const OPEN = [ASKED + 10, ASKED + 38] as const;
+export const OPEN = [ASKED + 18, ASKED + 44] as const;
 /** When the first bar starts to grow. */
-export const RISE = ASKED + 18;
+export const RISE = ASKED + 26;
 /** When the card draws itself round the chart, and when the ring spreads. */
-export const FRAMED = ASKED + 46;
-export const PINGED = ASKED + 58;
+export const FRAMED = ASKED + 50;
+export const PINGED = ASKED + 62;
 
 /** How wide the price is, and one digit of it, as multiples of its size. */
 const WIDE = 3.9;
@@ -128,8 +128,9 @@ export const Range: React.FC = () => {
   const leftOnly = `linear-gradient(to right, #000 ${cutLeft}px, transparent ${cutLeft}px)`;
   const rightOnly = `linear-gradient(to right, transparent ${cutRight}px, #000 ${cutRight}px)`;
   const counted = tween(open, COUNT_FROM, 1, 0, 1, (t) => t);
-  // The price rises into the frame once its question has docked above it.
-  const arrived = tween(frame, ASKED + 1, ASKED + 9, 0, 1, EASE);
+  // The price rises into the frame once its question has docked above it and Home
+  // has stood back, so that it is never read against a lit card.
+  const arrived = tween(frame, ASKED + 9, ASKED + 17, 0, 1, EASE);
   // While the price is still large and low in the frame, no bar grows into it.
   const room = BASE - (cy + size * 0.5 + 10);
   const guides = tween(frame, OPEN[1] - 4, OPEN[1] + 10, 0, 1, EASE);

@@ -1,5 +1,5 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
-import { ASKED, LEAVES, OPENS, onDesk } from "./Beat";
+import { ASKED, DOCKS, LEAVES, OPENS, onDesk } from "./Beat";
 import * as Cal from "./shots/Calendar";
 import { C } from "./theme";
 import { EASE, EASE_IN_OUT, shot, tween, type ShotId } from "./timing";
@@ -69,6 +69,7 @@ export const TARGET: Readonly<Partial<Record<ShotId, Box>>> = {
 };
 const QUESTIONS = Object.keys(TARGET) as ShotId[];
 const opens = (id: ShotId): number => (id === "calendar" ? Cal.ASKED : ASKED);
+const docks = (id: ShotId): number => (id === "calendar" ? Cal.DOCKS : DOCKS);
 /** When the dimming opens over the card, and when the card lifts, after its question. */
 const SPOT = (id: ShotId): number => (id === "calendar" ? 1 : 3);
 const LIFT = (id: ShotId): number => SPOT(id) + 6;
@@ -165,9 +166,19 @@ export const DeskLayer: React.FC = () => {
       // The dimming opens over the one card that answers the question; then the card's
       // edge lights and it lifts a little; and it is pressed as it opens.
       const gone = 1 - tween(local, open, open + 6, 0, 1, (t) => t);
+      // A button high on Home lies on its question's way to the dock: the dimming
+      // closes over it again as the question sets off, and only its lit edge stays,
+      // so that the words never cross a lit card.
+      const crossed =
+        box.h < 60
+          ? 1 - tween(local, docks(id) - 2, docks(id) + 4, 0, 1, (t) => t)
+          : 1;
       hole = {
         box,
-        lit: tween(local, SPOT(id), SPOT(id) + 8, 0, 1, EASE_IN_OUT) * gone,
+        lit:
+          tween(local, SPOT(id), SPOT(id) + 8, 0, 1, EASE_IN_OUT) *
+          gone *
+          crossed,
       };
       lifted = {
         box,
