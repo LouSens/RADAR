@@ -814,7 +814,9 @@ export function PortfolioPage() {
   const analysis = usePortfolioAnalysis().data ?? undefined;
   const record = useAccountRecord().data;
   const setLost = useSetLostCoins();
-  const steps = useSteps().data;
+  const stepsQuery = useSteps();
+  // Undefined means still loading (a skeleton holds its place); a failed request is not that.
+  const steps = stepsQuery.isError ? null : stepsQuery.data;
   const assets = useAssets();
   const followed = useFollowed();
   const kinds = Object.fromEntries((assets.data ?? []).map((a) => [a.symbol, a.kind]));
