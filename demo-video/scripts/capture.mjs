@@ -29,7 +29,7 @@ const PAGES = [
   ["home-phone", "", "Capture"],
 ];
 
-const example = JSON.parse(readFileSync("src/fixtures/portfolio.json", "utf8"));
+const example = JSON.parse(readFileSync("mock-api/example.json", "utf8"));
 const served = await fetch(`${BASE}/api/v1/portfolio/analysis`).then((r) => r.json());
 if (served.value !== example.value) {
   throw new Error(`${BASE} is not showing the example portfolio. Nothing was photographed.`);

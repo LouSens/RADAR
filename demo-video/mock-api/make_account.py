@@ -2,8 +2,8 @@
 
     uv run python demo-video/mock-api/make_account.py
 
-The holdings are the made-up portfolio in demo-video/src/fixtures/portfolio.json: its
-value and shares are read from there and nothing else. The figures are then worked out
+The holdings are the made-up portfolio in demo-video/mock-api/example.json: its value
+and shares are read from there and nothing else. The figures are then worked out
 by the app's own code from stored market prices, the way a notebook does it. The stored
 portfolio, plan and account record are never read, and the database is opened read-only.
 Run mock-api/record.mjs first: the brief and the system page are built from what it
@@ -33,7 +33,7 @@ from radar.providers import binance_public
 from radar.universe import get_universe
 
 HERE = Path(__file__).parent
-FIXTURE = HERE.parent / "src" / "fixtures" / "portfolio.json"
+FIXTURE = HERE / "example.json"
 RECORDED = HERE / "data" / "recorded"
 OUT = HERE / "data" / "example"
 
