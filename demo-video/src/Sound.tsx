@@ -1,12 +1,6 @@
 import { Html5Audio, Sequence, staticFile } from "remotion";
-import { LIFTS, LOOK } from "./shots/Cards";
-import { MARK, PHRASES } from "./shots/Close";
-import { PUSH } from "./shots/Meet";
-import { BLIPS, TURN } from "./shots/Phone";
-import { LANDS } from "./shots/Plan";
+import { MARK } from "./shots/Close";
 import { HOURS, TICK } from "./shots/Question";
-import { OPEN } from "./shots/Range";
-import { MONEY, RISK } from "./shots/Risk";
 import { FPS, TOTAL, shot } from "./timing";
 
 /**
@@ -60,44 +54,20 @@ interface Cue {
 
 const question = shot("question").from;
 const meet = shot("meet").from;
-const phone = shot("phone").from;
-const cards = shot("cards").from;
-const range = shot("range").from;
-const risk = shot("risk").from;
-const plan = shot("plan").from;
 const close = shot("close").from;
 
-/** How long before its loudest moment a whoosh starts, in frames. */
-const SWELL = 9;
-
+// The animatic's sheet: only the sounds whose pictures are already in the film. The
+// pings, the dives and the live pictures' own sounds are cued when those are built.
 const CUES: readonly Cue[] = [
-  // Shot 1: a tick on each new price, until the radar line takes the shot.
+  // Shot 1: a tick on each new price.
   ...Array.from({ length: HOURS - 1 }, (_, i) => ({
     file: `tick-${i % 5}`,
     at: question + (i + 1) * TICK,
   })).filter((cue) => cue.at < meet),
-  // Shot 2: the radar line, the mark drawing, and the ring passing the lens.
-  { file: "sweep", at: meet },
+  // Shot 2: the mark drawing.
   { file: "shimmer", at: meet + 8 },
-  { file: "whoosh", at: meet + PUSH[1] - 2 - SWELL },
-  // Shot 3: the phone's turn, and each blip.
-  { file: "whoosh", at: phone + (TURN[0] + TURN[1]) / 2 - SWELL },
-  ...BLIPS.map((blip, i) => ({ file: `pop-${i}`, at: phone + blip.at })),
-  // Shot 4: each pane lifting, and each state named.
-  ...LIFTS.map((at, i) => ({ file: `glass-${i}`, at: cards + at })),
-  ...LOOK.map((at, i) => ({ file: `pop-${i}`, at: cards + at + 4 })),
-  // Shot 5: the cut opening, and the outcomes rising.
-  { file: "shink", at: range + OPEN[0] },
-  { file: "rise", at: range + OPEN[0] + 5 },
-  // Shot 6: the radar line, the number counting twice, and where it lands.
-  { file: "sweep", at: risk },
-  { file: "roll", at: risk + MONEY[0] },
-  { file: "roll", at: risk + RISK[0] },
-  { file: "hit", at: risk + RISK[1] },
-  // Shot 7: each blip landing on its price.
-  ...LANDS.map((at, i) => ({ file: `click-${i}`, at: plan + at })),
-  // Shot 8: each phrase, and the mark.
-  ...PHRASES.map((at) => ({ file: "hit", at: close + at })),
+  // Shot 10: the radar line, and the mark.
+  { file: "sweep", at: close },
   { file: "impact", at: close + MARK },
 ];
 

@@ -98,6 +98,32 @@ or a fixture:
 npx remotion still Home public/ui/home.png --scale=3
 ```
 
+## Photographing the app
+
+Every desktop page of the running app shows the account in its sidebar, so that app is
+never photographed. The stills in `public/desk/` come from the same frontend fed by a
+stand-in for the API:
+
+```
+node mock-api/record.mjs                      # market data only, by GET, from the running API
+uv run python mock-api/make_account.py        # the example account, from ../ (the repo root)
+node mock-api/server.mjs                      # the stand-in, on 127.0.0.1:8010
+RADAR_API_URL=http://127.0.0.1:8010 npm --prefix ../frontend run dev -- --port 5180
+node scripts/capture.mjs                      # every still; name some to redo only those
+```
+
+- `record.mjs` refuses any address that names the portfolio, the account, the brief or
+  the system page, and keeps only the three markets the app always follows: the full
+  list of markets also names what the account holds. What it records
+  (`mock-api/data/recorded/`) is not committed.
+- `make_account.py` works the example account out with the app's own code from the
+  holdings in `src/fixtures/portfolio.json`. It opens the database read-only and never
+  reads the stored portfolio, plan or account record.
+- `capture.mjs` will not take a still unless the app it is pointed at is showing the
+  example portfolio.
+- Look at every still before using it: no loading placeholders, no fault, no figure
+  that is not the example's.
+
 ## Rules this film keeps
 
 - **Every moving thing is a function of the frame.** No CSS transitions or keyframes, no

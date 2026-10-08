@@ -14,11 +14,13 @@ export const SWEEP = 20;
 export type ShotId =
   | "question"
   | "meet"
-  | "phone"
-  | "cards"
+  | "why"
+  | "level"
   | "range"
   | "risk"
   | "plan"
+  | "calendar"
+  | "both"
   | "close";
 
 export interface Shot {
@@ -46,35 +48,23 @@ export const shot = (id: ShotId): Shot => {
 };
 
 /**
- * The film's words, as approved: what RADAR does and has. A line here is a line on
- * screen; the words between asterisks take the accent. The figure of shot 6 comes from
- * the example portfolio and stands inside its ring.
+ * The film's words, all of them: the questions a holder asks, in their own words. A
+ * question is the only headline of its shot; the word between asterisks takes the
+ * accent, and never more than one stretch a line. `{fall}` is the day's real fall
+ * (fixtures/fall.json).
  */
 export const COPY = {
-  question: ["Buy now?", "Or *wait?*"],
-  meet: ["Meet *RADAR.*"],
-  phone: {
-    lines: ["Every coin", "you hold.", "*Live.*"],
-    small: "Synced from Binance by itself.",
-  },
-  cards: ["How every market", "feels *today.*"],
-  range: {
-    lines: ["Next week's range.", "*Today.*"],
-    small: "From 10,000 simulated weeks.",
-  },
-  risk: {
-    money: ["Of your", "money."],
-    risk: ["Of your", "*risk.*"],
-  },
-  plan: {
-    lines: ["What to buy next.", "And at what *price.*"],
-    small: "From the plan you set.",
-  },
-  close: {
-    lines: ["Your account.", "Your risk.", "Your *plan.*"],
-    name: ["*RADAR.*"],
-    last: "An analyst for everything you own.",
-  },
+  question: { fell: "Bitcoin *fell* {fall}%.", what: "Sell? Hold? Buy more?" },
+  meet: "Meet *RADAR.*",
+  why: "*Why* did it fall?",
+  level: "Is this price *high or low?*",
+  range: "How *far* could it go?",
+  risk: "How *risky* is my mix?",
+  plan: { line: "So what do I *buy?*", small: "From the plan you set." },
+  calendar: "What's *coming up?*",
+  both: "On your desk. On your *phone.*",
+  close: { name: "*RADAR.*", last: "An analyst for everything you own." },
+  example: "Example portfolio",
 } as const;
 
 /** The app's two curves (index.css), so the film moves the way the product does. */

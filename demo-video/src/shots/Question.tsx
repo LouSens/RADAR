@@ -1,16 +1,15 @@
 import { AbsoluteFill, useCurrentFrame } from "remotion";
-import market from "../fixtures/market.json";
+import fall from "../fixtures/fall.json";
 import { C, fade } from "../theme";
-import { COPY, EASE, tween } from "../timing";
-import { Headline, MARGIN, Small, TOP, hero } from "../Type";
+import { EASE, tween } from "../timing";
+import { MARGIN, Small, hero } from "../Type";
 import { formatPrice } from "../ui/kit";
 
-const bitcoin = market.markets[0];
-const closes = bitcoin.weekCloses;
+const closes = fall.hourlyCloses;
 
 /** The price changes this often, in frames. */
-export const TICK = 4;
-/** The hours the shot plays through: the last of the week, ending on the newest. */
+export const TICK = 3;
+/** The hours the shot plays through: the day of the fall, ending on its last hour. */
 export const HOURS = 30;
 const shown = closes.slice(closes.length - HOURS);
 /** Hours before those, already drawn on the first frame so that it has a trace. */
@@ -27,9 +26,9 @@ const point = (i: number): readonly [number, number] => [
 ];
 
 /**
- * Shot 1. A Bitcoin price that will not keep still, and the question it puts. The prices
- * are real: the last hours of the week in fixtures/market.json, one every few frames.
- * The picture is there from the first frame.
+ * Shot 1. Bitcoin falling, hour by hour. The prices are real: the hours of the recent
+ * day on which Bitcoin fell furthest against a usual day (fixtures/fall.json), one every
+ * few frames. The picture is there from the first frame; the words are in Questions.
  */
 export const Question: React.FC = () => {
   const frame = useCurrentFrame();
@@ -86,13 +85,6 @@ export const Question: React.FC = () => {
         <circle cx={head[0]} cy={head[1]} r={8 + knock * 4} fill={C.btc} />
       </svg>
 
-      <Headline
-        lines={COPY.question}
-        at={8}
-        lineAt={[8, 30]}
-        accent={C.btc}
-        style={{ position: "absolute", left: MARGIN, top: TOP }}
-      />
 
       <Small
         at={-20}

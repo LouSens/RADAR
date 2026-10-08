@@ -2,7 +2,7 @@ import { AbsoluteFill, useCurrentFrame } from "remotion";
 import portfolio from "../fixtures/portfolio.json";
 import { C, metal } from "../theme";
 import { BEAT, COPY, EASE, EASE_IN_OUT, tween } from "../timing";
-import { Headline, LINE, MARGIN, Small, TOP } from "../Type";
+import { LINE, MARGIN, Small, TOP } from "../Type";
 import {
   ExampleNote,
   Ladder,
@@ -51,12 +51,6 @@ export const Plan: React.FC = () => {
 
   return (
     <AbsoluteFill>
-      <Headline
-        lines={COPY.plan.lines}
-        at={2}
-        lineAt={[2, 32]}
-        style={{ position: "absolute", left: MARGIN, top: TOP }}
-      />
 
       {/* What is held, becoming the plan; then the small line takes its place. */}
       <div

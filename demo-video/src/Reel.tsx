@@ -1,77 +1,66 @@
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
 import { Ground } from "./Ground";
-import { Cards } from "./shots/Cards";
+import { PINGS, Questions } from "./Questions";
 import { Close } from "./shots/Close";
 import { Meet } from "./shots/Meet";
-import { Phone } from "./shots/Phone";
-import { Plan } from "./shots/Plan";
 import { Question } from "./shots/Question";
-import { Range } from "./shots/Range";
-import { Risk } from "./shots/Risk";
 import { Sound } from "./Sound";
 import { SweepLine, Swept } from "./Sweep";
 import { AssetsProvider, useAssets } from "./three/assets";
-import { FPS, SHOTS, SWEEP, type ShotId } from "./timing";
-
-/** What each shot draws. */
-const PICTURE: Readonly<Record<ShotId, React.ReactNode>> = {
-  question: <Question />,
-  meet: <Meet />,
-  phone: <Phone />,
-  cards: <Cards />,
-  range: <Range />,
-  risk: <Risk />,
-  plan: <Plan />,
-  close: <Close />,
-};
+import { FPS, shot } from "./timing";
+import { World } from "./World";
 
 /**
- * The reel: one sequence a shot, on one ground whose light changes colour beneath them.
- * A shot marked `sweep` is uncovered by the radar line, and the shot before it stays on
- * until the line has gone round.
+ * The reel: one situation, answered by the app. Bitcoin falls (shot 1); the mark is
+ * drawn and turns out to be the logo of the app (shot 2); then the film stays inside
+ * the app, which is one world (World) with the questions over it (Questions), until the
+ * radar line uncovers the end card. The start and length of every shot are in
+ * shots.json and nowhere else.
  */
 export const Reel: React.FC = () => {
   const frame = useCurrentFrame();
   const assets = useAssets();
+  const question = shot("question");
+  const meet = shot("meet");
+  const close = shot("close");
 
   return (
     <AssetsProvider value={assets}>
       <AbsoluteFill>
         <Ground />
         <Sound />
-        {SHOTS.map((shot, i) => {
-          const next = SHOTS[i + 1];
-          const tail = next?.sweep ? SWEEP : 0;
-          let picture = PICTURE[shot.id];
-          if (shot.sweep) {
-            picture = (
-              <Swept since={frame - shot.from} side="in">
-                {picture}
-              </Swept>
-            );
-          }
-          if (next?.sweep) {
-            picture = (
-              <Swept since={frame - next.from} side="out">
-                {picture}
-              </Swept>
-            );
-          }
-          return (
-            <Sequence
-              key={shot.id}
-              name={`${i + 1} ${shot.id}`}
-              from={shot.from}
-              durationInFrames={shot.duration + tail}
-              premountFor={FPS}
-            >
-              {picture}
-            </Sequence>
-          );
-        })}
-        {SHOTS.filter((shot) => shot.sweep).map((shot) => (
-          <SweepLine key={shot.id} since={frame - shot.from} />
-        ))}
+        <Swept since={frame - close.from} side="out">
+          <Sequence
+            name="1 question"
+            from={question.from}
+            durationInFrames={question.duration}
+            premountFor={FPS}
+          >
+            <Question />
+          </Sequence>
+          {/* The app and the questions run on the film's own clock, not a shot's. */}
+          <World pings={PINGS} />
+          <Sequence
+            name="2 meet"
+            from={meet.from}
+            durationInFrames={meet.duration}
+            premountFor={FPS}
+          >
+            <Meet />
+          </Sequence>
+          <Questions />
+        </Swept>
+        <Sequence
+          name="10 close"
+          from={close.from}
+          durationInFrames={close.duration}
+          premountFor={FPS}
+        >
+          <Swept since={frame - close.from} side="in">
+            <Close />
+          </Swept>
+        </Sequence>
+        <SweepLine since={frame - close.from} />
       </AbsoluteFill>
     </AssetsProvider>
   );

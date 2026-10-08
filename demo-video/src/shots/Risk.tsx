@@ -1,8 +1,8 @@
 import { AbsoluteFill, interpolateColors, useCurrentFrame } from "remotion";
 import portfolio from "../fixtures/portfolio.json";
 import { C, darker, lighter } from "../theme";
-import { COPY, EASE_IN_OUT, HEIGHT, tween } from "../timing";
-import { Headline, MARGIN, Small, TOP, hero } from "../Type";
+import { EASE_IN_OUT, HEIGHT, tween } from "../timing";
+import { Small, hero } from "../Type";
 import { ExampleNote, TONE } from "../ui/kit";
 
 const holdings = portfolio.holdings;
@@ -93,20 +93,6 @@ export const Risk: React.FC = () => {
 
   return (
     <AbsoluteFill>
-      {/* The words change with the ring: the first pair leaves as the second ring starts. */}
-      <Headline
-        lines={COPY.risk.money}
-        at={MONEY[0] - 2}
-        out={RISK[0] - 2}
-        style={{ position: "absolute", left: MARGIN, top: TOP }}
-      />
-      <Headline
-        lines={COPY.risk.risk}
-        at={RISK[0] + 6}
-        accent={C.btc}
-        style={{ position: "absolute", left: MARGIN, top: TOP }}
-      />
-
       <svg
         width={1920}
         height={1080}

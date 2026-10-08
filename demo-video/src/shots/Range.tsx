@@ -6,8 +6,8 @@ import {
 } from "remotion";
 import market from "../fixtures/market.json";
 import { C, FEATURES, FONT, NUM_FEATURES, fade } from "../theme";
-import { COPY, EASE, EASE_IN_OUT, tween } from "../timing";
-import { HERO, Headline, LINE, MARGIN, Small, TOP, hero } from "../Type";
+import { EASE, EASE_IN_OUT, tween } from "../timing";
+import { HERO, hero } from "../Type";
 
 const { range } = market;
 
@@ -127,23 +127,6 @@ export const Range: React.FC = () => {
 
   return (
     <AbsoluteFill>
-      <Headline
-        lines={COPY.range.lines}
-        at={6}
-        lineAt={[6, 46]}
-        accent={C.btc}
-        style={{ position: "absolute", left: MARGIN, top: TOP }}
-      />
-      {/* The small line stands on the second line's baseline, after its one word. */}
-      <Small
-        text={COPY.range.small}
-        at={62}
-        style={{
-          position: "absolute",
-          left: MARGIN + 520,
-          top: TOP + LINE + 76,
-        }}
-      />
 
       {/* The card's own heading: whose range, and how far it can be leaned on. */}
       <div
