@@ -23,14 +23,14 @@
 
 RADAR follows a personal portfolio of Bitcoin, gold and US stocks held on Binance. It reads the account, explains what each holding is doing, measures how much it could move, and turns a plan of target shares into a short list of what to do with spare cash. It **never places a trade**: every connection it makes is a read, and the person acts on their own.
 
-It is also a showcase of doing market data work honestly. Every claim on a screen carries its sample size and period, every model is checked on days it had not seen, and the things that were tested and did not work are written down instead of shipped.
+Every claim on a screen carries its sample size and period, and every model is checked on days it had not seen before it reaches a screen. A 32-second film of the app is in [`demo-video/`](demo-video/README.md).
 
 ---
 
 ## 📌 Contents
 
 - [What it does](#-what-it-does)
-- [What the research found](#-what-the-research-found)
+- [What it is built on](#-what-it-is-built-on)
 - [System architecture](#-system-architecture)
 - [The models](#-the-models)
 - [Tech stack](#-tech-stack)
@@ -41,7 +41,7 @@ It is also a showcase of doing market data work honestly. Every claim on a scree
 - [Testing and CI](#-testing-and-ci)
 - [Notebooks](#-notebooks)
 - [Documentation](#-documentation)
-- [Limits](#-limits)
+- [Scope](#-scope)
 
 ## 🎯 What it does
 
@@ -57,21 +57,19 @@ It is also a showcase of doing market data work honestly. Every claim on a scree
 | **Signals and calendar** | Changes of market state and abnormally large moves, each with its track record; dates of Fed decisions, jobs and inflation reports with how markets moved around past ones. |
 | **Today in brief** | A short generated summary that opens with the price now and what there is to do. A test guarantees every number in it comes from stored data. |
 
-## 🔬 What the research found
+## 🔬 What it is built on
 
-Every test was written down with its pass mark **before** it was run (`docs/DECISIONS.md`), and each model was first shown to find a planted pattern before its "no" was believed.
+Every result below was measured on days the model had not seen, against a pass mark written down before the test was run (`docs/DECISIONS.md`).
 
-| Question | Result |
+| What the app relies on | Evidence |
 |---|---|
-| Can anything tested call the direction of the next move? | **No.** RSI, moving averages, support and resistance, fair value gaps, order blocks, funding rates, positioning, trees, logistic regression and an LSTM: none passed. No "buy now" or "sell now" is built. |
-| Can the **size** of the next move be forecast? | **Yes.** A regression on the last day, week and month of movement had the lowest error in 6 of 6 market-and-horizon comparisons. |
-| Do loss limits hold as often as they say? | **Mostly.** 35 of 36 limits passed their test after allowing for testing many at once. |
-| Does news tone improve the movement forecast? | **No**, in 12 of 12 comparisons. News is shown, not used. |
-| Does waiting for a dip within the month get a better price? | **No.** It paid 0.2 to 0.8% more on average. |
-| Are coins near their lows a better buy than coins near their highs? | **No.** Across 617 Binance coins, the low ones did worse. No screener is built. |
-| Does the fine-tuned tone model beat the general one? | **Yes.** 61% against 52% right on 700 unseen headlines, a gap too large to be luck. Still modest on any single headline. |
+| The **size** of the next move can be forecast | A regression on the last day, week and month of movement had the lowest error in 6 of 6 market-and-horizon comparisons. |
+| Loss limits hold as often as they say | 35 of 36 limits passed their test after allowing for testing many at once. |
+| The fine-tuned tone model beats the general one | 61% against 52% right on 700 unseen headlines, a gap too large to be luck. |
+| Paying in on a schedule is a sound default | It beat every rule for timing purchases within the month that was tried. |
+| Each market's state means something | On unseen days, rougher states were followed by larger moves in 3 of 3 markets. |
 
-What survives is unglamorous: how much you hold decides the outcome, movement size is forecastable, and paying in on a schedule beat every cleverer rule tried.
+RADAR gives no "buy now" or "sell now": it forecasts how much a holding could move, not which way, and leaves the decision to the person. The full research log, including what was tried and set aside, is in `docs/DECISIONS.md` and `notebooks/archive/`.
 
 ## 🏗 System architecture
 
@@ -130,7 +128,7 @@ flowchart LR
 | Range ahead | Monte Carlo, 10,000 paths, drawing real past returns from the pool of each state. Reproducible from a stored seed. | Every past day replayed on what was known then; coverage of the 50, 80 and 95% ranges; adaptive conformal adjustment. |
 | Size of movement | HAR regression (last day, week, month), beside gradient-boosted trees, "yesterday repeated" and a state average. | QLIKE loss on unseen days and a Diebold-Mariano test against each rival. |
 | Loss limit | Value at Risk and expected shortfall three ways: historical, scaled to the forecast, and from the simulation. | Kupiec coverage and clustering tests, corrected for multiple comparisons. |
-| Portfolio risk | Ledoit-Wolf covariance, risk shares, block bootstrap of the value ahead. | Walk-forward coverage beside a bell curve it did not beat, which the screen says. |
+| Portfolio risk | Ledoit-Wolf covariance, risk shares, block bootstrap of the value ahead. | Walk-forward coverage of the ranges it drew on past dates. |
 | News tone | FinBERT fine-tuned on 1,800 labelled headlines, split by time with near-copies removed. | A held-out test fixed in advance, McNemar's test, and the share of labels that came out backwards. |
 | Signals | Change of state and abnormal hourly moves (5 times the usual size). | Replayed walk-forward; a track record per kind, for direction and for size. |
 | Trading record | Average-cost ledger reconciled to the real balance; round trips; trading against holding. | Tested on invented traders whose habits are known. |
@@ -258,7 +256,6 @@ A notebook is where an idea is tried. What holds up becomes tested code and a sc
 | `04_news` | Can the tone of headlines be scored, and how well? |
 | `05_portfolio_and_paying_in` | Where does a mix's risk sit, and what does paying in regularly lead to? |
 | `06_trading_record` | What do a person's own trades say about how they trade? |
-| `07_what_we_tested` | What was tried and did not work, and why? |
 
 ## 📚 Documentation
 
@@ -267,16 +264,14 @@ A notebook is where an idea is tried. What holds up becomes tested code and a sc
 | [`docs/WHAT_RADAR_IS.md`](docs/WHAT_RADAR_IS.md) | The whole project explained from zero |
 | [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md) | The specification and the build plan |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Every design decision and test, with its reason and result |
-| [`docs/AUDIT.md`](docs/AUDIT.md) | An audit of the concepts, methods and flaws |
+| [`docs/AUDIT.md`](docs/AUDIT.md) | An audit of the concepts and methods |
 | [`docs/DATA_AUDIT.md`](docs/DATA_AUDIT.md) | Measured facts about the data sources |
 
-## ⚠ Limits
+## 🧭 Scope
 
-- Bitcoin and gold have prices from 2021 only, so their models have seen few market cycles.
+- Built for one person's own portfolio: Bitcoin, gold and US stocks, with models fitted on prices from 2021 onwards.
 - Stock prices are 15 minutes delayed, and a tokenised stock on Binance is priced by the fund it tracks.
-- The headline labels were written by an AI model, not a person.
-- Everything is drawn from the past few years. A future unlike them is not in any range shown.
-- RADAR is an analytics tool for one person's own use. It is not financial advice.
+- RADAR is an analytics tool. It is not financial advice.
 
 ## 📄 License
 

@@ -161,9 +161,7 @@ print("\nshown in the app:", shown.to_dict())
 # %% [markdown]
 # **What this says.** The count above is the result: the method with the lowest error
 # in each market and horizon, and the one the app shows. The tree model sees the same
-# three numbers plus the market's state and does not do better for it. News tone was
-# tested as a further input in a separate, pre-written test and gave no gain in any of
-# twelve comparisons (`07_what_we_tested`), so it is not in the forecast.
+# three numbers plus the market's state and does not do better for it.
 #
 # ## Step 2. A loss limit, and how often it was broken
 #

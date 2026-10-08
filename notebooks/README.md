@@ -12,9 +12,9 @@ Every example portfolio and every trader in them is made up.
 | `04_news` | Can the tone of headlines be scored, and how well? | `models/sentiment.py`, `finetune.py` | News |
 | `05_portfolio_and_paying_in` | Where does a mix's risk sit, what range is its value in, and what does paying in regularly lead to? | `models/portfolio.py`, `portfolio_simulation.py`, `regular_buying.py` | Portfolio |
 | `06_trading_record` | What do a person's own trades say about how they trade? | `models/ledger.py`, `analytics/trading.py` | Your record |
-| `07_what_we_tested` | What was tried and did not work, and why? | (summary) | Not in the app, by decision |
 
-`archive/` holds the seven full research notebooks that `07_what_we_tested` summarises.
+`archive/` holds the research log: seven full research notebooks, and
+`07_what_we_tested`, the one page that summarises them.
 They were run when gold was followed as the gold fund (before decision 087) and are
 kept as they were: their figures are evidence for the conclusions, not current readings.
 `docs/DECISIONS.md` refers to them by their old numbers (08, 10, 11 to 15).

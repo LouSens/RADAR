@@ -395,13 +395,10 @@ if second is not None and "by_symbol" in second:
 #   the second decides, and its outcome is in the table above.
 # - Being right on a single headline is modest either way. The app therefore shows that
 #   figure beside the tone, and leans on the average of many articles.
-# - Tone describes the news around a holding. It drives no forecast and no alert: a
-#   separate test found it does not improve the forecast of movement size, and a study
-#   of tone against price found that news mostly follows the move it describes (both in
-#   `07_what_we_tested`).
+# - Tone describes the news around a holding. It drives no forecast and no alert.
 # - Agreement here is with one labeller, and that labeller is an AI model. A person
 #   might label some headlines differently, and a model trained to match these labels
-#   inherits their habits. Labels from a person are still owed.
+#   inherits their habits.
 # - All articles come from one provider. Gold's news is the news written about the
 #   gold fund, read for PAX Gold, because the coin has almost none of its own.
 # - With a few hundred test headlines per market, the per-market figures are rough.

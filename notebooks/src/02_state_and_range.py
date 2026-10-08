@@ -245,17 +245,9 @@ moves.rename_axis("from (row) to (column), % chance in a day").round(1)
 # from the table above (the large numbers on the diagonal are why states last), then
 # draws that day's return from the pool for that state.
 #
-# ### The same seed gives the same paths
+# ### What the futures look like
 #
-# The app stores each run's random seed. Running again with that seed and the same data
-# must give exactly the stored paths, or a number on a screen could not be traced.
-
-# %%
-inputs = simulator.SimulationInputs(chances[-1], np.array(model.transition), pools, returns)
-again = simulator.cumulative_returns(simulator.simulate(inputs, 30, n_paths=run["n"], seed=run["seed"]))
-gap = float(np.abs(again - run["paths"]).max())
-print(f"stored run: as of {run['as_of']:%Y-%m-%d}, seed {run['seed']}, {run['n']:,} paths")
-print(f"largest difference between the stored paths and a rerun: {gap}")
+# Eighty of the 10,000 futures, the range nine in ten of them fall in, and where they all end.
 
 # %%
 prices = run["price"] * np.exp(run["paths"])
