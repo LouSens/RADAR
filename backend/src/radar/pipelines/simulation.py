@@ -255,8 +255,10 @@ def latest(session: Session, symbol: str) -> Simulation | None:
 
 def run(engine: Engine, universe: Universe, *, recalibrate: bool = False) -> int:
     """Calibrate where there is no report (or always, with `recalibrate`), then simulate."""
+    from radar.pipelines import followed
+
     changed = 0
-    for asset in universe.primary:
+    for asset in followed.of(engine, universe):
         with session_scope(engine) as session:
             missing = not has_calibration(session, asset.symbol)
         if recalibrate or missing:

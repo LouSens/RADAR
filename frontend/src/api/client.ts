@@ -3,6 +3,7 @@
 import type { components } from "./schema";
 
 export type Asset = components["schemas"]["AssetOut"];
+export type Followed = components["schemas"]["HoldingStanding"];
 export type Bar = components["schemas"]["BarOut"];
 export type Bars = components["schemas"]["BarsOut"];
 export type Health = components["schemas"]["HealthOut"];

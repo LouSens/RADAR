@@ -1,10 +1,17 @@
 import { Fragment, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 
-import type { LimitHorizon, Portfolio, PortfolioAnalysis, PortfolioLimit } from "../api/client";
+import type {
+  Followed,
+  LimitHorizon,
+  Portfolio,
+  PortfolioAnalysis,
+  PortfolioLimit,
+} from "../api/client";
 import {
   useAccountRecord,
   useAssets,
+  useFollowed,
   usePortfolio,
   usePortfolioAnalysis,
   useSetLostCoins,
@@ -779,6 +786,28 @@ export function ExchangeCheck({
   );
 }
 
+/**
+ * Under a holding's name: the way to its own analysis, or how many days of prices it
+ * still needs before there is one. Cash has neither.
+ */
+function HoldingStanding({ standing, slug }: { standing?: Followed; slug?: string }) {
+  if (!standing) return null;
+  if (standing.analysed && slug)
+    return (
+      <Link
+        to={`/asset/${slug}`}
+        className="block text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+      >
+        See its analysis
+      </Link>
+    );
+  return (
+    <span className="block text-xs text-muted">
+      Not analysed yet: {standing.days} of {standing.needed} days of prices
+    </span>
+  );
+}
+
 export function PortfolioPage() {
   const { section } = useParams();
   const portfolio = usePortfolio();
@@ -786,7 +815,9 @@ export function PortfolioPage() {
   const record = useAccountRecord().data;
   const setLost = useSetLostCoins();
   const steps = useSteps().data;
-  const kinds = Object.fromEntries((useAssets().data ?? []).map((a) => [a.symbol, a.kind]));
+  const assets = useAssets();
+  const followed = useFollowed();
+  const kinds = Object.fromEntries((assets.data ?? []).map((a) => [a.symbol, a.kind]));
 
   if (!isPortfolioSection(section)) return <Navigate to={BASE} replace />;
   const empty = portfolio.data !== undefined && portfolio.data.holdings.length === 0;
@@ -856,6 +887,10 @@ export function PortfolioPage() {
                       <span className="num hidden text-muted @sm:inline">
                         {formatCount(position.quantity)}
                       </span>
+                      <HoldingStanding
+                        standing={followed.data?.find((f) => f.symbol === position.symbol)}
+                        slug={assets.data?.find((a) => a.symbol === position.symbol)?.slug}
+                      />
                     </span>
                     <span className="num shrink-0 font-medium">
                       {formatMoney(position.value)}{" "}
