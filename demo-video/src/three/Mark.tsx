@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import {
   CurvePath,
   LineCurve3,
+  MeshStandardMaterial,
   QuadraticBezierCurve3,
   TubeGeometry,
   Vector3,
@@ -17,17 +18,23 @@ const UNIT = 0.1;
 const at = (x: number, y: number, z = 0): Vector3 =>
   new Vector3((x - 16) * UNIT, -(y - 16) * UNIT, z);
 
+/**
+ * Stroke widths on the logo's box of 32. The logo's line is 2.4 and its ring 1.5; a lit
+ * tube with a halo reads heavier than a flat stroke of the same width, so these are a
+ * little under.
+ */
+const LINE_STROKE = 1.9;
+const RING_STROKE = 1.0;
+const DOT_RADIUS = 2.1;
+
 export const RING = { centre: at(15, 17), radius: 8.5 * UNIT } as const;
 const LINE = [at(7.5, 21.5), at(12.5, 16.5), at(16, 19.5), at(24.5, 10)];
-export const DOT = { centre: at(24.5, 10), radius: 2.4 * UNIT } as const;
-const LINE_RADIUS = 1.2 * UNIT;
-const RING_RADIUS = 0.6 * UNIT;
-
-/** The accent, deepened: what the mark is made of under its glow. */
-const BODY = "#0d7f99";
+const DOT = { centre: at(24.5, 10), radius: DOT_RADIUS * UNIT } as const;
+const LINE_RADIUS = (LINE_STROKE / 2) * UNIT;
+const RING_RADIUS = (RING_STROKE / 2) * UNIT;
 
 const SEGMENTS = 220;
-const SIDES = 20;
+const SIDES = 24;
 
 /** The line's path, with its two corners eased as a round join would. */
 const linePath = (): CurvePath<Vector3> => {
@@ -50,49 +57,52 @@ const linePath = (): CurvePath<Vector3> => {
   return path;
 };
 
+/**
+ * A lit tube: a deep core that gives off the accent, and an edge that brightens where the
+ * surface turns away from the eye, as the wall of a glass tube does.
+ */
+const tube = (core: number, edge: number): MeshStandardMaterial => {
+  const material = new MeshStandardMaterial({
+    color: "#0a6f88",
+    emissive: C.accent,
+    emissiveIntensity: core,
+    metalness: 0.1,
+    roughness: 0.16,
+    envMapIntensity: 0.9,
+  });
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <emissivemap_fragment>",
+      `#include <emissivemap_fragment>
+       float turned = 1.0 - saturate(dot(normalize(normal), normalize(vViewPosition)));
+       totalEmissiveRadiance += vec3(0.62, 0.93, 1.0) * pow(turned, 2.2) * ${edge.toFixed(2)};`,
+    );
+  };
+  return material;
+};
+
 export const Mark: React.FC<{
   /** How much of each part is drawn, from 0 to 1. */
   readonly ring: number;
   readonly line: number;
   readonly dot: number;
-  /** How strongly the parts give off their own light. */
-  readonly glow?: number;
-}> = ({ ring, line, dot, glow = 1 }) => {
+}> = ({ ring, line, dot }) => {
   const path = useMemo(linePath, []);
-  const tube = useMemo(
+  const stroke = useMemo(
     () => new TubeGeometry(path, SEGMENTS, LINE_RADIUS, SIDES, false),
     [path],
   );
+  const lit = useMemo(() => tube(0.42, 1.5), []);
+  const dim = useMemo(() => tube(0.14, 0.9), []);
+
   const drawn = Math.round(line * SEGMENTS);
-  tube.setDrawRange(0, drawn * SIDES * 6);
+  stroke.setDrawRange(0, drawn * SIDES * 6);
   const tip = path.getPointAt(Math.min(Math.max(drawn / SEGMENTS, 0), 1));
   const arc = Math.max(ring, 0.0001) * Math.PI * 2;
-
-  // A deep body under its own light: lit by the accent alone it washes out to white.
-  const lit = (
-    <meshStandardMaterial
-      color={BODY}
-      emissive={C.accent}
-      emissiveIntensity={0.5 * glow}
-      metalness={0.15}
-      roughness={0.3}
-      envMapIntensity={0.55}
-    />
-  );
   const ringEnd = new Vector3(
     RING.centre.x + Math.sin(arc) * RING.radius,
     RING.centre.y + Math.cos(arc) * RING.radius,
     0,
-  );
-  const dim = (
-    <meshStandardMaterial
-      color={BODY}
-      emissive={C.accent}
-      emissiveIntensity={0.16 * glow}
-      metalness={0.7}
-      roughness={0.28}
-      envMapIntensity={0.8}
-    />
   );
 
   return (
@@ -103,34 +113,34 @@ export const Mark: React.FC<{
           position={RING.centre}
           rotation={[0, 0, -Math.PI / 2]}
           scale={[-1, 1, 1]}
+          material={dim}
         >
-          <torusGeometry args={[RING.radius, RING_RADIUS, 20, 160, arc]} />
-          {dim}
+          <torusGeometry args={[RING.radius, RING_RADIUS, 24, 200, arc]} />
         </mesh>
       )}
       {ring > 0 && ring < 1 && (
-        <mesh position={ringEnd}>
+        <mesh position={ringEnd} material={dim}>
           <sphereGeometry args={[RING_RADIUS, 20, 14]} />
-          {dim}
         </mesh>
       )}
       {drawn > 0 && (
-        <group position={[0, 0, 0.14]}>
-          <mesh geometry={tube}>{lit}</mesh>
-          <mesh position={LINE[0]}>
+        <group position={[0, 0, 0.12]}>
+          <mesh geometry={stroke} material={lit} />
+          <mesh position={LINE[0]} material={lit}>
             <sphereGeometry args={[LINE_RADIUS, 24, 16]} />
-            {lit}
           </mesh>
-          <mesh position={tip}>
+          <mesh position={tip} material={lit}>
             <sphereGeometry args={[LINE_RADIUS, 24, 16]} />
-            {lit}
           </mesh>
         </group>
       )}
       {dot > 0 && (
-        <mesh position={[DOT.centre.x, DOT.centre.y, 0.14]} scale={dot}>
+        <mesh
+          position={[DOT.centre.x, DOT.centre.y, 0.12]}
+          scale={dot}
+          material={lit}
+        >
           <sphereGeometry args={[DOT.radius, 48, 32]} />
-          {lit}
         </mesh>
       )}
     </group>

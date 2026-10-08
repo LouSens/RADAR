@@ -1,6 +1,5 @@
 import {
   AbsoluteFill,
-  Easing,
   spring,
   useCurrentFrame,
   useVideoConfig,
@@ -8,7 +7,7 @@ import {
 import { lightAt } from "../Ground";
 import { C, fade } from "../theme";
 import { Mark, RING } from "../three/Mark";
-import { Rig, Stage } from "../three/Stage";
+import { Stage, type View } from "../three/Stage";
 import { useLoaded } from "../three/assets";
 import { COPY, EASE, EASE_IN_OUT, shot, tween } from "../timing";
 import { Words } from "../Words";
@@ -17,8 +16,26 @@ import { Words } from "../Words";
 const LIFT = 0.5;
 /** A clear way through the ring: inside it, and to one side of the rising line. */
 const GAP = [RING.centre.x - 0.34, RING.centre.y + 0.44 + LIFT] as const;
+/** When the camera sets off for the ring, and the shot's last frame, when it is through. */
+const PUSH = [46, 59] as const;
 
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+/**
+ * The camera drifts in while the mark is drawn, then goes through the ring: slowly at
+ * first, so the ring is seen to grow and its edge to pass the lens, and through it on the
+ * shot's last frame.
+ */
+const cameraAt = (frame: number): View => {
+  const drift = tween(frame, 0, PUSH[0], 0, 1, (t) => t);
+  const push = tween(frame, PUSH[0], PUSH[1], 0, 1, (t) => t ** 1.6);
+  const x = mix(0, GAP[0], Math.min(push * 2, 1));
+  const y = mix(0, GAP[1], Math.min(push * 2, 1));
+  return {
+    position: [x, y, mix(mix(11.8, 10.6, drift), -0.7, push)],
+    target: [x, y, -8],
+  };
+};
 
 /**
  * Shot 2. The mark draws itself, ring then line then dot, and the camera goes through
@@ -41,26 +58,19 @@ export const Meet: React.FC = () => {
   });
   // The mark turns to face us as it is drawn.
   const turned = tween(frame, 4, 40, 1, 0, EASE);
-  const drift = tween(frame, 0, 46, 0, 1, (t) => t);
-  const push = tween(frame, 40, 59, 0, 1, Easing.in(Easing.cubic));
+  const pushing = frame >= PUSH[0];
 
   return (
     <AbsoluteFill>
       <Stage
         room={assets.room}
         light={lightAt(shot("meet").from + frame)}
+        camera={cameraAt}
+        shutter={pushing ? 0.65 : 0}
         style={{
-          filter: `drop-shadow(0 0 ${26 + push * 60}px ${fade(C.accent, 0.5)})`,
+          filter: `drop-shadow(0 0 22px ${fade(C.accent, 0.42)})`,
         }}
       >
-        <Rig
-          position={[
-            mix(0, GAP[0], push),
-            mix(0, GAP[1], push),
-            mix(mix(11.8, 11, drift), -0.9, push),
-          ]}
-          target={[mix(0, GAP[0], push), mix(0, GAP[1], push), -6]}
-        />
         <group
           position={[0, LIFT, 0]}
           rotation={[turned * 0.3, turned * -0.75, turned * 0.08]}
@@ -69,7 +79,7 @@ export const Meet: React.FC = () => {
         </group>
       </Stage>
       <AbsoluteFill style={{ alignItems: "center", top: 770 }}>
-        <Words text={COPY.meet[0]} at={22} out={44} size={132} stagger={5} />
+        <Words text={COPY.meet[0]} at={22} out={46} size={132} stagger={5} />
       </AbsoluteFill>
     </AbsoluteFill>
   );

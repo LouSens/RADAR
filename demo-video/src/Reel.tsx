@@ -1,33 +1,27 @@
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
-import market from "./fixtures/market.json";
 import { Ground } from "./Ground";
-import { Empty } from "./shots/Empty";
+import { Cards } from "./shots/Cards";
 import { Meet } from "./shots/Meet";
 import { Phone } from "./shots/Phone";
+import { Plan } from "./shots/Plan";
+import { Question } from "./shots/Question";
 import { Range } from "./shots/Range";
+import { Refusals } from "./shots/Refusals";
+import { Risk } from "./shots/Risk";
 import { SweepLine, Swept } from "./Sweep";
 import { AssetsProvider, useAssets } from "./three/assets";
-import { BEAT, COPY, FPS, SHOTS, SWEEP, type ShotId } from "./timing";
+import { FPS, SHOTS, SWEEP, type ShotId } from "./timing";
 
-const title = (word: string): string =>
-  `${word.charAt(0).toUpperCase()}${word.slice(1)}.`;
-
-/** What each shot draws. A shot not built yet shows its words alone. */
+/** What each shot draws. */
 const PICTURE: Readonly<Record<ShotId, React.ReactNode>> = {
-  question: <Empty lines={COPY.question} />,
+  question: <Question />,
   meet: <Meet />,
   phone: <Phone />,
-  // The three states as they stand in the fixture.
-  cards: (
-    <Empty lines={[market.markets.map((m) => title(m.state)).join(" ")]} />
-  ),
+  cards: <Cards />,
   range: <Range />,
-  // Provisional: these two figures will follow the example portfolio's fixture.
-  risk: <Empty lines={["8% of your money.", "62% of your risk."]} />,
-  plan: <Empty lines={COPY.plan} />,
-  refusals: (
-    <Empty lines={[...COPY.refusals, COPY.signoff.join(" ")]} step={BEAT} />
-  ),
+  risk: <Risk />,
+  plan: <Plan />,
+  refusals: <Refusals />,
 };
 
 /**

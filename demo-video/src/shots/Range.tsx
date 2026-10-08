@@ -33,8 +33,8 @@ const MOST = Math.max(...range.counts);
 const BAR = SPAN / range.counts.length;
 const NOW_BAR = Math.floor((X_NOW - LEFT) / BAR);
 
-/** How far each half moves from the middle before it sets off for its end. */
-const APART = 330;
+/** How wide the cut between the two figures is once it has opened. */
+const CUT = 200;
 
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 
@@ -77,18 +77,25 @@ export const Range: React.FC = () => {
   const { fps } = useVideoConfig();
 
   const arrive = tween(frame, 0, 10, 0, 1, EASE);
-  // First the one figure parts into two of itself, far enough to stand clear; then the
-  // two travel to the ends of the range, counting away from the price as they go.
-  const part = tween(frame, 22, 36, 0, 1, EASE_IN_OUT);
-  const travel = tween(frame, 34, 54, 0, 1, EASE_IN_OUT);
-  const counted = tween(frame, 36, 54, 0, 1, EASE);
-  const size = 250 - 100 * part - 58 * travel;
-  const cy = mix(540, ROW, travel);
-  const lowX = 960 - APART * part + (X_LOW - (960 - APART)) * travel;
-  const highX = 960 + APART * part + (X_HIGH - (960 + APART)) * travel;
+  // One move, on one curve. The price is two copies of itself lying exactly together,
+  // the left one shown only left of a cut and the right one only right of it. As the cut
+  // opens, each copy travels to its end of the range, shrinks to its place in the row and
+  // counts to its value, so position, size and value all change together and none jumps.
+  const open = tween(frame, 22, 56, 0, 1, EASE_IN_OUT);
+  const size = mix(250, 92, open);
+  const cy = mix(540, ROW, open);
+  const lowX = mix(960, X_LOW, open);
+  const highX = mix(960, X_HIGH, open);
   const seam = (lowX + highX) / 2;
-  const guides = tween(frame, 52, 66, 0, 1, EASE);
-  const now = tween(frame, 54, 66, 0, 1, EASE);
+  const cutLeft = seam - (CUT / 2) * open;
+  const cutRight = seam + (CUT / 2) * open;
+  // The cut is sharp while the copies lie together and softens as they part.
+  const soft = 18 * open;
+  const leftOnly = `linear-gradient(to right, #000 ${cutLeft - soft}px, transparent ${cutLeft}px)`;
+  const rightOnly = `linear-gradient(to left, #000 ${1920 - cutRight - soft}px, transparent ${1920 - cutRight}px)`;
+  const room = BASE - (cy + size * 0.45 + 22);
+  const guides = tween(frame, 54, 68, 0, 1, EASE);
+  const now = tween(frame, 56, 68, 0, 1, EASE);
   const badge = spring({
     frame: frame - 74,
     fps,
@@ -113,11 +120,11 @@ export const Range: React.FC = () => {
           style={{
             display: "flex",
             gap: 28,
-            translate: `${tween(frame, 40, 54, 196, 0, EASE_IN_OUT)}px 0`,
+            translate: `${tween(frame, 42, 56, 196, 0, EASE_IN_OUT)}px 0`,
           }}
         >
           <Words text={COPY.range[0]} at={8} size={92} accent={C.btc} />
-          <Words text={COPY.range[1]} at={44} size={92} accent={C.btc} />
+          <Words text={COPY.range[1]} at={46} size={92} accent={C.btc} />
         </div>
       </AbsoluteFill>
 
@@ -131,7 +138,7 @@ export const Range: React.FC = () => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          opacity: tween(frame, 48, 60, 0, 1),
+          opacity: tween(frame, 50, 62, 0, 1),
         }}
       >
         <div
@@ -181,13 +188,15 @@ export const Range: React.FC = () => {
       {range.counts.map((count, i) => {
         const mid = (range.edges[i] + range.edges[i + 1]) / 2;
         const inside = mid >= range.low && mid <= range.high;
-        const start = 42 + Math.abs(i - NOW_BAR) * 1.15;
+        // The outcomes rise in the opening cut, from today's price outwards.
+        const start = 27 + Math.abs(i - NOW_BAR) * 1.25;
         const grown = spring({
           frame: frame - start,
           fps,
           config: { damping: 14, mass: 0.6, stiffness: 140 },
         });
-        const height = (count / MOST) * TALL * grown;
+        // While the price is still large and low in the frame, no bar rises into it.
+        const height = Math.min((count / MOST) * TALL * grown, room);
         return (
           <div
             key={range.edges[i]}
@@ -210,7 +219,7 @@ export const Range: React.FC = () => {
         style={{
           position: "absolute",
           left: LEFT,
-          width: SPAN * tween(frame, 38, 60, 0, 1, EASE),
+          width: SPAN * tween(frame, 26, 56, 0, 1, EASE),
           top: BASE,
           height: 2,
           background: C.lineStrong,
@@ -287,20 +296,22 @@ export const Range: React.FC = () => {
         Bitcoin now
       </div>
 
-      {/* One figure cut down a seam: each half keeps to its own side of it, so the two
-          are a single price until they have slid clear of each other. */}
-      <AbsoluteFill style={{ clipPath: `inset(0 ${1920 - seam}px 0 0)` }}>
+      {/* One figure and a cut: the left copy is only ever seen left of the cut and the
+          right copy right of it, so two whole figures never touch. */}
+      <AbsoluteFill style={{ maskImage: leftOnly, WebkitMaskImage: leftOnly }}>
         <Figure
-          value={mix(range.startPrice, range.low, counted)}
+          value={mix(range.startPrice, range.low, open)}
           cx={lowX}
           cy={cy}
           size={size}
           opacity={arrive}
         />
       </AbsoluteFill>
-      <AbsoluteFill style={{ clipPath: `inset(0 0 0 ${seam}px)` }}>
+      <AbsoluteFill
+        style={{ maskImage: rightOnly, WebkitMaskImage: rightOnly }}
+      >
         <Figure
-          value={mix(range.startPrice, range.high, counted)}
+          value={mix(range.startPrice, range.high, open)}
           cx={highX}
           cy={cy}
           size={size}
@@ -318,7 +329,7 @@ export const Range: React.FC = () => {
           background: C.btc,
           boxShadow: `0 0 28px 6px ${fade(C.btc, 0.6)}`,
           opacity:
-            tween(frame, 19, 23, 0, 1) * (1 - tween(frame, 30, 40, 0, 1)),
+            tween(frame, 19, 23, 0, 1) * (1 - tween(frame, 27, 38, 0, 1)),
         }}
       />
       <div

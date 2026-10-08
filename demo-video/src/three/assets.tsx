@@ -16,8 +16,11 @@ import {
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { HDRLoader } from "three/examples/jsm/loaders/HDRLoader.js";
 
-/** Pages of the app photographed for the phone's screen (public/ui). */
-const SCREENS = ["markets"] as const;
+/**
+ * What the phone's screen shows (public/ui). `home` is the film's own rebuild of the
+ * app's Home with the example portfolio, photographed from the Home composition.
+ */
+const SCREENS = ["home"] as const;
 export type ScreenName = (typeof SCREENS)[number];
 
 export interface Assets {
