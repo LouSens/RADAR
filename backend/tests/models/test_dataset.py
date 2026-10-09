@@ -71,3 +71,49 @@ def test_leakage_check_catches_each_kind() -> None:
     out_of_order.loc[0, "created_at"] = pd.Timestamp("2030-01-01", tz="UTC")
     with pytest.raises(ValueError, match="not older"):
         dataset.check_no_leakage(out_of_order)
+
+
+def test_cleaning_removes_only_what_carries_no_tone() -> None:
+    assert dataset.clean_headline("  Gold &amp; Silver   Rise ") == "Gold & Silver Rise"
+    assert dataset.clean_headline("Commodities Poised For Comeback (UPDATED)") == (
+        "Commodities Poised For Comeback"
+    )
+    assert dataset.clean_headline("Brown praised Oracle Corporation (NYSE:ORCL) today") == (
+        "Brown praised Oracle Corporation today"
+    )
+    assert dataset.clean_headline("'UK suspends some sharing'- CNN") == "'UK suspends some sharing'"
+    # A dash inside an ordinary headline is part of it.
+    assert dataset.clean_headline("Asia Mixed - Markets Today") == "Asia Mixed - Markets Today"
+    assert dataset.clean_headline("Bitcoin FALLS 5%!") == "Bitcoin FALLS 5%!"
+
+
+def test_a_summary_is_used_only_up_to_its_last_whole_sentence() -> None:
+    cut = "Commodities are back. This could benefit investors. And then the"
+    assert dataset.whole_sentences(cut) == "Commodities are back. This could benefit investors."
+    assert dataset.whole_sentences("no sentence ends here") == ""
+    assert dataset.whole_sentences("") == ""
+
+
+def test_model_text_is_built_from_the_parts_chosen() -> None:
+    assert dataset.model_text("Gold rises", "It was up 2%. More", "Gold") == "Gold rises"
+    assert dataset.model_text("Gold rises", "", "Gold", with_asset=True) == "Gold: Gold rises"
+    assert dataset.model_text("Gold rises", "It was up 2%. More", "Gold", with_summary=True) == (
+        "Gold rises. It was up 2%."
+    )
+    # A summary that only repeats the headline adds nothing.
+    assert dataset.model_text("Gold rises", "Gold rises.", with_summary=True) == "Gold rises"
+
+
+def test_walk_forward_blocks_never_train_on_later_rows() -> None:
+    parts = dataset.walk_forward_blocks(100, block=10, blocks=3)
+    assert [(len(train), validate.start) for train, validate in parts] == [
+        (70, 70),
+        (80, 80),
+        (90, 90),
+    ]
+    for train, validate in parts:
+        assert max(train) < min(validate)
+        assert len(validate) == 10
+    assert max(parts[-1][1]) == 99
+    with pytest.raises(ValueError, match="Not enough rows"):
+        dataset.walk_forward_blocks(30, block=10, blocks=3)

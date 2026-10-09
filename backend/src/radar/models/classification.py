@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 
+import numpy as np
 from pydantic import BaseModel
 
 
@@ -78,3 +79,40 @@ def mcnemar(truth: Sequence[str], first: Sequence[str], second: Sequence[str]) -
     return Comparison(
         n=len(truth), only_first_right=only_first, only_second_right=only_second, p_value=p_value
     )
+
+
+def log_loss(truth: Sequence[str], probabilities: np.ndarray, labels: Sequence[str]) -> float:
+    """Cross-entropy: how much probability the model put on the true label, averaged.
+
+    `probabilities` has one row per item and one column per label, in the order of
+    `labels`. Zero would be certainty and always right; a model that always says a
+    third each scores 1.10 on three labels. Unlike accuracy it also counts how sure
+    the model was, so being confidently wrong costs more than being unsure.
+    """
+    if len(truth) != len(probabilities):
+        raise ValueError("truth and probabilities must have the same length")
+    column = {label: i for i, label in enumerate(labels)}
+    given = np.asarray(probabilities, dtype=float)[
+        np.arange(len(truth)), [column[label] for label in truth]
+    ]
+    return float(-np.log(np.clip(given, 1e-12, 1.0)).mean())
+
+
+def with_temperature(probabilities: np.ndarray, temperature: float) -> np.ndarray:
+    """The same probabilities made less sure (above 1) or more sure (below 1).
+
+    The order of the labels in each row does not change, so neither does accuracy.
+    """
+    logits = np.log(np.clip(np.asarray(probabilities, dtype=float), 1e-12, 1.0)) / temperature
+    logits -= logits.max(axis=1, keepdims=True)
+    scaled = np.exp(logits)
+    return np.asarray(scaled / scaled.sum(axis=1, keepdims=True))
+
+
+def fit_temperature(
+    truth: Sequence[str], probabilities: np.ndarray, labels: Sequence[str]
+) -> float:
+    """The one temperature, from 0.5 to 5, that gives the lowest cross-entropy."""
+    grid = np.arange(0.5, 5.0001, 0.05)
+    losses = [log_loss(truth, with_temperature(probabilities, t), labels) for t in grid]
+    return float(grid[int(np.argmin(losses))])

@@ -12,6 +12,7 @@ ways it can happen with news headlines, and what is done about each:
   part is scored once, at the end.
 """
 
+import html
 import re
 from collections.abc import Iterable
 from itertools import pairwise
@@ -21,6 +22,11 @@ import pandas as pd
 SPLITS = ("train", "validation", "test")
 _NUMBER = re.compile(r"\d[\d,.]*")
 _NOT_WORD = re.compile(r"[^a-z#]+")
+# What a headline carries that says nothing about its tone.
+_EXCHANGE_TAG = re.compile(r"\s*\((?:NYSE|NASDAQ|AMEX|ARCA|OTC|CRYPTO|BATS|TSX)\b[^)]*\)?", re.I)
+_REVISION_TAG = re.compile(r"\s*\((?:UPDATED|CORRECTED)\)", re.I)
+_SOURCE_TAIL = re.compile(r"(?<=['\"\u2019\u201d])\s*-\s*[A-Z@][^-]{1,40}$")
+_SENTENCE_END = re.compile(r"[.!?][\"'\u2019\u201d)]*(?=\s|$)")
 
 
 def headline_key(headline: str) -> str:
@@ -72,3 +78,64 @@ def check_no_leakage(frame: pd.DataFrame) -> None:
     for before, after in pairwise(SPLITS):
         if before in latest.index and after in earliest.index and latest[before] >= earliest[after]:
             raise ValueError(f"The {before} part is not older than the {after} part")
+
+
+def clean_headline(headline: str) -> str:
+    """A headline without the parts that carry no tone.
+
+    White space is evened out, HTML entities are read, and a revision note
+    ("(UPDATED)"), an exchange tag ("(NYSE:ORCL)") and a source after a closing quote
+    ("' - Bloomberg") are removed. The words themselves are left as they are: case and
+    punctuation carry tone in a headline.
+    """
+    text = " ".join(html.unescape(headline).split())
+    text = _REVISION_TAG.sub("", text)
+    text = _EXCHANGE_TAG.sub("", text)
+    text = _SOURCE_TAIL.sub("", text)
+    return " ".join(text.split())
+
+
+def whole_sentences(summary: str) -> str:
+    """A summary up to its last complete sentence, or nothing if it has none.
+
+    Stored summaries are cut at a fixed length, often in the middle of a sentence. Half
+    a sentence can turn its meaning around, so it is dropped.
+    """
+    text = clean_headline(summary)
+    ends = [found.end() for found in _SENTENCE_END.finditer(text)]
+    return text[: ends[-1]] if ends else ""
+
+
+def model_text(
+    headline: str,
+    summary: str = "",
+    market: str = "",
+    *,
+    with_asset: bool = False,
+    with_summary: bool = False,
+) -> str:
+    """The text a tone model reads, built from the parts chosen.
+
+    `with_asset` puts the market's name in front ("Gold: ..."), since one headline can
+    be good news for one holding and bad for another. `with_summary` adds the summary's
+    whole sentences, unless it only repeats the headline.
+    """
+    text = clean_headline(headline)
+    if with_summary:
+        extra = whole_sentences(summary)
+        if extra and headline_key(extra) != headline_key(text):
+            text = f"{text if text.endswith(('.', '!', '?')) else text + '.'} {extra}"
+    return f"{market}: {text}" if with_asset and market else text
+
+
+def walk_forward_blocks(n: int, block: int, blocks: int) -> list[tuple[range, range]]:
+    """Positions to train on and to validate on, for rows already in time order.
+
+    The last `blocks` stretches of `block` rows are each validated by a model trained
+    on every row before that stretch, so no model is ever scored on rows older than
+    something it was trained on.
+    """
+    if block <= 0 or blocks <= 0 or n <= block * blocks:
+        raise ValueError("Not enough rows for that many blocks")
+    starts = [n - block * (blocks - k) for k in range(blocks)]
+    return [(range(0, start), range(start, start + block)) for start in starts]

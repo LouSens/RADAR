@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from radar.models import classification
@@ -78,3 +79,43 @@ def test_mcnemar_uses_only_the_items_where_the_two_differ() -> None:
     close = classification.mcnemar(["a"] * 9, ["a"] * 5 + ["b"] * 4, ["b"] * 5 + ["a"] * 4)
     assert (close.only_first_right, close.only_second_right) == (5, 4)
     assert close.p_value == 1.0
+
+
+def test_log_loss_counts_how_sure_a_wrong_answer_was() -> None:
+    labels = ["positive", "negative", "neutral"]
+    thirds = np.full((2, 3), 1 / 3)
+    assert classification.log_loss(["positive", "neutral"], thirds, labels) == pytest.approx(
+        np.log(3)
+    )
+    sure_and_right = np.array([[0.98, 0.01, 0.01]])
+    sure_and_wrong = np.array([[0.01, 0.98, 0.01]])
+    unsure_and_wrong = np.array([[0.3, 0.4, 0.3]])
+    right = classification.log_loss(["positive"], sure_and_right, labels)
+    wrong = classification.log_loss(["positive"], sure_and_wrong, labels)
+    unsure = classification.log_loss(["positive"], unsure_and_wrong, labels)
+    assert right < unsure < wrong
+    with pytest.raises(ValueError, match="same length"):
+        classification.log_loss(["positive"], thirds, labels)
+
+
+def test_temperature_changes_how_sure_never_which_label() -> None:
+    given = np.array([[0.9, 0.06, 0.04], [0.2, 0.5, 0.3], [0.1, 0.2, 0.7]])
+    cooler = classification.with_temperature(given, 2.0)
+    assert cooler.sum(axis=1) == pytest.approx(np.ones(3))
+    assert (cooler.argmax(axis=1) == given.argmax(axis=1)).all()
+    assert (cooler.max(axis=1) < given.max(axis=1)).all()
+    assert classification.with_temperature(given, 1.0) == pytest.approx(given)
+
+
+def test_fitted_temperature_makes_an_overconfident_model_less_sure() -> None:
+    labels = ["positive", "negative", "neutral"]
+    # Always 97% sure, right two times in three.
+    given = np.tile([[0.97, 0.02, 0.01]], (30, 1))
+    truth = ["positive", "positive", "negative"] * 10
+    temperature = classification.fit_temperature(truth, given, labels)
+    assert temperature > 1.5
+    before = classification.log_loss(truth, given, labels)
+    after = classification.log_loss(
+        truth, classification.with_temperature(given, temperature), labels
+    )
+    assert after < before
