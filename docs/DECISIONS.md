@@ -3969,3 +3969,78 @@ whose round-4 run had failed for the reason above before it could be compared.
 **Still to come, in decision 104**: the labelling rule's neutral clause contradicts
 itself, and most training labels were written before the rule was. The labels are to be
 written again under a fixed rule, three passes each, before the comparison is run.
+
+## 104. The tone labels written again under one fixed rule, three blind passes each; rule and procedure written before any label (2026-10-09)
+
+**Why.** The labelling rule was first written in decision 101, after most training
+labels existed, so training labels follow an older unwritten rule and the test set the
+written one. Two passes agreed on 80.4% of 240 headlines (US stocks 72.5%), and 45 of
+the 47 disagreements involved "neutral". The neutral clause of 101 also contradicted
+itself: "something off the subject" is neutral, yet "otherwise its overall tone decides".
+
+**The rule** (approved by the user on 2026-10-09, with ten made-up examples). The label
+answers one question: *is this headline good or bad news for holders of the asset it is
+filed under?*
+
+1. **Is the headline about that asset?** Yes if it names the asset, or names something
+   that plainly moves it. Bitcoin: the crypto market, crypto exchanges, crypto rules.
+   Gold: the dollar, bond yields, central banks, demand for safe assets. US stocks: the
+   index, the Federal Reserve, US economic figures, large US companies.
+2. **If it is not about that asset, the label is neutral**, whatever its tone. This is
+   the only answer for such a headline; "its overall tone decides" is withdrawn.
+3. **If it is**: *positive* when it reports or expects something good for the price or
+   for holders; *negative* for the opposite; *neutral* when there is no clear direction
+   (a fact or a scheduled figure with no stated surprise, procedure, a question, a mix
+   of up and down).
+4. **When unsure between neutral and a tone**: the tone only if the headline states a
+   direction in its own words (rises, falls, record, cuts, banned). If the direction
+   has to be guessed, neutral.
+
+| Market | Made-up headline | Label | Why |
+|---|---|---|---|
+| Gold | Example Airline Cancels 200 Flights After Storm | neutral | Not about gold (2) |
+| Bitcoin | Example Corp Shares Jump 12% On Strong Earnings | neutral | An ordinary share, not crypto (2) |
+| US stocks | Fed Officials Signal Rates May Stay Higher For Longer | negative | The Fed moves stocks; the direction is bad |
+| Gold | Dollar Climbs To Two-Month High | negative | A rising dollar plainly weighs on gold |
+| Bitcoin | Bitcoin Holds Near $60,000 Ahead Of Jobs Report | neutral | About Bitcoin, no direction |
+| US stocks | Tech Rallies While Banks Slide In Mixed Session | neutral | A mix |
+| Bitcoin | Will Bitcoin Hit $100,000 This Year? | neutral | A question; the direction would be a guess (4) |
+| Gold | Central Banks Bought Less Gold Last Quarter, Still Above Average | neutral | Two directions in one line |
+| US stocks | Example Corp Beats Estimates But Cuts Full-Year Outlook | negative | The outlook outweighs the past quarter; "cuts" is stated |
+| Bitcoin | Regulator Delays Decision On Example Bitcoin Fund | neutral | Procedure: neither refused nor approved |
+
+**The procedure.**
+
+- Every headline is labelled again: the 2,218 training and validation headlines and the
+  521 test headlines, mixed together so a labeller cannot tell which is which.
+- Three passes. Each pass is done by fresh AI labellers (Claude, as subagents) that see
+  only this rule, the ten examples, and a list of headlines with their market. They see
+  no earlier label, no other pass, no summary, no date and no article number: each
+  pass has its own random order and its own random keys.
+- All three passes are stored per headline in `backend/src/radar/sentiment_round5_labels.csv`,
+  with the rule and the pass. The old label files are kept as they are.
+- **Training target**: the share of passes giving each label (2 of 3 is 0.67 and 0.33).
+  **Label for scoring**: the majority. A headline with three different labels has no
+  majority; it is kept in a separate group, reported separately, and not scored.
+- Writing labels for the test headlines is allowed. Scoring any model on them is still
+  forbidden until the user says so, and the new test labels are not compared with the
+  old ones.
+
+**Reported before any training**: agreement between passes over all and per market,
+Cohen's kappa, the three-by-three tables, how many training and validation labels
+changed from the old ones, and the label mix before and after.
+
+**The bar, written now.** A market's agreement is the mean of its three pairwise
+agreements (pass 1 with 2, 1 with 3, 2 with 3). If it is under 80% for any market,
+nothing is trained and the user is told. The labels are not written a fourth time to
+get over the bar.
+
+**Also decided on 2026-10-09.** The model's input is "asset + headline" (no summary).
+The user chose it so the model can be used on news from other sources, which have a
+headline but not always a summary. Round 4 measured the four inputs on validation loss
+(0.778 to 0.810) with a seed spread of 0.058: no measurable difference between them, so
+this choice gives up nothing that was measured. The labels are written from the
+headline alone, which fits the same input.
+
+**Not started**: labelling 10,000 more stored headlines to enlarge the training set.
+It needs the user's go-ahead as a separate step.
