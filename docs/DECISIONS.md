@@ -3756,3 +3756,96 @@ remain the ceiling.
 - Installing `sentencepiece` would let DeBERTa be tried.
 - The largest remaining lever is still the labels: a second labelling pass on the test
   sets, and more labelled headlines.
+
+## 101. Tone accuracy, round 4: the pipeline rebuilt in order, with its bars, written before any label or run (2026-10-09)
+
+The user asked for higher accuracy and lower validation error with no overfitting, for
+labelling, cleaning, the input text and the settings to be fixed before another model is
+tried, for DeBERTa-v3 to be tried (`sentencepiece` added to the `nlp` extra with the
+user's agreement), and for notebook 04 to follow the pipeline from top to bottom.
+
+**Flaws found before training, and what is done about each.**
+
+| Flaw | Fix |
+|---|---|
+| The unlabelled pool kept the older half of a random draw, so it ended in January 2023 | Drawn at random over the whole training period |
+| Labels were written from the headline alone, while the model was trained on the headline plus a summary cut off mid-sentence (present for 6 in 10) | Headline alone is one of the inputs compared; a summary is only ever used up to its last whole sentence |
+| The pass kept was the best balanced score on 270 headlines, which is noisy | The pass with the lowest validation error is kept |
+| Layer-wise rates were silently off for RoBERTa (only BERT and DeBERTa were recognised) | Works for any encoder |
+| Settings were chosen on one block of 270 headlines | Three walk-forward blocks of about 300 |
+| The rule for labelling was never written down | Written below, before any new label |
+| Training stopped at 2025-05-09; the drop from validation (77%) to both tests (66 to 67%) is the same on a test labelled with the training set and on one labelled later, so it is news changing over time, not a change in labelling | Training reaches 2026-07-31 |
+| Both test sets have been read twice | A new test set, labelled before any model scores it |
+
+**The labelling rule** (read off the existing labels, then fixed). Judged from the
+headline alone, as a financial reader would take it:
+
+- *positive*: it reports or expects something good for prices or holders (gains, a beat,
+  inflows, approval, adoption, a bullish call, easing of a threat);
+- *negative*: the opposite (falls, a miss, outflows, a ban, a hack, a lawsuit, conflict,
+  a central banker leaning towards higher rates, a bearish call);
+- *neutral*: no clear direction (a plain fact or scheduled figure without a stated
+  surprise, procedure, a mixed wrap with one thing up and another down, a question, or
+  something off the subject);
+- when the headline names the asset it is filed under, what it says about that asset
+  decides; otherwise its overall tone does.
+
+**Data.**
+- *New test set*: stored headlines from 2026-08-01 onwards that no labelled set holds
+  and that share no headline key with one; 250 Bitcoin, 250 US stocks and every gold
+  headline there is (about 30: gold has almost no news of its own this year, so gold's
+  figure will be too rough to quote by itself). Seed 20261010. Labelled by Claude under
+  the rule above, in random order, before any model of this round exists.
+- *Training and validation*: the 1,800 and the 700 labelled headlines dated before
+  2026-08-01 (about 2,220), in time order. Those dated later are left out: they sit in
+  the test period and have been read as tests. The 200-headline reference sample stays
+  out, as before.
+- *Audit of the old labels*: 240 of those headlines (80 per market, seed 20261010) are
+  labelled again under the rule, mixed blind among the new ones. Agreement between the
+  two passes is reported per market: it is the ceiling any model can reach on that
+  market. **If a market agrees on fewer than 70%, every training and validation label
+  of that market is written again under the rule**, blind. Where two passes exist and
+  differ, training uses half of each label; scoring uses the second pass, which is the
+  rule the test set follows.
+- *Cleaning*: white space, HTML entities, a trailing source tag or "(UPDATED)", and
+  exchange tags like "(NYSE:ORCL)" are removed; near-copies are already kept once.
+
+**Choices, each made on three walk-forward blocks** (train on everything before a block
+of about 300, validate on the block; the three blocks are the last 900 before the test
+period), two seeds each, by the mean validation error (cross-entropy), in this order,
+each step starting from the last one's winner:
+
+1. Input text: cleaned headline; asset name then headline; headline with the cleaned
+   summary; asset name, headline and summary.
+2. Base model: `cardiffnlp/twitter-roberta-base-sentiment-latest`, `ProsusAI/finbert`,
+   `microsoft/deberta-v3-base`,
+   `nickmuchi/deberta-v3-base-finetuned-finance-text-classification`.
+3. Settings: learning rate 1e-5, 2e-5 or 3e-5 with layer-wise decay 1.0 or 0.85; then
+   dropout 0.1 or 0.2 with weight decay 0.01 or 0.1; then label smoothing 0 or 0.1.
+
+Every run: at most 8 passes, stopped when validation error has not improved for 2, the
+lowest-error pass kept, no oversampling. Then, on the last block only:
+
+4. Five seeds, averaged.
+5. Self-training, kept only if validation error does not rise: the five label a pool of
+   30,000 stored articles drawn at random from the whole training period; those at or
+   above the confidence that makes 80% of validation right are added in the training
+   mix, up to 12,000.
+6. One temperature fitted on validation.
+
+**Bars, read once on the new test set.**
+- *Better than the model in use*: more often right than `finbert-radar-1`, McNemar p
+  below 0.05. (The new model has seen fifteen more months of news; that is what
+  retraining buys, and it is part of what is being measured.)
+- *Not overfitted*: accuracy on the test set no more than 5 points under accuracy on
+  the last validation block, and test error no more than 0.10 above validation error.
+  A model's error on headlines it trained on is always lower than on new ones, so "no
+  gap at all" is not a test anything passes; this is the gap that would mean the choices
+  were fitted to validation.
+- The model files are kept this time. Putting the model in the app stays the user's
+  decision, and the accuracy the app would show for it is the one from this test set.
+
+**My guesses.** Headline alone wins step 1. RoBERTa stays ahead of DeBERTa-v3 with this
+little data. 69 to 72% on the new test, a gap to validation of 3 to 5 points. Agreement
+between the two labelling passes near 80%, lower for gold, which would put 85 to 90%
+out of reach for any model on these labels.
