@@ -75,8 +75,10 @@ def write_batches(items: pd.DataFrame, name: str) -> None:
     for start in range(0, len(items), BATCH):
         part = items.iloc[start : start + BATCH]
         lines = [
-            f"{row.n} | {MARKET[row.symbol]} | {' '.join(row.headline.split())}"
-            for row in part.itertuples()
+            f"{number} | {MARKET[str(symbol)]} | {' '.join(str(headline).split())}"
+            for number, symbol, headline in zip(
+                part["n"], part["symbol"], part["headline"], strict=True
+            )
         ]
         path = OUT / f"{name}_{start // BATCH + 1:02d}.txt"
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -89,16 +91,14 @@ def main(market: str | None) -> None:
     old = usable[usable["created_at"] < TEST_FROM]
     if market is not None:
         # Every old label of one market, less the ones the audit already holds.
-        audited = {
-            item["article_id"] for item in json.loads((OUT / "draw.json").read_text())
-        }
+        audited = {item["article_id"] for item in json.loads((OUT / "draw.json").read_text())}
         chosen = old[(old["symbol"] == market) & ~old["article_id"].isin(audited)]
         chosen = chosen.assign(kind="again")
         name = f"again_{market.replace('/', '')}"
     else:
         free = unlabelled_since(TEST_FROM, everything)
         free = free.assign(market=free["symbol"].map(MARKET))
-        new = []
+        new: list[pd.DataFrame] = []
         for name_, size in NEW_PER_MARKET.items():
             part = free[free["market"] == name_]
             taken = {i for frame in new for i in frame["article_id"]}
@@ -162,8 +162,14 @@ def merge() -> None:
     again["same"] = again["before"] == again["sentiment"]
     table = again.groupby("market")["same"].agg(["size", "mean"])
     say(f"new test set: {int((out['split'] == 'test3').sum())}")
-    say(out[out["split"] == "test3"].assign(m=lambda f: f["symbol"].map(MARKET))
-        .groupby("m")["sentiment"].value_counts().unstack().to_string())
+    say(
+        out[out["split"] == "test3"]
+        .assign(m=lambda f: f["symbol"].map(MARKET))
+        .groupby("m")["sentiment"]
+        .value_counts()
+        .unstack()
+        .to_string()
+    )
     say("the two passes agree:\n" + table.round(3).to_string())
     say(f"all markets: {again['same'].mean():.3f} of {len(again)}")
     say(pd.crosstab(again["before"], again["sentiment"]).to_string())
