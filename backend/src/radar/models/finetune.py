@@ -38,7 +38,7 @@ class Epoch(BaseModel):
 class TrainingResult(BaseModel):
     base_model: str
     epochs: list[Epoch]
-    # The epoch whose weights were kept: the best macro F1 on the validation part.
+    # The epoch whose weights were kept (see `keep` in `fine_tune`).
     best_epoch: int
     n_train: int
     n_validation: int
@@ -60,49 +60,41 @@ def _llrd_param_groups(
     layer gets a learning rate that is ``layer_decay`` times the one above it. The
     embedding layer gets the smallest rate of all.
 
-    Supports both BERT-family (``model.bert``) and DeBERTa-family (``model.deberta``)
-    architectures. Falls back with an ``AttributeError`` for unknown architectures so
-    the caller can default to a flat learning rate.
+    Works from the parameter names, so it serves any encoder whose layers are named
+    ``encoder.layer.N`` (BERT, RoBERTa, DeBERTa). Raises ``AttributeError`` when no
+    such layer is found, so that a rate meant to decay is never silently left flat.
     """
-    no_decay = {"bias", "LayerNorm.weight"}
-
-    def wd(name: str) -> float:
-        return 0.0 if any(nd in name for nd in no_decay) else weight_decay
-
-    # Resolve the encoder layers and embedding module for BERT or DeBERTa
-    if hasattr(model, "bert"):
-        encoder_layers = model.bert.encoder.layer
-        embeddings = model.bert.embeddings
-    elif hasattr(model, "deberta"):
-        encoder_layers = model.deberta.encoder.layer
-        embeddings = model.deberta.embeddings
-    else:
-        raise AttributeError("Unknown model architecture; LLRD not supported")
-
+    no_decay = ("bias", "LayerNorm.weight")
+    named = list(model.named_parameters())
+    depths = [_layer_of(name) for name, _ in named]
+    found = [depth for depth in depths if depth is not None]
+    if not found:
+        raise AttributeError("No encoder layers found; layer-wise decay is not supported")
+    n = max(found) + 1
     groups: list[dict[str, Any]] = []
-
-    # Classification head — full learning rate
-    head_modules = []
-    for name in ("classifier", "pooler"):
-        if hasattr(model, name):
-            head_modules.append(getattr(model, name))
-    for module in head_modules:
-        for name, p in module.named_parameters():
-            groups.append({"params": [p], "lr": learning_rate, "weight_decay": wd(name)})
-
-    # Encoder layers — decay from the top downward
-    n = len(encoder_layers)
-    for i, layer in enumerate(reversed(encoder_layers)):
-        lr_i = learning_rate * (layer_decay ** (i + 1))
-        for name, p in layer.named_parameters():
-            groups.append({"params": [p], "lr": lr_i, "weight_decay": wd(name)})
-
-    # Embeddings — smallest rate (one step below layer 0)
-    lr_embed = learning_rate * (layer_decay ** (n + 1))
-    for name, p in embeddings.named_parameters():
-        groups.append({"params": [p], "lr": lr_embed, "weight_decay": wd(name)})
-
+    for (name, parameter), depth in zip(named, depths, strict=True):
+        if depth is not None:
+            steps_down = n - depth  # the top layer is one step under the head
+        elif "embeddings" in name:
+            steps_down = n + 1
+        else:
+            steps_down = 0  # the classification head and pooler: the full rate
+        groups.append(
+            {
+                "params": [parameter],
+                "lr": learning_rate * layer_decay**steps_down,
+                "weight_decay": 0.0 if any(part in name for part in no_decay) else weight_decay,
+            }
+        )
     return groups
+
+
+def _layer_of(name: str) -> int | None:
+    """The encoder layer a parameter belongs to, read from its name."""
+    marker = "encoder.layer."
+    if marker not in name:
+        return None
+    return int(name.split(marker, 1)[1].split(".", 1)[0])
 
 
 def oversample_to_balance(
@@ -138,18 +130,21 @@ def fine_tune(
     *,
     base_model: str = sentiment.MODEL_ID,
     label_names: list[str] | None = None,
-    epochs: int = 20,
+    epochs: int = 4,
     learning_rate: float = 2e-5,
     batch_size: int = 16,
     weight_decay: float = 0.01,
     warmup_share: float = 0.1,
     seed: int = 13,
-    # --- training improvements ---
-    early_stopping_patience: int = 3,
-    label_smoothing: float = 0.1,
-    class_weights: bool = True,
-    layer_wise_lr_decay: float = 0.9,
-    oversample_minority: bool = True,
+    # --- each of these is off unless asked for, so a plain call is a plain run ---
+    early_stopping_patience: int = 99,
+    label_smoothing: float = 0.0,
+    class_weights: bool = False,
+    layer_wise_lr_decay: float = 1.0,
+    oversample_minority: bool = False,
+    dropout: float | None = None,
+    train_targets: np.ndarray | None = None,
+    keep: str = "loss",
 ) -> TrainingResult:
     """Train on the training part, keep the epoch that does best on the validation part.
 
@@ -157,6 +152,19 @@ def fine_tune(
 
     Parameters
     ----------
+    keep:
+        Which epoch is saved: ``"loss"`` for the lowest validation error, ``"f1"`` for
+        the highest balanced score. The error moves less from one epoch to the next
+        on a few hundred headlines, and an epoch after it has turned upwards is one
+        where the model has begun to memorise. Early stopping follows the same measure.
+    dropout:
+        Overrides the share of units dropped inside the encoder while training
+        (the models ship with 0.1). ``None`` leaves the model's own setting.
+    train_targets:
+        One row per training text, each a share for every label in
+        ``sentiment.LABELS`` order, used in place of ``train_labels`` as the thing
+        the model is trained towards. A headline two labelling passes disagree on can
+        then count half for each. Not combined with class weights or oversampling.
     label_names:
         Override the label order from ``model.config.id2label``. Required when the
         base model has no pre-trained classification head (e.g. a raw DeBERTa checkpoint).
@@ -167,8 +175,8 @@ def fine_tune(
         majority class count before each training run. This improves recall on the
         directional (positive/negative) labels without requiring new data.
     early_stopping_patience:
-        Stop training after this many consecutive epochs without an improvement in
-        validation macro-F1. The epoch with the best score is always saved.
+        Stop training after this many consecutive epochs without an improvement on
+        the validation part, by the measure named in ``keep``.
     label_smoothing:
         Cross-entropy label smoothing factor. Reduces overconfidence and improves
         macro-F1 on imbalanced classes.
@@ -193,7 +201,16 @@ def fine_tune(
     torch.cuda.manual_seed_all(seed)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    if keep not in ("loss", "f1"):
+        raise ValueError("keep must be 'loss' or 'f1'")
+    if train_targets is not None and (class_weights or oversample_minority):
+        raise ValueError("Shares per label cannot be combined with weights or oversampling")
     tokenizer = AutoTokenizer.from_pretrained(base_model)
+    regular = (
+        {}
+        if dropout is None
+        else {"hidden_dropout_prob": dropout, "attention_probs_dropout_prob": dropout}
+    )
 
     if label_names is not None:
         # Raw checkpoint with no pre-trained head — configure the label mapping explicitly
@@ -205,12 +222,13 @@ def fine_tune(
             id2label=id2label,
             label2id=label2id,
             ignore_mismatched_sizes=True,
+            **regular,
         ).to(device)
         index = {name: i for i, name in enumerate(label_names)}
         names = label_names
     else:
         # Pre-trained head (FinBERT etc.) — use the model's own label numbering
-        model = AutoModelForSequenceClassification.from_pretrained(base_model).to(device)
+        model = AutoModelForSequenceClassification.from_pretrained(base_model, **regular).to(device)
         index = {name.lower(): i for i, name in model.config.id2label.items()}
         names = [name for name, _ in sorted(index.items(), key=lambda item: item[1])]
 
@@ -237,6 +255,14 @@ def fine_tune(
         eff_texts, eff_labels = oversample_to_balance(train_texts, train_labels, rng)
     else:
         eff_texts, eff_labels = list(train_texts), list(train_labels)
+    # Shares per label, put into the model's own label order.
+    shares = None
+    if train_targets is not None:
+        ours = {label: i for i, label in enumerate(sentiment.LABELS)}
+        shares = torch.tensor(
+            np.asarray(train_targets, dtype=float)[:, [ours[name] for name in names]],
+            dtype=torch.float,
+        )
 
     # --- class-weighted loss ---
     if class_weights:
@@ -269,12 +295,7 @@ def fine_tune(
 
     # --- layer-wise LR decay ---
     if layer_wise_lr_decay < 1.0:
-        try:
-            param_groups = _llrd_param_groups(
-                model, learning_rate, weight_decay, layer_wise_lr_decay
-            )
-        except AttributeError:
-            param_groups = model.parameters()
+        param_groups = _llrd_param_groups(model, learning_rate, weight_decay, layer_wise_lr_decay)
     else:
         param_groups = model.parameters()
 
@@ -283,7 +304,7 @@ def fine_tune(
     schedule = get_linear_schedule_with_warmup(optimiser, int(warmup_share * steps), steps)
 
     history: list[Epoch] = []
-    best_score = -1.0
+    best_score = -np.inf
     no_improve = 0
     for epoch in range(1, epochs + 1):
         model.train()
@@ -292,7 +313,10 @@ def fine_tune(
         for start in range(0, len(shuffled), batch_size):
             rows = shuffled[start : start + batch_size]
             batch = {k: v.to(device) for k, v in encode([eff_texts[i] for i in rows]).items()}
-            wanted = targets([eff_labels[i] for i in rows]).to(device)
+            if shares is None:
+                wanted = targets([eff_labels[i] for i in rows]).to(device)
+            else:
+                wanted = shares[rows].to(device)
             logits = model(**batch).logits
             loss = loss_fn(logits, wanted)
             loss.backward()
@@ -312,8 +336,9 @@ def fine_tune(
                 validation_macro_f1=report.macro_f1,
             )
         )
-        if report.macro_f1 > best_score:
-            best_score = report.macro_f1
+        score = -validation_loss if keep == "loss" else report.macro_f1
+        if score > best_score:
+            best_score = score
             no_improve = 0
             out_dir.mkdir(parents=True, exist_ok=True)
             model.save_pretrained(out_dir)
@@ -322,7 +347,11 @@ def fine_tune(
             no_improve += 1
             if no_improve >= early_stopping_patience:
                 break
-    best = max(history, key=lambda e: e.validation_macro_f1)
+    best = (
+        min(history, key=lambda e: e.validation_loss)
+        if keep == "loss"
+        else max(history, key=lambda e: e.validation_macro_f1)
+    )
     return TrainingResult(
         base_model=base_model,
         epochs=history,

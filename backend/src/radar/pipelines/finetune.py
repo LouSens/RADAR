@@ -113,6 +113,7 @@ def run(
         model_dir,
         epochs=epochs,
         seed=seed,
+        keep="f1",  # the rule `finbert-radar-1` was trained under (decision 031)
     )
 
     # The test part is used here, once, after every choice has been made.
