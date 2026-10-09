@@ -9,7 +9,7 @@ Every example portfolio and every trader in them is made up.
 | `01_exploration` | What data is there, and how clean is it? | `features/`, `quality/` | Everywhere |
 | `02_state_and_range` | What state is a market in, and what range of prices is plausible? | `models/regime.py`, `simulator.py`, `calibration.py` | Current state, Price range ahead |
 | `03_swings_and_loss` | How much will it move, and how bad could a bad day be? | `models/volatility.py`, `tail_risk.py` | Daily movement, Possible loss |
-| `04_news` | Can the tone of headlines be scored, and how well? | `pipelines/tone.py`, `tone_report.py`, `models/finetune.py` | News |
+| `04_news` | Can the tone of headlines be scored, and how well? | None: it holds its own code and trains the model (`models/dataset.py` keeps the same text preparation, checked by a test) | News |
 | `05_portfolio_and_paying_in` | Where does a mix's risk sit, what range is its value in, and what does paying in regularly lead to? | `models/portfolio.py`, `portfolio_simulation.py`, `regular_buying.py` | Portfolio |
 | `06_trading_record` | What do a person's own trades say about how they trade? | `models/ledger.py`, `analytics/trading.py` | Your record |
 
@@ -24,9 +24,10 @@ Old numbers, for reading older decisions: 02 and 03 are now `02_state_and_range`
 `05_portfolio_and_paying_in`.
 
 Rebuild one with `uv run python backend/scripts/build_notebooks.py <name>`. Sources are
-in `src/`. `04_news` needs `uv sync --extra nlp`; it trains nothing and reads what
-`backend/scripts/tone_round4.py` stored under `data/research/tone4/`, showing "not available"
-for any step that has not been run.
+in `src/`. `04_news` needs `uv sync --extra nlp` and the data file written by
+`uv run python backend/scripts/tone_export.py`. It holds its own code and trains the
+model; the switches are in its third cell. The committed copy is a fast run (200
+headlines, one pass), so its figures only show that the code works.
 
 ## How each one is laid out
 

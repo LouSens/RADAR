@@ -3896,3 +3896,76 @@ two do not share the graphics card.
 - After this round no further model is tried on these labels (no distillation, LoRA or
   QLoRA): each would be scored against the same inter-pass agreement. Past that, the
   lever is the labels.
+
+## 103. Notebook 04 trains, the app only scores; two base models and the rule that picks one, written before the runs (2026-10-09)
+
+**Why.** Round 4 put the training steps in the app's package (`pipelines/tone.py`) and
+made notebook 04 a report that read stored files. The user asked for the opposite
+split: the notebook holds research and training and runs on its own; the app holds only
+what runs every day. The link between the two is the saved model and its model card,
+not shared code.
+
+**Where round 4 stopped.** It stopped at step 2 (the base model), on the first
+DeBERTa-v3 run. The message was a tokenizer error, read at the time as a missing
+`sentencepiece`. The package was installed. The cause was earlier in the same run:
+with transformers 5.18 the DeBERTa-v3 weights load in half precision, the loss turns
+into "not a number" after one training step, no pass is ever the best, so no model is
+saved, and the tokenizer is then asked to load from an empty folder. The fix is to load
+the model in full precision (`.float()`) and to stop with a clear message when the
+validation loss is not a number. Steps 3 to 6 of decision 101 were never run; there is
+no `step2_model.json`, `final.json` or `test.json` from round 4, and the test set has
+not been scored.
+
+**What is decided.**
+
+- **Notebook 04** (`notebooks/src/04_news.py`) holds its own code in its own cells: no
+  import from the `radar` package and no database. It reads one Parquet file written by
+  `backend/scripts/tone_export.py` into the gitignored `data/research/tone5/`. A switch,
+  `FAST_RUN`, uses 200 headlines and one pass so every cell runs in minutes; a fast run
+  stores its results apart from a full run and is never saved for the app or uploaded.
+- **The app** keeps using `finbert-radar-1`. No application code is removed by this
+  decision. One test (`tests/models/test_notebook_text.py`) checks that the notebook's
+  copy of the text preparation gives the same text as the app's on 20 made-up headlines.
+- **Two base models only**: `cardiffnlp/twitter-roberta-base-sentiment-latest` and
+  `microsoft/deberta-v3-base`. FinBERT and the finance-tuned DeBERTa-v3 are dropped;
+  their stored figures stay in one "earlier candidates" table.
+- **One model is saved**, not an average of five, and there is no self-training. The
+  seed of the saved model (13) is fixed before training, not picked from several.
+- **One configuration for both models**, the starting settings of decision 101: up to 8
+  passes keeping the lowest validation loss, patience 2, learning rate 2e-5 with warm-up
+  over a tenth of the steps, weight decay 0.01, batch 16, at most 256 tokens, input text
+  "asset + headline + summary". The settings search of decision 101 (step 3) is not run.
+- **The comparison**: same headlines, same input text, same settings, 3 walk-forward
+  blocks of 300 validation headlines × 2 seeds (13, 17) for each model.
+
+**The rule that picks the winner, written before any of these runs.** DeBERTa-v3 wins
+only if, on the mean across blocks and seeds, **both** hold:
+
+- its validation loss is lower, and
+- its validation accuracy is higher,
+
+**and** its lead in loss is larger than the seed spread (the mean, over models and
+blocks, of the distance between the two seeds' losses). Otherwise RoBERTa wins, because
+it is the smaller model. The loser is not trained further and is not saved; its
+comparison figures stay in the table, and the notebook states which part of the rule
+decided.
+
+**Publishing.** The winner is saved to `data/models/<version>/` with its tokenizer, the
+temperature, the label order, the text preparation as a Python file and a model card
+written from the run's numbers. The notebook can upload the same folder to a private
+Hugging Face repository; it does so only when the user has switched `PUSH_TO_HUB` on,
+has set `MIN_TEST_ACCURACY`, and the test accuracy reaches it. The token is read by the
+library from the environment or the saved login and is never in a cell, an output or a
+commit. The provider's headlines are not uploaded anywhere.
+
+**Unchanged from 101 and 102.** The two bars on the test set. The user runs the test,
+once; Claude never scores a model on the test set. Putting a model in the app is the
+user's decision after the result.
+
+**What this changes in earlier decisions.** Decision 102 ended with "no further model
+is tried on these labels". The user reopened that on 2026-10-09 for DeBERTa-v3 only,
+whose round-4 run had failed for the reason above before it could be compared.
+
+**Still to come, in decision 104**: the labelling rule's neutral clause contradicts
+itself, and most training labels were written before the rule was. The labels are to be
+written again under a fixed rule, three passes each, before the comparison is run.
