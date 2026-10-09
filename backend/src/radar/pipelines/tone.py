@@ -86,6 +86,8 @@ SETTINGS: list[list[dict[str, Any]]] = [
     [{"label_smoothing": 0.0}, {"label_smoothing": 0.1}],
 ]
 POOL_SIZE, ADD_AT_MOST = 30_000, 12_000
+# Fixes which articles are drawn into the pool and which sure ones are added.
+DRAW_SEED = 20261010
 SURE_IS_RIGHT = 0.80
 # The bars of decision 101.
 P_BELOW, ACCURACY_GAP, LOSS_GAP = 0.05, 0.05, 0.10
@@ -453,7 +455,7 @@ def pool(data: Data, text: str) -> pd.DataFrame:
             ).all()
             taken = set(every["article_id"])
             free = sorted({row[0] for row in found if row[0] not in taken})
-            rng = np.random.default_rng(20261010)
+            rng = np.random.default_rng(DRAW_SEED)
             # Twice the size, because near-copies are dropped afterwards.
             ids = rng.choice(free, size=min(POOL_SIZE * 2, len(free)), replace=False).tolist()
             OUT.mkdir(parents=True, exist_ok=True)
@@ -562,7 +564,7 @@ def final(data: Data) -> dict[str, Any]:
         said = np.array([LABELS[i] for i in plain["pool"].argmax(axis=1)])
         sure = unlabelled.assign(sentiment=said)[plain["pool"].max(axis=1) >= level]
         mix = train["sentiment"].value_counts(normalize=True)
-        rng = np.random.default_rng(20261010)
+        rng = np.random.default_rng(DRAW_SEED)
         parts = []
         for label, share in mix.items():
             part = sure[sure["sentiment"] == label]

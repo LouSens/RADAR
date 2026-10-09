@@ -343,3 +343,68 @@ def test_scores(test: dict[str, Any]) -> pd.DataFrame:
             "macro F1": score["macro_f1"],
         }
     return pd.DataFrame(rows).T
+
+
+# --- small facts the notebook's sentences are built from ---
+
+
+def window(frame: pd.DataFrame) -> str:
+    """The first and last day a set of headlines covers."""
+    if not len(frame):
+        return "no headlines"
+    return f"{frame['created_at'].min():%Y-%m-%d} to {frame['created_at'].max():%Y-%m-%d}"
+
+
+def block_table(data: tone.Data) -> pd.DataFrame:
+    """Each walk-forward block and the test set: how many headlines, and from when to when."""
+    rows = {}
+    for number, (train, validation) in enumerate(tone.blocks(data), start=1):
+        rows[f"block {number}"] = {
+            "trained on": len(train),
+            "training from": train["created_at"].min(),
+            "training to": train["created_at"].max(),
+            "validated on": len(validation),
+            "validation from": validation["created_at"].min(),
+            "validation to": validation["created_at"].max(),
+        }
+    rows["test"] = {
+        "validated on": len(data.test),
+        "validation from": data.test["created_at"].min(),
+        "validation to": data.test["created_at"].max(),
+    }
+    return pd.DataFrame(rows).T
+
+
+def overfitting(final: dict[str, Any]) -> dict[str, Any]:
+    """Across the kept stage's seeds: where validation loss was lowest and what came after."""
+    table = curves(final)
+    rise = table["validation loss, last pass"] - table["validation loss, kept pass"]
+    fall = table["training loss, kept pass"] - table["training loss, last pass"]
+    return {
+        "seeds": len(table),
+        "kept": table["pass kept"].tolist(),
+        "stopped_after_kept": int((table["passes run"] > table["pass kept"]).sum()),
+        "rising": int((rise > 0).sum()),
+        "mean_rise": float(rise.mean()),
+        "mean_training_fall": float(fall.mean()),
+        "training_below_validation": float(
+            (table["validation loss, kept pass"] - table["training loss, kept pass"]).mean()
+        ),
+    }
+
+
+def comparisons(steps: dict[str, dict[str, dict[str, Any]] | None]) -> pd.DataFrame:
+    """Every choice that has been made: the gap to the runner-up beside the seed spread."""
+    rows = {}
+    for name, found in steps.items():
+        if found is None:
+            continue
+        verdict = difference(found)
+        rows[name] = {
+            "chosen": verdict["winner"],
+            "runner-up": verdict["runner_up"],
+            "gap in validation loss": verdict["gap"],
+            "seed spread": verdict["seed_spread"],
+            "verdict": "measurable" if verdict["measurable"] else "no measurable difference",
+        }
+    return pd.DataFrame(rows).T
