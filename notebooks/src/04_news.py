@@ -13,7 +13,7 @@
 # |---|---|---|
 # | `DATA_PATH` | local path | Where the data file is. Examples for Colab and Kaggle are beside it |
 # | `FAST_RUN` | `True` | 200 headlines and one pass, so every cell runs in a few minutes. Its figures are a check that the code works, **not results** |
-# | `SHOW_EXAMPLES` | `False` | Show real headlines in the error analysis. Off in the committed notebook: the headlines belong to the news provider |
+# | `SHOW_EXAMPLES` | on when you run it, off in the committed copy | Show real headlines the model got wrong in the error analysis |
 # | `RUN_TEST` | `False` | Score the test set. Done once, by the owner of the project |
 # | `PUSH_TO_HUB` | `False` | Upload the saved model to a private Hugging Face repository |
 # | `MIN_TEST_ACCURACY` | `None` | The upload happens only if test accuracy is at least this |
@@ -61,6 +61,7 @@ print("installed now:", to_install or "nothing, all packages were already at the
 
 # %%
 import atexit
+import os
 import gc
 import hashlib
 import html
@@ -114,7 +115,9 @@ DATA_PATH = Path("data/research/tone5/tone_dataset.parquet")
 # Colab:   DATA_PATH = Path("/content/drive/MyDrive/radar/tone_dataset.parquet")
 # Kaggle:  DATA_PATH = Path("/kaggle/input/radar-tone/tone_dataset.parquet")
 FAST_RUN = True  # 200 headlines, one pass: a check that every cell runs, not a result
-SHOW_EXAMPLES = False  # True shows real headlines; never commit the notebook that way
+# Real headlines are shown when you run the notebook yourself. The copy built for the
+# repository (backend/scripts/build_notebooks.py sets TONE_COMMITTED_BUILD) shows made-up ones only.
+SHOW_EXAMPLES = os.environ.get("TONE_COMMITTED_BUILD") != "1"
 RUN_TEST = False  # True scores the test set, once (section 15)
 PUSH_TO_HUB = False  # True uploads the saved model to a private repository (section 16)
 MIN_TEST_ACCURACY = None  # set a number such as 0.70 before pushing; None never pushes
@@ -793,7 +796,7 @@ def model_text(headline: str, summary: str = "", market: str = "", *, with_asset
 
 
 # %%
-TEXT = "asset + headline + summary"  # chosen in round 4 on validation loss (decision 102)
+TEXT = "asset + headline + summary"  # lowest validation loss in round 4; kept by the user (decisions 102, 104)
 
 
 def texts(frame: pd.DataFrame, option: str = TEXT) -> list[str]:
@@ -1472,7 +1475,7 @@ caption(f"{len(MADE_UP)} made-up headlines read by the saved model. {made_up_rig
 if SHOW_EXAMPLES:
     shown = validation.reset_index(drop=True).assign(said=checked["said"], sure=checked["sure"])[~checked["right"]]
     display(shown.sort_values("sure", ascending=False)[["market", "headline", "label", "said", "sure"]].head(15))
-    caption("The 15 real validation headlines the model was most sure about and got wrong. Do not commit this output.")
+    caption(f"The real validation headlines the model was most sure about and got wrong (up to 15 of {len(wrong)}), {window(validation)}.")
 else:
     say("Real headlines are not shown (`SHOW_EXAMPLES = False`).")
 
@@ -1878,6 +1881,8 @@ say(
     "figures lean optimistic. Only section 15 is untouched."
 )
 say("- **One news feed, three markets, English.** Nothing here says how the model reads other sources.")
+if TEXTS[TEXT]["with_summary"]:
+    say("- **The labels were written from the headline alone**, while the model also reads the summary where there is one.")
 say("- **Tone describes the news; it forecasts nothing.** In this project news tone improved no forecast and drives no alert.")
 if FAST_RUN:
     say("- **This was a fast run.** None of its figures is a result.")

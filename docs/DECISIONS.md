@@ -4044,3 +4044,9 @@ headline alone, which fits the same input.
 
 **Not started**: labelling 10,000 more stored headlines to enlarge the training set.
 It needs the user's go-ahead as a separate step.
+
+**Correction, same day.** The user changed the input back to "asset + headline +
+summary", the input with the lowest validation loss in round 4 (0.778), so the
+paragraph above on "asset + headline" no longer holds. The labelling procedure is
+unchanged: labellers see the market and the headline only, as the user wrote it. So the
+model reads a summary the labeller did not; the notebook says so in its limitations.

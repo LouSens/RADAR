@@ -15,6 +15,7 @@ Needs the database running and filled, except `04_news`, which needs `uv sync --
 and the file written by `backend/scripts/tone_export.py`.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -55,6 +56,8 @@ def build(source: Path) -> Path:
         else nbformat.v4.new_code_cell(text)
         for kind, text in parse(source.read_text(encoding="utf-8"))
     ]
+    # Tells a notebook it is being built for the repository: 04_news then prints no real headline.
+    os.environ["TONE_COMMITTED_BUILD"] = "1"
     ExecutePreprocessor(timeout=3600, kernel_name="python3").preprocess(
         notebook, {"metadata": {"path": "."}}
     )
