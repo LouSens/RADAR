@@ -3849,3 +3849,50 @@ lowest-error pass kept, no oversampling. Then, on the last block only:
 little data. 69 to 72% on the new test, a gap to validation of 3 to 5 points. Agreement
 between the two labelling passes near 80%, lower for gold, which would put 85 to 90%
 out of reach for any model on these labels.
+
+## 102. Where the round-4 code departs from decision 101, written while the run is still going (2026-10-09)
+
+Decision 101 was written before the run and is left as it is. Reading the code against
+it, line by line, for the rewrite of notebook 04 turned up the points below. The code
+is not changed: the run in progress uses it, and changing a rule after results exist
+would be choosing after the fact. The notebook describes the code as it is.
+
+| # | Decision 101 says | The code does | Could it change a result, and which way |
+|---|---|---|---|
+| 1 | Articles are added when the five are "at or above the confidence that makes 80% of validation right" | `tone.sure_from` also requires that confidence to keep at least a fifth of the validation headlines; if none does, nothing is added | Yes. Towards **less** self-training: a level reached only by a small, very sure group is refused, where 101 would have allowed it |
+| 2 | (silent on which articles are added among the sure ones) | Chosen at random within each label, each label capped at 12,000 times its share of the training headlines, so fewer than 12,000 may be added | Yes, direction unknown. Random picks include harder headlines than "the most sure first" would |
+| 3 | (silent on which base model step 1 is run with) | Step 1 compares the four input texts with the social-media RoBERTa only | Yes. Towards **RoBERTa** in step 2: the other three are compared on the text that suited RoBERTa best |
+| 4 | Cleaning removes "a trailing source tag" | `dataset.clean_headline` removes it only after a closing quote (`'...' - Bloomberg`); a bare `... - Bloomberg` is kept | Hardly. The tag stays in training and test alike, so neither is favoured |
+| 5 | Dropout "0.1 or 0.2" | The model's own setting, or 0.2. Checked from the four configurations: all ship 0.1 inside the encoder and on attention, so this is the same thing. The head's own dropout is not changed | No |
+| 6 | One temperature "fitted on validation" | Searched from 0.5 to 5 in steps of 0.05 | No more than rounding |
+| 7 | Agreement between two labelling passes "is the ceiling any model can reach" | Unchanged, but the wording was too strong | No result changes. The agreement is the **lower** end of a range: if every disagreement is a headline with no single right label, the best score is the agreement itself; if every headline has one right label and each pass misses it independently, it is the square root of the agreement. A third pass would narrow the range |
+| 8 | Gold "about 30" new test headlines | 21 were found | No, but gold's own figure is rougher still |
+
+**Not a departure, but not said in 101 either: validation is used more than once.**
+
+- In steps 1 to 3 each block's validation part both picks the pass that is kept and
+  scores the candidate.
+- On the last block the validation part also sets the confidence for self-training,
+  decides whether self-training is kept, and is the part the temperature is fitted on
+  and then scored on.
+
+So every validation figure leans optimistic: lower error, and somewhat more often
+right, than the same model would show on new headlines. That makes the "not overfitted"
+bar of 101 (test no more than 5 points under validation, error no more than 0.10 above)
+**harder** to pass, not easier. The bar is left as written.
+
+**Added after 101, and outside the choices:** `tone.store_baselines` scores the two
+models that already exist (`finbert-radar-1` and plain FinBERT) on the three validation
+blocks, for a baseline row in the notebook's tables. It trains nothing, reads no test
+headline, and no choice depends on it. It is run after the training run ends, so the
+two do not share the graphics card.
+
+**The user's decisions of 2026-10-09.**
+
+- The user runs the test (`backend/scripts/tone_round4.py test`) once, after step 6 is
+  stored. Claude never runs it and never reads the test labels again.
+- Putting the model in the app stays the user's decision after seeing the result.
+  Nothing in the app is changed by this round.
+- After this round no further model is tried on these labels (no distillation, LoRA or
+  QLoRA): each would be scored against the same inter-pass agreement. Past that, the
+  lever is the labels.

@@ -116,3 +116,21 @@ def fit_temperature(
     grid = np.arange(0.5, 5.0001, 0.05)
     losses = [log_loss(truth, with_temperature(probabilities, t), labels) for t in grid]
     return float(grid[int(np.argmin(losses))])
+
+
+def cohen_kappa(first: Sequence[str], second: Sequence[str], labels: Sequence[str]) -> float:
+    """Agreement between two sets of labels, beyond what chance alone would give.
+
+    1 is full agreement; 0 is what two labellers would reach by handing out labels at
+    their own usual rates without reading anything.
+    """
+    if len(first) != len(second) or not len(first):
+        raise ValueError("Both sets of labels must have the same, non-zero length")
+    n = len(first)
+    observed = sum(a == b for a, b in zip(first, second, strict=True)) / n
+    by_chance = sum(
+        (list(first).count(label) / n) * (list(second).count(label) / n) for label in labels
+    )
+    if by_chance == 1.0:
+        return 1.0
+    return float((observed - by_chance) / (1.0 - by_chance))

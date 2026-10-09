@@ -222,8 +222,10 @@ def _label_names(model: str) -> list[str] | None:
     return None if names == [own[i].lower() for i in sorted(own)] else names
 
 
-def _predict(folder: Path, inputs: list[str]) -> np.ndarray:
-    scorer = sentiment.FinbertScorer(str(folder), "tone")
+def _predict(folder: Path | str, inputs: list[str]) -> np.ndarray:
+    """`folder` is a folder holding a model, or the name of one to download."""
+    where = folder.as_posix() if isinstance(folder, Path) else folder
+    scorer = sentiment.FinbertScorer(where, "tone")
     out = scorer.probabilities(inputs)
     del scorer
     _free()
@@ -690,3 +692,36 @@ def test_once(data: Data) -> dict[str, Any]:
             },
         },
     )
+
+
+# --- baselines, for the tables ---
+
+
+def store_baselines(data: Data) -> dict[str, Any]:
+    """Score the two models that already exist on the three validation blocks, and store it.
+
+    Neither is trained here and the test set is not read. Both read what they read in
+    the app: the headline and the summary. `finbert-radar-1` was trained on headlines up
+    to 2025-05-09, which is before the first block's validation part begins.
+    """
+    found = _stored("baselines")
+    if found is not None:
+        return found
+    models: dict[str, Path | str] = {
+        "finbert-radar-1 (in the app)": job.MODEL_DIR,
+        "plain FinBERT, not trained further": sentiment.MODEL_ID,
+    }
+    out: dict[str, Any] = {}
+    for name, model in models.items():
+        rows = []
+        for number, (_, validation) in enumerate(blocks(data), start=1):
+            inputs = [
+                sentiment.article_text(str(headline), str(summary or ""))
+                for headline, summary in zip(
+                    validation["headline"], validation["summary"], strict=True
+                )
+            ]
+            scores = measure(validation["sentiment"].tolist(), _predict(model, inputs))
+            rows.append({"block": number, **scores})
+        out[name] = {"blocks": rows}
+    return _store("baselines", out)
