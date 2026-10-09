@@ -231,6 +231,9 @@ def fine_tune(
         model = AutoModelForSequenceClassification.from_pretrained(base_model, **regular).to(device)
         index = {name.lower(): i for i, name in model.config.id2label.items()}
         names = [name for name, _ in sorted(index.items(), key=lambda item: item[1])]
+    # Some models are stored in half precision, which cannot be trained: the loss turns
+    # into "not a number" after one step. Full precision changes nothing for the others.
+    model = model.float()
 
     def encode(texts: Sequence[str]) -> dict[str, "torch.Tensor"]:
         return dict(
@@ -326,6 +329,8 @@ def fine_tune(
             optimiser.zero_grad()
             total += float(loss) * len(rows)
         validation_loss, predicted = evaluate()
+        if not np.isfinite(validation_loss):
+            raise ValueError(f"{base_model}: the loss is not a number after epoch {epoch}")
         report = classification.report(list(validation_labels), predicted, sentiment.LABELS)
         history.append(
             Epoch(
