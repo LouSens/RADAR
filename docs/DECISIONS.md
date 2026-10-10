@@ -3931,10 +3931,10 @@ not been scored.
   their stored figures stay in one "earlier candidates" table.
 - **One model is saved**, not an average of five, and there is no self-training. The
   seed of the saved model (13) is fixed before training, not picked from several.
-- **One configuration for both models**, the starting settings of decision 101: up to 8
-  passes keeping the lowest validation loss, patience 2, learning rate 2e-5 with warm-up
-  over a tenth of the steps, weight decay 0.01, batch 16, at most 256 tokens, input text
-  "asset + headline + summary". The settings search of decision 101 (step 3) is not run.
+- **The two models are compared at the same starting settings**: up to 8 passes keeping
+  the lowest validation loss, patience 2, learning rate 2e-5 with warm-up over a tenth of
+  the steps, weight decay 0.01, batch 16, at most 256 tokens, input text "asset + headline
+  + summary". The settings are then tuned for the winner (decision 105).
 - **The comparison**: same headlines, same input text, same settings, 3 walk-forward
   blocks of 300 validation headlines × 2 seeds (13, 17) for each model.
 
@@ -4042,9 +4042,6 @@ headline but not always a summary. Round 4 measured the four inputs on validatio
 this choice gives up nothing that was measured. The labels are written from the
 headline alone, which fits the same input.
 
-**Not started**: labelling 10,000 more stored headlines to enlarge the training set.
-It needs the user's go-ahead as a separate step.
-
 **Correction, same day.** The user changed the input back to "asset + headline +
 summary", the input with the lowest validation loss in round 4 (0.778), so the
 paragraph above on "asset + headline" no longer holds. The labelling procedure is
@@ -4086,3 +4083,71 @@ labelled again whole by a new labeller, never patched.
   passes can share a mistake.
 - The new test labels were not compared with the old test labels, and no model has been
   scored on them.
+
+## 105. Train on far more headlines, tune the settings, and judge on macro F1: what the user asked for on 2026-10-10
+
+**Why.** The user read decisions 103 and 104 and said several things in them were not
+what they wanted: a training set of about 1,900 headlines when tens of thousands are
+stored, no tuning of the settings, and a step ("label 10,000 more, later, with a
+separate go-ahead") they had not asked for in those words. Those statements were taken
+out of 103 and 104. This decision records what is wanted instead, before any of it runs.
+
+**More training data.** The app stores tens of thousands of articles, but a classifier
+can only be trained on headlines that have a label, and only 2,739 had one. So more are
+labelled, under the rule of decision 104:
+
+- Drawn from the 30,000 unlabelled stored articles set aside in round 4: all dated
+  before the test period, none already labelled, none a near-copy of a labelled or test
+  headline. That pool is 23,500 US stocks, 5,890 Bitcoin and 610 gold.
+- First 10,000: every gold and every Bitcoin article, and 3,500 US stocks drawn at
+  random. US stocks is held back because 80% of its labels are neutral, the class there
+  is already plenty of. More can be labelled later from the 20,000 left.
+- **One labelling pass each**, not three. On the 2,739 headlines labelled three times a
+  single pass matched the majority label on 97.5%, so one pass is taken as good enough
+  for training data. Labellers see the market and the headline only, as before.
+- These headlines are **training data only**. Validation and test stay the headlines
+  labelled three times, so every score is still measured against a majority label.
+- Stored in `backend/src/radar/sentiment_round5_more.csv`.
+
+**What is judged, and the marks.** With the labels of 104, always answering "neutral"
+is right about 66% of the time, so accuracy alone flatters a model that never says
+positive or negative. The main measure is **macro F1** (each label counts the same).
+Marks on validation, written before any run on these labels is read:
+
+| Measure | Mark |
+|---|---|
+| Macro F1 | at least 0.78 |
+| Accuracy | at least 82% |
+| Log loss | at most 0.45 |
+| Recall of positive, and of negative | at least 0.70 each |
+| Opposite tone given (positive for negative or the reverse) | at most 2% of headlines |
+
+The user's own targets were accuracy of 80 to 90% and a loss under 0.10. The accuracy
+target is kept. A log loss of 0.10 would need the model to put about 90% on the right
+label on average, which is beyond what the labels themselves support (two passes agree
+on 95%), so 0.45 is written instead and the user was told.
+
+**The winner rule of 103, restated for these measures.** DeBERTa-v3 wins only if, on
+the mean across blocks and seeds, it has **both** a higher macro F1 **and** a lower
+validation loss, **and** its lead in macro F1 is larger than the seed spread in macro
+F1. Otherwise RoBERTa wins, because it is the smaller model. Two runs had been made to
+time the models before this was written; their scores had not been read.
+
+**Tuning the settings**, for the winner only, on the walk-forward blocks, in this order,
+each group with everything else held at the best so far:
+
+1. learning rate (1e-5, 2e-5, 3e-5) with batch size (16, 32);
+2. weight decay (0.01, 0.1) with warm-up (6%, 10% of steps);
+3. the weight of the rarer labels in the loss (none, or in inverse proportion to how
+   often each label occurs).
+
+A group's winner is the setting with the highest mean macro F1; if its lead over the
+starting setting is smaller than the seed spread, the starting setting is kept. The
+pass that is kept in every run is still the one with the lowest validation loss.
+
+**After training**, on validation: the cut-off for each label may be moved to raise
+macro F1, and the temperature is fitted as before. Both are stated as leaning optimistic,
+because they are fitted on the same headlines they are scored on.
+
+**Unchanged.** One saved model. The two bars on the test set. The user runs the test and
+the upload. No model has been scored on the test set.
