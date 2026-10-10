@@ -169,6 +169,9 @@ pd.set_option("display.max_colwidth", 120)
 WORK.mkdir(parents=True, exist_ok=True)
 
 
+FAST_MARK = ""  # set in section 7, where a fast run starts using fewer headlines
+
+
 def say(text: str) -> None:
     """Show a sentence built from variables as ordinary notebook text."""
     display(Markdown(text))
@@ -176,8 +179,7 @@ def say(text: str) -> None:
 
 def caption(text: str) -> None:
     """A caption: what a table or figure shows, how many headlines, from when to when."""
-    mark = "**Fast run on 200 headlines: not a result.** " if FAST_RUN else ""
-    say(f"<small>{mark}*{text}*</small>")
+    say(f"<small>{FAST_MARK}*{text}*</small>")
 
 
 def blank(table: pd.DataFrame) -> pd.DataFrame:
@@ -367,8 +369,9 @@ say(
 # | `symbol`, `market` | The asset the article is filed under, as a ticker and as a plain name |
 # | `created_at` | When it was published (UTC) |
 # | `headline`, `summary` | The text. The summary may be empty |
-# | `label_1`, `label_2`, ... | One column per labelling pass. A pass that did not cover the headline is empty |
-# | `label` | The label used for scoring |
+# | `label_1`, `label_2`, ... | One column per labelling pass |
+# | `label` | The label used for scoring: the majority of the passes. Empty when there is none |
+# | `old_label` | The label before the rule of decision 104 (training and validation rows only) |
 # | `labelled_by`, `rule` | Who wrote the labels and under which written rule |
 # | `part` | `labelled` (training and validation) or `test` |
 
@@ -378,13 +381,14 @@ if not DATA_PATH.is_file():
 everything = pd.read_parquet(DATA_PATH).sort_values(["created_at", "article_id"]).reset_index(drop=True)
 everything["summary"] = everything["summary"].fillna("")
 PASSES = sorted(column for column in everything.columns if column.startswith("label_"))
-labelled = everything[everything["part"] == "labelled"].reset_index(drop=True)
+# A headline with no majority among its passes has no scoring label: set apart, not scored.
+labelled = everything[(everything["part"] == "labelled") & everything["label"].notna()].reset_index(drop=True)
 
 # The test set's labels are put aside here and used by one cell only (section 15).
 # Everywhere else `test` has no label column, so nothing can read them by accident.
-_test_part = everything[everything["part"] == "test"].reset_index(drop=True)
+_test_part = everything[(everything["part"] == "test") & everything["label"].notna()].reset_index(drop=True)
 _test_labels = _test_part["label"].tolist()
-test = _test_part.drop(columns=[*PASSES, "label"])
+test = _test_part.drop(columns=[*PASSES, "label", "old_label"], errors="ignore")
 TEST_FROM = test["created_at"].min().normalize()
 
 display(
@@ -447,22 +451,30 @@ near_copies = len(everything) - keys.nunique()
 say(f"All {len(everything):,} headlines have {keys.nunique():,} distinct keys: **{near_copies} near-copies remain**.")
 
 # %% [markdown]
-# **The labelling rule** (decision 101). Every label was written by an AI model
-# (Claude), not a person, from the headline alone:
+# **The labelling rule** (decision 104). Every label was written by an AI model
+# (Claude), not a person, from the market and the headline alone. The label answers one
+# question: *is this headline good or bad news for holders of the asset it is filed under?*
 #
-# > - *positive*: it reports or expects something good for prices or holders (gains, a
-# >   beat, inflows, approval, adoption, a bullish call, easing of a threat);
-# > - *negative*: the opposite (falls, a miss, outflows, a ban, a hack, a lawsuit,
-# >   conflict, a central banker leaning towards higher rates, a bearish call);
-# > - *neutral*: no clear direction (a plain fact or scheduled figure without a stated
-# >   surprise, procedure, a mixed wrap with one thing up and another down, a question,
-# >   or something off the subject);
-# > - when the headline names the asset it is filed under, what it says about that asset
-# >   decides; otherwise its overall tone does.
+# > 1. **Is the headline about that asset?** Yes if it names the asset, or names
+# >    something that plainly moves it. Bitcoin: the crypto market, crypto exchanges,
+# >    crypto rules. Gold: the dollar, bond yields, central banks, demand for safe
+# >    assets. US stocks: the index, the Federal Reserve, US economic figures, large US
+# >    companies.
+# > 2. **If it is not about that asset, the label is neutral**, whatever its tone.
+# > 3. **If it is**: *positive* when it reports or expects something good for the price
+# >    or for holders; *negative* for the opposite; *neutral* when there is no clear
+# >    direction (a fact or a scheduled figure with no stated surprise, procedure, a
+# >    question, a mix of up and down).
+# > 4. **When unsure between neutral and a tone**: the tone only if the headline states
+# >    a direction in its own words (rises, falls, record, cuts, banned). If the
+# >    direction has to be guessed, neutral.
 #
-# **Inter-pass agreement.** Some headlines were labelled more than once, mixed among
-# new ones so the labeller could not tell them apart. Cohen's kappa is agreement beyond
-# what two labellers would reach by chance: 1 is full agreement, 0 is chance.
+# **Three blind passes.** Every headline, training and test mixed together, was
+# labelled three times. Each pass had its own random order and its own random keys, and
+# its labellers saw no earlier label and no other pass. The **scoring label** is the
+# majority of the three; the **training target** is the share of passes giving each
+# label. Cohen's kappa is agreement beyond what two labellers would reach by chance: 1
+# is full agreement, 0 is chance.
 
 
 # %%
@@ -473,61 +485,121 @@ def cohen_kappa(first: list[str], second: list[str]) -> float:
     return (observed - by_chance) / (1 - by_chance)
 
 
-def agreement_table(frame: pd.DataFrame, one: str, two: str) -> pd.DataFrame:
-    """Agreement between two labelling passes, per market and over all, on rows both cover."""
-    both = frame.dropna(subset=[one, two])
-    return pd.DataFrame(
-        {
-            name: {
-                "headlines": len(part),
-                "agreement": (part[one] == part[two]).mean(),
-                "kappa": cohen_kappa(part[one].tolist(), part[two].tolist()),
-            }
-            for name, part in [*both.groupby("market"), ("all", both)]
-        }
-    ).T
+def agreement_table(frame: pd.DataFrame) -> pd.DataFrame:
+    """Per market and over all: each pair of passes, their mean, and all passes together."""
+    pass_pairs = list(itertools.combinations(PASSES, 2))
+    rows = {}
+    for name, part in [*frame.groupby("market"), ("all", frame)]:
+        row = {"headlines": len(part)}
+        for one, two in pass_pairs:
+            row[f"{one} = {two}"] = (part[one] == part[two]).mean()
+        row["mean of the pairs"] = float(np.mean([row[f"{one} = {two}"] for one, two in pass_pairs]))
+        row["kappa (mean)"] = float(
+            np.mean([cohen_kappa(part[one].tolist(), part[two].tolist()) for one, two in pass_pairs])
+        )
+        row["all passes the same"] = part[PASSES].nunique(axis=1).eq(1).mean()
+        rows[name] = row
+    return pd.DataFrame(rows).T
 
 
-pass_pairs = [pair for pair in itertools.combinations(PASSES, 2) if len(labelled.dropna(subset=list(pair)))]
-if not pass_pairs:
-    raise ValueError("No headline was labelled twice: agreement cannot be measured")
-for one, two in pass_pairs:
-    twice = labelled.dropna(subset=[one, two])
-    agreement = agreement_table(labelled, one, two)
-    grid = pd.crosstab(pd.Categorical(twice[one], LABELS), pd.Categorical(twice[two], LABELS), dropna=False)
-    display(agreement)
-    display(grid.rename_axis(index=one, columns=two))
-    caption(f"{one} against {two} on {len(twice)} headlines ({window(twice)}): per market, then as a grid.")
+# Agreement is measured on every headline all passes cover, test headlines included:
+# it uses the passes only, and scores no model.
+covered = everything.dropna(subset=PASSES)
+if len(PASSES) < 2 or covered.empty:
+    raise ValueError("No headline was labelled more than once: agreement cannot be measured")
+agreement = agreement_table(covered)
+display(agreement)
+caption(f"Agreement between {len(PASSES)} labelling passes on {len(covered):,} headlines ({window(covered)}).")
 
 # %%
-# The figures below use the last pair of passes shown above.
-share = float(agreement.loc["all", "agreement"])
-low, high = share, math.sqrt(share)
-differ = int(len(twice) - np.trace(grid.to_numpy()))
-with_neutral = differ - int(grid.loc["positive", "negative"] + grid.loc["negative", "positive"])
-weakest = agreement.drop(index="all")["agreement"].idxmin()
+for one, two in itertools.combinations(PASSES, 2):
+    grid = pd.crosstab(pd.Categorical(covered[one], LABELS), pd.Categorical(covered[two], LABELS), dropna=False)
+    display(grid.rename_axis(index=one, columns=two))
+caption(f"Each pair of passes as a grid: {len(covered):,} headlines.")
+
+# %%
+AGREEMENT_BAR = 0.80  # written in decision 104 before any label: under this for a market, do not train
+share = float(agreement.loc["all", "mean of the pairs"])
+by_market_agreement = agreement.drop(index="all")["mean of the pairs"]
+weakest = by_market_agreement.idxmin()
+differing = [
+    (a, b)
+    for one, two in itertools.combinations(PASSES, 2)
+    for a, b in zip(covered[one], covered[two])
+    if a != b
+]
+with_neutral = sum("neutral" in pair for pair in differing)
+no_majority = int(everything["label"].isna().sum())
+scored = covered.dropna(subset=["label"])
+pass_matches_label = float(np.mean([(scored[column] == scored["label"]).mean() for column in PASSES]))
+low, high = share, pass_matches_label
 say(
-    f"**Found.** Inter-pass agreement is {share:.1%} (kappa {agreement.loc['all', 'kappa']:.2f}) on "
-    f"{len(twice)} headlines; the weakest market is {weakest} ({agreement.loc[weakest, 'agreement']:.1%} "
-    f"of {int(agreement.loc[weakest, 'headlines'])}). Of the {differ} disagreements, {with_neutral} "
-    "are between neutral and a tone."
+    f"**Found.** Two passes give the same label on {share:.1%} of headlines on average (kappa "
+    f"{agreement.loc['all', 'kappa (mean)']:.2f}), and all {len(PASSES)} agree on "
+    f"{agreement.loc['all', 'all passes the same']:.1%}. The weakest market is {weakest} "
+    f"({by_market_agreement[weakest]:.1%}); the bar written beforehand is {AGREEMENT_BAR:.0%} for every market: "
+    f"**{'met' if by_market_agreement.min() >= AGREEMENT_BAR else 'not met'}**. Of the {len(differing)} "
+    f"disagreements between two passes, {with_neutral} involve neutral. {no_majority} headlines have "
+    "no majority label."
 )
 say(
-    f"**What this bounds.** The best accuracy any model can reach on these labels lies between "
-    f"**{low:.1%}** and **{high:.1%}**. *Lower end, the agreement itself*: if every disagreement is "
-    "a headline with no single right label, nothing can match the label on it more often than the "
-    f"two passes match each other. *Upper end, its square root (√{share:.3f})*: if every headline "
-    "has one right label and each pass misses it independently with the same chance, two passes "
-    "agree when both are right, so agreement = accuracy × accuracy. Which case holds is not known "
-    "from two passes."
+    f"**What this bounds.** One labelling pass matches the scoring label (the majority) on {high:.1%} of "
+    f"headlines, and matches another pass on {low:.1%}. A model that scores in that region agrees with "
+    "the labels about as well as one more labelling pass would; these are the marks to read every "
+    "accuracy below against. All passes were written by the same AI model under the same rule, so "
+    "this measures how consistently the rule can be applied, not whether a person would agree."
 )
+if by_market_agreement.min() < AGREEMENT_BAR:
+    raise ValueError(f"Agreement for {weakest} is under the written bar: stop, do not train (decision 104)")
+
+# %%
+if "old_label" not in labelled or labelled["old_label"].isna().all():
+    say("Labels before the rule of decision 104: not available in this file.")
+else:
+    changed = labelled["old_label"] != labelled["label"]
+    display(
+        pd.crosstab(
+            pd.Categorical(labelled["old_label"], LABELS), pd.Categorical(labelled["label"], LABELS), dropna=False
+        ).rename_axis(index="label before", columns="label now")
+    )
+    display(
+        pd.DataFrame(
+            {
+                "before": labelled["old_label"].value_counts(normalize=True),
+                "now": labelled["label"].value_counts(normalize=True),
+            }
+        ).reindex(LABELS)
+    )
+    display(
+        pd.DataFrame(
+            {
+                "headlines": labelled.groupby("market").size(),
+                "labels changed": changed.groupby(labelled["market"]).mean(),
+                "neutral before": (labelled["old_label"] == "neutral").groupby(labelled["market"]).mean(),
+                "neutral now": (labelled["label"] == "neutral").groupby(labelled["market"]).mean(),
+            }
+        )
+    )
+    caption(
+        f"Training and validation headlines, {len(labelled):,} ({window(labelled)}): the label before against the "
+        "label now, the label mix before and now, and the change per market. Test headlines are not compared."
+    )
+    to_neutral = int((changed & (labelled["label"] == "neutral")).sum())
+    say(
+        f"**Found.** {int(changed.sum()):,} of {len(labelled):,} training and validation labels changed "
+        f"({changed.mean():.1%}); {to_neutral:,} of those went from a tone to neutral, which is what point 2 of "
+        f"the rule does to a headline that is not about the asset it is filed under. Neutral went from "
+        f"{(labelled['old_label'] == 'neutral').mean():.0%} to {(labelled['label'] == 'neutral').mean():.0%} of "
+        "the labels, so always answering neutral is now a much stronger baseline (section 9), and accuracy "
+        "under these labels cannot be compared with any figure measured under the old ones."
+    )
 
 
 # %%
 def shares(frame: pd.DataFrame) -> np.ndarray:
     """What a model is trained towards: per headline, the share of passes that gave each label.
 
-    One pass gives its label everything; two that differ give half each; two of three give 0.67.
+    Passes that all agree give that label everything; two of three give 0.67 and 0.33.
     """
     out = np.zeros((len(frame), len(LABELS)))
     for column in PASSES:
@@ -694,6 +766,7 @@ say(
 
 # %%
 rows_used = labelled if ROWS is None else labelled.tail(ROWS).reset_index(drop=True)
+FAST_MARK = f"**Fast run on {len(rows_used)} headlines: not a result.** " if FAST_RUN else ""
 
 
 def walk_forward(frame: pd.DataFrame) -> list[tuple[pd.DataFrame, pd.DataFrame]]:
@@ -1340,7 +1413,7 @@ say(
     f"{len(FINAL_SEEDS)} seeds accuracy is {per_seed['accuracy'].mean():.1%} with a spread of "
     f"{per_seed['accuracy'].std() * 100:.1f} points, so a difference smaller than that is no measurable "
     f"difference. Its weakest label is {weakest_label}. These figures lean optimistic (section 10); "
-    f"the reachable range from the labels is {low:.1%} to {high:.1%} (section 4)."
+    f"two labelling passes agree on {low:.1%} and one pass matches the scoring label on {high:.1%} (section 4)."
 )
 
 # %% [markdown]
@@ -1501,7 +1574,7 @@ else:
 # *How good is the saved model on headlines it never saw, against the two bars?*
 #
 # The test set holds headlines from the test period on, newer than anything trained or
-# chosen on, labelled before any of these models existed. **This cell scores it only
+# chosen on, labelled blind under the same rule as the training headlines. **This cell scores it only
 # when `RUN_TEST` is True, and only once**: the result is stored and read back after
 # that, so the test set cannot be used to try something else.
 #
@@ -1579,7 +1652,7 @@ else:
     caption(f"Confusion matrix and accuracy by market with its 95% range, {result['headlines']} test headlines ({result['window']}).")
     say(
         f"**Found.** Test accuracy is {new_score['accuracy']:.1%} (95% range {new_score['from']:.1%} to "
-        f"{new_score['to']:.1%}); the reachable range from the labels is {low:.1%} to {high:.1%} (section 4)."
+        f"{new_score['to']:.1%}); two labelling passes agree on {low:.1%} and one pass matches the scoring label on {high:.1%} (section 4)."
     )
 
 # %% [markdown]
@@ -1760,11 +1833,11 @@ scores by the temperature ({TEMPERATURE:.2f}) changes no answer, only how sure t
   ({window(validation)}), from one commercial news feed, about {", ".join(tone_config["markets"])}.
   Label mix in training: {label_mix}.
 - **The labels were written by an AI model (Claude), not by people**, from the headline alone,
-  under a written rule. Where two labelling passes exist and differ, the training target is
-  split between the two labels.
-- Two passes over {len(twice)} headlines gave the same label on {share:.1%} of them (Cohen's kappa
-  {float(agreement.loc["all", "kappa"]):.2f}). On labels like these the best reachable accuracy lies between
-  {low:.1%} and {high:.1%}.
+  under a written rule. Where the labelling passes differ, the training target is the share of
+  passes giving each label.
+- Each headline was labelled {len(PASSES)} times, blind. Two passes gave the same label on {share:.1%} of
+  {len(covered):,} headlines (Cohen's kappa {float(agreement.loc["all", "kappa (mean)"]):.2f}), and one pass
+  matches the majority label on {high:.1%}. The label used for scoring is the majority.
 - The headlines belong to the news provider and are not published with this model.
 
 ## Training procedure
@@ -1863,8 +1936,9 @@ else:
 # %%
 say("- **The labels are written by a model**, not a person. Every score here is agreement with that labeller.")
 say(
-    f"- **The labels limit the score.** Inter-pass agreement is {share:.1%}, so reachable accuracy lies between "
-    f"{low:.1%} and {high:.1%} (section 4). It is weakest for {weakest} ({agreement.loc[weakest, 'agreement']:.1%})."
+    f"- **The labels limit the score.** Two labelling passes agree on {low:.1%} of headlines and one pass matches "
+    f"the scoring label on {high:.1%} (section 4); agreement is weakest for {weakest} ({by_market_agreement[weakest]:.1%}). "
+    "All passes come from one AI model, so they can share a mistake."
 )
 say(
     f"- **Seed noise.** Two seeds of the same recipe differ by {SEED_SPREAD['loss']:.3f} in validation loss "
@@ -1882,7 +1956,7 @@ say(
 )
 say("- **One news feed, three markets, English.** Nothing here says how the model reads other sources.")
 if TEXTS[TEXT]["with_summary"]:
-    say("- **The labels were written from the headline alone**, while the model also reads the summary where there is one.")
+    say("- **The labels were written from the market and the headline alone**, while the model also reads the summary where there is one.")
 say("- **Tone describes the news; it forecasts nothing.** In this project news tone improved no forecast and drives no alert.")
 if FAST_RUN:
     say("- **This was a fast run.** None of its figures is a result.")

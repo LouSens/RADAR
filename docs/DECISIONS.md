@@ -4050,3 +4050,39 @@ summary", the input with the lowest validation loss in round 4 (0.778), so the
 paragraph above on "asset + headline" no longer holds. The labelling procedure is
 unchanged: labellers see the market and the headline only, as the user wrote it. So the
 model reads a summary the labeller did not; the notebook says so in its limitations.
+
+**Result of the relabelling (2026-10-10).** 36 fresh labellers wrote 8,217 labels: three
+passes over 2,739 headlines. Two parts came back incomplete (two keys missing in each)
+and six stopped on a usage limit before writing anything; each of those parts was
+labelled again whole by a new labeller, never patched.
+
+| Market | Headlines | Mean of the three pairs | Kappa (mean) | All three the same |
+|---|---|---|---|---|
+| Bitcoin | 1,115 | 93.3% | 0.88 | 90.0% |
+| Gold | 456 | 97.8% | 0.96 | 96.7% |
+| US stocks | 1,168 | 95.6% | 0.87 | 93.4% |
+| All | 2,739 | 95.0% | 0.90 | 92.6% |
+
+- **The bar of 80% for every market is met**, so training may go ahead.
+- No headline has three different labels; 2,535 are unanimous and 204 are two against one.
+- Of 408 disagreements between two passes, 406 involve neutral; a positive against a
+  negative happened twice.
+- **718 of the 2,218 training and validation labels changed (32.4%)**: 625 from a tone
+  to neutral, 79 from neutral to a tone, 14 between positive and negative. By market:
+  Bitcoin 26.1%, gold 40.0%, US stocks 34.6%.
+- **The label mix moved a long way**: neutral from 41.7% to 66.3%, positive from 30.6%
+  to 19.3%, negative from 27.8% to 14.5%. For US stocks 80.1% of labels are now neutral.
+  This is point 2 of the rule at work: a headline filed under an asset it is not about
+  is neutral whatever its tone.
+
+**What follows from it, and what does not.**
+
+- Always answering "neutral" now scores about 66%, so no accuracy under these labels
+  can be compared with a figure measured under the old ones (the 65% of
+  `finbert-radar-1`, the 67% of round 4). The model in use has to be scored again on the
+  new labels, which the notebook's baselines do on validation.
+- The three passes come from one AI model reading one rule. High agreement shows the
+  rule can be applied consistently; it does not show that a person would agree, and the
+  passes can share a mistake.
+- The new test labels were not compared with the old test labels, and no model has been
+  scored on them.
