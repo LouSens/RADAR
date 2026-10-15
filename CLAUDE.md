@@ -69,6 +69,29 @@ These apply to every change.
 - **Numbers in generated text come from data.** The daily brief may only contain numbers
   present in its input payload; a test enforces this.
 
+## Rules the user confirmed (2026-10-15)
+
+- **No buy, sell or direction calls.** The app never says "buy now" or "sell now" and
+  never forecasts which way a price will go (decisions 061, 063, 065, 068).
+- **No reruns of failed tests.** A test that found nothing (direction, timing, events,
+  protection rules) is not rerun with changed settings until it passes.
+- **Before trusting a model's "no", plant a known pattern** in made-up data and check the
+  model finds it; choose settings on the planted pattern only (061).
+- **The front page shows what holds up.** The README and the notebooks present results
+  that held; what was tried and set aside stays in `docs/DECISIONS.md` and git history.
+  Never invert or overstate a result to do this: leave it out.
+- **A notebook leads to code.** What holds up in a notebook becomes tested code and a
+  screen in the same piece of work (074).
+- **The user's plan caps:** 1% of the portfolio per altcoin, 10% in all altcoins (075).
+- **Everyday words on screens.** No finance or statistics terms in the interface (075).
+- **Visual first.** A first view is tiles and charts from `components/viz.tsx`; longer
+  explanations go in a collapsed `Caption` of short named facts (040, 059).
+- **Five places only:** Home, Markets, Portfolio, Signals, Calendar. No sixth place, or
+  new choice on Home, without removing one; every inner page has a way back (057).
+- **The look:** one window-wide light in the page's colour, translucent cards lit from
+  above, colour only for meaning. A holding keeps one colour on every screen; green, red
+  and the accent are never a holding's colour; no pastel holding colours (057, reel).
+
 ## Commands
 
 Each `make` target wraps `uv run radar <target>`.

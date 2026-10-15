@@ -4151,3 +4151,44 @@ because they are fitted on the same headlines they are scored on.
 
 **Unchanged.** One saved model. The two bars on the test set. The user runs the test and
 the upload. No model has been scored on the test set.
+
+## 106. The user's review of the rules credited to them; decisions 097 to 105 on news tone set aside (2026-10-15)
+
+The user said several rules written in `CLAUDE.md` and in this log as "the user's rule"
+were never theirs. On 2026-10-15 they reviewed the sixteen that most constrained new work.
+
+**Kept, and now the only such rules in `CLAUDE.md`:** no buy, sell or direction calls;
+no reruns of failed tests with changed settings; plant a known pattern before trusting a
+model's "no"; the front page shows what holds up; a notebook result becomes code and a
+screen in the same piece of work; the plan caps of 1% per altcoin and 10% in all; everyday
+words on screens; visual first; five places only; the current look.
+
+**Not confirmed by the user, and no longer binding:**
+
+- a feature is built only if it clears a bar written down before testing (the hard rule
+  on suggestions in `CLAUDE.md`, which predates it, still applies to suggestions);
+- only the user runs the test set, and Claude never reads test labels (101);
+- economic releases get a size warning only (056; the general rule against direction
+  calls still covers them);
+- news drives no forecast or signal, and tone shocks stay out of the feed and brief
+  (045, 052, as standing rules; their test results stand);
+- ask before connecting a language model to the brief;
+- in the advertisement, 3D only for three hero objects.
+
+Any other entry in this log that says "the user's rule", "the user said" or "the user
+asked" is history. It binds new work only if `CLAUDE.md` repeats it.
+
+**News tone.** Decisions 097 to 105 (rounds 1 to 5, their labels, the round-4 test rules,
+the two-model rule of 103, the label rule of 104 and the marks of 105) are set aside. All
+five label files were written under different rules and are deleted with the code that
+read them. In their place: notebook 04 trains FinBERT in two stages, task-adaptive
+pre-training on the unlabelled Alpaca archive and LoRA fine-tuning, on 6,820 headlines
+labelled under `notebooks/labels/RUBRIC.md` (three classes; whose price; facts against
+opinion; the contrast rule; market impact). The labels were written in blind passes:
+pass 1 on every headline, a second pass on 15% of training and on all test headlines, a
+third on test. Agreement: 93.9% raw, Cohen's kappa 0.861 between passes 1 and 2 on 1,713
+headlines; Fleiss' kappa 0.863 on the 826 test headlines. US-stock headlines came out 91%
+neutral: most are statements by officials and politicians with no stated effect on
+price. The rubric gives no rule for economic releases against estimates; the labellers
+called them neutral. The app no longer trains: it loads `data/models/finbert-tone/` and
+shows the test figures from its `model_card.json`, and none when the card is missing.
