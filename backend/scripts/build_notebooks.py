@@ -5,14 +5,15 @@ a text cell (its lines are comments) and a line `# %%` starts a code cell. Keepi
 sources as Python means they can be read, reviewed, and linted like any other code.
 
 Most notebooks import the same modules the app runs, so what they show cannot drift
-from what the app does. `04_news` is the exception: it holds its own code and trains the
-tone model, and a test keeps its text preparation equal to the app's. Run with:
+from what the app does. `04_news` is the exception: it holds its own code, reads the raw
+news files and the labels in `notebooks/labels/`, and trains the tone model (about an
+hour on a laptop GPU); a test keeps its headline cleaning equal to the app's. Run with:
 
     uv run python backend/scripts/build_notebooks.py            # all of them
     uv run python backend/scripts/build_notebooks.py 03_swings_and_loss  # one
 
 Needs the database running and filled, except `04_news`, which needs `uv sync --extra nlp`
-and the file written by `backend/scripts/tone_export.py`.
+and the raw news under `data/raw/alpaca_news/`.
 """
 
 import os

@@ -69,7 +69,7 @@ Every result below was measured on days the model had not seen, against a pass m
 | Paying in on a schedule is a sound default | It beat every rule for timing purchases within the month that was tried. |
 | Each market's state means something | On unseen days, rougher states were followed by larger moves in 3 of 3 markets. |
 
-RADAR gives no "buy now" or "sell now": it forecasts how much a holding could move, not which way, and leaves the decision to the person. The full research log, including what was tried and set aside, is in `docs/DECISIONS.md` and `notebooks/archive/`.
+RADAR gives no "buy now" or "sell now": it forecasts how much a holding could move, not which way, and leaves the decision to the person. The full research log, including what was tried and set aside, is in `docs/DECISIONS.md` (the research notebooks it cites are in the git history).
 
 ## 🏗 System architecture
 

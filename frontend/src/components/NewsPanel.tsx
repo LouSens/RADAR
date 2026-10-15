@@ -115,7 +115,7 @@ const range = (low: number | null | undefined, high: number | null | undefined) 
 
 function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
   const model = accuracy.model;
-  const byAi = accuracy.labelled_by.includes("claude");
+  const byAi = accuracy.labelled_by.some((name) => name.toLowerCase().includes("claude"));
   return (
     <div className="well p-4">
       <dl className="mt-2">
@@ -129,7 +129,7 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
           </StatRow>
         )}
         {accuracy.original && (
-          <StatRow label="An earlier version, same headlines">
+          <StatRow label="The general model, same headlines">
             {formatShare(accuracy.original.accuracy, 0)}
           </StatRow>
         )}
@@ -149,7 +149,6 @@ function Trust({ accuracy }: { accuracy: NonNullable<Sentiment["accuracy"]> }) {
       </dl>
       <Caption
         facts={[
-          { label: "Most common error", value: "Calling a mild article neutral, or the reverse" },
           {
             label: "Daily figures",
             value: "Average many articles, which is steadier than any one of them",
@@ -242,9 +241,11 @@ export function NewsPanel({ asset, trust }: PanelProps) {
         <summary>How this works</summary>
         <p className="prose mt-3 text-xs leading-relaxed text-muted">
           Tone is scored by a language model trained on financial text
-          {accuracy?.fine_tuned ? " and then fine-tuned on headlines like these" : ""}, from each
-          article&apos;s headline and summary. All articles come from one provider. Such models
-          misread sarcasm, negation, and headlines that only describe a price move.
+          {accuracy?.fine_tuned
+            ? " and then trained further on headlines like these, from each headline alone"
+            : ", from each article's headline and summary"}
+          . All articles come from one provider. Such models misread sarcasm, negation, and
+          headlines that only describe a price move.
         </p>
       </details>
     </Panel>

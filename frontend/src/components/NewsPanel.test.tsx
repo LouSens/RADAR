@@ -112,7 +112,6 @@ describe("NewsPanel", () => {
     expect(screen.getByText("Counting positive and negative words")).toBeInTheDocument();
     expect(screen.getByText("52%")).toBeInTheDocument();
     expect(screen.getByText(/An AI model \(Claude\), not a person/)).toBeInTheDocument();
-    expect(screen.getByText(/Calling a mild article neutral/)).toBeInTheDocument();
   });
 
   it("puts tone into plain words", () => {

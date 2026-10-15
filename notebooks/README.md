@@ -1,40 +1,38 @@
 # Notebooks
 
-A notebook is where an idea is tried. What holds up becomes tested code in
-`backend/src/radar/` and a screen in the app; the notebook stays as the explanation.
-Every example portfolio and every trader in them is made up.
+A notebook is where an idea is tried and explained. What holds up becomes tested code in
+`backend/src/radar/` and a screen in the app. Every example portfolio and trader in them
+is made up.
 
 | Notebook | Question | Code it explains | Used in the app |
 |---|---|---|---|
 | `01_exploration` | What data is there, and how clean is it? | `features/`, `quality/` | Everywhere |
 | `02_state_and_range` | What state is a market in, and what range of prices is plausible? | `models/regime.py`, `simulator.py`, `calibration.py` | Current state, Price range ahead |
 | `03_swings_and_loss` | How much will it move, and how bad could a bad day be? | `models/volatility.py`, `tail_risk.py` | Daily movement, Possible loss |
-| `04_news` | Can the tone of headlines be scored, and how well? | None: it holds its own code and trains the model (`models/dataset.py` keeps the same text preparation, checked by a test) | News |
-| `05_portfolio_and_paying_in` | Where does a mix's risk sit, what range is its value in, and what does paying in regularly lead to? | `models/portfolio.py`, `portfolio_simulation.py`, `regular_buying.py` | Portfolio |
+| `04_news` | Can headline tone be scored accurately on a laptop GPU? | Self-contained: trains the tone model the app loads | News |
+| `05_portfolio_and_paying_in` | Where does a mix's risk sit, and what does paying in regularly lead to? | `models/portfolio.py`, `portfolio_simulation.py`, `regular_buying.py` | Portfolio |
 | `06_trading_record` | What do a person's own trades say about how they trade? | `models/ledger.py`, `analytics/trading.py` | Your record |
 
-`archive/` holds the research log: seven full research notebooks, and
-`07_what_we_tested`, the one page that summarises them.
-They were run when gold was followed as the gold fund (before decision 087) and are
-kept as they were: their figures are evidence for the conclusions, not current readings.
-`docs/DECISIONS.md` refers to them by their old numbers (08, 10, 11 to 15).
+Sources are in `src/`; rebuild one with
+`uv run python backend/scripts/build_notebooks.py <name>`.
 
-Old numbers, for reading older decisions: 02 and 03 are now `02_state_and_range`; 04 is
-`03_swings_and_loss`; 05 and 06 are `04_news`; 07 and 09 are
-`05_portfolio_and_paying_in`.
+## `04_news`
 
-Rebuild one with `uv run python backend/scripts/build_notebooks.py <name>`. Sources are
-in `src/`. `04_news` needs `uv sync --extra nlp` and the data file written by
-`uv run python backend/scripts/tone_export.py`. It holds its own code and trains the
-model; the switches are in its third cell. The committed copy is a fast run (200
-headlines, one pass), so its figures only show that the code works.
+Self-contained: it imports nothing from the app and needs no database. It reads the raw
+Alpaca news under `data/raw/alpaca_news/` and the files in `labels/`:
 
-## How each one is laid out
+| File | What it is |
+|---|---|
+| `labels/RUBRIC.md` | The labelling rubric: three classes (0 positive, 1 negative, 2 neutral), whose price, facts against opinion, the contrast rule, market impact |
+| `labels/sample.csv` | Which articles were drawn for labelling, their split and how many passes each gets |
+| `labels/tone_labels.csv` | Every pass's label, by article id (no headline text: it is the provider's) |
 
-The answer comes first, then a table of each step with the code it runs and the screen
-it feeds. Charts and tables use plain names. The closing section only repeats what a
-count printed in the notebook supports. All of them use `radar.notebooks.use_style`.
+Pipeline: audit → cleaning → exploratory analysis → token-length audit → time-ordered
+split with an embargo → stage A, task-adaptive pre-training on the unlabelled
+train-period archive (LoRA, merged) → stage B, LoRA fine-tuning with a ticker × tone
+balanced sampler and a pre-declared settings search → a single test → the saved model
+and its card in `data/models/finbert-tone/`. It needs `uv sync --extra nlp`; a full run
+takes about an hour on an RTX 4050 Laptop GPU (6 GB). `TONE_FAST=1` runs a quick check.
 
-The markets shown are the three the app follows. The example portfolio is made up, so
-no notebook covers the user's own holdings; experiments on real holdings stay in the
-gitignored `data/private/`.
+The other notebooks still import `radar` and read the database (`make up`); making them
+self-contained is open work.
