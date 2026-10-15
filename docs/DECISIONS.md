@@ -4192,3 +4192,30 @@ neutral: most are statements by officials and politicians with no stated effect 
 price. The rubric gives no rule for economic releases against estimates; the labellers
 called them neutral. The app no longer trains: it loads `data/models/finbert-tone/` and
 shows the test figures from its `model_card.json`, and none when the card is missing.
+
+## 107. News tone: the result of notebook 04 (2026-10-15)
+
+A full run of notebook 04 on the RTX 4050 Laptop GPU (6 GB) produced `finbert-tone-1` in
+`data/models/finbert-tone/`.
+
+- **Data.** 263,155 stored rows became 103,344 unique cleaned headlines. A token limit of
+  128 keeps 99.98% whole (long headlines are verbatim quotes of officials, kept).
+- **Stage A (TAPT).** 4,269 steps (effective batch 64, LoRA, merged) on 91,074 train-period
+  headlines in 47.8 minutes, peak GPU memory 2.23 GB. Held-out masked-LM perplexity fell
+  from 89.7 to 9.9. The first full run ran out of GPU memory at batch 64 without gradient
+  accumulation; four sub-batches of 16 fixed it.
+- **Search (validation macro-F1, seed 13).** a 0.816, b 0.817, **c 0.844 (r = 16, lr 5e-4)**,
+  d 0.818.
+- **Ablation (setting c, three seeds each).** Plain FinBERT + LoRA 0.834 ± 0.012; TAPT +
+  LoRA 0.831 ± 0.014. TAPT did not raise validation macro-F1, so the final model uses the
+  plain encoder (seed 17). RQ2: TAPT adapted the language model but did not help the
+  classifier on this data.
+- **Test (826 headlines, 1 April to 14 October 2026, used once).** Accuracy 0.870
+  (95% bootstrap 0.846–0.893), macro-F1 0.812 (0.776–0.844); untuned FinBERT 0.501 and
+  0.436; majority class 0.743 and 0.284. McNemar against untuned FinBERT: 334 against 29
+  discordant, p = 7.2e-67. Positive and negative swapped on 0.4% of headlines. F1 by
+  class: positive 0.72, negative 0.81, neutral 0.91. By ticker: Bitcoin accuracy 0.860
+  (macro-F1 0.842), gold 0.796 (0.774), US stocks 0.937 (0.592; few polar headlines).
+  Temperature fitted on validation: 2.65.
+- The row "FinBERT + LoRA (no TAPT)" in the test table is the plain encoder with seed 13;
+  since the final model is also plain, its gap to the final model is seed variation.

@@ -53,7 +53,7 @@ Every claim on a screen carries its sample size and period, and every model is c
 | **Check before you buy** | Where a coin sits in its range over a day, week, month, quarter and year. A reading, not a recommendation. |
 | **Each market** | A live price chart from one day to all history, the market's state (calm, normal, turbulent), a range of prices ahead from 10,000 simulated futures, the expected size of a day's movement, and a loss limit with a count of how often it was broken. |
 | **Where the risk sits** | Share of the money against share of the risk, how holdings move together, the value range ahead, and what paying in regularly leads to. |
-| **News** | Headlines for each market with tone scored by a fine-tuned FinBERT, shown with its measured accuracy. Tone drives no forecast and no alert. |
+| **News** | Headlines for each market with tone (positive, negative or neutral) scored by FinBERT fine-tuned with LoRA on the feed's own headlines, shown with its measured accuracy. Tone describes the news; it is not a price forecast. |
 | **Signals and calendar** | Changes of market state and abnormally large moves, each with its track record; dates of Fed decisions, jobs and inflation reports with how markets moved around past ones. |
 | **Today in brief** | A short generated summary that opens with the price now and what there is to do. A test guarantees every number in it comes from stored data. |
 
@@ -65,7 +65,7 @@ Every result below was measured on days the model had not seen, against a pass m
 |---|---|
 | The **size** of the next move can be forecast | A regression on the last day, week and month of movement had the lowest error in 6 of 6 market-and-horizon comparisons. |
 | Loss limits hold as often as they say | 35 of 36 limits passed their test after allowing for testing many at once. |
-| The fine-tuned tone model beats the general one | 61% against 52% right on 700 unseen headlines, a gap too large to be luck. |
+| The fine-tuned tone model beats the general one | 87.0% right (macro-F1 0.81) against 50.1% for untuned FinBERT, on 826 headlines from six later months it never saw; McNemar p < 10⁻⁶⁶. It swapped positive and negative on 0.4% of them. |
 | Paying in on a schedule is a sound default | It beat every rule for timing purchases within the month that was tried. |
 | Each market's state means something | On unseen days, rougher states were followed by larger moves in 3 of 3 markets. |
 
@@ -129,7 +129,7 @@ flowchart LR
 | Size of movement | HAR regression (last day, week, month), beside gradient-boosted trees, "yesterday repeated" and a state average. | QLIKE loss on unseen days and a Diebold-Mariano test against each rival. |
 | Loss limit | Value at Risk and expected shortfall three ways: historical, scaled to the forecast, and from the simulation. | Kupiec coverage and clustering tests, corrected for multiple comparisons. |
 | Portfolio risk | Ledoit-Wolf covariance, risk shares, block bootstrap of the value ahead. | Walk-forward coverage of the ranges it drew on past dates. |
-| News tone | FinBERT fine-tuned on 1,800 labelled headlines, split by time with near-copies removed. | A held-out test fixed in advance, McNemar's test, and the share of labels that came out backwards. |
+| News tone | FinBERT with LoRA, fine-tuned on 5,041 headlines labelled under a written rubric in blind passes (Cohen's κ 0.86), split by time with an embargo and one headline per template. | A test period used once, bootstrap intervals, McNemar's test, per-ticker scores and calibration. |
 | Signals | Change of state and abnormal hourly moves (5 times the usual size). | Replayed walk-forward; a track record per kind, for direction and for size. |
 | Trading record | Average-cost ledger reconciled to the real balance; round trips; trading against holding. | Tested on invented traders whose habits are known. |
 
@@ -253,7 +253,7 @@ A notebook is where an idea is tried. What holds up becomes tested code and a sc
 | `01_exploration` | What data is there, and how clean is it? |
 | `02_state_and_range` | What state is a market in, and what range of prices is plausible? |
 | `03_swings_and_loss` | How much will it move, and how bad could a bad day be? |
-| `04_news` | Can the tone of headlines be scored, and how well? |
+| `04_news` | Can headline tone be scored accurately on a laptop GPU? (self-contained, research write-up) |
 | `05_portfolio_and_paying_in` | Where does a mix's risk sit, and what does paying in regularly lead to? |
 | `06_trading_record` | What do a person's own trades say about how they trade? |
 
