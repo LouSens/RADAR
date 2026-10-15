@@ -72,7 +72,10 @@ These apply to every change.
 ## Rules the user confirmed (2026-10-15)
 
 - **No buy, sell or direction calls.** The app never says "buy now" or "sell now" and
-  never forecasts which way a price will go (decisions 061, 063, 065, 068).
+  never forecasts which way a price will go (decisions 061, 063, 065, 068). This does
+  not cover news sentiment: scoring headlines as positive, negative or neutral describes
+  the news, not the price ahead, and may be shown wherever it helps (the feed, the brief,
+  an asset's page), with the model's measured accuracy beside it.
 - **No reruns of failed tests.** A test that found nothing (direction, timing, events,
   protection rules) is not rerun with changed settings until it passes.
 - **Before trusting a model's "no", plant a known pattern** in made-up data and check the
