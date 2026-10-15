@@ -1,5 +1,6 @@
 """Sentiment scoring and aggregation against the real test database."""
 
+import json
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -18,8 +19,7 @@ from radar.db.models import (
     NewsTopic,
     SentimentAggregate,
 )
-from radar.models import topics
-from radar.models.lexicon import Lexicon
+from radar.models import sentiment, topics
 from radar.pipelines import sentiment as job
 from radar.universe import Universe
 
@@ -202,33 +202,46 @@ def test_every_article_gets_one_topic(engine: Engine, session: Session) -> None:
     assert stored[1].confidence == 0.7
 
 
-def test_accuracy_is_measured_against_the_labels_and_recorded(
+CARD = {
+    "version": "finbert-tone-test",
+    "base_model": "ProsusAI/finbert",
+    "input": "headline",
+    "max_length": 64,
+    "labelled_by": ["claude, three blind passes"],
+    "train_window": ["2022-01-01", "2025-06-30"],
+    "test_window": ["2025-10-01", "2026-03-31"],
+    "test": {"n": 4, "accuracy": 0.75, "macro_f1": 0.7, "classes": []},
+    "base_test": {"n": 4, "accuracy": 0.5, "macro_f1": 0.4, "classes": []},
+    "by_symbol": {"GLD": {"n": 1, "accuracy": 1.0, "macro_f1": 1.0}},
+}
+
+
+def test_without_a_tuned_model_no_accuracy_is_recorded(engine: Engine, tmp_path: Path) -> None:
+    assert job.active_version(folder=tmp_path) == sentiment.MODEL_VERSION
+    assert job.evaluate(engine, folder=tmp_path) is None
+
+
+def test_the_tuned_models_card_is_recorded_as_its_held_out_accuracy(
     engine: Engine, session: Session, tmp_path: Path
 ) -> None:
-    seed(session)
-    job.score_articles(engine, WordScorer())
-    job.classify_articles(engine, SubjectScorer())
-    labels = pd.DataFrame(
-        {
-            "article_id": [1, 2, 3, 5, 99],  # 99 is not stored and is ignored
-            "symbol": ["BTC/USD", "BTC/USD", "BTC/USD", "GLD", "GLD"],
-            "sentiment": ["positive", "negative", "neutral", "negative", "neutral"],
-            "topic": ["price", "price", "regulation", "macro", "other"],
-            "labelled_by": ["claude"] * 5,
-        }
-    )
-    assert job.evaluate(engine, version="missing", labels=labels) is None
-
-    words = tmp_path / "words.csv"
-    words.write_text("Word,Negative,Positive\nRISES,0,2009\nFALLS,2009,0\n", encoding="utf-8")
-    metrics = job.evaluate(engine, version="words-1", lexicon=Lexicon.load(words), labels=labels)
+    (tmp_path / job.CARD_FILE).write_text(json.dumps(CARD), encoding="utf-8")
+    assert job.active_version(folder=tmp_path) == "finbert-tone-test"
+    metrics = job.evaluate(engine, folder=tmp_path)
     assert metrics is not None
-    assert metrics["model"]["n"] == 4
-    assert metrics["model"]["accuracy"] == 0.75  # article 3 was labelled neutral
-    assert metrics["baseline"]["accuracy"] == 0.75
-    assert metrics["by_symbol"]["GLD"] == {"n": 1, "accuracy": 1.0, "macro_f1": 1.0}
-    assert metrics["topics"]["accuracy"] == 0.75  # article 3 was labelled regulation
-    assert metrics["labelled_by"] == ["claude"]
+    assert metrics["model"]["accuracy"] == 0.75
+    assert metrics["original"]["accuracy"] == 0.5
+    assert metrics["held_out"] is True
     stored = session.scalars(select(ModelRegistry)).one()
     assert stored.name == "sentiment"
-    assert stored.metrics["model"]["accuracy"] == 0.75
+    assert stored.version == "finbert-tone-test"
+    assert stored.artefact_path == str(tmp_path)
+    assert str(stored.train_end) == "2025-06-30"
+
+
+class HeadlineScorer(WordScorer):
+    headline_only = True
+
+
+def test_a_headline_model_reads_the_cleaned_headline_alone() -> None:
+    assert job.scored_text(HeadlineScorer(), "Gold Rises (UPDATED)", "More text.") == "Gold Rises"
+    assert job.scored_text(WordScorer(), "Gold Rises", "More text.") == "Gold Rises. More text."
