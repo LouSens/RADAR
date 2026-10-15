@@ -103,11 +103,13 @@ strongest result in the project. How rough the coming days will be is forecastab
 (the average loss when it is exceeded), estimated three ways and back-tested by counting
 how often the limit broke. *Holds up.*
 
-### News tone (`models/sentiment.py`, `finetune.py`, `topics.py`, `lexicon.py`, notebooks 05 and 06)
-**FinBERT**, a language model for financial text, scores each article from −1 to +1. A
-version fine-tuned on our own labelled headlines exists. Topics are assigned by a second
-model without training. An **event study** asks whether tone leads price. *The models
-run; the result is that news tone improves no forecast (decision 045). Low usefulness.*
+### News tone (`models/sentiment.py`, `topics.py`, notebook 04)
+**FinBERT**, a language model for financial text, scores each headline as positive,
+negative or neutral (−1 to +1). Notebook 04 adapts it to the Alpaca feed (task-adaptive
+pre-training on the unlabelled archive) and fine-tunes it with LoRA on headlines
+labelled under `notebooks/labels/RUBRIC.md`; the app loads the saved model and shows its
+test figures. Topics are assigned by a second model without training. An **event
+study** asks whether tone leads price. *News tone improves no forecast (decision 045).*
 
 ### What a market moves with (`models/drivers.py`)
 **Ridge regression** of a market's daily return on stocks, the dollar, bonds and

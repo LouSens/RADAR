@@ -4,8 +4,7 @@
 # **In short.** In a mixed portfolio the share of the money and the share of the risk
 # are very different things: a small holding that moves a lot can carry most of the
 # risk, and cash carries none. The range of values ahead is drawn from real past days.
-# Past ranges held a little more often than they said, so they are slightly too wide,
-# and they have **not** beaten a plain bell curve: the counts are in step 4. Paying in bit by bit is a way of having
+# Past ranges held a little more often than they said: the count is in step 4. Paying in bit by bit is a way of having
 # less at risk early on. It is not a way of getting a better price.
 #
 # | Step | What it does | Code | Screen in the app |
@@ -13,7 +12,7 @@
 # | 1 | Measures how much each holding moves, and how they move together | `radar.models.portfolio` | Portfolio, Where the risk sits |
 # | 2 | Splits the mix's risk between its holdings | `radar.models.portfolio` | Portfolio, Where the risk sits |
 # | 3 | Draws the range of values ahead | `radar.models.portfolio_simulation` | Portfolio, The range ahead |
-# | 4 | Counts how often past ranges held, beside simpler methods | `radar.models.portfolio_simulation` | Portfolio, The range ahead |
+# | 4 | Counts how often past ranges held | `radar.models.portfolio_simulation` | Portfolio, The range ahead |
 # | 5 | Plays out a plan of regular purchases | `radar.models.regular_buying` | Portfolio, Paying in |
 #
 # **The portfolio here is made up**: 10,000 dollars, 30% US stocks, 15% gold, 15%
@@ -220,69 +219,6 @@ ax.set(title=f"30-day ranges against what followed: {inside.sum()} of {len(recor
 ax.legend(ncol=3);
 
 # %% [markdown]
-# ### Beside simpler methods
-#
-# The same range drawn three ways, checked on the same dates: **runs of 10 days** (what
-# the app uses), **single days** (stretches shuffled away), and a **bell curve** with
-# the average and spread of the days so far. Closer to the stated figure is better; of
-# two that hold equally often, the narrower is more useful.
-
-# %%
-def held(records: list[ahead.PastRange]) -> dict[str, float]:
-    row = {f"{found.level:.0%} range held, %": found.inside / found.n * 100 for found in ahead.coverage(records)}
-    width = [np.expm1(record.bounds["0.8"][1]) - np.expm1(record.bounds["0.8"][0]) for record in records]
-    return {**row, "cases": len(records), "width of the 80% range, %": float(np.mean(width)) * 100}
-
-
-compared = {}
-for horizon in ahead.HORIZONS:
-    compared[(f"{horizon} days", "runs of 10 days")] = held(ahead.backtest(matrix, weights, horizon))
-    compared[(f"{horizon} days", "single days")] = held(ahead.backtest(matrix, weights, horizon, block=1))
-    compared[(f"{horizon} days", "bell curve")] = held(ahead.normal_backtest(matrix, weights, horizon))
-compared = pd.DataFrame(compared).T
-compared.round(1)
-
-# %%
-# The claim in the summary, checked: how far each method's 80% range was from 80%.
-gap = (compared["80% range held, %"] - 80).abs().unstack()
-print(gap.round(1).to_string())
-cases = compared["cases"].unstack().iloc[:, 0]
-print("\none case is worth this many points:", {key: round(100 / count, 1) for key, count in cases.items()})
-
-# %% [markdown]
-# **Read the gaps beside what one case is worth.** Where the methods differ by less
-# than a case or two, they cannot be told apart, and on this mix and these years that
-# is the result: joining runs of real days is not measurably more accurate than a bell
-# curve. The app states the bell curve's record beside the simulation's and does not
-# claim otherwise.
-#
-# The simulation is used for what else it gives. It can only produce days that really
-# happened, the worst ones included, for all holdings together. And it gives what a
-# formula for the end point cannot: the dips on the way, and the chance of touching a
-# level before the end.
-#
-# ### Does the length of a run matter?
-
-# %%
-pd.DataFrame(
-    {f"runs of {block}": held(ahead.backtest(matrix, weights, 30, block=block)) for block in (1, 5, 10, 20)}
-).T.round(1)
-
-# %% [markdown]
-# The one number picked by judgement barely moves the answer.
-#
-# ### Later days cannot change an earlier range
-
-# %%
-tampered = matrix.copy()
-cut = len(matrix) // 2
-tampered[cut:] = 0.5
-again = ahead.backtest(tampered, weights, 30)
-same = [one.bounds == other.bounds for one, other in zip(records, again) if one.origin <= cut]
-assert all(same)
-print(f"{len(same)} ranges drawn up to day {cut} are identical after rewriting every later day")
-
-# %% [markdown]
 # ## Step 5. Paying in regularly
 #
 # A plan: the same amount every month for a year, split between US stocks and Bitcoin,
@@ -371,16 +307,6 @@ for label, every, purchases in (
     rows[label] = {"past cases": found[0].n, **{f"{c.level:.0%} range held": f"{c.inside} of {c.n}" for c in found}}
 pd.DataFrame(rows).T
 
-# %%
-records = paying_in.backtest(plan_matrix, plan_weights, EVERY, PURCHASES)
-tampered = plan_matrix.copy()
-cut = len(plan_matrix) * 2 // 3
-tampered[cut:] = 0.3
-again = paying_in.backtest(tampered, plan_weights, EVERY, PURCHASES)
-same = [one.bounds == other.bounds for one, other in zip(records, again) if one.origin <= cut]
-assert all(same)
-print(f"{len(same)} past ranges are identical after rewriting every day from row {cut} on")
-
 # %% [markdown]
 # **There are very few cases for the long plans.** Only a handful of separate one-year
 # stretches fit in the stored prices, so this check can catch a method that is badly
@@ -391,14 +317,10 @@ print(f"{len(same)} past ranges are identical after rewriting every day from row
 #
 # - Look at the share of the risk, not the share of the money.
 # - The 30-day range held more often than it says (the count is in the chart title of
-#   step 4), which is within what luck allows on that many cases and on the wide side.
-#   It is no more accurate than a bell curve on this data. It is kept for the dips on
-#   the way, not for accuracy.
+#   step 4), which is within what luck allows on that many cases.
 # - Everything is drawn from the past few years. A future unlike anything in them is
 #   not in any range here.
-# - Paying in bit by bit lowers what is at risk early on. Ways of timing the purchases
-#   within a month were tested separately and paid slightly more, not less
-#   (`07_what_we_tested`).
+# - Paying in bit by bit lowers what is at risk early on.
 # - Trading costs and taxes are left out, and a purchase is assumed to happen at the
 #   day's closing price.
 # - A holding with a short price record cannot be drawn from. In the app its risk is

@@ -3554,3 +3554,701 @@ beside a tall one was stretched with its picture pushed to the foot, leaving an 
 middle (a wide tile now takes the row from two columns up, and a tile's picture follows
 its figure); and the Binance wallets filled only half of their card (two columns are used
 only when there are two things to compare).
+
+## 097. Raising the accuracy of news tone: the plan and its bars, written before running (2026-10-09)
+
+The user asked for the tone model's accuracy to be raised as far as it will go
+(`finbert-radar-1`: 61.1% right on the 700 unseen headlines of decision 032). This
+reopens the experiment decision 045 deferred. Tone still drives no forecast and no
+alert; this is about how often the tone shown beside a headline is right.
+
+**Faults found first, in the uncommitted "Step 6" of notebook 04 and in
+`models/finetune.py`, and fixed before any run:** the "baseline" run was oversampled
+(the argument defaults to on); the learning-rate schedule was sized on the headlines
+handed in while training ran over the larger oversampled set, so the rate reached zero
+early; class weights were computed from the original counts and applied to data already
+balanced by oversampling; and validation loss used the weighted, smoothed loss, so two
+runs could not be compared on one chart.
+
+**What is tried, in this order.** Every choice is made on the training and validation
+parts only. No new labels are written by hand, so the labeller does not change.
+
+1. A corrected fine-tune, its settings chosen between two written-down candidates by the
+   mean validation score over three seeds: the original settings, and class weights with
+   label smoothing 0.1, layer-wise rate decay 0.9 and early stopping. No oversampling:
+   the classes are 551, 361 and 349, which weights handle without repeating headlines.
+2. An ensemble: five seeds, probabilities averaged.
+3. Pruning likely label mistakes: five-fold out-of-fold predictions on the training
+   part; a training headline is dropped when the models give its label under 0.20 and
+   another label over 0.60. Validation and test labels are never touched.
+4. Self-training: the ensemble labels stored articles from the training period only
+   (none newer than the newest training headline, none sharing a headline key with any
+   labelled set). Those it is at least 0.90 sure of, after its confidence is calibrated
+   on the validation part, are added in the training part's class mix, up to three times
+   its size, and the ensemble is trained again.
+5. Abstaining: one temperature is fitted on the validation part, and a confidence
+   threshold is chosen there as the lowest that makes at least 80% of the kept
+   validation headlines right while keeping at least 40% of them.
+
+A step is kept only if it does not lower validation accuracy; the last kept step is the
+final model. It is then scored **once** on the 269-headline test part and on the
+700-headline set of decision 032. Both have been used once before, to judge
+`finbert-radar-1`; neither has been used to choose anything here.
+
+**Bars.**
+- *Adopt the new model* only if on the 700 headlines it is right more often than
+  `finbert-radar-1` and the difference is unlikely to be luck (McNemar p below 0.05).
+  The same rule as decision 032.
+- *Abstaining is worth building* only if on the 700 headlines, at the threshold chosen on
+  validation, at least 75% of the headlines it scores are right and it scores at least
+  half of them.
+
+**My guesses.** The ensemble with self-training gains two to four points (63 to 65%)
+and may not clear p below 0.05. Abstaining reaches about 75% on about half the
+headlines. Agreement with a single labeller on three classes has a ceiling well under
+90%, so 85 to 90% on every headline is not expected from any of this.
+
+**Not tried now, and why.** A larger base model (the graphics card has 6 GB, and with
+1,261 labels the data is the limit, not the model). More hand labels or a second
+labeller, which is the largest remaining lever and needs the user's time or an outside
+service.
+
+
+## 098. Further rounds on tone accuracy, to run unattended: written before decision 097's test result exists (2026-10-09)
+
+The user asked for the research to continue by itself overnight if the first round's
+accuracy is still low. Trying things until the test figure looks good would make that
+figure meaningless, so the rules are fixed here, before the sealed tests of decision 097
+have been read.
+
+**How later rounds are judged.** On the validation part only, as before. The two sealed
+test sets are read once for decision 097 and **once more** at the very end, for the
+single candidate that validation prefers. Because that is a second look at the same 700
+headlines, the bar for adopting is stricter: right more often than `finbert-radar-1`
+and McNemar p below 0.025.
+
+**Round 2: different kinds of model.** Beside the five FinBERT models, five seeds each of
+`microsoft/deberta-v3-base` and `cardiffnlp/twitter-roberta-base-sentiment-latest`,
+trained the same way on the same headlines. Candidates are the ensembles of one, two
+and three families; validation picks. If a model cannot be loaded with the packages
+already installed, it is left out: nothing is installed.
+
+**Round 3: more unlabelled text, then one model.** The best ensemble labels up to 60,000
+stored articles of the training period under the rules of decision 097 step 4, and is
+trained again. Then one FinBERT is trained on the ensemble's answers for those articles
+(its probabilities, not its top label), so the app could run a single model. The single
+model is a candidate only if it is within half a point of the ensemble on validation.
+
+**Stopping.** At most these rounds. Stop when a round adds under half a point of
+validation accuracy over the round before, or at 08:00 local time, whichever is first.
+
+**Not done unattended.** No new labels, no outside service, no new packages, no change
+to the model the app uses, nothing pushed.
+
+**My guess.** Round 2 adds about a point. Round 3 adds less than a point and the single
+model lands about a point under the ensemble.
+
+## 099. Tone accuracy, round 1: the result of decision 097 (2026-10-09)
+
+Run once, as written. Figures are the share of headlines given the labeller's label.
+
+| | Validation (270) | Test part (269) | The 700 of decision 032 |
+|---|---|---|---|
+| `finbert-radar-1`, in use | | 63.6% | 61.1% |
+| Corrected fine-tune, one model (mean of five) | 69.6% | 62.3% | 61.1% |
+| Five models averaged | 68.1% | 61.7% | 61.6% |
+| After dropping doubtful training labels | 68.1% | 62.5% | 61.3% |
+| After self-training (the final model) | 68.1% | 62.5% | 61.3% |
+
+**Bar 1, adopt the new model: failed.** On the 700 headlines the final model was right
+on 61.3% against 61.1%: 35 headlines only it got right, 34 only the model in use got
+right, McNemar p = 1.0. `finbert-radar-1` stays.
+
+**Bar 2, abstaining: passed.** With one temperature (1.6) and one threshold (0.726),
+both from the validation part, the model scored 53% of the 700 headlines and was right
+on 76.1% of those (bar: at least 75% on at least half). On the headlines it would not
+score it was right on 44.5%. On the 269-headline test part: 52% scored, 75.5% right.
+So confidence does separate the headlines the model can read from those it cannot.
+
+**What each step did.**
+- The two settings were a headline apart on validation (69.5% against 69.0%); the tuned
+  one was used.
+- Averaging five models did not help: 68.1% together against 69.6% as the mean of the
+  five alone. The models make the same mistakes, so there was little to average away.
+- Pruning dropped 223 of 1,261 training headlines (115 neutral, 54 negative, 54
+  positive). That is far more than a few label mistakes: with models right on only 67%
+  of held-out training headlines, "confidently disagrees" catches hard headlines as
+  well as wrong labels. Validation did not move.
+- Self-training added nothing, because the rule selected nothing: after calibration
+  no article in the pool reached 0.90. This is a fault in the plan as written, not a
+  finding about self-training, which has in effect not been tried.
+
+**My guesses, checked.** Wrong on accuracy: I said 63 to 65% and it stayed at 61%.
+Right on abstaining: about 75% on about half.
+
+**What this says.** Every model tried lands at 61 to 62% on newer headlines whatever
+the settings, the number of models, or the cleaning. Validation sits seven points
+higher than either test set, which points at headlines changing over time and at the
+labels themselves, not at training. The limit is the data.
+
+**Amendment to decision 098, written before round 3 can run.** Round 3 was to use the
+0.90 rule of step 4, which is now known to select nothing. It will instead take an
+article when the calibrated confidence is at or above the abstaining threshold found on
+validation, the level at which about four in five validation headlines were right. The
+reason is the fault above, seen in the count of articles selected, not in any test
+figure. Everything else in decision 098 stands.
+
+## 100. Tone accuracy, rounds 2 and 3: the result of decision 098 (2026-10-09)
+
+Run unattended overnight, under the rules of decision 098 and the amendment in 099.
+
+**Round 2, other families of model.** `microsoft/deberta-v3-base` was left out: its
+tokenizer needs a package that is not installed. Five seeds of
+`cardiffnlp/twitter-roberta-base-sentiment-latest`, trained like the FinBERT models on
+the same headlines, were right on 74.4% of the validation part together, against 68.1%
+for round 1's final model. Validation preferred RoBERTa alone to RoBERTa with FinBERT.
+
+**Round 3, more unlabelled text.** The RoBERTa ensemble read 60,000 stored articles of
+the training period. At the amended confidence level it was sure of 53,293; 11,999 were
+added in the training part's class mix (the cap was 12,000) and five models were
+trained again: 76.7% on validation. One FinBERT taught by the ensemble reached 74.8%,
+more than half a point under it, so by the written rule it is not a candidate.
+
+**The one last reading of the sealed tests**, for the candidate validation preferred
+(round 3's five RoBERTa models, averaged):
+
+| | Test part (269) | The 700 of decision 032 |
+|---|---|---|
+| `finbert-radar-1`, in use | 63.6% | 61.1% |
+| Round 3, five RoBERTa models | 67.3% | 66.0% |
+| Only the model in use right / only the new one right | 21 / 31 | 56 / 90 |
+| McNemar p | 0.21 | 0.006 |
+
+**The bar of decision 098 is cleared.** On the 700 headlines the new model is right
+more often (66.0% against 61.1%) and p = 0.006 is below the 0.025 asked for a second
+look. On the smaller test part the gain is the same size (3.7 points) and is not
+measurable by itself with 269 headlines.
+
+**Abstaining, for this model.** The threshold rule of decision 097, applied to it on
+validation, gave a low threshold (0.572) that keeps 85% of the 700 headlines and is
+right on 69.4% of them. That is under the 75% of decision 097's bar. A higher threshold
+would trade headlines for accuracy, but choosing one now would be choosing after the
+test was read, so none is claimed here.
+
+**My guesses, checked.** Wrong twice, in the good direction: I said round 2 would add
+about a point (it added 6.3 on validation) and round 3 under a point (2.3). Right that
+the single model would land under the ensemble.
+
+**What this says.** The base model mattered far more than any training setting: a model
+first trained on social-media posts reads crypto and market headlines better than one
+trained on formal financial sentences. Self-training on the app's own unlabelled
+articles then helped, once its rule selected anything. Validation still runs about ten
+points above the newer test sets, so the labels and the drift of headlines over time
+remain the ceiling.
+
+**Not done, and for the user to decide.**
+- Nothing in the app has changed. `finbert-radar-1` is still the model in use.
+- Adopting the new model means five RoBERTa models scoring every article, about five
+  times the work of today, and scoring the stored articles again. The trained models
+  were not kept on disk (only what they said); they take about 40 minutes to train again.
+- A single RoBERTa taught by the ensemble was not in the written plan and has not been
+  tried. It is the natural next step if one model is wanted.
+- Installing `sentencepiece` would let DeBERTa be tried.
+- The largest remaining lever is still the labels: a second labelling pass on the test
+  sets, and more labelled headlines.
+
+## 101. Tone accuracy, round 4: the pipeline rebuilt in order, with its bars, written before any label or run (2026-10-09)
+
+The user asked for higher accuracy and lower validation error with no overfitting, for
+labelling, cleaning, the input text and the settings to be fixed before another model is
+tried, for DeBERTa-v3 to be tried (`sentencepiece` added to the `nlp` extra with the
+user's agreement), and for notebook 04 to follow the pipeline from top to bottom.
+
+**Flaws found before training, and what is done about each.**
+
+| Flaw | Fix |
+|---|---|
+| The unlabelled pool kept the older half of a random draw, so it ended in January 2023 | Drawn at random over the whole training period |
+| Labels were written from the headline alone, while the model was trained on the headline plus a summary cut off mid-sentence (present for 6 in 10) | Headline alone is one of the inputs compared; a summary is only ever used up to its last whole sentence |
+| The pass kept was the best balanced score on 270 headlines, which is noisy | The pass with the lowest validation error is kept |
+| Layer-wise rates were silently off for RoBERTa (only BERT and DeBERTa were recognised) | Works for any encoder |
+| Settings were chosen on one block of 270 headlines | Three walk-forward blocks of about 300 |
+| The rule for labelling was never written down | Written below, before any new label |
+| Training stopped at 2025-05-09; the drop from validation (77%) to both tests (66 to 67%) is the same on a test labelled with the training set and on one labelled later, so it is news changing over time, not a change in labelling | Training reaches 2026-07-31 |
+| Both test sets have been read twice | A new test set, labelled before any model scores it |
+
+**The labelling rule** (read off the existing labels, then fixed). Judged from the
+headline alone, as a financial reader would take it:
+
+- *positive*: it reports or expects something good for prices or holders (gains, a beat,
+  inflows, approval, adoption, a bullish call, easing of a threat);
+- *negative*: the opposite (falls, a miss, outflows, a ban, a hack, a lawsuit, conflict,
+  a central banker leaning towards higher rates, a bearish call);
+- *neutral*: no clear direction (a plain fact or scheduled figure without a stated
+  surprise, procedure, a mixed wrap with one thing up and another down, a question, or
+  something off the subject);
+- when the headline names the asset it is filed under, what it says about that asset
+  decides; otherwise its overall tone does.
+
+**Data.**
+- *New test set*: stored headlines from 2026-08-01 onwards that no labelled set holds
+  and that share no headline key with one; 250 Bitcoin, 250 US stocks and every gold
+  headline there is (about 30: gold has almost no news of its own this year, so gold's
+  figure will be too rough to quote by itself). Seed 20261010. Labelled by Claude under
+  the rule above, in random order, before any model of this round exists.
+- *Training and validation*: the 1,800 and the 700 labelled headlines dated before
+  2026-08-01 (about 2,220), in time order. Those dated later are left out: they sit in
+  the test period and have been read as tests. The 200-headline reference sample stays
+  out, as before.
+- *Audit of the old labels*: 240 of those headlines (80 per market, seed 20261010) are
+  labelled again under the rule, mixed blind among the new ones. Agreement between the
+  two passes is reported per market: it is the ceiling any model can reach on that
+  market. **If a market agrees on fewer than 70%, every training and validation label
+  of that market is written again under the rule**, blind. Where two passes exist and
+  differ, training uses half of each label; scoring uses the second pass, which is the
+  rule the test set follows.
+- *Cleaning*: white space, HTML entities, a trailing source tag or "(UPDATED)", and
+  exchange tags like "(NYSE:ORCL)" are removed; near-copies are already kept once.
+
+**Choices, each made on three walk-forward blocks** (train on everything before a block
+of about 300, validate on the block; the three blocks are the last 900 before the test
+period), two seeds each, by the mean validation error (cross-entropy), in this order,
+each step starting from the last one's winner:
+
+1. Input text: cleaned headline; asset name then headline; headline with the cleaned
+   summary; asset name, headline and summary.
+2. Base model: `cardiffnlp/twitter-roberta-base-sentiment-latest`, `ProsusAI/finbert`,
+   `microsoft/deberta-v3-base`,
+   `nickmuchi/deberta-v3-base-finetuned-finance-text-classification`.
+3. Settings: learning rate 1e-5, 2e-5 or 3e-5 with layer-wise decay 1.0 or 0.85; then
+   dropout 0.1 or 0.2 with weight decay 0.01 or 0.1; then label smoothing 0 or 0.1.
+
+Every run: at most 8 passes, stopped when validation error has not improved for 2, the
+lowest-error pass kept, no oversampling. Then, on the last block only:
+
+4. Five seeds, averaged.
+5. Self-training, kept only if validation error does not rise: the five label a pool of
+   30,000 stored articles drawn at random from the whole training period; those at or
+   above the confidence that makes 80% of validation right are added in the training
+   mix, up to 12,000.
+6. One temperature fitted on validation.
+
+**Bars, read once on the new test set.**
+- *Better than the model in use*: more often right than `finbert-radar-1`, McNemar p
+  below 0.05. (The new model has seen fifteen more months of news; that is what
+  retraining buys, and it is part of what is being measured.)
+- *Not overfitted*: accuracy on the test set no more than 5 points under accuracy on
+  the last validation block, and test error no more than 0.10 above validation error.
+  A model's error on headlines it trained on is always lower than on new ones, so "no
+  gap at all" is not a test anything passes; this is the gap that would mean the choices
+  were fitted to validation.
+- The model files are kept this time. Putting the model in the app stays the user's
+  decision, and the accuracy the app would show for it is the one from this test set.
+
+**My guesses.** Headline alone wins step 1. RoBERTa stays ahead of DeBERTa-v3 with this
+little data. 69 to 72% on the new test, a gap to validation of 3 to 5 points. Agreement
+between the two labelling passes near 80%, lower for gold, which would put 85 to 90%
+out of reach for any model on these labels.
+
+## 102. Where the round-4 code departs from decision 101, written while the run is still going (2026-10-09)
+
+Decision 101 was written before the run and is left as it is. Reading the code against
+it, line by line, for the rewrite of notebook 04 turned up the points below. The code
+is not changed: the run in progress uses it, and changing a rule after results exist
+would be choosing after the fact. The notebook describes the code as it is.
+
+| # | Decision 101 says | The code does | Could it change a result, and which way |
+|---|---|---|---|
+| 1 | Articles are added when the five are "at or above the confidence that makes 80% of validation right" | `tone.sure_from` also requires that confidence to keep at least a fifth of the validation headlines; if none does, nothing is added | Yes. Towards **less** self-training: a level reached only by a small, very sure group is refused, where 101 would have allowed it |
+| 2 | (silent on which articles are added among the sure ones) | Chosen at random within each label, each label capped at 12,000 times its share of the training headlines, so fewer than 12,000 may be added | Yes, direction unknown. Random picks include harder headlines than "the most sure first" would |
+| 3 | (silent on which base model step 1 is run with) | Step 1 compares the four input texts with the social-media RoBERTa only | Yes. Towards **RoBERTa** in step 2: the other three are compared on the text that suited RoBERTa best |
+| 4 | Cleaning removes "a trailing source tag" | `dataset.clean_headline` removes it only after a closing quote (`'...' - Bloomberg`); a bare `... - Bloomberg` is kept | Hardly. The tag stays in training and test alike, so neither is favoured |
+| 5 | Dropout "0.1 or 0.2" | The model's own setting, or 0.2. Checked from the four configurations: all ship 0.1 inside the encoder and on attention, so this is the same thing. The head's own dropout is not changed | No |
+| 6 | One temperature "fitted on validation" | Searched from 0.5 to 5 in steps of 0.05 | No more than rounding |
+| 7 | Agreement between two labelling passes "is the ceiling any model can reach" | Unchanged, but the wording was too strong | No result changes. The agreement is the **lower** end of a range: if every disagreement is a headline with no single right label, the best score is the agreement itself; if every headline has one right label and each pass misses it independently, it is the square root of the agreement. A third pass would narrow the range |
+| 8 | Gold "about 30" new test headlines | 21 were found | No, but gold's own figure is rougher still |
+
+**Not a departure, but not said in 101 either: validation is used more than once.**
+
+- In steps 1 to 3 each block's validation part both picks the pass that is kept and
+  scores the candidate.
+- On the last block the validation part also sets the confidence for self-training,
+  decides whether self-training is kept, and is the part the temperature is fitted on
+  and then scored on.
+
+So every validation figure leans optimistic: lower error, and somewhat more often
+right, than the same model would show on new headlines. That makes the "not overfitted"
+bar of 101 (test no more than 5 points under validation, error no more than 0.10 above)
+**harder** to pass, not easier. The bar is left as written.
+
+**Added after 101, and outside the choices:** `tone.store_baselines` scores the two
+models that already exist (`finbert-radar-1` and plain FinBERT) on the three validation
+blocks, for a baseline row in the notebook's tables. It trains nothing, reads no test
+headline, and no choice depends on it. It is run after the training run ends, so the
+two do not share the graphics card.
+
+**The user's decisions of 2026-10-09.**
+
+- The user runs the test (`backend/scripts/tone_round4.py test`) once, after step 6 is
+  stored. Claude never runs it and never reads the test labels again.
+- Putting the model in the app stays the user's decision after seeing the result.
+  Nothing in the app is changed by this round.
+- After this round no further model is tried on these labels (no distillation, LoRA or
+  QLoRA): each would be scored against the same inter-pass agreement. Past that, the
+  lever is the labels.
+
+## 103. Notebook 04 trains, the app only scores; two base models and the rule that picks one, written before the runs (2026-10-09)
+
+**Why.** Round 4 put the training steps in the app's package (`pipelines/tone.py`) and
+made notebook 04 a report that read stored files. The user asked for the opposite
+split: the notebook holds research and training and runs on its own; the app holds only
+what runs every day. The link between the two is the saved model and its model card,
+not shared code.
+
+**Where round 4 stopped.** It stopped at step 2 (the base model), on the first
+DeBERTa-v3 run. The message was a tokenizer error, read at the time as a missing
+`sentencepiece`. The package was installed. The cause was earlier in the same run:
+with transformers 5.18 the DeBERTa-v3 weights load in half precision, the loss turns
+into "not a number" after one training step, no pass is ever the best, so no model is
+saved, and the tokenizer is then asked to load from an empty folder. The fix is to load
+the model in full precision (`.float()`) and to stop with a clear message when the
+validation loss is not a number. Steps 3 to 6 of decision 101 were never run; there is
+no `step2_model.json`, `final.json` or `test.json` from round 4, and the test set has
+not been scored.
+
+**What is decided.**
+
+- **Notebook 04** (`notebooks/src/04_news.py`) holds its own code in its own cells: no
+  import from the `radar` package and no database. It reads one Parquet file written by
+  `backend/scripts/tone_export.py` into the gitignored `data/research/tone5/`. A switch,
+  `FAST_RUN`, uses 200 headlines and one pass so every cell runs in minutes; a fast run
+  stores its results apart from a full run and is never saved for the app or uploaded.
+- **The app** keeps using `finbert-radar-1`. No application code is removed by this
+  decision. One test (`tests/models/test_notebook_text.py`) checks that the notebook's
+  copy of the text preparation gives the same text as the app's on 20 made-up headlines.
+- **Two base models only**: `cardiffnlp/twitter-roberta-base-sentiment-latest` and
+  `microsoft/deberta-v3-base`. FinBERT and the finance-tuned DeBERTa-v3 are dropped;
+  their stored figures stay in one "earlier candidates" table.
+- **One model is saved**, not an average of five, and there is no self-training. The
+  seed of the saved model (13) is fixed before training, not picked from several.
+- **The two models are compared at the same starting settings**: up to 8 passes keeping
+  the lowest validation loss, patience 2, learning rate 2e-5 with warm-up over a tenth of
+  the steps, weight decay 0.01, batch 16, at most 256 tokens, input text "asset + headline
+  + summary". The settings are then tuned for the winner (decision 105).
+- **The comparison**: same headlines, same input text, same settings, 3 walk-forward
+  blocks of 300 validation headlines × 2 seeds (13, 17) for each model.
+
+**The rule that picks the winner, written before any of these runs.** DeBERTa-v3 wins
+only if, on the mean across blocks and seeds, **both** hold:
+
+- its validation loss is lower, and
+- its validation accuracy is higher,
+
+**and** its lead in loss is larger than the seed spread (the mean, over models and
+blocks, of the distance between the two seeds' losses). Otherwise RoBERTa wins, because
+it is the smaller model. The loser is not trained further and is not saved; its
+comparison figures stay in the table, and the notebook states which part of the rule
+decided.
+
+**Publishing.** The winner is saved to `data/models/<version>/` with its tokenizer, the
+temperature, the label order, the text preparation as a Python file and a model card
+written from the run's numbers. The notebook can upload the same folder to a private
+Hugging Face repository; it does so only when the user has switched `PUSH_TO_HUB` on,
+has set `MIN_TEST_ACCURACY`, and the test accuracy reaches it. The token is read by the
+library from the environment or the saved login and is never in a cell, an output or a
+commit. The provider's headlines are not uploaded anywhere.
+
+**Unchanged from 101 and 102.** The two bars on the test set. The user runs the test,
+once; Claude never scores a model on the test set. Putting a model in the app is the
+user's decision after the result.
+
+**What this changes in earlier decisions.** Decision 102 ended with "no further model
+is tried on these labels". The user reopened that on 2026-10-09 for DeBERTa-v3 only,
+whose round-4 run had failed for the reason above before it could be compared.
+
+**Still to come, in decision 104**: the labelling rule's neutral clause contradicts
+itself, and most training labels were written before the rule was. The labels are to be
+written again under a fixed rule, three passes each, before the comparison is run.
+
+## 104. The tone labels written again under one fixed rule, three blind passes each; rule and procedure written before any label (2026-10-09)
+
+**Why.** The labelling rule was first written in decision 101, after most training
+labels existed, so training labels follow an older unwritten rule and the test set the
+written one. Two passes agreed on 80.4% of 240 headlines (US stocks 72.5%), and 45 of
+the 47 disagreements involved "neutral". The neutral clause of 101 also contradicted
+itself: "something off the subject" is neutral, yet "otherwise its overall tone decides".
+
+**The rule** (approved by the user on 2026-10-09, with ten made-up examples). The label
+answers one question: *is this headline good or bad news for holders of the asset it is
+filed under?*
+
+1. **Is the headline about that asset?** Yes if it names the asset, or names something
+   that plainly moves it. Bitcoin: the crypto market, crypto exchanges, crypto rules.
+   Gold: the dollar, bond yields, central banks, demand for safe assets. US stocks: the
+   index, the Federal Reserve, US economic figures, large US companies.
+2. **If it is not about that asset, the label is neutral**, whatever its tone. This is
+   the only answer for such a headline; "its overall tone decides" is withdrawn.
+3. **If it is**: *positive* when it reports or expects something good for the price or
+   for holders; *negative* for the opposite; *neutral* when there is no clear direction
+   (a fact or a scheduled figure with no stated surprise, procedure, a question, a mix
+   of up and down).
+4. **When unsure between neutral and a tone**: the tone only if the headline states a
+   direction in its own words (rises, falls, record, cuts, banned). If the direction
+   has to be guessed, neutral.
+
+| Market | Made-up headline | Label | Why |
+|---|---|---|---|
+| Gold | Example Airline Cancels 200 Flights After Storm | neutral | Not about gold (2) |
+| Bitcoin | Example Corp Shares Jump 12% On Strong Earnings | neutral | An ordinary share, not crypto (2) |
+| US stocks | Fed Officials Signal Rates May Stay Higher For Longer | negative | The Fed moves stocks; the direction is bad |
+| Gold | Dollar Climbs To Two-Month High | negative | A rising dollar plainly weighs on gold |
+| Bitcoin | Bitcoin Holds Near $60,000 Ahead Of Jobs Report | neutral | About Bitcoin, no direction |
+| US stocks | Tech Rallies While Banks Slide In Mixed Session | neutral | A mix |
+| Bitcoin | Will Bitcoin Hit $100,000 This Year? | neutral | A question; the direction would be a guess (4) |
+| Gold | Central Banks Bought Less Gold Last Quarter, Still Above Average | neutral | Two directions in one line |
+| US stocks | Example Corp Beats Estimates But Cuts Full-Year Outlook | negative | The outlook outweighs the past quarter; "cuts" is stated |
+| Bitcoin | Regulator Delays Decision On Example Bitcoin Fund | neutral | Procedure: neither refused nor approved |
+
+**The procedure.**
+
+- Every headline is labelled again: the 2,218 training and validation headlines and the
+  521 test headlines, mixed together so a labeller cannot tell which is which.
+- Three passes. Each pass is done by fresh AI labellers (Claude, as subagents) that see
+  only this rule, the ten examples, and a list of headlines with their market. They see
+  no earlier label, no other pass, no summary, no date and no article number: each
+  pass has its own random order and its own random keys.
+- All three passes are stored per headline in `backend/src/radar/sentiment_round5_labels.csv`,
+  with the rule and the pass. The old label files are kept as they are.
+- **Training target**: the share of passes giving each label (2 of 3 is 0.67 and 0.33).
+  **Label for scoring**: the majority. A headline with three different labels has no
+  majority; it is kept in a separate group, reported separately, and not scored.
+- Writing labels for the test headlines is allowed. Scoring any model on them is still
+  forbidden until the user says so, and the new test labels are not compared with the
+  old ones.
+
+**Reported before any training**: agreement between passes over all and per market,
+Cohen's kappa, the three-by-three tables, how many training and validation labels
+changed from the old ones, and the label mix before and after.
+
+**The bar, written now.** A market's agreement is the mean of its three pairwise
+agreements (pass 1 with 2, 1 with 3, 2 with 3). If it is under 80% for any market,
+nothing is trained and the user is told. The labels are not written a fourth time to
+get over the bar.
+
+**Also decided on 2026-10-09.** The model's input is "asset + headline" (no summary).
+The user chose it so the model can be used on news from other sources, which have a
+headline but not always a summary. Round 4 measured the four inputs on validation loss
+(0.778 to 0.810) with a seed spread of 0.058: no measurable difference between them, so
+this choice gives up nothing that was measured. The labels are written from the
+headline alone, which fits the same input.
+
+**Correction, same day.** The user changed the input back to "asset + headline +
+summary", the input with the lowest validation loss in round 4 (0.778), so the
+paragraph above on "asset + headline" no longer holds. The labelling procedure is
+unchanged: labellers see the market and the headline only, as the user wrote it. So the
+model reads a summary the labeller did not; the notebook says so in its limitations.
+
+**Result of the relabelling (2026-10-10).** 36 fresh labellers wrote 8,217 labels: three
+passes over 2,739 headlines. Two parts came back incomplete (two keys missing in each)
+and six stopped on a usage limit before writing anything; each of those parts was
+labelled again whole by a new labeller, never patched.
+
+| Market | Headlines | Mean of the three pairs | Kappa (mean) | All three the same |
+|---|---|---|---|---|
+| Bitcoin | 1,115 | 93.3% | 0.88 | 90.0% |
+| Gold | 456 | 97.8% | 0.96 | 96.7% |
+| US stocks | 1,168 | 95.6% | 0.87 | 93.4% |
+| All | 2,739 | 95.0% | 0.90 | 92.6% |
+
+- **The bar of 80% for every market is met**, so training may go ahead.
+- No headline has three different labels; 2,535 are unanimous and 204 are two against one.
+- Of 408 disagreements between two passes, 406 involve neutral; a positive against a
+  negative happened twice.
+- **718 of the 2,218 training and validation labels changed (32.4%)**: 625 from a tone
+  to neutral, 79 from neutral to a tone, 14 between positive and negative. By market:
+  Bitcoin 26.1%, gold 40.0%, US stocks 34.6%.
+- **The label mix moved a long way**: neutral from 41.7% to 66.3%, positive from 30.6%
+  to 19.3%, negative from 27.8% to 14.5%. For US stocks 80.1% of labels are now neutral.
+  This is point 2 of the rule at work: a headline filed under an asset it is not about
+  is neutral whatever its tone.
+
+**What follows from it, and what does not.**
+
+- Always answering "neutral" now scores about 66%, so no accuracy under these labels
+  can be compared with a figure measured under the old ones (the 65% of
+  `finbert-radar-1`, the 67% of round 4). The model in use has to be scored again on the
+  new labels, which the notebook's baselines do on validation.
+- The three passes come from one AI model reading one rule. High agreement shows the
+  rule can be applied consistently; it does not show that a person would agree, and the
+  passes can share a mistake.
+- The new test labels were not compared with the old test labels, and no model has been
+  scored on them.
+
+## 105. Train on far more headlines, tune the settings, and judge on macro F1: what the user asked for on 2026-10-10
+
+**Why.** The user read decisions 103 and 104 and said several things in them were not
+what they wanted: a training set of about 1,900 headlines when tens of thousands are
+stored, no tuning of the settings, and a step ("label 10,000 more, later, with a
+separate go-ahead") they had not asked for in those words. Those statements were taken
+out of 103 and 104. This decision records what is wanted instead, before any of it runs.
+
+**More training data.** The app stores tens of thousands of articles, but a classifier
+can only be trained on headlines that have a label, and only 2,739 had one. So more are
+labelled, under the rule of decision 104:
+
+- Drawn from the 30,000 unlabelled stored articles set aside in round 4: all dated
+  before the test period, none already labelled, none a near-copy of a labelled or test
+  headline. That pool is 23,500 US stocks, 5,890 Bitcoin and 610 gold.
+- First 10,000: every gold and every Bitcoin article, and 3,500 US stocks drawn at
+  random. US stocks is held back because 80% of its labels are neutral, the class there
+  is already plenty of. More can be labelled later from the 20,000 left.
+- **One labelling pass each**, not three. On the 2,739 headlines labelled three times a
+  single pass matched the majority label on 97.5%, so one pass is taken as good enough
+  for training data. Labellers see the market and the headline only, as before.
+- These headlines are **training data only**. Validation and test stay the headlines
+  labelled three times, so every score is still measured against a majority label.
+- Stored in `backend/src/radar/sentiment_round5_more.csv`.
+
+**What is judged, and the marks.** With the labels of 104, always answering "neutral"
+is right about 66% of the time, so accuracy alone flatters a model that never says
+positive or negative. The main measure is **macro F1** (each label counts the same).
+Marks on validation, written before any run on these labels is read:
+
+| Measure | Mark |
+|---|---|
+| Macro F1 | at least 0.78 |
+| Accuracy | at least 82% |
+| Log loss | at most 0.45 |
+| Recall of positive, and of negative | at least 0.70 each |
+| Opposite tone given (positive for negative or the reverse) | at most 2% of headlines |
+
+The user's own targets were accuracy of 80 to 90% and a loss under 0.10. The accuracy
+target is kept. A log loss of 0.10 would need the model to put about 90% on the right
+label on average, which is beyond what the labels themselves support (two passes agree
+on 95%), so 0.45 is written instead and the user was told.
+
+**The winner rule of 103, restated for these measures.** DeBERTa-v3 wins only if, on
+the mean across blocks and seeds, it has **both** a higher macro F1 **and** a lower
+validation loss, **and** its lead in macro F1 is larger than the seed spread in macro
+F1. Otherwise RoBERTa wins, because it is the smaller model. Two runs had been made to
+time the models before this was written; their scores had not been read.
+
+**Tuning the settings**, for the winner only, on the walk-forward blocks, in this order,
+each group with everything else held at the best so far:
+
+1. learning rate (1e-5, 2e-5, 3e-5) with batch size (16, 32);
+2. weight decay (0.01, 0.1) with warm-up (6%, 10% of steps);
+3. the weight of the rarer labels in the loss (none, or in inverse proportion to how
+   often each label occurs).
+
+A group's winner is the setting with the highest mean macro F1; if its lead over the
+starting setting is smaller than the seed spread, the starting setting is kept. The
+pass that is kept in every run is still the one with the lowest validation loss.
+
+**After training**, on validation: the cut-off for each label may be moved to raise
+macro F1, and the temperature is fitted as before. Both are stated as leaning optimistic,
+because they are fitted on the same headlines they are scored on.
+
+**Unchanged.** One saved model. The two bars on the test set. The user runs the test and
+the upload. No model has been scored on the test set.
+
+## 106. The user's review of the rules credited to them; decisions 097 to 105 on news tone set aside (2026-10-15)
+
+The user said several rules written in `CLAUDE.md` and in this log as "the user's rule"
+were never theirs. On 2026-10-15 they reviewed the sixteen that most constrained new work.
+
+**Kept, and now the only such rules in `CLAUDE.md`:** no buy, sell or direction calls;
+no reruns of failed tests with changed settings; plant a known pattern before trusting a
+model's "no"; the front page shows what holds up; a notebook result becomes code and a
+screen in the same piece of work; the plan caps of 1% per altcoin and 10% in all; everyday
+words on screens; visual first; five places only; the current look.
+
+**Not confirmed by the user, and no longer binding:**
+
+- a feature is built only if it clears a bar written down before testing (the hard rule
+  on suggestions in `CLAUDE.md`, which predates it, still applies to suggestions);
+- only the user runs the test set, and Claude never reads test labels (101);
+- economic releases get a size warning only (056; the general rule against direction
+  calls still covers them);
+- news drives no forecast or signal, and tone shocks stay out of the feed and brief
+  (045, 052, as standing rules; their test results stand);
+- ask before connecting a language model to the brief;
+- in the advertisement, 3D only for three hero objects.
+
+Any other entry in this log that says "the user's rule", "the user said" or "the user
+asked" is history. It binds new work only if `CLAUDE.md` repeats it.
+
+**News tone.** Decisions 097 to 105 (rounds 1 to 5, their labels, the round-4 test rules,
+the two-model rule of 103, the label rule of 104 and the marks of 105) are set aside. All
+five label files were written under different rules and are deleted with the code that
+read them. In their place: notebook 04 trains FinBERT in two stages, task-adaptive
+pre-training on the unlabelled Alpaca archive and LoRA fine-tuning, on 6,820 headlines
+labelled under `notebooks/labels/RUBRIC.md` (three classes; whose price; facts against
+opinion; the contrast rule; market impact). The labels were written in blind passes:
+pass 1 on every headline, a second pass on 15% of training and on all test headlines, a
+third on test. Agreement: 93.9% raw, Cohen's kappa 0.861 between passes 1 and 2 on 1,713
+headlines; Fleiss' kappa 0.863 on the 826 test headlines. US-stock headlines came out 91%
+neutral: most are statements by officials and politicians with no stated effect on
+price. The rubric gives no rule for economic releases against estimates; the labellers
+called them neutral. The app no longer trains: it loads `data/models/finbert-tone/` and
+shows the test figures from its `model_card.json`, and none when the card is missing.
+
+## 107. News tone: the result of notebook 04 (2026-10-15)
+
+A full run of notebook 04 on the RTX 4050 Laptop GPU (6 GB) produced `finbert-tone-1` in
+`data/models/finbert-tone/`.
+
+- **Data.** 263,155 stored rows became 103,344 unique cleaned headlines. A token limit of
+  128 keeps 99.98% whole (long headlines are verbatim quotes of officials, kept).
+- **Stage A (TAPT).** 4,269 steps (effective batch 64, LoRA, merged) on 91,074 train-period
+  headlines in 47.8 minutes, peak GPU memory 2.23 GB. Held-out masked-LM perplexity fell
+  from 89.7 to 9.9. The first full run ran out of GPU memory at batch 64 without gradient
+  accumulation; four sub-batches of 16 fixed it.
+- **Search (validation macro-F1, seed 13).** a 0.816, b 0.817, **c 0.844 (r = 16, lr 5e-4)**,
+  d 0.818.
+- **Ablation (setting c, three seeds each).** Plain FinBERT + LoRA 0.834 ± 0.012; TAPT +
+  LoRA 0.831 ± 0.014. TAPT did not raise validation macro-F1, so the final model uses the
+  plain encoder (seed 17). RQ2: TAPT adapted the language model but did not help the
+  classifier on this data.
+- **Test (826 headlines, 1 April to 14 October 2026, used once).** Accuracy 0.870
+  (95% bootstrap 0.846–0.893), macro-F1 0.812 (0.776–0.844); untuned FinBERT 0.501 and
+  0.436; majority class 0.743 and 0.284. McNemar against untuned FinBERT: 334 against 29
+  discordant, p = 7.2e-67. Positive and negative swapped on 0.4% of headlines. F1 by
+  class: positive 0.72, negative 0.81, neutral 0.91. By ticker: Bitcoin accuracy 0.860
+  (macro-F1 0.842), gold 0.796 (0.774), US stocks 0.937 (0.592; few polar headlines).
+  Temperature fitted on validation: 2.65.
+- The row "FinBERT + LoRA (no TAPT)" in the test table is the plain encoder with seed 13;
+  since the final model is also plain, its gap to the final model is seed variation.
+
+## 108. The models run for every holding with enough history; section 0 rewritten (2026-10-08)
+
+*(Written on branch `every-holding` as decision 095, a number already used on `main`; renumbered on merge, 2026-10-15.)*
+
+The user's answers to the questions of decision 094.
+
+**Every holding.** The state, range ahead, movement forecast, loss limits, signals and
+the forecast log ran for the three followed markets only. They now run for those and for
+every other holding with at least 500 days of prices (`pipelines/followed.py`).
+
+- **Why 500.** No model here is shown without a check on days it had not seen, and those
+  checks need 500 days before their first unseen one (`min_train` in the movement and
+  loss jobs). Fitting on less and showing it as the same thing would break the
+  honest-output rule. This is a different thing from decision 043, which puts a holding
+  with 30 to 249 sessions into the portfolio's risk on the days it has; that stands.
+- **Until then** the holding says so on the Holdings page: "Not analysed yet: 211 of 500
+  days of prices". An analysed holding links to its own page, which already worked for
+  any asset in the universe.
+- **An asset nobody holds is not analysed**, however long its record: the work follows
+  the account.
+- News tone, the calendar study and the brief stay with the three markets: a discovered
+  holding has no news feed of its own.
+- Today this changes no figure: the account's other holding has under 500 days.
+
+**To check with the user.** That holding was found in Alpaca's data as a US-listed
+stock with the ticker PURR and is priced as that. The user has described it as an
+altcoin. If the Binance holding is the coin and not the stock, it is being priced from
+the wrong instrument, and the fix is to price it from Binance's public prices instead.
+
+**Section 0 of the specification** described a plan the app did not follow. It now
+describes the app as it is, with what is planned and not built in its own table (0.6),
+each item needing the user's go-ahead.

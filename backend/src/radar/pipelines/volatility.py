@@ -168,4 +168,6 @@ def forecast(
 
 
 def run(engine: Engine, universe: Universe, *, refit: bool = False) -> int:
-    return sum(forecast(engine, asset, refit=refit) for asset in universe.primary)
+    from radar.pipelines import followed
+
+    return sum(forecast(engine, asset, refit=refit) for asset in followed.of(engine, universe))

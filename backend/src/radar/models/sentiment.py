@@ -57,13 +57,22 @@ class FinbertScorer:
         version: str = MODEL_VERSION,
         batch_size: int = 64,
         device: str | None = None,
+        *,
+        max_length: int = 256,
+        headline_only: bool = False,
     ) -> None:
-        """`model` is a Hugging Face model id, or a folder holding a fine-tuned model."""
+        """`model` is a Hugging Face model id, or a folder holding a fine-tuned model.
+
+        `headline_only` says the model was trained on headlines alone, so callers give it
+        the headline without the summary; `max_length` is the token limit it trained with.
+        """
         import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
         self._torch = torch
         self.version = version
+        self.max_length = max_length
+        self.headline_only = headline_only
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.batch_size = batch_size
         self._tokenizer = AutoTokenizer.from_pretrained(model)
@@ -79,7 +88,11 @@ class FinbertScorer:
         for start in range(0, len(texts), self.batch_size):
             batch = list(texts[start : start + self.batch_size])
             encoded = self._tokenizer(
-                batch, padding=True, truncation=True, max_length=256, return_tensors="pt"
+                batch,
+                padding=True,
+                truncation=True,
+                max_length=self.max_length,
+                return_tensors="pt",
             ).to(self.device)
             with torch.no_grad():
                 logits = self._model(**encoded).logits

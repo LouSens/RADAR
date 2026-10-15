@@ -83,7 +83,6 @@ from radar.db.models import (
 from radar.models import simulator, topics
 from radar.pipelines import discover
 from radar.pipelines import event_study as event_study_job
-from radar.pipelines import finetune as finetune_job
 from radar.pipelines import moves as moves_job
 from radar.pipelines import risk as risk_job
 from radar.pipelines import sentiment as sentiment_job
@@ -503,10 +502,10 @@ def _topic_summary(
 
 
 def _accuracy(session: Session, version: str) -> SentimentAccuracyOut | None:
-    """Accuracy of the tone model in use, from the best evidence stored for it.
+    """Accuracy of the tone model in use, on its held-out test headlines.
 
-    A fine-tuned model is judged on its held-out test headlines, which are later than
-    everything it was trained on. The original model is judged on the reference sample.
+    The figures are those notebook 04 measured on headlines later than everything the
+    model trained on. None when the model in use has no such test: no figure is shown.
     """
     reference = session.scalars(
         select(ModelRegistry)
@@ -514,23 +513,9 @@ def _accuracy(session: Session, version: str) -> SentimentAccuracyOut | None:
         .order_by(ModelRegistry.trained_at.desc())
         .limit(1)
     ).first()
-    stored = reference.metrics if reference is not None and reference.version == version else {}
-    tuned = finetune_job.adopted_record(session)
-    if tuned is not None and tuned.version == version and "replication" in tuned.metrics:
-        test = tuned.metrics["replication"]
-        return SentimentAccuracyOut.model_validate(
-            {
-                "labelled_by": tuned.metrics.get("labelled_by", []),
-                "model": test["fine_tuned"],
-                "original": test["base"],
-                "baseline": test.get("baseline"),
-                "direction": test.get("direction"),
-                "topics": stored.get("topics"),
-                "held_out": True,
-                "fine_tuned": True,
-            }
-        )
-    return SentimentAccuracyOut.model_validate(stored) if stored else None
+    if reference is None or reference.version != version:
+        return None
+    return SentimentAccuracyOut.model_validate(reference.metrics)
 
 
 @router.get("/assets/{symbol:path}/sentiment", response_model=SentimentOut)

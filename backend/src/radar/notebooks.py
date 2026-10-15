@@ -3,6 +3,11 @@
 A notebook calls `use_style()` once at the top. Nothing here does analysis.
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
+
 INK, MUTED, GOOD, BAD, ACCENT = "#1c2030", "#8a8fa3", "#2f9e6e", "#d9534f", "#1f9bb8"
 BUY, SELL = "#2f9e6e", "#d9534f"
 
@@ -37,3 +42,27 @@ def use_style() -> None:
     pd.set_option("display.float_format", lambda value: f"{value:,.2f}")
     pd.set_option("display.width", 120)
     pd.set_option("display.max_columns", 12)
+
+
+def say(text: str) -> None:
+    """Show a sentence built from variables as ordinary notebook text."""
+    from IPython.display import Markdown, display
+
+    display(Markdown(text))  # type: ignore[no-untyped-call]
+
+
+def caption(text: str) -> None:
+    """A caption under a table or figure: what it shows, how many, from when to when."""
+    say(f"<small>*{text}*</small>")
+
+
+def tidy(table: "pd.DataFrame", digits: int = 3) -> "pd.DataFrame":
+    """A table ready to show: numbers rounded, and a blank where there is no value."""
+    import pandas as pd
+
+    def cell(value: object) -> object:
+        if value is pd.NA or (isinstance(value, float) and pd.isna(value)):
+            return ""
+        return round(value, digits) if isinstance(value, float) else value
+
+    return table.map(cell)

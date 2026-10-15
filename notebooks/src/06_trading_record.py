@@ -25,6 +25,7 @@
 
 # %%
 from datetime import UTC, datetime
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,14 +34,22 @@ import pandas as pd
 from radar.analytics import trading
 from radar.models import ledger
 from radar.notebooks import ACCENT, BUY, INK, MUTED, SELL, use_style
-from radar.pipelines import research
 from radar.providers import binance_public
 
 use_style()
 ASSET = "SOL"
 START, END = datetime(2023, 1, 1, tzinfo=UTC), datetime(2026, 10, 1, tzinfo=UTC)
-with binance_public.reader() as source:
-    bars, _ = research.load_binance([ASSET + "USDT"], source, START, END)[ASSET + "USDT"]
+# Binance's public hourly prices, kept in a local file after the first read.
+CACHE = Path(f"data/research/binance/{ASSET}USDT-bars.parquet")
+if CACHE.exists():
+    bars = pd.read_parquet(CACHE)
+else:
+    with binance_public.reader() as source:
+        bars = binance_public.hourly_bars(
+            source, ASSET + "USDT", int(START.timestamp() * 1000), int(END.timestamp() * 1000)
+        )
+    CACHE.parent.mkdir(parents=True, exist_ok=True)
+    bars.to_parquet(CACHE)
 bars = bars.loc["2023-01-01":"2026-09-30"]
 TRADERS = {
     "chaser": trading.made_up_trades(bars, ASSET, chases=True, seed=1),

@@ -34,3 +34,6 @@ Thumbs.db
 
 # The film's mock API: market data recorded from a running app, never committed
 demo-video/mock-api/data/recorded/
+
+# Paper drafts, kept out of the repository
+paper/

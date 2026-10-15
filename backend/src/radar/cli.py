@@ -212,10 +212,9 @@ def risk() -> int:
 
 
 def sentiment() -> int:
-    """Score new articles for tone (needs the nlp extra), refresh the summaries, measure
-    accuracy against the labelled sample, and rerun the sentiment-versus-price study."""
+    """Score new articles for tone (needs the nlp extra), refresh the summaries, record the
+    tuned model's held-out accuracy, and rerun the sentiment-versus-price study."""
     from radar.db.session import make_engine
-    from radar.models.lexicon import DEFAULT_PATH, Lexicon
     from radar.pipelines import event_study
     from radar.pipelines import sentiment as job
     from radar.universe import get_universe
@@ -225,25 +224,9 @@ def sentiment() -> int:
     topic_scorer = job.load_topic_scorer()
     if topic_scorer is not None:
         changed += job.classify_articles(engine, topic_scorer)
-    if DEFAULT_PATH.is_file():
-        job.evaluate(engine, lexicon=Lexicon.load())
-    else:
-        log.warning("word_list_missing", path=str(DEFAULT_PATH))
-        job.evaluate(engine)
+    job.evaluate(engine)
     studies = event_study.run(engine, universe)
     log.info("sentiment_done", rows_changed=changed, studies=studies)
-    return 0
-
-
-def finetune() -> int:
-    """Fine-tune the sentiment model on the labelled headlines and test it (needs nlp)."""
-    from radar.db.session import make_engine
-    from radar.models.lexicon import DEFAULT_PATH, Lexicon
-    from radar.pipelines import finetune as job
-
-    lexicon = Lexicon.load() if DEFAULT_PATH.is_file() else None
-    metrics = job.run(make_engine(), lexicon=lexicon)
-    log.info("finetune_done", adopted=metrics["adopted"], reason=metrics["reason"])
     return 0
 
 
@@ -300,17 +283,6 @@ def outside_hours() -> int:
 
     changed = job.run(make_engine(), get_universe())
     log.info("outside_hours_done", rows_changed=changed)
-    return 0
-
-
-def news_swings() -> int:
-    """Test whether news improves the swings forecast, and store the verdict."""
-    from radar.db.session import make_engine
-    from radar.pipelines import news_volatility as job
-    from radar.universe import get_universe
-
-    stored = job.run(make_engine(), get_universe())
-    log.info("news_swings_done", markets=stored)
     return 0
 
 
@@ -372,13 +344,11 @@ COMMANDS: dict[str, tuple[Callable[[], int], str]] = {
     "volatility": (volatility, "forecast volatility and score the models"),
     "risk": (risk, "estimate tail risk and backtest each method"),
     "sentiment": (sentiment, "score news for tone and refresh the summaries"),
-    "finetune": (finetune, "fine-tune the sentiment model and test it on held-out headlines"),
     "track": (track, "log today's forecasts and score those that have come due"),
     "portfolio": (portfolio, "recompute the portfolio analysis with the latest prices"),
     "record": (record, "rebuild the account record from the Binance history"),
     "relationships": (relationships, "recompute how the markets move together"),
     "outside-hours": (outside_hours, "read hourly prices from a second source where named"),
-    "news-swings": (news_swings, "test whether news improves the swings forecast"),
     "signals": (signals, "detect signals and recompute what followed them in the past"),
     "events": (events, "measure the markets around scheduled economic events"),
     "brief": (brief, "write today's brief from stored results"),

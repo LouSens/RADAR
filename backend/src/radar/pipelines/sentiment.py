@@ -4,9 +4,12 @@ Scoring needs the language model (the `nlp` extra). Summarising needs only the s
 scores, so it runs anywhere.
 """
 
+import json
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from pydantic import BaseModel
 from sqlalchemy import Engine, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -22,10 +25,7 @@ from radar.db.models import (
 from radar.db.session import session_scope
 from radar.features.calendars import nyse_schedule
 from radar.logging import get_logger
-from radar.models import classification, evidence, sentiment, topics
-from radar.models.lexicon import Lexicon
-from radar.pipelines.finetune import adopted_model, adopted_record
-from radar.pipelines.labels import load_labels
+from radar.models import dataset, sentiment, topics
 from radar.universe import Asset, Universe
 
 log = get_logger(__name__)
@@ -34,29 +34,67 @@ SCORE_BATCH = 512
 WRITE_BATCH = 2_000
 BUCKETS = ("1Hour", "1Day")
 
-
-def active_version(engine: Engine) -> str:
-    """The sentiment model in use: the fine-tuned one if it was adopted, else the original."""
-    with session_scope(engine) as session:
-        adopted = adopted_record(session)
-        return adopted.version if adopted is not None else sentiment.MODEL_VERSION
+# Notebook 04 trains the tone model and saves it here, merged so that it loads as a plain
+# Hugging Face model, with `model_card.json` beside it. The app only scores with it.
+TUNED_DIR = Path("data/models/finbert-tone")
+CARD_FILE = "model_card.json"
 
 
-def load_scorer(engine: Engine | None = None) -> sentiment.Scorer | None:
-    """The language model in use, or None where the libraries are not installed.
+class ModelCard(BaseModel):
+    """What notebook 04 writes beside the model it saves: what it is and how it scored on
+    test headlines it never saw while training or choosing settings."""
 
-    With an engine, an adopted fine-tuned model is loaded in place of the original.
-    """
+    version: str
+    base_model: str
+    input: str  # "headline": the cleaned headline alone is scored
+    max_length: int
+    labelled_by: list[str]
+    # First and last day (ISO dates) of the headlines trained on, and of those tested on.
+    train_window: tuple[str, str]
+    test_window: tuple[str, str]
+    # Reports in the shape of `classification.ClassificationReport`.
+    test: dict[str, Any]
+    base_test: dict[str, Any] | None = None
+    direction: dict[str, Any] | None = None
+    by_symbol: dict[str, dict[str, Any]] = {}
+
+
+def read_card(folder: Path = TUNED_DIR) -> ModelCard | None:
+    """The card of the tuned model, or None when no tuned model is on this machine."""
+    path = folder / CARD_FILE
+    if not path.is_file():
+        return None
+    return ModelCard.model_validate(json.loads(path.read_text(encoding="utf-8")))
+
+
+def active_version(engine: Engine | None = None, folder: Path = TUNED_DIR) -> str:
+    """The tone model in use: the tuned one when it is on this machine, else the original."""
+    card = read_card(folder)
+    return card.version if card is not None else sentiment.MODEL_VERSION
+
+
+def load_scorer(engine: Engine | None = None, folder: Path = TUNED_DIR) -> sentiment.Scorer | None:
+    """The language model in use, or None where the libraries are not installed."""
     try:
-        if engine is not None:
-            with session_scope(engine) as session:
-                adopted = adopted_model(session)
-                if adopted is not None and adopted.artefact_path is not None:
-                    return sentiment.FinbertScorer(adopted.artefact_path, adopted.version)
+        card = read_card(folder)
+        if card is not None:
+            return sentiment.FinbertScorer(
+                str(folder),
+                card.version,
+                max_length=card.max_length,
+                headline_only=card.input == "headline",
+            )
         return sentiment.FinbertScorer()
     except ImportError:
         log.warning("sentiment_model_missing", hint="install with `uv sync --extra nlp`")
         return None
+
+
+def scored_text(scorer: sentiment.Scorer, headline: str, summary: str) -> str:
+    """The text a scorer reads: the cleaned headline for a headline model, else both."""
+    if getattr(scorer, "headline_only", False):
+        return dataset.clean_headline(headline)
+    return sentiment.article_text(headline, summary)
 
 
 def score_articles(engine: Engine, scorer: sentiment.Scorer, *, limit: int | None = None) -> int:
@@ -75,7 +113,7 @@ def score_articles(engine: Engine, scorer: sentiment.Scorer, *, limit: int | Non
             ).all()
             if not articles:
                 break
-            texts = [sentiment.article_text(a.headline, a.summary) for a in articles]
+            texts = [scored_text(scorer, a.headline, a.summary) for a in articles]
             probabilities = scorer.probabilities(texts)
             scores = sentiment.score_of(probabilities)
             session.execute(
@@ -274,83 +312,28 @@ def news_start(asset: Asset) -> pd.Timestamp:
 MODEL_NAME = "sentiment"
 
 
-def evaluate(
-    engine: Engine,
-    version: str | None = None,
-    lexicon: Lexicon | None = None,
-    labels: pd.DataFrame | None = None,
-) -> dict[str, Any] | None:
-    """Score the model and the word-list rival against the labelled sample, and record it.
+def evaluate(engine: Engine, folder: Path = TUNED_DIR) -> dict[str, Any] | None:
+    """Record how the tone model in use scored on its held-out test headlines.
 
-    Returns the stored metrics, or None when no labelled article has a score yet.
+    The figures are the ones notebook 04 measured once, on headlines later than anything
+    the model trained on, and wrote into the model's card. Returns them, or None when
+    the original model is in use: it has no test on these labels, and none is shown.
     """
-    labels = load_labels() if labels is None else labels
-    version = version or active_version(engine)
-    with session_scope(engine) as session:
-        rows = session.execute(
-            select(
-                NewsArticle.id,
-                NewsArticle.headline,
-                NewsArticle.summary,
-                NewsSentiment.p_pos,
-                NewsSentiment.p_neg,
-                NewsSentiment.p_neu,
-            )
-            .join(NewsSentiment, NewsSentiment.article_id == NewsArticle.id)
-            .where(
-                NewsArticle.id.in_(labels["article_id"].tolist()),
-                NewsSentiment.model_version == version,
-            )
-        ).all()
-    if not rows:
+    card = read_card(folder)
+    if card is None:
+        log.info("sentiment_not_measured", reason="no tuned model on this machine")
         return None
-    scored = pd.DataFrame(
-        rows, columns=["article_id", "headline", "summary", "p_pos", "p_neg", "p_neu"]
-    ).merge(labels, on="article_id")
-    truth = scored["sentiment"].tolist()
-    predicted = [
-        sentiment.LABELS[i]
-        for i in scored[["p_pos", "p_neg", "p_neu"]].to_numpy(dtype=float).argmax(axis=1)
-    ]
     metrics: dict[str, Any] = {
-        "n_labelled": len(labels),
-        "labelled_by": sorted(set(labels["labelled_by"])),
-        "model": classification.report(truth, predicted, sentiment.LABELS).model_dump(),
-        "direction": evidence.direction(truth, predicted).model_dump(),
-        "by_symbol": {
-            symbol: classification.report(
-                [truth[i] for i in group], [predicted[i] for i in group], sentiment.LABELS
-            ).model_dump(include={"n", "accuracy", "macro_f1"})
-            for symbol, group in scored.groupby("symbol").indices.items()
-        },
+        "labelled_by": card.labelled_by,
+        "model": card.test,
+        "original": card.base_test,
+        "direction": card.direction,
+        "by_symbol": card.by_symbol,
+        "held_out": True,
+        "fine_tuned": True,
+        "test_window": list(card.test_window),
     }
-    topic_version = topics.version_of(topics.MODEL_ID)
-    with session_scope(engine) as session:
-        assigned = dict(
-            session.execute(
-                select(NewsTopic.article_id, NewsTopic.topic).where(
-                    NewsTopic.article_id.in_(labels["article_id"].tolist()),
-                    NewsTopic.model_version == topic_version,
-                )
-            ).all()
-        )
-    if assigned:
-        known = labels[labels["article_id"].isin(list(assigned))]
-        metrics["topics"] = classification.report(
-            known["topic"].tolist(),
-            [assigned[i] for i in known["article_id"]],
-            list(topics.TOPICS),
-        ).model_dump()
-        metrics["topic_model"] = topics.MODEL_ID
-    if lexicon is not None:
-        texts = [
-            sentiment.article_text(h, s)
-            for h, s in zip(scored["headline"], scored["summary"], strict=True)
-        ]
-        metrics["baseline"] = classification.report(
-            truth, lexicon.labels(texts), sentiment.LABELS
-        ).model_dump()
-    today = pd.Timestamp.now(tz="UTC").date()
+    start, end = (pd.Timestamp(day).date() for day in card.train_window)
     with session_scope(engine) as session:
         session.execute(
             update(ModelRegistry).where(ModelRegistry.name == MODEL_NAME).values(is_current=False)
@@ -359,19 +342,21 @@ def evaluate(
             ModelRegistry(
                 name=MODEL_NAME,
                 symbol=None,
-                version=version,
-                train_start=today,
-                train_end=today,
+                version=card.version,
+                train_start=start,
+                train_end=end,
                 is_current=True,
-                params={"model_id": sentiment.MODEL_ID},
+                params={"model_id": card.base_model, "input": card.input},
                 metrics=metrics,
+                artefact_path=str(folder),
             )
         )
     log.info(
         "sentiment_evaluated",
-        n=metrics["model"]["n"],
-        accuracy=round(metrics["model"]["accuracy"], 3),
-        macro_f1=round(metrics["model"]["macro_f1"], 3),
+        version=card.version,
+        n=card.test.get("n"),
+        accuracy=card.test.get("accuracy"),
+        macro_f1=card.test.get("macro_f1"),
     )
     return metrics
 

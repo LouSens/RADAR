@@ -197,4 +197,6 @@ def assess(
 
 
 def run(engine: Engine, universe: Universe, *, force: bool = False) -> int:
-    return sum(assess(engine, asset, force=force) for asset in universe.primary)
+    from radar.pipelines import followed
+
+    return sum(assess(engine, asset, force=force) for asset in followed.of(engine, universe))

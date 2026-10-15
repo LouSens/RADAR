@@ -4,7 +4,7 @@ import httpx
 import pandas as pd
 import pytest
 
-from radar.providers import binance_public, cftc
+from radar.providers import binance_public
 from radar.providers.public import DisallowedPublicRequestError, PublicDataError, PublicReader
 
 
@@ -18,10 +18,6 @@ def test_the_lists_of_public_sources_are_exactly_these() -> None:
         ("fapi.binance.com", "/fapi/v1/fundingRate"),
         ("api.binance.com", "/api/v3/exchangeInfo"),
     } == binance_public.ALLOWED
-    assert {
-        ("publicreporting.cftc.gov", "/resource/72hh-3qpy.json"),
-        ("publicreporting.cftc.gov", "/resource/gpe5-46if.json"),
-    } == cftc.ALLOWED
 
 
 @pytest.mark.parametrize(
@@ -42,7 +38,7 @@ def test_anywhere_else_is_refused_before_anything_is_sent(host: str, path: str) 
         sent.append(request)
         return httpx.Response(200, json=[])
 
-    source = reader(httpx.MockTransport(handle), binance_public.ALLOWED | cftc.ALLOWED)
+    source = reader(httpx.MockTransport(handle), binance_public.ALLOWED)
     with pytest.raises(DisallowedPublicRequestError):
         source.get(host, path, {})
     assert sent == []
@@ -126,38 +122,6 @@ def test_funding_rates_are_indexed_by_their_payment_time() -> None:
     series = binance_public.funding_rates(source, "BTCUSDT", 0, 10**9)
     assert series.tolist() == [0.0001, -0.0002]
     assert series.index[1] == pd.Timestamp("1970-01-01 08:00", tz="UTC")
-
-
-def test_a_positioning_report_becomes_long_short_and_open_interest_by_date() -> None:
-    seen: list[httpx.Request] = []
-
-    def handle(request: httpx.Request) -> httpx.Response:
-        seen.append(request)
-        return httpx.Response(
-            200,
-            json=[
-                {
-                    cftc.DATE: "2024-01-09T00:00:00.000",
-                    "m_money_positions_long_all": "300",
-                    "m_money_positions_short_all": "100",
-                    "open_interest_all": "1000",
-                },
-                {
-                    cftc.DATE: "2024-01-02T00:00:00.000",
-                    "m_money_positions_long_all": "200",
-                    "m_money_positions_short_all": "100",
-                    "open_interest_all": "1000",
-                },
-            ],
-        )
-
-    source = reader(httpx.MockTransport(handle), cftc.ALLOWED)
-    frame = cftc.positions(source, cftc.GOLD)
-    assert seen[0].url.host == "publicreporting.cftc.gov"
-    assert seen[0].url.params["cftc_contract_market_code"] == "088691"
-    assert list(frame.index) == [pd.Timestamp("2024-01-02"), pd.Timestamp("2024-01-09")]
-    assert frame["long"].tolist() == [200.0, 300.0]
-    assert frame["open_interest"].tolist() == [1000.0, 1000.0]
 
 
 def test_the_list_of_pairs_gives_each_coin_and_the_dollars_it_trades_against() -> None:

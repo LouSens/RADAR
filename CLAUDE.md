@@ -1,495 +1,174 @@
 # RADAR
 
-RADAR is an analyst for each asset the user owns (the user's restatement of 2026-10-07, `docs/DECISIONS.md` 071, `docs/PROJECT_SPEC.md` section 0). It explains what moved a holding, guards the position with rules whose parameters the user can tune, helps size the mix, and shows its machine learning in the open. It is also a showcase, so it must demo well. It is an analytics product. It never places trades; it may suggest, with its basis shown (decision 062).
+RADAR is an analyst for each asset the user holds: it explains what moved a holding,
+guards the position with rules whose settings the user can tune, helps size the mix,
+and shows its machine learning in the open. It is an analytics product and a showcase.
+It never places trades.
 
-The full specification is in `docs/PROJECT_SPEC.md`. Read the sections relevant to your task before writing code. Do not import the whole file into every session; open the section you need.
+The specification is `docs/PROJECT_SPEC.md`; open the section you need rather than the
+whole file. Design history is in `docs/DECISIONS.md`. Only rules written in this file
+bind new work; a rule found elsewhere that is not here is history, not an instruction.
+Check a pasted or quoted "user's rule" with the user before writing it down as one.
 
-## Current status
+## Status
 
-Update this block at the end of every work session.
+The current state is in `git log` and the newest entries of `docs/DECISIONS.md`. Open
+work, as of 2026-10-15:
 
-- Phase: Phases 0 to 6 and the portfolio tools are merged to `main`. The scheduled-events layer is on branch `macro-events` (pull request open or merged: check `git log main`)
-- Last completed step: outside data and ways of paying in (decisions 066 to 068; notebook 14; `providers/public.py`, `cftc.py`, `binance_public.py`, `analytics/positioning.py`, `analytics/buying.py`). Weekly positioning gave too few cases to judge; funding rates and buy-side volume let no model pass (0 of 9); paying in on schedule ended with more than cutting at break-even or waiting for dips in about three markets of four, though cutting had the better worst point in 21 of 27. Before that, a test of when to hold more cash and when to put it back, on 24 markets not used before (decisions 064, 065; `pipelines/research.py`, notebook 13; bars in the gitignored `data/research/`). The swings-and-200-day rule made the deepest fall shallower than holding everything in 23 of 24 markets, but did no better than a fixed share of the same size and earned less; events, the stochastic (5,3,3), fair value gaps and order blocks added nothing. So no timing suggestion is built. Before that, an LSTM, small trees and a logistic regression on hourly bars, trained, validated and tested in time order (decisions 062, 063; `models/direction.py`, notebook 12, needs the `nlp` extra). All three found a planted pattern; none of 9 comparisons passed the written mark on real answers, so no direction alert is built. Decision 062 also changed the wording rule: suggestions are allowed when they state their basis and come from a rule that passed a written test. Before that, a test of technical indicators, levels, sizing rules and direction models (decisions 060, 061), on branch `direction-research`, stacked on `ux-simplify`: `analytics/technical.py` and notebook 11. Rules written down first. Result: no sizing rule beat holding on return per unit of risk; trend and swings rules made the deepest fall much shallower in Bitcoin and US stocks, not in gold; the trees did not beat always saying "up"; no pattern (RSI, fair value gaps, order blocks, support, resistance, volume) told direction; several told the size of the next move. A planted pattern showed the first model settings could not learn and that a small neural network cannot learn from this much data. Before that, the visual and wording pass after the user's review (decision 059), on branch `ux-simplify`: `index.css` rebuilt as one ordered stylesheet with every token declared once, one colour family picked in OKLCH and written as hex, evidence shown as short named facts filling a card's width instead of paragraphs, one set of motion tokens with hover behind `(hover: hover)`, and the Signals feed no longer unmounting when its filters change. Before that, navigation and look reworked after the user's review (decision 057), on branch `ux-simplify`, which is stacked on `macro-events`: five places (Home, Markets, Portfolio, Signals, Calendar), no tab strips, a list of pages with a hint each on every subject's page, a way back on every inner page, a cut-down Home, tighter phone layout, and one window-wide light with translucent cards. Before that, scheduled economic events (decisions 055, 056): dates of Fed decisions, jobs reports, and inflation reports from the official pages in `backend/src/radar/events.toml`; five questions written down before running; result: no pattern in direction anywhere, gold moves more on Fed days and US stocks on jobs days; the Calendar screen, "Coming up" on the Overview, `GET /events`, notebook 10. Before that, Phase 6 parts 2 and 3 (decision 054): the daily brief (payload, template writer, grounding check that every number in the text is in the payload, an `LlmWriter` interface with no provider wired in), table `briefs`, `GET /briefs/latest`; the Signals screen (feed plus a track-record tab per signal type); and the Overview showing the brief and the newest signals. Before that, portfolio tools (decision 053): a regular-buying simulator the user sets up themselves, compared with putting the same total in at once and checked walk-forward (tab `/portfolio/buying`, `POST /portfolio/regular-buying`, notebook 09), and a ticker box on Try a mix and Regular buying that looks up any US stock or Alpaca crypto and fetches its history (`POST /portfolio/lookup`). Before that, the two signal questions were decided (decision 052). Before that, Phase 6 part 1 (decision 051): the three signal rules replayed walk-forward, a track record per kind of signal with verdicts on direction and on the size of the move (both corrected for multiple comparisons), tables `signals` and `signal_track_records`, `GET /signals` and `GET /signals/track-records/{type}`, and notebook 08. Result: no signal has an edge in direction; abnormal moves in US stocks were followed by larger moves. Before that, Phase 5D part 2 (decision 050): the value range ahead by block bootstrap, checked walk-forward and stated beside a bell-curve baseline it did not beat; the core and satellite report, with tags kept by symbol; and notebook 07 on the whole portfolio layer. Before that, "Try a mix" (decision 049): the user sets each asset's share and sees the resulting risk beside the portfolio as it is; levels and splits are only starting points; a tried mix can be the target. It replaced the three fixed level cards. Before that, Phase 5D part 1 (decision 048): five ways to split the holdings with a walk-forward backtest, low / moderate / high risk levels applied to the user's holdings, a chosen target, and signals against it (movement outside the band, drift, turbulent market). Before that, Phase 5C (decisions 044, 045): a pre-registered walk-forward test of whether news volume and tone improve the swings forecast. Result: no measurable gain in any of twelve comparisons, so news is not in the forecast and no variants are to be tried on this data. Before that, Phase 5B (decision 039): correlations, risk transmission, weekend gaps, macro drivers, the "Markets together" screen and the "Outside forces" tabs; and the read-only Binance source with cash as a holding and the portfolio tied to market states, drivers, and the weekend (decision 038). Before that, Phase 5A (decision 037): holdings by manual entry and CSV, the portfolio X-ray, loss limits, stress episodes, and the Portfolio screen; and the market page as tabs with real addresses (decision 036). Before that, fluid layout and chart fixes (decision 034) and the product pass (decision 033): an "In brief" card and `GET /assets/{symbol}/summary`; a Solid, Fair, or Rough trust mark on every claim from fixed rules in `analytics/summary.py`; sections folded behind their claims; news articles listed unranked and topics folded away
-- Next step: the build plan in `docs/PROJECT_SPEC.md` section 0.6, steps A to I. Steps A and B are done except as decision 073 lists (three routes and the jobs kept for steps E and G; research code moves in step H; Binance public history for held coins is step D's first task). Step C is built from Binance history instead of manual entry (decision 074): `models/ledger.py`, `analytics/trading.py`, `pipelines/account.py`, `GET /portfolio/record`, the "Your record" page; still to do there: trace and show the gap between units rebuilt from history and units held. Next (decision 075): a plan with the user's caps (1% per altcoin, 10% in all), a to-do list for each period's added cash, and alerts against the plan; then step D. Releases get a size warning only, never a direction (056). Screens use everyday words only: no finance or statistics terms (075). A notebook is a playground: what holds up becomes tested code and a screen in the same piece of work (074). The repository is public: experiments on the user's real data go in the gitignored `data/private/`, never in a notebook. Seven notebooks, listed in `notebooks/README.md`; old ones are in `notebooks/archive/`. Read-only account history from Binance is in `providers/binance_history.py`; its endpoint list is fixed by a test and no order is ever read. Typed access to snapshots, dividends, splits and option implied volatility is in `providers/alpaca_rest.py` (decision 072), not yet stored or shown. No reading is shown as a time to pay in (decision 073). `docs/AUDIT.md` holds the audit of 2026-10-07 and the list of what leaves the app; `docs/WHAT_RADAR_IS.md` describes the whole directory. A level may be drawn as a reading or trigger a rule the user switched on, never as RADAR's own call (071, revising 061). Rule settings may be searched only on the earlier part of a record and judged on the later part. Nothing tested calls direction (decisions 061, 063, 065, 068): do not rerun those tests with changed settings, and build no "buy now" or "sell now" suggestion. Smaller things open: put the next event in the daily brief; refresh `events.toml` when the 2027 BLS schedule is published; never offer a direction forecast for events (decision 056), and do not rerun the tests of 055 with changed rules. Connecting a language model to the brief sends portfolio figures to an outside service: only on the user's request. The feed shows changes of state and abnormal moves only; news-tone shocks are scored as evidence and never shown in the feed or the brief (decision 052). News drives no forecast and no signal (decision 045). The user deferred a news-tone accuracy experiment (target 85 to 90%; ensemble plus abstaining); decision 045 lowers its value, so ask before starting it. The detail tabs still need the visual pass. Still owed: stability and sensitivity checks; labels from a person
-- Latest (branch `paxg-gold`, decisions 087 to 090): gold is followed as PAX Gold; the account follows Binance by itself; notebooks 01 to 05 reworked to the pattern of 06 and all built from `notebooks/src/`; "What to do now" prices come from the newest price (`pipelines/prices.py`: latest trade from Alpaca's market data, else the newest stored hour), never the last daily close, and a gap of at least half the smallest order is bought as one smallest order
-- News progress is kept per asset and ticker (`news:PAXG/USD:GLD`): two assets may read one ticker (decision 089). PAX Gold has no trade in about 4% of hours, so about 8% of its days have a rough movement measure; whether to build gold's movement from Binance's hourly PAXG prices is an open question for the user
-- A notebook's closing section may only repeat what a count printed in that notebook supports; rebuild and read the outputs before committing
-- Branch `gold-hours` (decisions 091 to 093): gold's daily movement is measured on Binance's hourly PAXGUSDT prices (`hours_from` in `universe.toml`, table `outside_hours`, `pipelines/outside_hours.py`, `radar outside-hours`); prices and returns stay the asset's own bars. The worker's scheduler must be made by `worker.make_scheduler`: the library's default drops any job more than a second late, which once left every hourly job unrun for two days. The brief opens with the price now, the news count and what there is to do; its banned words stay banned. The price chart has a one-day range. `README.md` describes the project for a visitor: keep its result counts in step with the notebooks
-- Branch `reel` (2026-10-08): a 24-second advertisement in `demo-video/` (Remotion; see its `README.md` and `ASSETS.md`), with generated sound effects and no music. Nothing from an account may appear in it: its portfolio figures are the made-up example in `demo-video/src/fixtures/portfolio.json`. The same branch changed the app's colours: the three markets are metals (copper, gold, steel; `--btc`, `--gold`, `--stock` in `index.css`), other holdings take `--hold-a` to `--hold-d`, a holding has one colour on every screen (`holdingColour` in `viz.tsx` takes the symbol alone), green, red and the accent are never given to a holding, and in bars and rings cash is the track left unfilled. The user rejected pastel colours for holdings. `uv run radar lint` also lints the Python under `demo-video/`
-- Branch `why-it-moved` (decisions 095, 096): the page "Why it moved" on every market (`analytics/moves.py`, `pipelines/moves.py`, `GET /assets/{symbol}/moves`, `MovesPanel.tsx`). A day is split into the wider market's part (Bitcoin for a coin, US stocks for a stock or fund) and the holding's own only while that holding clears the bars of decision 095 on unseen days; Bitcoin, gold and US stocks are never split. Events and headlines are worded "that day", never as a cause. The user's rule of 2026-10-08: a feature is built only if it has very good accuracy or credibility, with the bar written down first. On that rule no protection rule is offered (nothing on record clears the bar; do not rerun those tests with changed settings), and the models for every holding wait for the test in decision 095
-- Branch `reel-questions` (2026-10-08, stacked on `why-it-moved`, not pushed): the reel rebuilt as one situation, Bitcoin falling, and the questions it raises, each answered by the app (32 seconds, 960 frames; `demo-video/README.md`). The user's rule after two reviews: 3D only for three hero objects (the coin, the mark, the phone); all data is the app's own interface in 2D, moving, and must look like the real app, not an illustration of it. The user rejected flat page stills in perspective ("a screen recording") and 3D numerals, bars and holdings ("hard to read and look cheap"). After a third review the user rejected one move repeated six times (dim Home, question, dock, card opens, back to Home): the film is now one chain of changes (`src/Chain.tsx`, `src/Devices.tsx`). The coin becomes the mark; Home is seen only in shot 2 and from the end of shot 8; each answer turns into the next and, near its end, pulls back to be seen as a card of the app in a desktop window or on the phone. No tap, ring or ripple anywhere: an answer is marked by four corners that lock on to it. The donut is gone; risk is one bar weighed again. Answer elements fill at least three quarters of the frame's width and readable text is at least 34 px. Figures come from `demo-video/mock-api/`: recorded market data (not committed) and an example account worked out by the app's own code from `mock-api/example.json` (`make_account.py`, database opened read-only, stored portfolio never read). The running app shows the account on every desktop page and is never photographed. `GET /portfolio/check/{coin}` reads the account record, so it is not a market address and is never recorded. The mock server must keep connections open
-- When something on a screen looks stale, check first that the worker is running its jobs (`docker compose logs worker`, the data-quality check's last run on the System page) before changing the screen
-- Before merging, run exactly what CI runs: `uv run radar lint` covers the tests directory too; a pull request was once merged with a red type check in a test file
-- Held assets are discovered, never added by hand (decision 041); an asset the user wants to try can be looked up by ticker (decision 053): `EQ_` names are stocks only, every other name is a crypto pair only. A holding with 30 to 249 sessions is estimated on its own record and the loss limits are scaled for it; under 30 it is counted in the money only (decision 043). The screen says which
-- Before trusting a model's "no", plant a known pattern in made-up answers and check the model finds it; choose settings on the planted pattern only (decision 061). A pattern that comes in runs of days is counted once per run. Never show a level as a place to add or reduce (decision 061)
-- A rule that changes how much is held is judged against a fixed share equal to its own average, not only against holding everything (decision 065): holding less always falls less
-- The abnormal-move bar is 5 times the usual hourly size, chosen on how often it fires (decision 052). Never tune a signal's rule to its track record
-- Section names are plain and fixed in decision 042; tab label and section title must match
-- Document model work in a notebook (`notebooks/src/NN_name.py`, built by `build_notebooks.py`), as the user asked on 2026-10-06. Notebooks are committed with their outputs, so they use a made-up example portfolio, never the user's holdings. Check the built outputs against the commentary before committing: a notebook has already shown that a method did not beat its baseline
-- Let the user choose and show the consequence (decision 049): do not present a choice the app has already made for them when they could set the inputs themselves
-- The Binance client may only call the endpoints listed in `providers/binance.py`; adding one needs the user's agreement and a test. Public research data (CFTC positioning, Binance hourly bars and funding rates) is read without a key through `providers/public.py`, which only sends GET requests to the pairs listed in `cftc.py` and `binance_public.py`; the same rule applies to adding one (decisions 066, 067)
-- Visual first (decision 040): a first view is tiles and charts built from `components/viz.tsx`, not sentences; long explanations go in `Caption`, which is collapsed. Detail tabs still need this pass
-- Navigation (decision 057): five places only; no tab strips and nothing that scrolls sideways on a phone; a subject's page ends with `SectionMenu`, where every page has a hint of at most 48 characters saying what it answers; every inner page has a way back (`Tabs`); a new section still gets its own address (decision 036). Do not add a sixth place or a new choice on Home without removing one
-- Look (decision 057): one window-wide light in the page's colour (`body::before`, never inside the content column), translucent cards lit from above, colour only for meaning. The user rejected both the heavy floating glass and a flat solid version as bland: minimal, but with character
-- First use and loading (decision 058): never a blank form or a bare "Loading…"; start from a sensible default or an example, show skeletons (`components/Skeleton.tsx`), offer one next step at a time, and keep operator-only things (system status) out of view unless something is wrong. Nudges must stay true: a step is done only when it is
-- Look and words (decision 059): colours in `index.css` must stay hex, because the price charts hand these variables to a parser that does not understand `oklch()`; plain CSS in that file is outside Tailwind's layers and beats every utility class, so the shared material rule sets no `position` and no `border-radius`; an explanation is a list of short named facts (`Caption facts=`), and sentences only for a caveat a label cannot carry
-- On a phone keep cards compact: check every new screen at 375 px wide before calling it done
-- Layout rules (decision 034): inside the page use container variants (`@xl:`, `@4xl:`), not `sm:` or `lg:`; phones have bottom tabs only, no top bar; charts must not pan or zoom into empty time
-- Every new section must use the shared `Panel` and take a trust grade from `analytics/summary.py`
-- The fine-tuned model's files live in the gitignored `data/models/finbert-radar-1`; scoring new articles needs them on the machine that runs `radar sentiment`
-- The language models need `uv sync --extra nlp` and run on the host, not in the Docker worker (decision 030)
-- Carried forward: shading the price chart by regime is not built (decision 028)
-- Interface direction is decision 023 as revised by 057: Inter, no developer wording, only show what exists. The user reviews the interface closely and will revisit it
-- Key decisions (`docs/DECISIONS.md` 010 to 058): primary assets are `BTC/USD`, `PAXG/USD` (gold, since decision 087; `GLD` is kept as a cross-check and for gold's news), and `SPY`; crypto from location `us-1`; 1Hour and 1Day bars only; live bars are pushed to the app but stored bars always come from REST; version 1 also includes macro drivers (F8), volatility forecast (F9), tail risk (F10), and a read-only Binance holdings source
-- The user is in GMT+8: give times in GMT+8 in chat
-- Open questions: none
+- News tone: notebook 04 trains FinBERT with TAPT and LoRA on labels written under
+  `notebooks/labels/RUBRIC.md`; the app scores with the saved model in
+  `data/models/finbert-tone/` and shows the test figures from its `model_card.json`.
+- The other notebooks (01 to 03, 05, 06) still import `radar` and read the database;
+  they are to be made self-contained, reading exported Parquet.
+- Alpaca data fetched but not stored or shown: snapshots, dividends, splits, option
+  implied volatility (`providers/alpaca_rest.py`); news summaries and bodies.
+- The model jobs loop over `followed.of(engine, universe)`, never `universe.primary`: the
+  three markets plus every holding with at least 500 days of prices (decision 108). A
+  holding with fewer says how many it has on the Holdings page (`GET /portfolio/followed`).
+  News, the calendar study and the brief stay with the three markets.
+- Open with the user: the holding PURR is priced as the US stock of that ticker; the user
+  called it an altcoin (decision 108).
+- The user is in GMT+8: give times in GMT+8 in chat.
 
 ## How to work in this repo
 
-1. Work one phase at a time, in the order given in section 11 of the spec. Stop at the end of each phase and summarise what was built, what was verified, and what is still uncertain.
-2. Before starting a phase, restate its "done when" criteria and list the files you plan to create or change.
-3. Phase 0 produces `docs/DATA_AUDIT.md`. Several numbers in the spec are marked "verify in Phase 0". Where the audit contradicts the spec, the audit wins: update the spec and tell the user.
-4. Ask before adding a dependency that is not in section 5 of the spec.
-5. Keep commits small and scoped to one step. Use conventional commit messages (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
+1. Before a piece of work, restate what "done" means and list the files to change.
+2. Ask before adding a dependency that is not already in `pyproject.toml` or
+   `frontend/package.json`.
+3. Keep commits small and scoped. Conventional messages (`feat:`, `fix:`, `test:`,
+   `docs:`, `chore:`).
+4. Before merging, run exactly what CI runs: `uv run radar lint` and `uv run radar test`
+   (database tests need `make up`).
+5. When something looks stale on a screen, check that the worker is running its jobs
+   (`docker compose logs worker`) before changing the screen.
 
 ## Hard rules
 
 These apply to every change.
 
-- **No trading.** Do not import, call, or wrap any order, position, or transfer endpoint from Alpaca or any other provider. Market data and news endpoints only. One exception, approved by the user on 2026-10-05: a read-only Binance `HoldingsSource` may call Binance endpoints that **read** account balances and open positions, with an API key that has no trading and no withdrawal permission. It must never call an endpoint that places, changes, or cancels an order, moves funds, or changes account settings, and a test must assert that. The endpoints it may call are listed in `providers/binance.py`; one of them, the Funding wallet read, is a POST because Binance serves it no other way (`docs/DECISIONS.md` 038); three more reads were approved on 2026-10-07 (046, 047).
-- **Paper keys only.** The Alpaca keys in `.env` must be paper account keys, never live keys. The only Alpaca host this app calls is `data.alpaca.markets` (and its `stream.data.alpaca.markets` WebSocket). Never call `api.alpaca.markets` or `paper-api.alpaca.markets`. A test asserts that the provider clients reject any other base URL.
-- **No secrets in the repo.** Keys live in `.env`, which is gitignored. `.env.example` holds names only. Never print keys in logs, tests, or error messages.
-- **No lookahead.** A value shown for time `t` may only use data with timestamp `<= t`. This covers features, labels, regime probabilities (use filtered, never smoothed, for anything displayed as "current" or used in a backtest), scalers, and train/test splits. Every model module needs a test that proves it.
-- **Time-ordered evaluation only.** Walk-forward or expanding-window splits. Never shuffle time series.
-- **UTC everywhere in storage and APIs.** Convert to local time only in the frontend. Store timezone-aware timestamps.
-- **Idempotent ingestion.** Re-running any ingestion job for the same window must produce the same rows (upsert on natural keys).
-- **Raw data is immutable.** The raw layer is append-only. Cleaning writes to a separate layer.
-- **Honest output.** Every conclusion shown in the UI carries its evidence: sample size, time window, and uncertainty. If a signal shows no measurable edge, the UI says so. The app may give alerts, forecasts and suggestions about adding and reducing (the user's decision of 2026-10-07, `docs/DECISIONS.md` 062), but only from a rule that passed a test written down beforehand, and each one states the rule, what following it did in the past, over what period, and where it failed. Never word one as a certainty or a promise, and never turn a rule that was tested and did not hold into a suggestion.
-- **Numbers in generated text come from data.** The daily brief may only contain numbers present in its input payload. A test enforces this.
+- **No trading.** Never import, call or wrap an order, position or transfer endpoint of
+  Alpaca or any other provider. Market data and news only. One exception: the read-only
+  Binance holdings source may call the account-reading endpoints listed in
+  `providers/binance.py`, with a key that has no trading or withdrawal permission; a
+  test asserts the list. Adding an endpoint needs the user's agreement and a test. Public
+  data (`providers/public.py`) is GET-only to the pairs listed in `binance_public.py`.
+- **Paper keys only.** The only Alpaca hosts are `data.alpaca.markets` and
+  `stream.data.alpaca.markets`. Never `api.alpaca.markets` or `paper-api.alpaca.markets`.
+  A test asserts that the clients reject any other base URL.
+- **No secrets in the repo.** Keys live in the gitignored `.env`; `.env.example` holds
+  names only. Never print keys in logs, tests, error messages or notebook outputs.
+- **Public repository.** The user's account data never goes in a commit or a notebook
+  output; experiments on it stay in the gitignored `data/private/`. Provider headlines
+  are not committed (labels are stored as article ids and classes only).
+- **No lookahead.** A value shown for time `t` uses only data with timestamp `<= t`:
+  features, labels, filtered (never smoothed) regime probabilities, scalers and splits.
+  Every model module has a test that proves it.
+- **Time-ordered evaluation only.** Walk-forward or expanding-window splits; never
+  shuffle time series. A test set is scored once, after every choice was made on
+  validation.
+- **UTC everywhere in storage and APIs.** Local time only in the frontend.
+- **Idempotent ingestion** (upsert on natural keys) and an **append-only raw layer**.
+- **Honest output.** Every conclusion in the UI carries its evidence: sample size, time
+  window and uncertainty. If something shows no measurable edge, the UI says so. A
+  suggestion comes only from a rule that passed a test written down beforehand, states
+  that rule, its record and where it failed, and is never worded as a certainty.
+- **Numbers in generated text come from data.** The daily brief may only contain numbers
+  present in its input payload; a test enforces this.
+
+## Rules the user confirmed (2026-10-15)
+
+- **No buy, sell or direction calls.** The app never says "buy now" or "sell now" and
+  never forecasts which way a price will go (decisions 061, 063, 065, 068). This does
+  not cover news sentiment: scoring headlines as positive, negative or neutral describes
+  the news, not the price ahead, and may be shown wherever it helps (the feed, the brief,
+  an asset's page), with the model's measured accuracy beside it.
+- **No reruns of failed tests.** A test that found nothing (direction, timing, events,
+  protection rules) is not rerun with changed settings until it passes.
+- **Before trusting a model's "no", plant a known pattern** in made-up data and check the
+  model finds it; choose settings on the planted pattern only (061).
+- **The front page shows what holds up.** The README and the notebooks present results
+  that held; what was tried and set aside stays in `docs/DECISIONS.md` and git history.
+  Never invert or overstate a result to do this: leave it out.
+- **A notebook leads to code.** What holds up in a notebook becomes tested code and a
+  screen in the same piece of work (074).
+- **The user's plan caps:** 1% of the portfolio per altcoin, 10% in all altcoins (075).
+- **Everyday words on screens.** No finance or statistics terms in the interface (075).
+- **Visual first.** A first view is tiles and charts from `components/viz.tsx`; longer
+  explanations go in a collapsed `Caption` of short named facts (040, 059).
+- **Five places only:** Home, Markets, Portfolio, Signals, Calendar. No sixth place, or
+  new choice on Home, without removing one; every inner page has a way back (057).
+- **The look:** one window-wide light in the page's colour, translucent cards lit from
+  above, colour only for meaning. A holding keeps one colour on every screen; green, red
+  and the accent are never a holding's colour; no pastel holding colours (057, reel).
 
 ## Commands
 
-Keep this list accurate as targets change. Each target wraps `uv run radar <target>`, which works without Make (for example `uv run radar audit`). `test` and `lint` include the frontend once `npm --prefix frontend ci` has been run.
+Each `make` target wraps `uv run radar <target>`.
 
 ```
-make up              # start db, api, worker, web with docker compose; app on http://localhost:8080
-make down            # stop everything
-make migrate         # run Alembic migrations
-make audit           # run the Phase 0 data probe and rewrite docs/DATA_AUDIT.md (about 70 minutes;
-                     # `uv run radar audit --resume` runs only missing sections)
-make backfill        # historical backfill for the configured universe (about 17 minutes the first
-                     # time, seconds after that; needs `make up` and `make migrate`)
-make test            # backend pytest + frontend vitest (database tests need `make up` first)
-make lint            # ruff, mypy, eslint, tsc
-make demo            # start the app in replay mode from stored data
+make up / make down     # docker compose: db, api, worker, web; app on http://localhost:8080
+make migrate            # Alembic migrations and asset sync
+make backfill           # historical backfill (needs make up and make migrate)
+make test               # backend pytest + frontend vitest
+make lint               # ruff, mypy, eslint, tsc
+make audit              # Phase 0 data probe, rewrites docs/DATA_AUDIT.md
 
-uv run radar api        # serve the API on http://127.0.0.1:8000 (development)
-npm --prefix frontend run dev   # serve the web app on http://localhost:5173 (development)
-uv run radar openapi    # rewrite frontend/openapi.json; then `npm --prefix frontend run gen:api`
-uv run radar regime     # train the regime model where missing, then score (--retrain to refit)
-uv run radar simulate   # store today's outcome simulation (--recalibrate to measure past ranges again)
-uv run radar volatility # forecast volatility for new days and score the models
-uv run radar risk       # estimate tail risk for new days and backtest (run after volatility)
-uv run radar sentiment  # score news tone and topics (needs `uv sync --extra nlp`), refresh summaries,
-                        # measure accuracy, rerun the sentiment-versus-price study
-uv run radar finetune   # fine-tune the sentiment model and test it on held-out headlines (needs nlp)
-uv run radar track      # log today's forecasts and score those whose days have ended
-uv run radar portfolio  # recompute the stored portfolio analysis with the latest prices (reads
-                        # Binance again first when that is the source and a key is set)
-uv run radar relationships  # recompute correlations, risk transmission, weekend gaps, drivers
-uv run radar news-swings    # test whether news improves the swings forecast (decision 044)
-uv run radar signals        # replay the signal rules and recompute their track records (about a minute)
-uv run radar events         # measure the markets around scheduled economic events (decision 055)
-uv run radar brief          # write today's brief from stored results (run after the others)
-uv run radar quality    # check stored data, set flags, write data quality reports
-uv run radar worker     # live streams plus hourly sync and quality jobs (one per set of keys)
-uv run radar profile    # measure the stored data and rewrite docs/DATA_PROFILE.md
-uv run python backend/scripts/build_notebooks.py  # rebuild the notebooks from notebooks/src/ (name one
-                                                  # to build only it; 04_news needs the nlp extra)
+uv run radar api                 # API on http://127.0.0.1:8000
+npm --prefix frontend run dev    # web app on http://localhost:5173
+uv run radar openapi             # rewrite frontend/openapi.json, then npm --prefix frontend run gen:api
+uv run radar regime | simulate | volatility | risk | track | portfolio | relationships
+uv run radar signals | events | brief | quality | profile | worker | record | outside-hours
+uv run radar sentiment           # score news with the tone model in use (needs uv sync --extra nlp)
+uv run python backend/scripts/build_notebooks.py [name]   # rebuild notebooks from notebooks/src/
 ```
 
 ## Code conventions
 
-Backend (Python 3.12+, managed with `uv`):
+Backend (Python 3.12+, `uv`):
 
-- Type hints on every function. `mypy --strict` passes on `src/`.
+- Type hints everywhere; `mypy --strict` passes on `backend/src`, `tests` and `scripts`.
 - `ruff` for lint and format.
 - Pydantic models at every boundary: API payloads, provider responses, config.
-- Provider access goes through the client classes in `radar/providers/`. Nothing else makes HTTP calls to Alpaca.
-- Pure functions for all maths (features, models, statistics). I/O stays in `pipelines/` and `api/`.
-- Each model lives in its own module with the same interface: `fit`, `predict`, `evaluate`, `save`, `load`, and a `MODEL_VERSION` string.
-- Structured JSON logging. No `print`.
-- Tests sit next to the behaviour they cover in `tests/`, mirroring `src/`. Provider tests use recorded fixtures, never live calls.
+- Provider access only through `radar/providers/`.
+- Pure functions for maths; I/O stays in `pipelines/` and `api/`.
+- Structured JSON logging, no `print`.
+- Tests mirror `src/` under `backend/tests/`; provider tests use recorded fixtures.
+- The language models need `uv sync --extra nlp` and run on the host, not in the
+  Docker worker.
 
 Frontend (React, TypeScript, Vite):
 
-- Strict TypeScript, no `any`.
-- Server state through TanStack Query. No ad hoc `fetch` in components.
-- API types are generated from the backend OpenAPI schema, not written by hand.
-- Every chart has a caption stating what it shows, the time window, and the sample size.
+- Strict TypeScript, no `any`. Server state through TanStack Query. API types generated
+  from the OpenAPI schema.
+- Inside the page use container queries (`@xl:`, `@4xl:`); check every screen at 375 px.
+- Colours in `index.css` stay hex (the chart library cannot parse `oklch()`).
+- Every chart has a caption: what it shows, the window and the sample size.
+
+Notebooks (`notebooks/src/NN_name.py`, percent format, built by `build_notebooks.py`):
+
+- Each notebook states its question, its method and what it found, from figures it
+  computed. Closing text is generated from variables, so it cannot disagree with them.
+- Committed notebooks use made-up portfolios only, never the user's holdings.
+- `04_news` is self-contained (no `radar` import). Its cell marked `app-parity` must
+  match `radar.models.dataset`; `tests/models/test_notebook_text.py` checks it.
 
 ## Repo map
 
 ```
-backend/
-  src/radar/
-    providers/     # Alpaca REST and WebSocket clients, rate limiting, retries
-    ingest/        # backfill and live ingestion jobs
-    quality/       # validation, cleaning, data quality reports
-    features/      # returns, volatility, calendars, alignment
-    models/        # regime (HMM), simulator (Monte Carlo), sentiment, portfolio
-    analytics/     # event study, lead-lag, correlation, signal track records
-    signals/       # signal detection and scoring
-    brief/         # daily brief generation
-    pipelines/     # orchestration of the steps above
-    api/           # FastAPI routers and schemas
-    db/            # SQLAlchemy models, Alembic migrations
-  tests/
-frontend/
-  src/
-docs/
-  PROJECT_SPEC.md  # the reference specification
-  DATA_AUDIT.md    # generated in Phase 0, measured facts about the data
-  DECISIONS.md     # short log of design decisions and why
-data/              # gitignored: raw Parquet, model artefacts, MLflow store
+backend/src/radar/
+  providers/  ingest/  quality/  features/  models/  analytics/
+  signals/  brief/  pipelines/  api/  db/
+backend/tests/          # mirrors src/
+backend/scripts/        # notebook builder, fixture recorder
+frontend/src/
+notebooks/              # 01-06, sources in src/, labels and rubric in labels/
+demo-video/             # the Remotion advertisement (its own CLAUDE.md)
+docs/                   # PROJECT_SPEC, DECISIONS, DATA_AUDIT, DATA_PROFILE
+data/                   # gitignored: raw Parquet, models, research files
 ```
 
 ## When something is unclear
 
-If the spec and the data disagree, or a method in the spec does not work on the real data, do not silently substitute something else. Write the problem and the options into `docs/DECISIONS.md` and ask the user.
-
-
-# ADVERTISING CREATIVE DIRECTOR
-
-This project is NOT an exercise in making attractive
-Remotion animations.
-
-The goal is to create an actual advertisement with a
-strong creative idea, compelling narrative, memorable
-visual language, and professional motion design.
-
-You must think like:
-
-- Creative Director
-- Senior Copywriter
-- Art Director
-- Film Director
-- 3D Motion Designer
-- Remotion Engineer
-
-The creative quality hierarchy is:
-
-1. HUMAN INSIGHT
-2. ADVERTISING IDEA
-3. STORY
-4. VISUAL CONCEPT
-5. ART DIRECTION
-6. MOTION DESIGN
-7. 3D EXECUTION
-8. TYPOGRAPHY
-9. CODE
-
-Never compensate for a weak idea with visual effects.
-
-Never compensate for a weak story with 3D.
-
-Never compensate for weak copy with animation.
-
-==================================================
-PHASE 1 — UNDERSTAND THE PRODUCT
-==================================================
-
-Before creating an advertisement, identify:
-
-- What is the product?
-- Who actually cares?
-- What problem does it solve?
-- What changes for the user?
-- What is emotionally frustrating about the
-  current alternative?
-- What is surprising about the product?
-- What is uniquely ownable?
-- Why should anyone believe the claim?
-
-Do not write advertising copy yet.
-
-==================================================
-PHASE 2 — FIND THE HUMAN TRUTH
-==================================================
-
-Find the underlying human tension.
-
-Do NOT settle for:
-
-"People want to save time."
-
-"People want to be productive."
-
-"People want better AI."
-
-Those are generic observations.
-
-Find something specific, emotionally recognizable,
-or culturally interesting.
-
-Ask:
-
-"What does the user actually feel?"
-
-"What moment makes them realize they need this?"
-
-"What behavior are they currently forced to tolerate?"
-
-"What contradiction exists in their current experience?"
-
-"What would make someone say:
-'Oh shit, that's exactly me.'?"
-
-==================================================
-PHASE 3 — GENERATE ADVERTISING CONCEPTS
-==================================================
-
-Generate 5 genuinely different advertising concepts.
-
-Each concept must contain:
-
-NAME
-ONE-SENTENCE IDEA
-HUMAN INSIGHT
-CENTRAL TENSION
-STORY
-VISUAL METAPHOR
-3D OPPORTUNITY
-EMOTIONAL PAYOFF
-PRODUCT ROLE
-ENDING
-
-Do NOT generate five variations of the same idea.
-
-They must be fundamentally different.
-
-Example:
-
-Concept A:
-Comedy
-
-Concept B:
-Emotional
-
-Concept C:
-Surreal
-
-Concept D:
-Cinematic/product-focused
-
-Concept E:
-Unexpected conceptual metaphor
-
-==================================================
-PHASE 4 — KILL BAD IDEAS
-==================================================
-
-Critically evaluate all concepts.
-
-Score each:
-
-Human insight /10
-Originality /10
-Memorability /10
-Emotional impact /10
-Product relevance /10
-Visual potential /10
-3D potential /10
-Brand potential /10
-Copywriting potential /10
-
-Then identify which concepts are generic.
-
-Explicitly reject concepts that sound like:
-
-"the future is here"
-
-"unlock your potential"
-
-"work smarter"
-
-"revolutionize your workflow"
-
-"next-generation"
-
-"powered by AI"
-
-"one platform for everything"
-
-"imagine a world where..."
-
-These are NOT acceptable creative ideas.
-
-Choose the strongest concept.
-
-==================================================
-PHASE 5 — BUILD THE STORY
-==================================================
-
-Do NOT immediately turn the idea into:
-
-INTRO
-→ PRODUCT
-→ FEATURES
-→ BENEFITS
-→ CTA
-
-That is a product presentation, not necessarily an
-advertisement.
-
-Instead construct:
-
-HOOK
-→ TENSION
-→ ESCALATION
-→ TURN
-→ REVEAL
-→ PAYOFF
-
-The product should become meaningful through the story.
-
-The viewer should understand WHY the product matters
-rather than simply being shown its features.
-
-==================================================
-PHASE 6 — VISUAL STORYTELLING
-==================================================
-
-For every story beat ask:
-
-"What can we SHOW instead of SAY?"
-
-Prioritize visual storytelling.
-
-If the idea is "information overload":
-
-Do not show:
-
-"Too much information."
-
-Instead create a physical world where information
-literally becomes overwhelming.
-
-If the idea is "ideas disappearing":
-
-Make ideas physically disappear.
-
-If the idea is "everything connected":
-
-Create a physical environment in which objects
-literally connect.
-
-The visual metaphor must emerge from the advertising idea.
-
-Do not add random 3D objects merely because they look cool.
-
-==================================================
-PHASE 7 — 3D FILM DESIGN
-==================================================
-
-3D must serve the story.
-
-For every major shot define:
-
-WHAT EXISTS
-WHAT CHANGES
-WHAT MOVES
-WHAT THE CAMERA DOES
-WHAT THE LIGHT DOES
-WHAT THE VIEWER DISCOVERS
-
-The camera should not simply zoom in and out.
-
-Use:
-
-- tracking shots
-- orbital movement
-- crane movement
-- parallax
-- travelling through environments
-- foreground/background interaction
-- rack-focus-like transitions
-- object reveals
-- scale changes
-- spatial transformations
-- object assembly
-- destruction
-- morphing
-- physical interactions
-
-==================================================
-PHASE 8 — COPYWRITING
-==================================================
-
-Copy must be written AFTER the idea.
-
-Every line must earn its place.
-
-Avoid generic marketing language.
-
-Prefer:
-
-specific
-human
-unexpected
-short
-confident
-memorable
-
-Do not explain what the viewer can already see.
-
-Do not put a headline on every shot.
-
-Silence is allowed.
-
-Visual storytelling is allowed to carry an entire shot.
-
-==================================================
-PHASE 9 — STORYBOARD
-==================================================
-
-Create the complete storyboard before coding.
-
-For every shot:
-
-TIME
-STORY BEAT
-VISUAL
-3D ELEMENTS
-CAMERA
-MOTION
-LIGHTING
-COPY
-SOUND
-PURPOSE
-
-The storyboard should read like a film,
-not like a list of UI animations.
-
-==================================================
-PHASE 10 — CREATIVE REVIEW
-==================================================
-
-Before writing Remotion code, ask:
-
-"If this were shown at a film festival without
-the brand name, would anyone remember the idea?"
-
-"If we remove all the text, does the story still work?"
-
-"If we remove all the 3D effects, is there still
-a compelling concept?"
-
-"If another AI company could use exactly the same
-advertisement by replacing the logo, the concept
-is too generic."
-
-If the answer is yes to the last question,
-REJECT THE CONCEPT and start again.
-
-Only after passing this review may implementation begin.
+If the spec and the data disagree, or a method does not work on the real data, do not
+silently substitute something else. Write the problem and the options into
+`docs/DECISIONS.md` and ask the user.

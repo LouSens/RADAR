@@ -4,15 +4,19 @@ Each source is a plain Python file in "percent" format: a line `# %% [markdown]`
 a text cell (its lines are comments) and a line `# %%` starts a code cell. Keeping the
 sources as Python means they can be read, reviewed, and linted like any other code.
 
-The notebooks import the same modules the app runs, so what they show cannot drift from
-what the app does. Run with:
+Most notebooks import the same modules the app runs, so what they show cannot drift
+from what the app does. `04_news` is the exception: it holds its own code, reads the raw
+news files and the labels in `notebooks/labels/`, and trains the tone model (about an
+hour on a laptop GPU); a test keeps its headline cleaning equal to the app's. Run with:
 
     uv run python backend/scripts/build_notebooks.py            # all of them
     uv run python backend/scripts/build_notebooks.py 03_swings_and_loss  # one
 
-Needs the database running and filled. `04_news` also needs `uv sync --extra nlp`.
+Needs the database running and filled, except `04_news`, which needs `uv sync --extra nlp`
+and the raw news under `data/raw/alpaca_news/`.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -53,6 +57,8 @@ def build(source: Path) -> Path:
         else nbformat.v4.new_code_cell(text)
         for kind, text in parse(source.read_text(encoding="utf-8"))
     ]
+    # Tells a notebook it is being built for the repository: 04_news then prints no real headline.
+    os.environ["TONE_COMMITTED_BUILD"] = "1"
     ExecutePreprocessor(timeout=3600, kernel_name="python3").preprocess(
         notebook, {"metadata": {"path": "."}}
     )
