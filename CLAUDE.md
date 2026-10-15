@@ -22,6 +22,12 @@ work, as of 2026-10-15:
   they are to be made self-contained, reading exported Parquet.
 - Alpaca data fetched but not stored or shown: snapshots, dividends, splits, option
   implied volatility (`providers/alpaca_rest.py`); news summaries and bodies.
+- The model jobs loop over `followed.of(engine, universe)`, never `universe.primary`: the
+  three markets plus every holding with at least 500 days of prices (decision 108). A
+  holding with fewer says how many it has on the Holdings page (`GET /portfolio/followed`).
+  News, the calendar study and the brief stay with the three markets.
+- Open with the user: the holding PURR is priced as the US stock of that ticker; the user
+  called it an altcoin (decision 108).
 - The user is in GMT+8: give times in GMT+8 in chat.
 
 ## How to work in this repo

@@ -125,8 +125,10 @@ def _rows_for(session: Session, asset: Asset) -> list[dict[str, Any]]:
 def record(engine: Engine, universe: Universe) -> int:
     """Write down today's forecasts. A forecast already written is never touched."""
     written = 0
+    from radar.pipelines import followed
+
     with session_scope(engine) as session:
-        for asset in universe.primary:
+        for asset in followed.assets(session, universe):
             rows = _rows_for(session, asset)
             if not rows:
                 continue
@@ -167,8 +169,10 @@ def outcome_of(
 def resolve(engine: Engine, universe: Universe, now: datetime | None = None) -> int:
     """Fill in what happened for every logged forecast whose days have all ended."""
     now = now or datetime.now(UTC)
+    from radar.pipelines import followed
+
     resolved = 0
-    for asset in universe.primary:
+    for asset in followed.of(engine, universe):
         with session_scope(engine) as session:
             pending = list(
                 session.scalars(

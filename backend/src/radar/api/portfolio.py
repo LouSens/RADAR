@@ -28,6 +28,7 @@ from radar.models.holdings import (
 from radar.pipelines import account as account_job
 from radar.pipelines import check as check_job
 from radar.pipelines import discover, rebalance
+from radar.pipelines import followed as followed_job
 from radar.pipelines import portfolio as job
 from radar.pipelines import prices as prices_job
 from radar.pipelines import steps as steps_job
@@ -201,6 +202,13 @@ def _follow_exchange(
     except BinanceError:
         session.rollback()
     return universe
+
+
+@router.get("/followed", response_model=list[followed_job.HoldingStanding])
+def get_followed(universe: UniverseDep, session: SessionDep) -> list[followed_job.HoldingStanding]:
+    """Each holding with how many days of prices it has and whether the models run for
+    it yet. They start once a holding has enough days to be checked on unseen ones."""
+    return followed_job.standing(session, universe)
 
 
 @router.get("/steps", response_model=steps_job.Steps)

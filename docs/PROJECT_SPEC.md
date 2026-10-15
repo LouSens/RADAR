@@ -22,138 +22,128 @@ Contents:
 
 ---
 
-## 0. Direction as of 2026-10-07 (read this first)
+## 0. The product as it stands, 2026-10-08 (read this first)
 
-This section replaces the product definition in section 1 and the build plan in section
-11 wherever they differ. Sections 3 to 7 (data, architecture, stack, data model,
-pipeline) still hold. The reasons are in `docs/AUDIT.md` and `docs/DECISIONS.md` 071.
+This section describes the app that exists. It replaces the product definition in
+section 1 and the build plan in section 11 wherever they differ. Sections 3 to 7 (data,
+architecture, stack, data model, pipeline) still hold. It was rewritten on 2026-10-08 at
+the user's request, because the version of 2026-10-07 described a plan (Holdings, Rules
+and Models as places; Markets and Signals removed) that the app did not follow. What was
+built instead, and why, is in `docs/DECISIONS.md` 071 to 095. Section 0.6 lists what is
+still only a plan and says so.
 
 ### 0.1 The product
 
-**One line:** RADAR is an analyst for each asset you own. It explains what moved it,
-guards your position with rules you can tune, and shows its machine learning in the open.
+**One line:** RADAR is a read-only analyst for the assets you hold. It says what each
+is doing, how much it could move, and what your own plan says to do with spare cash.
 
-**Who it is for:** a hands-on investor who holds several assets, adds and reduces over
-time, does not always know what is going on or why a holding moved, and wants to avoid
-large losses. It is also a showcase of finance data work, a full machine learning
-pipeline and full-stack engineering, so it must demo well with example data.
+**Who it is for:** a passive investor who holds a few assets on Binance, pays in a
+little each month, does not always know what is going on, and wants to avoid large
+losses. It is also a showcase of finance data work, a machine learning pipeline and
+full-stack engineering.
 
 **What it is not:** a trading bot (it never places an order), a price predictor, or
-financial advice.
+financial advice. Nothing tested calls the direction of a price, so nothing in the app
+does.
 
 ### 0.2 The three jobs
 
-| Job | The question it answers | Built from |
+| Job | The question it answers | Where in the app |
 |---|---|---|
-| **Explain** | What is going on, and why did this holding move? | Drivers, abnormal moves, events, news, market state |
-| **Protect** | Where are sensible cut-loss and take-profit ranges? When does my stop move to break-even? When do I add or reduce? | Swing forecast, purchase history, the rules engine |
-| **Size** | How much of each should I hold for a fall I can live with? | Portfolio risk, stress episodes, range ahead |
+| **Explain** | What is going on with what I hold? | Today in brief, each market's page, News, Calendar, Signals |
+| **Protect** | How much could it move, and how bad could a bad day be? | Daily movement, Possible loss, Price range ahead, Where the risk sits |
+| **Size** | How much of each should I hold, and what do I do with new cash? | My plan, What to do now, Check before I buy |
 
-### 0.3 New features
+### 0.3 Places and pages
 
-**F11. Purchases.** Each holding has purchases: date, amount, price paid, fee. From them:
-average cost, real gain or loss, break-even price, in US dollars and in the user's own
-currency. Entered by hand, by CSV, or read from Binance trade history (read-only; the
-endpoint needs the user's agreement and a test, as every Binance read does).
+Five places (decision 057), with a bottom bar on phones and tablets and a sidebar from
+1024 px:
 
-**F12. Holding page.** One page per asset owned, the same for every holding, not only
-the three primary markets. A price chart with the user's indicators drawn on it
-(stochastic 5,3,3; RSI 14; exponential averages 9, 13, 50, 200; order blocks; fair value
-gaps; the Fibonacci 61.8% level), the user's cost and stop lines, the market's state,
-expected swings, possible loss, coming events, and recent headlines. Indicators are
-readings. Their record is one tap away. They are never worded as a call.
-
-**F13. Why it moved.** For any day and any holding, the move split into: what the wider
-market did (from the drivers regression), what was the asset's own, whether the size was
-unusual against its expected swing, whether a scheduled event fell on the day, whether
-the market's state changed, and the headlines published around the move. This is
-arithmetic on known data, not a forecast, so it is always available.
-
-**F14. Rules.** A small set of rule kinds, each with parameters the user can edit:
-
-| Rule | Parameters |
+| Place | What is there |
 |---|---|
-| Cut loss | a fall of N% from cost, or of N expected swings |
-| Trailing stop | N% or N swings under the highest close since buying |
-| Break-even stop | once the gain has reached N%, sell part or all if it returns to cost plus M% |
-| Take profit | at a gain of N%, or N swings, reduce by a share |
-| Add | when price is N% under its recent high, or a chosen reading is on, add a share |
-| Reduce for risk | when expected swings exceed N times usual, reduce to a share |
-| Rebalance | when a holding drifts N points from target, direct new money to it |
+| **Home** | The account's value as Binance states it, the plan against the account, what there is to do, today's brief, the three markets, what is coming up, the newest signals |
+| **Markets** | The three followed markets side by side; each market's page with Current state, Price range ahead, Daily movement, Possible loss and News |
+| **Portfolio** | What to do now, Check before I buy, My plan, My trades, Holdings, Where the risk sits |
+| **Signals** | Changes of market state and abnormally large moves, each with its track record |
+| **Calendar** | Fed decisions, jobs and inflation reports, with how markets moved around past ones |
 
-For every rule and setting the app shows, on that asset's history: what it ended with
-against simply holding, and against holding the same average share; the worst point;
-the number of trades and their cost; the time spent out. The app ships with starting
-settings and says how they were found.
+The System page (where the data comes from, how fresh it is) is reached from the footer,
+and from the navigation only when something is wrong (decisions 058, 094).
 
-*Guard against trial and error.* Trying settings until one looks good finds luck.
-So: settings are searched on the earlier part of the record and judged on the later
-part and on other markets; the screen states how many settings were tried; a rule's
-headline figure is always the later-period one. A stop is presented as insurance, with
-its usual cost beside its saving.
+### 0.4 Features as built
 
-*Alerts.* When a rule the user has switched on meets its condition, the app says so:
-"your break-even stop on SOL: condition met at 14:00". It is the user's rule firing,
-with its record attached. RADAR does not say "sell".
+**The account (decisions 038, 046, 047, 086).** Holdings are read from Binance with a
+read-only key, by themselves, whenever the stored copy is more than five minutes old:
+spot, funding, Earn (with its yearly rate and bonus tier) and tokenised stocks. The
+total shown is Binance's own. Holdings can also be typed or loaded from a file.
 
-**F15. Models page and pipeline.** One page that shows, for every model: what it
-predicts, the data and period it was trained on, how it was tested, its score against
-its simple rival, and its live score as real days come in. Behind it: scheduled
-retraining, versioned models in the registry for every model (today only the regime
-model), and a failed check blocks a new version from going live. Models, by target:
+**F11. The trading record (decision 074).** Rebuilt from Binance history, not typed:
+what each coin cost, what was made or lost, coins that left the account, trading against
+simply holding, and whether purchases tend to come near the top of the week. Built on an
+average-cost ledger reconciled to the real balance.
 
-| Target | Model |
-|---|---|
-| Market state | Hidden Markov model (built) |
-| Expected swings | HAR regression and boosted trees (built) |
-| Chance of a large fall | Pooled voting ensemble: logistic regression, random forest, boosted trees, neural network, each calibrated (notebook 15; to be completed) |
-| News tone and topic | Fine-tuned FinBERT, zero-shot topics (built), used to choose and label headlines for F13 |
-| Value range ahead | Block bootstrap and regime-switching simulation (built) |
+**The plan and the to-do list (decisions 075, 077, 090).** The user sets a share for
+each asset, starting from one of three mixes; the rest is cash. Cash over the plan is
+split between what is short. Each purchase is a ladder of prices worked out from the
+price now, with what that ladder did in past months. A holding well over its share is
+listed to trim. This is the plan's arithmetic, never a call on direction.
 
-Direction of price is not a target. Five notebooks tested it; the write-up stays as
-"what we tested and why it failed".
+**Check before I buy (decision 080).** Where a coin sits in its range over a day, a
+week, a month, a quarter and a year, beside the user's own habit. A reading only: a test
+across 617 coins found that low in the range is not a better buy (decision 079).
 
-### 0.4 What leaves the app
+**F12. Analysis for every holding (decision 095).** The state, the range ahead, the
+size of a day's movement, the possible loss and signals run for the three followed
+markets and for every other holding with at least 500 days of prices, which is what the
+checks on unseen days need. A holding with fewer says how many it has. The indicator
+chart of the earlier plan (stochastic, RSI, averages, order blocks, fair value gaps) is
+not built: none of those readings told direction when tested (decisions 061, 073).
 
-Markets together; the news-and-swings and tone-versus-price sections; forecast accuracy
-per market (it moves to Models); what-it-moves-with as a page (it becomes a line in
-F13); Signals as a place and its track-record pages (alerts replace it); compare mixes;
-core and satellite; the per-event study pages; news topics. Research-only code moves to
-a `research` package outside the app. The list and reasons are in `docs/AUDIT.md`
-section 5. Nothing is deleted without the user's say.
+**The models.** Market state (hidden Markov model), range ahead (simulation from the
+state, checked against every past day), size of movement (HAR regression beside three
+rivals), loss limits (three ways, each counted against how often it was broken),
+portfolio risk and value range (shrunk covariance, block bootstrap), news tone
+(fine-tuned FinBERT), signals with track records. Each is described with its results in
+`notebooks/` and `README.md`.
 
-### 0.5 Places
+**The brief (decisions 054, 093).** Opens with the price now and the move since the last
+close, the news count, and what there is to do. Every number in it is in its stored
+input, which a test enforces.
 
-Five: **Home** (your portfolio: value, real gain, what changed and why, alerts),
-**Holdings** (F12, one page each), **Rules** (F14), **Calendar**, **Models** (F15).
+### 0.5 What left the app
 
-### 0.6 Build plan
+Markets together as a screen (its address leads to Markets); the news-and-swings and
+tone-versus-price sections; compare mixes; core and satellite; the per-event study
+pages; news topics as a screen; manual purchase entry (history is read instead). The
+research behind them is summarised in `notebooks/07_what_we_tested`.
 
-| Step | Done when |
-|---|---|
-| A. Close the research | Notebook 15's result is recorded; no further direction tests |
-| B. Cut | The sections of 0.4 are out of navigation and routes; research code is outside the app package; tests and lint pass |
-| C. Purchases (F11) | A holding shows cost, real gain or loss and break-even; CSV and manual entry work; tested |
-| D. Every holding (F12) | State, swings, loss and the indicator chart exist for any held asset with enough history; checked at 375 px |
-| E. Why it moved (F13) | Any day of any holding shows its split and headlines; the parts sum to the move; tested |
-| F. Rules (F14) | Each rule kind runs on any holding with editable parameters, shows the figures listed above, and alerts when met; the search-then-judge split is tested |
-| G. Models (F15) | Every model is in the registry with its scores; the page shows them; the large-fall forecast is done properly and recorded |
-| H. Notebooks | Rebuilt to one shape with a shared style (AUDIT section 6) |
-| I. Demo | A hosted demo with example data and a five-minute script |
+Still running with no screen that reads them: the relationships and drivers jobs and
+their endpoints, and the tone-versus-price event study. They are the inputs "why it
+moved" would need (0.6). Whether they stay is the user's decision (decision 094).
+
+### 0.6 Planned, not built
+
+Nothing here exists in the app. Each needs the user's go-ahead before it is started.
+
+| Item | What it would be | What it needs first |
+|---|---|---|
+| **F13. Why it moved** | For any day and holding: how much was the wider market, how much its own, whether the size was unusual, whether an event or a change of state fell on the day, and the headlines around it | The drivers job kept; a test that the parts sum to the move |
+| **F14. Rules and alerts** | Rules the user switches on and tunes (cut loss, trailing stop, break-even stop, take profit, rebalance), each with what it did on that asset's history, and an alert when one is met | Settings searched on the earlier part of a record and judged on the later part; a stop shown as insurance with its cost |
+| **F15. Models page** | One page with every model: what it predicts, how it was tested, its score against its rival, its live score | Every model in the registry with a version, not only the state model |
+| **Large-fall forecast** | The chance of a large fall, by a calibrated ensemble | Redone once with the asset's own rate as an input, rules written first; or retired |
+| **Next event in the brief** | One sentence on what is coming | Small |
+| **Hosted demo** | Example data and a short script | Deployment |
 
 ### 0.7 Rules that do not change
 
 Section "Hard rules" of `CLAUDE.md` in full: no trading, paper keys, no secrets, no
 lookahead, time-ordered tests, honest output. A rule that failed its test is never
-presented as RADAR's suggestion; the user may still switch on any rule for themselves,
-and sees its record when they do.
+presented as RADAR's suggestion.
 
 ### 0.8 Open questions for the user
 
-1. Your currency, so that gain and loss can be shown in it.
-2. Whether RADAR may read your Binance trade history, to fill in purchases.
-3. Whether "fundamental news" should go beyond headlines (earnings, on-chain data,
-   economic series). Each is a new data source.
+1. Whether the relationships, drivers and event-study jobs stay (for F13) or go.
+2. Which of the items in 0.6, if any, to build next.
 
 ---
 

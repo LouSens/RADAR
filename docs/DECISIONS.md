@@ -4219,3 +4219,36 @@ A full run of notebook 04 on the RTX 4050 Laptop GPU (6 GB) produced `finbert-to
   Temperature fitted on validation: 2.65.
 - The row "FinBERT + LoRA (no TAPT)" in the test table is the plain encoder with seed 13;
   since the final model is also plain, its gap to the final model is seed variation.
+
+## 108. The models run for every holding with enough history; section 0 rewritten (2026-10-08)
+
+*(Written on branch `every-holding` as decision 095, a number already used on `main`; renumbered on merge, 2026-10-15.)*
+
+The user's answers to the questions of decision 094.
+
+**Every holding.** The state, range ahead, movement forecast, loss limits, signals and
+the forecast log ran for the three followed markets only. They now run for those and for
+every other holding with at least 500 days of prices (`pipelines/followed.py`).
+
+- **Why 500.** No model here is shown without a check on days it had not seen, and those
+  checks need 500 days before their first unseen one (`min_train` in the movement and
+  loss jobs). Fitting on less and showing it as the same thing would break the
+  honest-output rule. This is a different thing from decision 043, which puts a holding
+  with 30 to 249 sessions into the portfolio's risk on the days it has; that stands.
+- **Until then** the holding says so on the Holdings page: "Not analysed yet: 211 of 500
+  days of prices". An analysed holding links to its own page, which already worked for
+  any asset in the universe.
+- **An asset nobody holds is not analysed**, however long its record: the work follows
+  the account.
+- News tone, the calendar study and the brief stay with the three markets: a discovered
+  holding has no news feed of its own.
+- Today this changes no figure: the account's other holding has under 500 days.
+
+**To check with the user.** That holding was found in Alpaca's data as a US-listed
+stock with the ticker PURR and is priced as that. The user has described it as an
+altcoin. If the Binance holding is the coin and not the stock, it is being priced from
+the wrong instrument, and the fix is to price it from Binance's public prices instead.
+
+**Section 0 of the specification** described a plan the app did not follow. It now
+describes the app as it is, with what is planned and not built in its own table (0.6),
+each item needing the user's go-ahead.

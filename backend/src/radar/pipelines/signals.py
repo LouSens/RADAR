@@ -103,7 +103,9 @@ def build(
     """Track records for every market, corrected together, and the signal rows."""
     records: list[track.TrackRecord] = []
     rows: list[dict[str, Any]] = []
-    for asset in universe.primary:
+    from radar.pipelines import followed
+
+    for asset in followed.assets(session, universe):
         close = daily_close(session, asset)
         for type_, found in occurrences(session, asset).items():
             for variant in sorted({o.variant for o in found}):
